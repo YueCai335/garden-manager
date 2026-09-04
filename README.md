@@ -4,6 +4,10 @@ A full-stack garden operations and seasonal-planning application. It helps a
 gardener organize multiple locations, visualize planting areas, record care,
 plan the next season, and ask source-grounded plant questions.
 
+**[▶ Open the live demo](https://sun-aware-garden-planner.vercel.app)** — no install, no account. Select **Load demo garden** to explore a populated workspace.
+
+`Next.js` `React` `TypeScript` `FastAPI` `Pydantic` `PostgreSQL` `SQLAlchemy` `Alembic` `pgvector` `Docker Compose` `GitHub Actions` `pytest` `Vitest`
+
 ## What It Demonstrates
 
 - **Garden operations:** multiple gardens, raised beds, in-ground areas, and
@@ -19,6 +23,14 @@ plan the next season, and ask source-grounded plant questions.
   Docker Compose, GitHub Actions, Vitest, and pytest.
 
 ## Five-Minute Demo
+
+### Hosted demo (fastest)
+
+Open the [live demo](https://sun-aware-garden-planner.vercel.app), select **Load demo garden**,
+then walk through steps 4-6 below. The API sleeps on the free tier, so the first request can
+take about a minute.
+
+### Local (full feature set, including AI)
 
 1. Start the API and database with `docker compose up --build`.
 2. In another terminal, start the web app with `npm run dev`.
