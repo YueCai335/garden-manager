@@ -81,4 +81,5 @@ Object.defineProperty(window, "ResizeObserver", { value: ResizeObserverMock });
 afterEach(() => {
   cleanup();
   window.localStorage.clear();
+  vi.unstubAllGlobals();
 });

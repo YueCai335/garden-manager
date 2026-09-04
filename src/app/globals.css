@@ -676,6 +676,13 @@ select {
   font-size: 14px;
 }
 
+.dashboard-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
 .garden-card-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -825,6 +832,17 @@ select {
   font-size: 14px;
 }
 
+.plan-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+}
+
+.plan-header-actions .plan-count {
+  margin: 0;
+}
+
 .plan-intro {
   margin: 16px 0;
   color: #657268;
@@ -833,7 +851,7 @@ select {
 .plan-dimensions {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
-  align-items: end;
+  align-items: flex-end;
   gap: 12px;
   border-bottom: 1px solid #d7ddd6;
   padding-bottom: 20px;
@@ -850,14 +868,6 @@ select {
   padding: 10px 12px;
   background: #ffffff;
   color: #1d2920;
-}
-
-.garden-plan-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.6fr) minmax(250px, 0.75fr);
-  gap: 24px;
-  align-items: start;
-  margin-top: 24px;
 }
 
 .plan-view {
@@ -904,60 +914,9 @@ select {
   background: #ffffff;
 }
 
-.plan-controls {
-  border-left: 1px solid #d7ddd6;
-  padding-left: 24px;
-}
-
-.plan-controls h3 {
-  margin: 0 0 12px;
-  color: #183a2a;
-  font-size: 16px;
-}
-
-.plan-area-list {
-  display: grid;
-  gap: 8px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.plan-area-list li {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.plan-area-select {
-  flex: 1;
-  border: 1px solid #cfd7ce;
-  border-radius: 6px;
-  padding: 9px 10px;
-  background: #ffffff;
-  color: #183a2a;
-  cursor: pointer;
-  text-align: left;
-}
-
-.plan-area-select[aria-pressed="true"] {
-  border-color: #397a5a;
-  background: #edf5ec;
-}
-
-.selected-plan-area {
-  margin-top: 24px;
-  border-top: 1px solid #d7ddd6;
-  padding-top: 20px;
-}
-
-.selected-plan-area .secondary-button {
-  margin-top: 16px;
-}
-
 .area-form {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 0.7fr) auto;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.7fr) minmax(0, 0.5fr) auto;
   align-items: flex-end;
   gap: 14px;
   border-bottom: 1px solid #d7ddd6;
@@ -991,7 +950,7 @@ select {
 .planting-form {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  align-items: end;
+  align-items: flex-end;
   gap: 14px;
   border-bottom: 1px solid #d7ddd6;
   padding: 22px 0;
@@ -1416,32 +1375,37 @@ select {
   min-width: 0;
 }
 
+.planting-area-properties {
+  margin-bottom: 28px;
+  border-bottom: 1px solid #d7ddd6;
+  padding-bottom: 22px;
+}
+
 .layout-intro {
   margin: 18px 0;
   color: #657268;
 }
 
-.layout-dimensions,
+.planting-area-property-form,
 .allocation-form,
 .selected-fields {
   display: grid;
   gap: 12px;
 }
 
-.layout-dimensions {
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
-  align-items: end;
-  border-bottom: 1px solid #d7ddd6;
-  padding: 0 0 20px;
+.planting-area-property-form {
+  grid-template-columns: minmax(180px, 1.4fr) minmax(130px, 0.9fr) repeat(3, minmax(110px, 0.7fr)) auto;
+  align-items: flex-end;
 }
 
-.layout-dimensions .field,
+.planting-area-property-form .field,
 .allocation-form .field,
 .selected-fields .field {
   margin: 0;
 }
 
-.layout-dimensions input,
+.planting-area-property-form input,
+.planting-area-property-form select,
 .allocation-form input,
 .selected-fields input {
   width: 100%;
@@ -1483,6 +1447,12 @@ select {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  border-bottom: 1px solid #d7ddd6;
+  padding-bottom: 16px;
+}
+
+.plant-toolbar .primary-button {
+  width: 100%;
 }
 
 .plant-list-panel {
@@ -1586,7 +1556,7 @@ select {
   .care-form,
   .care-completion-form,
   .plan-dimensions,
-  .layout-dimensions {
+  .planting-area-property-form {
     align-items: stretch;
     grid-template-columns: 1fr;
   }
@@ -1611,17 +1581,7 @@ select {
     grid-template-columns: 1fr;
   }
 
-  .garden-plan-grid {
-    grid-template-columns: 1fr;
-  }
-
   .allocation-controls {
-    border-top: 1px solid #d7ddd6;
-    border-left: 0;
-    padding: 24px 0 0;
-  }
-
-  .plan-controls {
     border-top: 1px solid #d7ddd6;
     border-left: 0;
     padding: 24px 0 0;
@@ -1634,5 +1594,741 @@ select {
   .data-settings {
     align-items: stretch;
     flex-direction: column;
+  }
+}
+
+/* Garden operations visual system */
+:root {
+  --ops-ink: #2c3639;
+  --ops-ink-soft: #3f4e4f;
+  --ops-green: #3e7a58;
+  --ops-green-dark: #2c6245;
+  --ops-soil: #a27b5c;
+  --ops-canvas: #f4f3ed;
+  --ops-surface: #fffefb;
+  --ops-line: #d4d0c4;
+  --ops-muted: #66716d;
+  --ops-danger: #af5144;
+}
+
+body {
+  background: var(--ops-canvas);
+  color: var(--ops-ink);
+}
+
+.operations-app-shell {
+  min-height: 100vh;
+  background: var(--ops-canvas);
+}
+
+.operations-app-shell .operations-header,
+.operations-app-shell .operations-content,
+.operations-app-shell .operations-layout,
+.operations-app-shell .garden-onboarding {
+  width: min(1340px, calc(100% - 64px));
+}
+
+.operations-app-shell .operations-header {
+  padding: 30px 0 20px;
+  border-bottom-color: var(--ops-line);
+}
+
+.operations-app-shell .operations-header h1,
+.operations-app-shell .section-header h2,
+.operations-app-shell .garden-onboarding h1,
+.operations-app-shell .management-section h2,
+.operations-app-shell .season-planner-header h1,
+.operations-app-shell .care-hub-header h1,
+.operations-app-shell .ai-feature-header h1,
+.operations-app-shell .plant-health-header h1,
+.operations-app-shell .plant-knowledge-header h1 {
+  color: var(--ops-ink);
+  letter-spacing: 0;
+}
+
+.operations-app-shell .operations-header p,
+.operations-app-shell .section-header p,
+.operations-app-shell .garden-onboarding p,
+.operations-app-shell .season-planner-header p,
+.operations-app-shell .care-hub-header p,
+.operations-app-shell .ai-feature-header p,
+.operations-app-shell .plant-health-header p,
+.operations-app-shell .plant-knowledge-header p {
+  color: var(--ops-muted);
+}
+
+.operations-app-shell .eyebrow,
+.operations-app-shell .section-kicker,
+.operations-app-shell .care-hub-kicker,
+.operations-app-shell .season-planner-kicker,
+.operations-app-shell .ai-feature-kicker,
+.operations-app-shell .plant-health-kicker,
+.operations-app-shell .plant-knowledge-kicker {
+  color: var(--ops-green);
+  letter-spacing: 0.05em;
+}
+
+.operations-app-shell .operations-content {
+  padding: 28px 0 72px;
+}
+
+.operations-app-shell .secondary-button,
+.operations-app-shell .ghost-button,
+.operations-app-shell .toolbar-button,
+.operations-app-shell .back-button,
+.operations-app-shell .care-view-toggle button,
+.operations-app-shell .season-year-control button {
+  min-height: 40px;
+  border: 1px solid var(--ops-line);
+  border-radius: 4px;
+  background: var(--ops-surface);
+  color: var(--ops-ink);
+  box-shadow: none;
+}
+
+.operations-app-shell .secondary-button:hover,
+.operations-app-shell .ghost-button:hover,
+.operations-app-shell .toolbar-button:hover,
+.operations-app-shell .back-button:hover,
+.operations-app-shell .care-view-toggle button:hover,
+.operations-app-shell .season-year-control button:hover {
+  border-color: var(--ops-green);
+  background: #f1f5ee;
+}
+
+.operations-app-shell .primary-button,
+.operations-app-shell .create-button,
+.operations-app-shell .save-button,
+.operations-app-shell .complete-button {
+  min-height: 40px;
+  border: 1px solid var(--ops-green);
+  border-radius: 4px;
+  background: var(--ops-green);
+  color: #ffffff;
+  box-shadow: 0 2px 0 var(--ops-green-dark), 0 5px 12px rgb(44 98 69 / 16%);
+  font-weight: 700;
+  transition: background 140ms ease, border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+}
+
+.operations-app-shell .primary-button:hover,
+.operations-app-shell .create-button:hover,
+.operations-app-shell .save-button:hover,
+.operations-app-shell .complete-button:hover {
+  border-color: var(--ops-green-dark);
+  background: var(--ops-green-dark);
+  box-shadow: 0 3px 0 #1f4d35, 0 7px 14px rgb(44 98 69 / 20%);
+  transform: translateY(-1px);
+}
+
+.operations-app-shell .primary-button:active,
+.operations-app-shell .create-button:active,
+.operations-app-shell .save-button:active,
+.operations-app-shell .complete-button:active {
+  box-shadow: 0 1px 0 #1f4d35;
+  transform: translateY(1px);
+}
+
+.operations-app-shell .duplicate-button {
+  min-height: 40px;
+  border: 1px solid var(--ops-soil);
+  border-radius: 4px;
+  padding: 0 12px;
+  background: #f7f1ea;
+  color: #684b37;
+  box-shadow: 0 2px 0 #c3a58b;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  transition: background 140ms ease, border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+}
+
+.operations-app-shell .duplicate-button:hover,
+.operations-app-shell .duplicate-button:focus-visible {
+  border-color: #805c43;
+  background: #eee2d5;
+  box-shadow: 0 3px 0 #b99170;
+  outline: 0;
+  transform: translateY(-1px);
+}
+
+.operations-app-shell .duplicate-button:active {
+  box-shadow: 0 1px 0 #b99170;
+  transform: translateY(1px);
+}
+
+.operations-app-shell .danger-button,
+.operations-app-shell .remove-button {
+  color: var(--ops-danger);
+}
+
+.operations-app-shell input,
+.operations-app-shell select,
+.operations-app-shell textarea,
+.operations-app-shell .allocation-select {
+  border-color: var(--ops-line);
+  border-radius: 4px;
+  background: var(--ops-surface);
+  color: var(--ops-ink);
+  box-shadow: none;
+}
+
+.operations-app-shell input:focus,
+.operations-app-shell select:focus,
+.operations-app-shell textarea:focus,
+.operations-app-shell .allocation-select:focus-visible {
+  border-color: var(--ops-green);
+  outline: 2px solid rgb(62 122 88 / 20%);
+  outline-offset: 1px;
+}
+
+.operations-app-shell .garden-thumbnail-card,
+.operations-app-shell .season-area-card,
+.operations-app-shell .season-planner-empty,
+.operations-app-shell .care-summary,
+.operations-app-shell .care-task-card,
+.operations-app-shell .care-history-item,
+.operations-app-shell .health-record-card,
+.operations-app-shell .knowledge-card,
+.operations-app-shell .ai-note-card,
+.operations-app-shell .ai-feature-preview,
+.operations-app-shell .plant-health-preview,
+.operations-app-shell .plant-knowledge-preview {
+  border-color: var(--ops-line);
+  border-radius: 6px;
+  background: var(--ops-surface);
+  box-shadow: none;
+}
+
+.operations-app-shell .garden-thumbnail-card:hover {
+  border-color: var(--ops-green);
+  box-shadow: 0 0 0 1px var(--ops-green);
+}
+
+.operations-app-shell .garden-card-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.operations-app-shell .dashboard-module-actions .primary-button,
+.operations-app-shell .dashboard-module-actions .secondary-button {
+  min-width: 0;
+  flex: 1 1 154px;
+}
+
+.operations-app-shell .dashboard-module-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.operations-app-shell .dashboard-module-group {
+  margin-top: 24px;
+  border-top: 1px solid var(--ops-line);
+  padding-top: 16px;
+}
+
+.operations-app-shell .dashboard-module-group .section-eyebrow {
+  margin: 0 0 10px;
+}
+
+.operations-app-shell .dashboard-daily-actions {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.operations-app-shell .module-action {
+  display: flex;
+  min-height: 76px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--ops-line);
+  border-top: 3px solid var(--module-accent);
+  border-radius: 5px;
+  padding: 14px;
+  background: var(--module-surface);
+  color: var(--ops-ink);
+  cursor: pointer;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  text-align: left;
+}
+
+.operations-app-shell .dashboard-daily-actions .module-action {
+  min-height: 96px;
+  padding: 18px;
+  font-size: 17px;
+}
+
+.operations-app-shell .module-action > span:last-child {
+  color: var(--module-accent);
+  font-size: 20px;
+  line-height: 1;
+}
+
+.operations-app-shell .module-action:hover,
+.operations-app-shell .module-action:focus-visible {
+  border-color: var(--module-accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--module-accent) 18%, transparent);
+  outline: 0;
+  transform: translateY(-1px);
+}
+
+.operations-app-shell .module-action-season { --module-accent: #3e7a58; --module-surface: #edf5ee; }
+.operations-app-shell .module-action-care { --module-accent: #a27b5c; --module-surface: #f7f1ea; }
+.operations-app-shell .module-action-note { --module-accent: #7b6688; --module-surface: #f3eff5; }
+.operations-app-shell .module-action-health { --module-accent: #aa6051; --module-surface: #f8efec; }
+.operations-app-shell .module-action-knowledge { --module-accent: #617d72; --module-surface: #edf3f0; }
+
+.operations-app-shell .demo-garden-button {
+  min-height: 32px;
+  border: 0;
+  background: transparent;
+  color: var(--ops-green-dark);
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.operations-app-shell .demo-garden-button:hover {
+  color: var(--ops-soil);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.operations-app-shell .plan-boundary-settings {
+  margin: 18px 0 20px;
+  border-bottom: 1px solid var(--ops-line);
+  padding-bottom: 16px;
+}
+
+.operations-app-shell .plan-boundary-settings .plan-dimensions {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.4fr) repeat(2, minmax(112px, 1fr)) auto;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.operations-app-shell .plan-name-field {
+  min-width: 0;
+}
+
+.operations-app-shell .plan-boundary-settings .plan-dimensions label {
+  color: var(--ops-muted);
+  font-size: 13px;
+}
+
+.operations-app-shell .plan-boundary-settings.is-compact {
+  display: block;
+}
+
+.operations-app-shell .plan-boundary-settings.is-compact .plan-dimensions {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  max-width: 360px;
+}
+
+.operations-app-shell .plan-boundary-settings.is-compact .plan-name-field,
+.operations-app-shell .plan-boundary-settings.is-compact .save-button {
+  grid-column: 1 / -1;
+}
+
+.operations-app-shell .plan-boundary-settings.is-compact .plan-dimensions input[type="number"] {
+  max-width: 128px;
+}
+
+.operations-app-shell .plan-boundary-settings.is-compact .save-button {
+  justify-self: start;
+}
+
+.operations-app-shell .plan-view-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0 0 10px;
+  border: 1px solid var(--ops-line);
+  border-radius: 5px;
+  padding: 3px;
+  background: #f3f5f0;
+}
+
+.operations-app-shell .plan-view-control {
+  min-height: 34px;
+  border: 0;
+  border-radius: 3px;
+  padding: 0 12px;
+  background: transparent;
+  color: var(--ops-muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.operations-app-shell .plan-view-control[aria-pressed="true"] {
+  background: var(--ops-surface);
+  color: var(--ops-green-dark);
+  box-shadow: 0 1px 3px rgb(24 58 42 / 14%);
+}
+
+.operations-app-shell .plan-area-shortcuts {
+  margin-top: 24px;
+  border-top: 1px solid var(--ops-line);
+  padding-top: 20px;
+}
+
+.operations-app-shell .plan-area-shortcuts-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.operations-app-shell .plan-area-shortcuts-heading .section-eyebrow,
+.operations-app-shell .plan-area-shortcuts-heading h3,
+.operations-app-shell .plan-area-shortcuts-heading p {
+  margin: 0;
+}
+
+.operations-app-shell .plan-area-shortcuts-heading h3 {
+  color: var(--ops-ink);
+  font-size: 18px;
+}
+
+.operations-app-shell .plan-area-shortcuts-heading > p {
+  color: var(--ops-muted);
+  font-size: 13px;
+}
+
+.operations-app-shell .plan-area-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.operations-app-shell .plan-area-card {
+  display: grid;
+  min-height: 104px;
+  align-content: start;
+  gap: 5px;
+  border: 1px solid var(--ops-line);
+  border-radius: 5px;
+  padding: 14px;
+  background: var(--ops-surface);
+  color: var(--ops-ink);
+  cursor: pointer;
+  text-align: left;
+}
+
+.operations-app-shell .plan-area-card:hover,
+.operations-app-shell .plan-area-card:focus-visible {
+  border-color: var(--ops-green);
+  outline: none;
+  box-shadow: 0 0 0 1px var(--ops-green);
+}
+
+.operations-app-shell .plan-area-card strong {
+  font-size: 16px;
+}
+
+.operations-app-shell .plan-area-card span {
+  color: var(--ops-muted);
+  font-size: 13px;
+}
+
+.operations-app-shell .garden-plan-workbench {
+  min-width: 0;
+}
+
+.operations-app-shell .garden-plan-workbench.is-area-inspector-open {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(400px, 440px);
+  align-items: start;
+  gap: 20px;
+}
+
+.operations-app-shell .garden-plan-workbench > .garden-plan {
+  margin-top: 0;
+  padding: 24px;
+  border: 1px solid var(--ops-line);
+  border-radius: 6px;
+  background: var(--ops-surface);
+}
+
+.operations-app-shell .planting-area-creation-panel {
+  position: sticky;
+  top: 20px;
+  display: grid;
+  gap: 16px;
+  border: 1px solid var(--ops-line);
+  border-top: 3px solid var(--ops-green);
+  border-radius: 6px;
+  padding: 20px;
+  background: var(--ops-surface);
+}
+
+.operations-app-shell .planting-area-inspector {
+  max-height: calc(100vh - 40px);
+  overscroll-behavior: contain;
+  overflow-y: auto;
+}
+
+.operations-app-shell .planting-area-creation-header h2,
+.operations-app-shell .planting-area-creation-header p,
+.operations-app-shell .planting-area-creation-intro {
+  margin: 0;
+}
+
+.operations-app-shell .planting-area-creation-header h2 {
+  margin-top: 4px;
+  font-size: 21px;
+}
+
+.operations-app-shell .planting-area-creation-intro {
+  color: var(--ops-muted);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.operations-app-shell .planting-area-creation-form {
+  display: grid;
+  gap: 14px;
+}
+
+.operations-app-shell .planting-area-creation-form .field {
+  margin: 0;
+}
+
+.operations-app-shell .planting-area-creation-measurements {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.operations-app-shell .layout-editor-in-inspector {
+  display: grid;
+  gap: 14px;
+  border-top: 1px solid var(--ops-line);
+  padding-top: 18px;
+}
+
+.operations-app-shell .layout-editor-in-inspector .layout-editor-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.operations-app-shell .layout-editor-in-inspector .layout-editor-heading h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.operations-app-shell .layout-editor-in-inspector .layout-intro {
+  margin: 0;
+}
+
+.operations-app-shell .layout-editor-in-inspector .plant-toolbar {
+  border: 0;
+  padding: 0;
+}
+
+.operations-app-shell .layout-editor-in-inspector .plant-toolbar .primary-button {
+  width: auto;
+}
+
+.operations-app-shell .layout-editor-in-inspector .layout-editor-grid {
+  grid-template-columns: 1fr;
+  gap: 16px;
+  margin-top: 0;
+}
+
+.operations-app-shell .layout-editor-in-inspector .layout-canvas-wrap {
+  max-width: 100%;
+  min-height: 180px;
+}
+
+.operations-app-shell .layout-editor-in-inspector .layout-canvas-wrap canvas {
+  display: block;
+}
+
+.operations-app-shell .layout-editor-in-inspector .allocation-controls {
+  border-top: 1px solid var(--ops-line);
+  border-left: 0;
+  padding: 16px 0 0;
+}
+
+.operations-app-shell .management-content > .management-section {
+  padding-top: 32px;
+  border-top-color: var(--ops-line);
+}
+
+.operations-app-shell .garden-management-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 20px;
+  margin-top: 24px;
+}
+
+.operations-app-shell .garden-management-actions .data-settings {
+  flex: 1 1 420px;
+  margin-top: 0;
+}
+
+.operations-app-shell .layout-editor-grid {
+  gap: 28px;
+}
+
+.operations-app-shell .layout-dimension-settings {
+  margin: 18px 0;
+}
+
+.operations-app-shell .layout-dimension-settings h3,
+.operations-app-shell .allocation-controls-heading {
+  margin: 0 0 10px;
+  color: var(--ops-muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.operations-app-shell .plan-canvas-wrap,
+.operations-app-shell .layout-canvas-wrap {
+  border-color: var(--ops-line);
+  border-radius: 4px;
+  background: #fcfcf8;
+}
+
+.operations-app-shell .allocation-controls {
+  border-left-color: var(--ops-line);
+}
+
+.operations-app-shell .allocation-controls h3,
+.operations-app-shell .selected-allocation h3,
+.operations-app-shell .growing-area-item h3,
+.operations-app-shell .empty-areas h3 {
+  color: var(--ops-ink);
+}
+
+.operations-app-shell .allocation-controls p,
+.operations-app-shell .growing-area-item p,
+.operations-app-shell .empty-areas p {
+  color: var(--ops-muted);
+}
+
+.operations-app-shell .allocation-select[aria-pressed="true"] {
+  border-color: var(--ops-green);
+  background: #eaf3e9;
+}
+
+.operations-app-shell .status-message,
+.operations-app-shell .storage-status,
+.operations-app-shell .care-status,
+.operations-app-shell .season-plan-status {
+  border-color: #bfd2c2;
+  border-radius: 4px;
+  background: #edf5ee;
+  color: var(--ops-green-dark);
+}
+
+@media (max-width: 980px) {
+  .operations-app-shell .operations-header,
+  .operations-app-shell .operations-content,
+  .operations-app-shell .operations-layout,
+  .operations-app-shell .garden-onboarding {
+    width: min(100% - 32px, 1340px);
+  }
+
+  .operations-app-shell .garden-card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .operations-app-shell .dashboard-module-actions {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .operations-app-shell .dashboard-daily-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .operations-app-shell .planting-area-creation-panel {
+    position: static;
+  }
+
+  .operations-app-shell .planting-area-inspector {
+    max-height: none;
+    overflow: visible;
+  }
+}
+
+@media (max-width: 1360px) {
+  .operations-app-shell .garden-plan-workbench.is-area-inspector-open {
+    grid-template-columns: 1fr;
+  }
+
+  .operations-app-shell .planting-area-inspector {
+    position: static;
+    max-height: none;
+    overflow: visible;
+  }
+}
+
+.confirm-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  background: rgb(28 36 30 / 45%);
+  padding: 24px;
+}
+
+.confirm-dialog {
+  display: grid;
+  gap: 20px;
+  width: min(420px, 100%);
+  border: 1px solid var(--ops-line);
+  border-top: 3px solid var(--ops-green);
+  border-radius: 6px;
+  padding: 24px;
+  background: var(--ops-surface);
+  box-shadow: 0 12px 32px rgb(28 36 30 / 20%);
+}
+
+.confirm-dialog p {
+  margin: 0;
+  color: var(--ops-ink);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.confirm-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+@media (max-width: 560px) {
+  .operations-app-shell .garden-card-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .operations-app-shell .dashboard-module-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .operations-app-shell .plan-boundary-settings,
+  .operations-app-shell .plan-area-shortcuts-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .operations-app-shell .plan-boundary-settings .plan-dimensions {
+    grid-template-columns: 1fr;
+  }
+
+  .operations-app-shell .planting-area-creation-measurements {
+    grid-template-columns: 1fr;
   }
 }
