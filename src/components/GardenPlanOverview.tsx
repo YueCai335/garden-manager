@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, type RefObject, useEffect, useState } from "react";
 import { Circle, Group, Layer, Line, Rect, Stage, Text } from "react-konva";
 import type { KonvaEventObject } from "konva/lib/Node";
 
@@ -8,7 +8,7 @@ import {
   allocationPlantColor,
   clampPlanPosition,
   gardenPlanViewport,
-  normalizePlanRotation,
+  growingAreaKindLabels,
   snapToGrid,
   validateGardenPlanDimensions,
   type GardenPlan,
@@ -20,33 +20,42 @@ import {
 
 type GardenPlanOverviewProps = {
   plan: GardenPlan;
+  gardenName?: string;
   growingAreas: GrowingArea[];
   compact?: boolean;
   editable?: boolean;
+  headingRef?: RefObject<HTMLHeadingElement | null>;
+  isAreaInspectorOpen?: boolean;
+  onAddArea?: () => void;
+  onGardenNameChange?: (name: string) => void;
   onPlanChange?: (plan: GardenPlan) => void;
   onPlacementChange?: (areaId: string, placement: PlanPlacement) => void;
   onEditLayout?: (areaId: string) => void;
 };
 
 const CANVAS_PADDING = 34;
-const PLAN_ZOOM_LEVELS = [0.75, 1, 1.25, 1.5, 2];
+const PLAN_CANVAS_WIDTH = 760;
+const PLAN_CANVAS_HEIGHT = 460;
 
 export function GardenPlanOverview({
   plan,
+  gardenName: gardenNameFromProps = "",
   growingAreas,
   compact = false,
   editable = false,
+  headingRef,
+  isAreaInspectorOpen = false,
+  onAddArea,
+  onGardenNameChange,
   onPlanChange,
   onPlacementChange,
   onEditLayout,
 }: GardenPlanOverviewProps) {
+  const [gardenName, setGardenName] = useState("");
   const [width, setWidth] = useState(String(plan.widthMeters));
   const [depth, setDepth] = useState(String(plan.depthMeters));
-  const [selectedAreaId, setSelectedAreaId] = useState<string>();
-  const [selectedAllocationId, setSelectedAllocationId] = useState<string>();
-  const [zoom, setZoom] = useState(1);
+  const [viewMode, setViewMode] = useState<GardenPlanViewMode>("growing-areas");
   const [message, setMessage] = useState("");
-  const selectedArea = growingAreas.find((area) => area.id === selectedAreaId);
 
   useEffect(() => {
     setWidth(String(plan.widthMeters));
@@ -54,22 +63,13 @@ export function GardenPlanOverview({
   }, [plan.depthMeters, plan.widthMeters]);
 
   useEffect(() => {
-    if (
-      selectedAreaId &&
-      !growingAreas.some((area) => area.id === selectedAreaId)
-    )
-      setSelectedAreaId(undefined);
-  }, [growingAreas, selectedAreaId]);
+    setGardenName(gardenNameFromProps);
+  }, [gardenNameFromProps]);
 
-  useEffect(() => {
-    if (
-      selectedAllocationId &&
-      !growingAreas.some((area) => area.layout?.allocations.some(
-        (allocation) => allocationKey(area.id, allocation.id) === selectedAllocationId,
-      ))
-    )
-      setSelectedAllocationId(undefined);
-  }, [growingAreas, selectedAllocationId]);
+  const hasPropertyChanges =
+    gardenName !== gardenNameFromProps ||
+    Number(width) !== plan.widthMeters ||
+    Number(depth) !== plan.depthMeters;
 
   if (compact)
     return (
@@ -79,10 +79,8 @@ export function GardenPlanOverview({
           growingAreas={growingAreas}
           interactive={false}
           onMove={() => undefined}
-          onSelect={() => undefined}
           plan={plan}
           viewMode="growing-areas"
-          zoom={1}
         />
       </div>
     );
@@ -95,60 +93,35 @@ export function GardenPlanOverview({
       setMessage("Enter plan dimensions of at least 0.1 metres.");
       return;
     }
+    const nextGardenName = gardenName.trim();
+    if (!nextGardenName) {
+      setMessage("Enter a garden name to continue.");
+      return;
+    }
+    onGardenNameChange?.(nextGardenName);
     onPlanChange?.({
       widthMeters: snapToGrid(widthMeters),
       depthMeters: snapToGrid(depthMeters),
     });
-    setMessage("Garden Plan dimensions saved.");
-  };
-
-  const updateSelectedPlacement = (
-    field: keyof PlanPlacement,
-    rawValue: string,
-  ) => {
-    if (!selectedArea || rawValue === "") return;
-    const value = Number(rawValue);
-    if (!Number.isFinite(value)) {
-      setMessage("Enter a valid numeric value.");
-      return;
-    }
-    const placement =
-      field === "rotationDegrees"
-        ? {
-            ...selectedArea.planPlacement,
-            rotationDegrees: normalizePlanRotation(value),
-          }
-        : {
-            ...selectedArea.planPlacement,
-            ...clampPlanPosition(
-              { ...selectedArea.planPlacement, [field]: value },
-              plan,
-            ),
-          };
-    onPlacementChange?.(selectedArea.id, placement);
-    setMessage(`${selectedArea.name} updated.`);
+    setMessage("Garden properties saved.");
   };
 
   const moveArea = (areaId: string, event: KonvaEventObject<DragEvent>) => {
     if (!editable || !onPlacementChange) return;
+    if (typeof event.target.x !== "function" || typeof event.target.y !== "function") return;
+    const viewport = gardenPlanViewport(plan, growingAreas, viewMode);
+    const scale = pixelsPerMeter(viewport, false, viewMode);
     const point = clampPlanPosition(
       {
-        x: (event.target.x() - CANVAS_PADDING) / (pixelsPerMeter(plan) * zoom),
-        y: (event.target.y() - CANVAS_PADDING) / (pixelsPerMeter(plan) * zoom),
+        x: (event.target.x() - CANVAS_PADDING) / scale + viewport.x,
+        y: (event.target.y() - CANVAS_PADDING) / scale + viewport.y,
       },
       plan,
     );
     const area = growingAreas.find((candidate) => candidate.id === areaId);
     if (!area) return;
     onPlacementChange(areaId, { ...area.planPlacement, ...point });
-    setSelectedAreaId(areaId);
     setMessage("Planting area snapped to the 0.1 metre grid.");
-  };
-
-  const changeZoom = (direction: -1 | 1) => {
-    const currentIndex = PLAN_ZOOM_LEVELS.indexOf(zoom);
-    const nextIndex = Math.max(0, Math.min(PLAN_ZOOM_LEVELS.length - 1, currentIndex + direction));
-    setZoom(PLAN_ZOOM_LEVELS[nextIndex]);
   };
 
   return (
@@ -156,72 +129,91 @@ export function GardenPlanOverview({
       <div className="section-header">
         <div>
           <p className="section-eyebrow">Garden overview</p>
-          <h2 id="garden-plan-heading">Garden Plan</h2>
+          <h2 id="garden-plan-heading" ref={headingRef} tabIndex={headingRef ? -1 : undefined}>
+            Garden Plan
+          </h2>
         </div>
-        <p className="plan-count">
-          {growingAreas.length} planting{" "}
-          {growingAreas.length === 1 ? "area" : "areas"}
-        </p>
+        <div className="plan-header-actions">
+          {editable && onAddArea ? (
+            <button className="primary-button" onClick={onAddArea} type="button">
+              Add planting area
+            </button>
+          ) : null}
+          <p className="plan-count">
+            {growingAreas.length} planting{" "}
+            {growingAreas.length === 1 ? "area" : "areas"}
+          </p>
+        </div>
       </div>
       <p className="plan-intro">
         {editable
-          ? "Arrange planting areas and use the controls for precise placement."
+          ? "Arrange planting areas here. Open an area to set its real measurements and place plants."
           : "Measured planting areas and planned layout allocations for this garden."}
       </p>
       {editable ? (
-        <form className="plan-dimensions" onSubmit={savePlanDimensions}>
-          <div className="field">
-            <label htmlFor="plan-width">Plan width (X, m)</label>
-            <input
-              id="plan-width"
-              min="0.1"
-              onChange={(event) => setWidth(event.target.value)}
-              step="0.1"
-              type="number"
-              value={width}
-            />
-          </div>
-          <div className="field">
-            <label htmlFor="plan-depth">Plan depth (Y, m)</label>
-            <input
-              id="plan-depth"
-              min="0.1"
-              onChange={(event) => setDepth(event.target.value)}
-              step="0.1"
-              type="number"
-              value={depth}
-            />
-          </div>
-          <button className="secondary-button" type="submit">
-            Save plan dimensions
-          </button>
-        </form>
+        <section
+          aria-label="Garden properties"
+          className={`plan-boundary-settings${isAreaInspectorOpen ? " is-compact" : ""}`}
+        >
+          <form className="plan-dimensions" onSubmit={savePlanDimensions}>
+            <div className="field plan-name-field">
+              <label htmlFor="plan-garden-name">Garden name</label>
+              <input
+                id="plan-garden-name"
+                onChange={(event) => setGardenName(event.target.value)}
+                required
+                value={gardenName}
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="plan-width">
+                Garden width (m)
+              </label>
+              <input
+                id="plan-width"
+                min="0.1"
+                onChange={(event) => setWidth(event.target.value)}
+                step="0.1"
+                type="number"
+                value={width}
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="plan-depth">
+                Garden length (m)
+              </label>
+              <input
+                id="plan-depth"
+                min="0.1"
+                onChange={(event) => setDepth(event.target.value)}
+                step="0.1"
+                type="number"
+                value={depth}
+              />
+            </div>
+            {hasPropertyChanges ? <button className="save-button" type="submit">Save</button> : null}
+          </form>
+        </section>
       ) : null}
-      <div className={editable ? "garden-plan-grid" : "plan-canvas-wrap"}>
+      <div className="plan-canvas-wrap">
         <div className="plan-view">
-          <div aria-label="Garden Plan zoom" className="plan-zoom-controls">
+          <div aria-label="Garden Plan view" className="plan-view-controls">
             <button
-              aria-label="Zoom out"
-              className="plan-zoom-icon"
-              disabled={zoom === PLAN_ZOOM_LEVELS[0]}
-              onClick={() => changeZoom(-1)}
+              aria-pressed={viewMode === "growing-areas"}
+              className="plan-view-control"
+              onClick={() => setViewMode("growing-areas")}
               type="button"
             >
-              −
-            </button>
-            <button className="secondary-button" onClick={() => setZoom(1)} type="button">
-              Fit plan
+              Focus beds
             </button>
             <button
-              aria-label="Zoom in"
-              className="plan-zoom-icon"
-              disabled={zoom === PLAN_ZOOM_LEVELS[PLAN_ZOOM_LEVELS.length - 1]}
-              onClick={() => changeZoom(1)}
+              aria-pressed={viewMode === "full"}
+              className="plan-view-control"
+              onClick={() => setViewMode("full")}
               type="button"
             >
-              +
+              Full garden
             </button>
-            <span>{Math.round(zoom * 100)}%</span>
           </div>
           <div className="plan-canvas-wrap">
             <GardenPlanCanvas
@@ -230,98 +222,41 @@ export function GardenPlanOverview({
               interactive={editable}
               onEditLayout={onEditLayout}
               onMove={moveArea}
-              onSelect={setSelectedAreaId}
-              onSelectAllocation={setSelectedAllocationId}
               plan={plan}
-              selectedAllocationId={selectedAllocationId}
-              viewMode="full"
-              zoom={zoom}
+              viewMode={viewMode}
             />
           </div>
         </div>
-        {editable ? (
-          <aside className="plan-controls" aria-label="Garden Plan controls">
-            <h3>Planting areas</h3>
-            {growingAreas.length ? (
-              <ul className="plan-area-list">
-                {growingAreas.map((area) => (
-                  <li key={area.id}>
-                    <button
-                      aria-pressed={selectedAreaId === area.id}
-                      className="plan-area-select"
-                      onClick={() => setSelectedAreaId(area.id)}
-                      type="button"
-                    >
-                      Select {area.name}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="sidebar-note">
-                Add a planting area to begin arranging your plan.
-              </p>
-            )}
-            {selectedArea ? (
-              <div className="selected-plan-area">
-                <h3>{selectedArea.name}</h3>
-                <div className="selected-fields">
-                  <div className="field">
-                    <label htmlFor="plan-area-x">Area X position (m)</label>
-                    <input
-                      id="plan-area-x"
-                      min="0"
-                      onChange={(event) =>
-                        updateSelectedPlacement("x", event.target.value)
-                      }
-                      step="0.1"
-                      type="number"
-                      value={selectedArea.planPlacement.x}
-                    />
-                  </div>
-                  <div className="field">
-                    <label htmlFor="plan-area-y">Area Y position (m)</label>
-                    <input
-                      id="plan-area-y"
-                      min="0"
-                      onChange={(event) =>
-                        updateSelectedPlacement("y", event.target.value)
-                      }
-                      step="0.1"
-                      type="number"
-                      value={selectedArea.planPlacement.y}
-                    />
-                  </div>
-                  <div className="field">
-                    <label htmlFor="plan-area-rotation">
-                      Area rotation (degrees)
-                    </label>
-                    <input
-                      id="plan-area-rotation"
-                      onChange={(event) =>
-                        updateSelectedPlacement(
-                          "rotationDegrees",
-                          event.target.value,
-                        )
-                      }
-                      step="0.1"
-                      type="number"
-                      value={selectedArea.planPlacement.rotationDegrees}
-                    />
-                  </div>
-                </div>
-                <button
-                  className="secondary-button"
-                  onClick={() => onEditLayout?.(selectedArea.id)}
-                  type="button"
-                >
-                  Edit layout
-                </button>
-              </div>
-            ) : null}
-          </aside>
-        ) : null}
       </div>
+      {editable && growingAreas.length ? (
+        <section className="plan-area-shortcuts" aria-labelledby="plan-area-shortcuts-heading">
+          <div className="plan-area-shortcuts-heading">
+            <div>
+              <p className="section-eyebrow">Planting areas</p>
+              <h3 id="plan-area-shortcuts-heading">Open a planting area</h3>
+            </div>
+            <p>Use a card or double-click a bed on the plan.</p>
+          </div>
+          <div className="plan-area-card-grid">
+            {growingAreas.map((area) => (
+              <button
+                className="plan-area-card"
+                key={area.id}
+                onClick={() => onEditLayout?.(area.id)}
+                type="button"
+              >
+                <strong>{area.name}</strong>
+                <span>{growingAreaKindLabels[area.kind]}</span>
+                <span>
+                  {area.layout
+                    ? `${area.layout.widthMeters} m x ${area.layout.depthMeters} m · ${area.layout.allocations.length} plant${area.layout.allocations.length === 1 ? "" : "s"}`
+                    : "Set measurements"}
+                </span>
+              </button>
+            ))}
+          </div>
+        </section>
+      ) : null}
       {editable ? (
         <p aria-live="polite" className="workspace-message" role="status">
           {message}
@@ -337,12 +272,8 @@ type GardenPlanCanvasProps = {
   compact: boolean;
   interactive: boolean;
   onMove: (areaId: string, event: KonvaEventObject<DragEvent>) => void;
-  onSelect: (areaId: string) => void;
-  onSelectAllocation?: (allocationId: string) => void;
   onEditLayout?: (areaId: string) => void;
-  selectedAllocationId?: string;
   viewMode: GardenPlanViewMode;
-  zoom: number;
 };
 
 function GardenPlanCanvas({
@@ -351,18 +282,18 @@ function GardenPlanCanvas({
   compact,
   interactive,
   onMove,
-  onSelect,
-  onSelectAllocation,
   onEditLayout,
-  selectedAllocationId,
   viewMode,
-  zoom,
 }: GardenPlanCanvasProps) {
   const padding = compact ? 14 : CANVAS_PADDING;
   const viewport = gardenPlanViewport(plan, growingAreas, viewMode);
-  const scale = pixelsPerMeter(viewport, compact) * zoom;
-  const width = viewport.widthMeters * scale + padding * 2;
-  const height = viewport.depthMeters * scale + padding * 2;
+  const scale = pixelsPerMeter(viewport, compact, viewMode);
+  const width = compact
+    ? viewport.widthMeters * scale + padding * 2
+    : PLAN_CANVAS_WIDTH + padding * 2;
+  const height = compact
+    ? viewport.depthMeters * scale + padding * 2
+    : PLAN_CANVAS_HEIGHT + padding * 2;
   const verticalGrid = compact ? [] : Array.from(
     { length: Math.floor(plan.widthMeters) + 1 },
     (_, index) => index,
@@ -393,10 +324,10 @@ function GardenPlanCanvas({
           <Line
             key={`vertical-${metre}`}
             points={[
-              padding + metre * scale,
-              padding,
-              padding + metre * scale,
-              padding + plan.depthMeters * scale,
+              padding + (metre - viewport.x) * scale,
+              padding - viewport.y * scale,
+              padding + (metre - viewport.x) * scale,
+              padding + (plan.depthMeters - viewport.y) * scale,
             ]}
             stroke="#cfd7ce"
             strokeWidth={1}
@@ -406,10 +337,10 @@ function GardenPlanCanvas({
           <Line
             key={`horizontal-${metre}`}
             points={[
-              padding,
-              padding + metre * scale,
-              padding + plan.widthMeters * scale,
-              padding + metre * scale,
+              padding - viewport.x * scale,
+              padding + (metre - viewport.y) * scale,
+              padding + (plan.widthMeters - viewport.x) * scale,
+              padding + (metre - viewport.y) * scale,
             ]}
             stroke="#cfd7ce"
             strokeWidth={1}
@@ -420,7 +351,7 @@ function GardenPlanCanvas({
             fontSize={11}
             key={`x-label-${metre}`}
             text={`${metre} m`}
-            x={padding + metre * scale - 10}
+            x={padding + (metre - viewport.x) * scale - 10}
             y={12}
           />
         ))}
@@ -430,7 +361,7 @@ function GardenPlanCanvas({
             key={`y-label-${metre}`}
             text={`${metre} m`}
             x={3}
-            y={padding + metre * scale - 6}
+            y={padding + (metre - viewport.y) * scale - 6}
           />
         ))}
         {measuredAreas.map((area) => (
@@ -439,16 +370,16 @@ function GardenPlanCanvas({
               compact
                 ? undefined
                 : interactive
-                  ? `Select ${area.name} on Garden Plan`
+                  ? `Open ${area.name} on Garden Plan`
                   : `${area.name} on Garden Plan`
             }
             draggable={interactive}
             key={area.id}
-            onClick={() => onSelect(area.id)}
+            onClick={() => onEditLayout?.(area.id)}
             onDblClick={() => onEditLayout?.(area.id)}
             onDblTap={() => onEditLayout?.(area.id)}
             onDragEnd={(event) => onMove(area.id, event)}
-            onTap={() => onSelect(area.id)}
+            onTap={() => onEditLayout?.(area.id)}
             rotation={area.planPlacement.rotationDegrees}
             x={padding + (area.planPlacement.x - viewport.x) * scale}
             y={padding + (area.planPlacement.y - viewport.y) * scale}
@@ -471,21 +402,19 @@ function GardenPlanCanvas({
                   opacity={0.9}
                   radius={Math.max(4, (allocation.diameterMeters * scale) / 2)}
                   stroke="#183a2a"
-                  strokeWidth={selectedAllocationId === allocationKey(area.id, allocation.id) ? 3 : 1}
+                  strokeWidth={1}
                   x={allocation.x * scale}
                   y={allocation.y * scale}
                   onClick={(event) => {
                     event.cancelBubble = true;
-                    onSelect(area.id);
-                    onSelectAllocation?.(allocationKey(area.id, allocation.id));
+                    onEditLayout?.(area.id);
                   }}
                   onTap={(event) => {
                     event.cancelBubble = true;
-                    onSelect(area.id);
-                    onSelectAllocation?.(allocationKey(area.id, allocation.id));
+                    onEditLayout?.(area.id);
                   }}
                 />
-                {!compact && (zoom > 1 || selectedAllocationId === allocationKey(area.id, allocation.id)) ? (
+                {!compact && viewMode === "growing-areas" ? (
                   <Text
                     align="center"
                     fill="#183a2a"
@@ -529,7 +458,7 @@ function GardenPlanCanvas({
           <Text
             fill="#657268"
             fontSize={14}
-            text="Set up a measured layout in Garden Management to show it here."
+            text="Add a planting area to set its dimensions and show it here."
             x={padding + (16 - viewport.x) * scale}
             y={padding + (16 - viewport.y) * scale}
           />
@@ -537,10 +466,6 @@ function GardenPlanCanvas({
       </Layer>
     </Stage>
   );
-}
-
-function allocationKey(areaId: string, allocationId: string) {
-  return `${areaId}:${allocationId}`;
 }
 
 function areaLabelPosition(
@@ -570,10 +495,11 @@ function areaLabelPosition(
 function pixelsPerMeter(
   plan: Pick<GardenPlan, "widthMeters" | "depthMeters">,
   compact = false,
+  viewMode: GardenPlanViewMode = "full",
 ) {
-  const maxWidth = compact ? 210 : 760;
-  const maxDepth = compact ? 150 : 460;
-  const maxScale = compact ? 28 : 82;
+  const maxWidth = compact ? 210 : PLAN_CANVAS_WIDTH;
+  const maxDepth = compact ? 150 : PLAN_CANVAS_HEIGHT;
+  const maxScale = compact ? 28 : viewMode === "growing-areas" ? 120 : 82;
   const minScale = compact ? 12 : 28;
   return Math.max(
     minScale,

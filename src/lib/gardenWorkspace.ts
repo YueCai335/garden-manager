@@ -49,6 +49,8 @@ const fallbackPlantColors = [
   "#7ca64b",
 ] as const;
 
+const minimumColorDistance = 90;
+
 export const plantTypeSuggestions = plantAppearanceDefaults.map(({ name }) => name);
 
 export function defaultPlantColor(plantType: string, variety = "") {
@@ -79,7 +81,10 @@ export function allocationPlantColor(
       sample.variety,
     );
     const color = [preferred, ...fallbackPlantColors].find(
-      (candidate) => !reservedColors.has(candidate),
+      (candidate) =>
+        [...reservedColors].every(
+          (reservedColor) => colorDistance(candidate, reservedColor) >= minimumColorDistance,
+        ),
     ) ?? preferred;
     colorsByIdentity.set(identity, color);
     reservedColors.add(color);
@@ -99,6 +104,24 @@ function colorIndex(value: string) {
   let total = 0;
   for (const character of value) total = (total * 31 + character.charCodeAt(0)) >>> 0;
   return total % fallbackPlantColors.length;
+}
+
+function colorDistance(first: string, second: string) {
+  const firstChannels = hexChannels(first);
+  const secondChannels = hexChannels(second);
+  return Math.hypot(
+    firstChannels[0] - secondChannels[0],
+    firstChannels[1] - secondChannels[1],
+    firstChannels[2] - secondChannels[2],
+  );
+}
+
+function hexChannels(color: string) {
+  return [
+    Number.parseInt(color.slice(1, 3), 16),
+    Number.parseInt(color.slice(3, 5), 16),
+    Number.parseInt(color.slice(5, 7), 16),
+  ];
 }
 
 export function plantDisplayName({
@@ -466,7 +489,7 @@ export function createDemoGardenWorkspace(): GardenWorkspace {
         id: "demo-in-ground-area",
         name: "Sample in-ground area",
         kind: "in-ground",
-        planPlacement: { x: 4.7, y: 2.6, rotationDegrees: 10 },
+        planPlacement: { x: 4.7, y: 2.6, rotationDegrees: 0 },
         layout: createRectangularLayout(3.8, 1.8),
       },
       {
@@ -804,8 +827,27 @@ function linkWorkspaceLayoutPlants(workspace: GardenWorkspace): GardenWorkspace 
   return {
     ...workspace,
     gardens: workspace.gardens.map((garden) =>
-      linkCurrentLayoutPlants(moveFuturePlantingsToSeasonPlans(garden)),
+      linkCurrentLayoutPlants(
+        moveFuturePlantingsToSeasonPlans(normalizeLegacyDemoGardenLayout(garden)),
+      ),
     ),
+  };
+}
+
+function normalizeLegacyDemoGardenLayout(garden: Garden): Garden {
+  if (garden.id !== "demo-garden") return garden;
+
+  return {
+    ...garden,
+    growingAreas: garden.growingAreas.map((area) => {
+      const isLegacyDemoArea =
+        area.id === "demo-in-ground-area" &&
+        area.planPlacement.rotationDegrees === 10;
+
+      return isLegacyDemoArea
+        ? { ...area, planPlacement: { ...area.planPlacement, rotationDegrees: 0 } }
+        : area;
+    }),
   };
 }
 

@@ -592,6 +592,14 @@ describe("readGardenWorkspace", () => {
     expect(allocationPlantColor(allocations[0], allocations)).not.toBe(allocationPlantColor(allocations[1], allocations));
     expect(allocationPlantColor(allocations[2], allocations)).toBe(allocationPlantColor(allocations[3], allocations));
     expect(allocationPlantColor(allocations[4], allocations)).toBe("#1f77b4");
+
+    const similarDefaultAllocations = [
+      { id: "tomato", label: "Tomato", plantType: "Tomato", x: 0.5, y: 0.5, diameterMeters: 0.3 },
+      { id: "hydrangea", label: "Panicle hydrangea", plantType: "Panicle hydrangea", x: 1, y: 0.5, diameterMeters: 0.3 },
+    ];
+    expect(allocationPlantColor(similarDefaultAllocations[0], similarDefaultAllocations)).toBe("#3d9881");
+    expect(allocationPlantColor(similarDefaultAllocations[1], similarDefaultAllocations)).toBe("#d17e9c");
+
     expect(plantDisplayName({ plantType: "Tomato", variety: "Sun Gold", fallback: "Tomato" })).toBe("Tomato · Sun Gold");
     expect(isPlantColor("#d9534f")).toBe(true);
     expect(isPlantColor("tomato")).toBe(false);
@@ -605,6 +613,8 @@ describe("readGardenWorkspace", () => {
     const workspace = createDemoGardenWorkspace();
     const garden = workspace.gardens[0];
 
+    expect(garden.growingAreas.map((area) => area.planPlacement.rotationDegrees)).toEqual([0, 0, 0]);
+
     const focused = gardenPlanViewport(
       garden.plan,
       garden.growingAreas,
@@ -615,6 +625,21 @@ describe("readGardenWorkspace", () => {
     expect(focused.widthMeters).toBeLessThan(full.widthMeters);
     expect(focused.depthMeters).toBeLessThanOrEqual(full.depthMeters);
     expect(full).toEqual({ x: 0, y: 0, ...garden.plan });
+  });
+
+  it("straightens the unchanged legacy Demo Garden area during workspace restore", () => {
+    const workspace = createDemoGardenWorkspace();
+    workspace.gardens[0].growingAreas[1].planPlacement.rotationDegrees = 10;
+    delete workspace.gardens[0].growingAreas[1].layout;
+
+    const restored = readGardenWorkspace(JSON.stringify(workspace));
+
+    expect(restored?.gardens[0].growingAreas[1].planPlacement.rotationDegrees).toBe(0);
+
+    workspace.gardens[0].growingAreas[1].planPlacement.rotationDegrees = 20;
+    const manuallyRotated = readGardenWorkspace(JSON.stringify(workspace));
+
+    expect(manuallyRotated?.gardens[0].growingAreas[1].planPlacement.rotationDegrees).toBe(20);
   });
 
   it("moves future planting records into a season plan during workspace restore", () => {

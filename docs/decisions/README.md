@@ -69,7 +69,7 @@ changes, mark the old record as superseded and add a new record.
 | [ADR-0024](0024-use-explicit-local-garden-import-for-postgresql.md) | Use an explicit local-garden import for PostgreSQL | Accepted |
 | [ADR-0025](0025-use-three-season-crop-rotation-warnings.md) | Use three-season crop rotation warnings | Accepted |
 | [ADR-0026](0026-use-a-next-season-planning-workspace.md) | Use a next-season planning workspace for crop rotation | Superseded by ADR-0039 |
-| [ADR-0027](0027-use-persistent-plant-colors-and-garden-plan-zoom.md) | Use persistent plant colors and Garden Plan zoom | Accepted |
+| [ADR-0027](0027-use-persistent-plant-colors-and-garden-plan-zoom.md) | Use persistent plant colors and Garden Plan zoom | Superseded in part by ADR-0054 |
 | [ADR-0028](0028-use-plant-types-varieties-and-bilingual-color-aliases.md) | Use plant types, varieties, and bilingual color aliases | Accepted |
 | [ADR-0029](0029-use-a-thumbnail-first-garden-hub.md) | Use a thumbnail-first Garden Hub | Accepted |
 | [ADR-0030](0030-use-context-aware-plant-colors.md) | Use context-aware plant colors | Accepted |
@@ -83,6 +83,20 @@ changes, mark the old record as superseded and add a new record.
 | [ADR-0038](0038-link-current-plantings-to-layout-positions.md) | Link current plantings to layout positions | Accepted |
 | [ADR-0039](0039-use-separate-season-plans-for-future-planting.md) | Use separate season plans for future planting | Accepted |
 | [ADR-0040](0040-use-vercel-render-and-supabase-for-the-portfolio-demo.md) | Use Vercel, Render, and Supabase for the portfolio demo | Accepted |
+| [ADR-0041](0041-use-a-garden-operations-ui-shell.md) | Use a Garden Operations UI shell | Superseded |
+| [ADR-0042](0042-use-a-direct-garden-editing-workflow.md) | Use a direct garden editing workflow | Superseded |
+| [ADR-0043](0043-use-a-single-planting-area-editor.md) | Use a single planting-area editor | Superseded |
+| [ADR-0044](0044-use-plan-canvas-and-bed-shortcuts.md) | Use a Plan canvas and bed shortcuts | Superseded |
+| [ADR-0045](0045-use-a-garden-properties-panel-and-module-cards.md) | Use a Garden properties panel and module cards | Superseded by ADR-0051 |
+| [ADR-0046](0046-use-an-in-context-planting-area-creation-panel.md) | Use an in-context planting-area creation panel | Superseded by ADR-0050 |
+| [ADR-0047](0047-use-a-unified-planting-area-properties-form.md) | Use a unified planting-area properties form | Superseded by ADR-0050 |
+| [ADR-0048](0048-place-garden-properties-above-the-plan-canvas.md) | Place Garden properties above the Plan canvas | Accepted |
+| [ADR-0049](0049-use-visually-distinct-automatic-plant-colors.md) | Use visually distinct automatic plant colors | Accepted |
+| [ADR-0050](0050-use-a-garden-plan-planting-area-inspector.md) | Use a Garden Plan planting-area inspector | Superseded by ADR-0053 |
+| [ADR-0051](0051-prioritize-daily-garden-work-on-the-dashboard.md) | Prioritize daily garden work on the dashboard | Accepted |
+| [ADR-0052](0052-show-save-actions-only-for-pending-edits.md) | Show Save actions only for pending edits | Accepted |
+| [ADR-0053](0053-keep-plant-layout-in-the-planting-area-inspector.md) | Keep plant layout in the planting-area inspector | Accepted |
+| [ADR-0054](0054-use-fixed-canvas-garden-plan-views.md) | Use fixed-canvas Garden Plan views | Accepted |
 
 ## Interview Use
 

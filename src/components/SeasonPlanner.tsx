@@ -515,7 +515,7 @@ function guidanceKey(gardenId: string, areaId: string) {
 
 type PlantingRecordLike = Pick<
   Garden["plantings"][number],
-  "commonName" | "plantingDate" | "cropFamily"
+  "commonName" | "plantType" | "variety" | "plantingDate" | "cropFamily"
 >;
 
 function historyForSeason(plantings: PlantingRecordLike[], season: number) {
@@ -523,8 +523,41 @@ function historyForSeason(plantings: PlantingRecordLike[], season: number) {
     planting.plantingDate.startsWith(`${season}-`),
   );
   return seasonPlantings.length
-    ? seasonPlantings.map((planting) => planting.commonName).join(" · ")
+    ? uniqueHistoryLabels(seasonPlantings).join(" · ")
     : `No planting record saved for ${season}.`;
+}
+
+function uniqueHistoryLabels(plantings: PlantingRecordLike[]) {
+  const labelsByIdentity = new Map<string, string>();
+  for (const planting of plantings) {
+    const { identity, label } = normalizedHistoryLabel(planting);
+    labelsByIdentity.set(identity, label);
+  }
+  return [...labelsByIdentity.values()];
+}
+
+function normalizedHistoryLabel(planting: PlantingRecordLike) {
+  const source = [planting.plantType, planting.variety, planting.commonName]
+    .filter(Boolean)
+    .join(" ")
+    .toLocaleLowerCase();
+  if (source.includes("sungold") || source.includes("sun gold")) {
+    return { identity: "tomato:sun-gold", label: "Tomato · Sun Gold" };
+  }
+  if (source.includes("tomato") || source.includes("番茄") || source.includes("西红柿")) {
+    return { identity: "tomato", label: "Tomato" };
+  }
+  if (source.includes("basil") || source.includes("九层塔")) {
+    return { identity: "basil", label: "Basil" };
+  }
+
+  const label = planting.variety?.trim()
+    ? `${planting.plantType?.trim() || planting.commonName.trim()} · ${planting.variety.trim()}`
+    : planting.plantType?.trim() || planting.commonName.trim();
+  return {
+    identity: `${planting.cropFamily}:${label.toLocaleLowerCase()}`,
+    label,
+  };
 }
 
 function recentHistory(garden: Garden, growingAreaId: string, planningYear: number) {

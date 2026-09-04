@@ -1,6 +1,6 @@
 # ADR-0027: Use Persistent Plant Colors and Garden Plan Zoom
 
-- Status: Accepted
+- Status: Superseded in part by ADR-0054
 - Date: 2026-09-01
 - Related: [ADR-0014](0014-use-metric-planting-layouts-with-grid-snapping.md)
 
