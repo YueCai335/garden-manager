@@ -6,3 +6,6 @@ dist
 .env.local
 *.log
 *.tsbuildinfo
+.claude/
+.codex/
+AGENTS.md
