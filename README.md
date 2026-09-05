@@ -4,9 +4,23 @@ A full-stack garden operations and seasonal-planning application. It helps a
 gardener organize multiple locations, visualize planting areas, record care,
 plan the next season, and ask source-grounded plant questions.
 
-**[▶ Open the live demo](https://sun-aware-garden-planner.vercel.app)** — no install, no account. Select **Load demo garden** to explore a populated workspace.
+**[▶ Open the live demo](https://sun-aware-garden-planner.vercel.app)** — no install, no account. Select **Demo garden** to explore a populated workspace.
 
 `Next.js` `React` `TypeScript` `FastAPI` `Pydantic` `PostgreSQL` `SQLAlchemy` `Alembic` `pgvector` `Docker Compose` `GitHub Actions` `pytest` `Vitest`
+
+## Screenshots
+
+**Garden plan** — planting areas laid out on a real metric grid, with plants placed inside each area.
+
+<img width="1000" alt="Garden plan showing measured planting areas on a metric grid" src="https://github.com/user-attachments/assets/e902503c-e6c7-4218-b96d-4651c404f2b9" />
+
+**Next season planner** — deterministic crop-family rotation guidance derived from what each area grew last season.
+
+<img width="1000" alt="Next season planner showing crop rotation guidance per growing area" src="https://github.com/user-attachments/assets/df76674e-1efc-4e06-aea5-19f5f995bd60" />
+
+**Plant knowledge** — bilingual retrieval over curated source cards, with the supporting source shown next to every answer.
+
+<img width="1000" alt="Plant knowledge answer with its cited source" src="https://github.com/user-attachments/assets/ee3b6e50-6af9-4750-9709-4be1d42dfa94" />
 
 ## What It Demonstrates
 
@@ -26,7 +40,7 @@ plan the next season, and ask source-grounded plant questions.
 
 ### Hosted demo (fastest)
 
-Open the [live demo](https://sun-aware-garden-planner.vercel.app), select **Load demo garden**,
+Open the [live demo](https://sun-aware-garden-planner.vercel.app), select **Demo garden**,
 then walk through steps 4-6 below. The API sleeps on the free tier, so the first request can
 take about a minute.
 
