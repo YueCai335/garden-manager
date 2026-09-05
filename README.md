@@ -12,15 +12,15 @@ plan the next season, and ask source-grounded plant questions.
 
 **Garden plan** — planting areas laid out on a real metric grid, with plants placed inside each area.
 
-<img width="1000" alt="Garden plan showing measured planting areas on a metric grid" src="https://github.com/user-attachments/assets/e902503c-e6c7-4218-b96d-4651c404f2b9" />
+<img width="1000" alt="Garden plan showing measured planting areas on a metric grid" src="https://github.com/user-attachments/assets/94b30a9a-739d-4004-aad8-d4fa66179644" />
 
 **Next season planner** — deterministic crop-family rotation guidance derived from what each area grew last season.
 
-<img width="1000" alt="Next season planner showing crop rotation guidance per growing area" src="https://github.com/user-attachments/assets/df76674e-1efc-4e06-aea5-19f5f995bd60" />
+<img width="1000" alt="Next season planner showing crop rotation guidance per growing area" src="https://github.com/user-attachments/assets/97d16ae8-7ee9-47fd-9bd8-03ad8e0be57a" />
 
 **Plant knowledge** — bilingual retrieval over curated source cards, with the supporting source shown next to every answer.
 
-<img width="1000" alt="Plant knowledge answer with its cited source" src="https://github.com/user-attachments/assets/ee3b6e50-6af9-4750-9709-4be1d42dfa94" />
+<img width="1000" alt="Plant knowledge answer with its cited source" src="https://github.com/user-attachments/assets/725ebcba-fabc-465b-904b-8507b9d57bf9" />
 
 ## What It Demonstrates
 
