@@ -6,14 +6,12 @@
     "dev": "WATCHPACK_POLLING=true next dev --hostname localhost --port 3000",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@mapbox/search-js-react": "^1.6.0",
     "konva": "^10.3.2",
-    "mapbox-gl": "^3.29.0",
     "next": "^15.3.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
@@ -26,6 +24,8 @@
     "@types/node": "^22.15.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^15.5.25",
     "jsdom": "^30.0.1",
     "typescript": "^5.8.0",
     "vitest": "^4.1.11"

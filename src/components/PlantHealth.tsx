@@ -217,7 +217,18 @@ function AssessmentLines({ id, label, value, onChange }: { id: string; label: st
 }
 
 function PhotoStrip({ photoPaths, onRemove }: { photoPaths: string[]; onRemove: (path: string) => void }) {
-  return <div className="health-photo-strip">{photoPaths.map((path) => <figure key={path}><img alt="Plant health evidence" src={apiUrl(path)} /><button aria-label="Remove photo" className="danger-text-button" onClick={() => onRemove(path)} type="button">Remove</button></figure>)}</div>;
+  return (
+    <div className="health-photo-strip">
+      {photoPaths.map((path) => (
+        <figure key={path}>
+          {/* Photos come from the local API, not a configured image host. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img alt="Plant health evidence" src={apiUrl(path)} />
+          <button aria-label="Remove photo" className="danger-text-button" onClick={() => onRemove(path)} type="button">Remove</button>
+        </figure>
+      ))}
+    </div>
+  );
 }
 
 function HealthHistory({ records }: { records: HealthRecord[] }) {
