@@ -74,6 +74,9 @@ export function GrowingAreaLayoutEditor({
     setEditingAllocation(undefined);
     setIsAddFormOpen(false);
     setIsEditOpen(false);
+    // Reset the form only when the area itself or its measured size changes,
+    // not on every allocation edit inside `layout`.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     area.id,
     area.kind,
@@ -321,7 +324,7 @@ export function GrowingAreaLayoutEditor({
       </form>
     </section> : null}
     <div className="layout-editor-heading layout-editor-heading-current"><div><p className="section-eyebrow">Current season</p><h2 id="layout-editor-heading">Plant layout</h2></div>{inInspector ? <div className="plant-toolbar"><button aria-expanded={isAddFormOpen} className="primary-button" onClick={() => { setIsAddFormOpen(!isAddFormOpen); setIsEditOpen(false); setEditingAllocation(undefined); }} type="button">Add plant</button></div> : null}</div>
-    <p className="layout-intro">Place and arrange this season's plants on the measured grid.</p>
+    <p className="layout-intro">Place and arrange this season&apos;s plants on the measured grid.</p>
     {layout ? <>
       <div className="layout-editor-grid">
         <div className="layout-canvas-wrap"><MetricLayoutCanvas layout={layout} onEdit={openEdit} onMove={moveAllocation} onRemove={removePlant} onSelect={openEdit} selectedId={selectedId} /></div>
