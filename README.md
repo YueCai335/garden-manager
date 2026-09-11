@@ -20,7 +20,7 @@ plan the next season, and ask source-grounded plant questions.
 
 **Plant knowledge** — bilingual retrieval over curated source cards, with the supporting source shown next to every answer.
 
-<img width="1000" alt="Plant knowledge answer with its cited source" src="https://github.com/user-attachments/assets/725ebcba-fabc-465b-904b-8507b9d57bf9" />
+<img width="1000" alt="Plant knowledge answer with its cited source" src="docs/screenshots/plant-knowledge.png" />
 
 ## What It Demonstrates
 
