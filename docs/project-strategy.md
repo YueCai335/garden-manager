@@ -97,30 +97,32 @@ understanding, and heatmap rendering belong to this future module.
 
 ## Target Technology Stack and Project Use
 
-| Layer | Selected technology | Actual project use |
-| --- | --- | --- |
-| Web frontend | Next.js, React, TypeScript | Garden dashboard, journals, planning workflows, AI review screens, and accessible responsive UI |
-| UI system | Tailwind CSS, shadcn/ui | Reusable forms, dialogs, navigation, tables, and consistent visual states |
-| Spatial layout editor | React-Konva | Metric growing-area layouts, grid snapping, and plant-allocation placement circles |
-| Application backend | Python, FastAPI, Pydantic | REST APIs, validation, garden operations, planning orchestration, and AI integration |
-| API contract | REST, OpenAPI | Typed frontend-backend communication, generated documentation, and integration testing |
-| Primary database | PostgreSQL, SQLAlchemy, Alembic | Users, gardens, growing areas, plants, events, tasks, crop history, and schema migrations |
-| Geospatial data | PostGIS | Garden locations and future regional community search; deferred map and yard geometry support |
-| Maps and place search | Mapbox GL JS, Mapbox Search JS | Existing address-map prototype and future map-backed garden layout |
-| Vector search | pgvector | Retrieval over plant, climate, and horticultural knowledge for grounded AI responses |
-| Cache and background work | Redis, added when a measured workflow requires it | Cached retrieval, scheduled task generation, and long-running AI job status |
-| AI application layer | Ollama, OpenAI API, RAG, structured outputs, tool calling | Local garden-log extraction and grounded plant questions; OpenAI remains an optional future provider |
-| AI quality | Evaluation datasets, citations, fallbacks, guardrails | Repeatable checks for extracted records, grounded answers, constraint compliance, and failure behavior |
-| Image storage | Amazon S3 | Garden photos and future authorized map or calibration assets |
-| Cloud backend | AWS ECS Fargate, RDS, CloudWatch | Container hosting, managed PostgreSQL, logs, metrics, and production operations |
-| Web deployment | Vercel | Next.js preview deployments and the public web application |
-| Local environment | Docker, Docker Compose | Reproducible frontend, backend, PostgreSQL, and optional Redis environments |
-| CI/CD | GitHub Actions | Linting, type checks, tests, builds, security checks, and deployment gates |
-| Infrastructure | Terraform | Version-controlled AWS resources once cloud deployment begins |
-| Frontend tests | Vitest, React Testing Library, Playwright | Component behavior, interaction flows, and end-to-end user journeys |
-| Backend tests | pytest | Domain rules, APIs, persistence, crop rotation, and AI integration boundaries |
-| Observability | Structured logging, OpenTelemetry, CloudWatch | Error diagnosis, request tracing, performance evidence, and production monitoring |
-| Security | OAuth, authorization, rate limiting, secret management | Account access, private garden data, public-community controls, and protected external APIs |
+Status as of commit review 2026-09-11: **In use** is present in the repository and exercised by the app, tests, or CI; **Partial** has some of the listed pieces in use and the rest planned; **Planned** is a target that no code depends on yet; **Retired** was prototyped and removed from active source (kept in Git history).
+
+| Layer | Selected technology | Status | Actual project use |
+| --- | --- | --- | --- |
+| Web frontend | Next.js, React, TypeScript | In use | Garden dashboard, journals, planning workflows, AI review screens, and accessible responsive UI |
+| UI system | Tailwind CSS, shadcn/ui | Planned | Reusable forms, dialogs, navigation, tables, and consistent visual states |
+| Spatial layout editor | React-Konva | In use | Metric growing-area layouts, grid snapping, and plant-allocation placement circles |
+| Application backend | Python, FastAPI, Pydantic | In use | REST APIs, validation, garden operations, planning orchestration, and AI integration |
+| API contract | REST, OpenAPI | In use | Typed frontend-backend communication, generated documentation, and integration testing |
+| Primary database | PostgreSQL, SQLAlchemy, Alembic | In use | Workspaces (with an optimistic-locking revision), gardens, growing areas, plants, events, tasks, crop history, and schema migrations |
+| Geospatial data | PostGIS | Planned | Garden locations and future regional community search; deferred map and yard geometry support |
+| Maps and place search | Mapbox GL JS, Mapbox Search JS | Retired | Address-map prototype removed 2026-09-11 (ADR-0013 deprioritized it); reintroduce only with a map-backed layout requirement |
+| Vector search | pgvector | In use | Retrieval over plant, climate, and horticultural knowledge for grounded AI responses |
+| Cache and background work | Redis, added when a measured workflow requires it | Planned | Cached retrieval, scheduled task generation, and long-running AI job status |
+| AI application layer | Ollama, OpenAI API, RAG, structured outputs, tool calling | In use | Local garden-log extraction and grounded plant questions; OpenAI remains an optional future provider |
+| AI quality | Evaluation datasets, citations, fallbacks, guardrails | Partial | Citations and deterministic fallbacks are in use; evaluation datasets are planned |
+| Image storage | Amazon S3 | Planned | Garden photos and future authorized map or calibration assets |
+| Cloud backend | AWS ECS Fargate, RDS, CloudWatch | Planned | Container hosting, managed PostgreSQL, logs, metrics, and production operations |
+| Web deployment | Vercel | In use | Next.js preview deployments and the public web application |
+| Local environment | Docker, Docker Compose | In use | Reproducible frontend, backend, PostgreSQL, and optional Redis environments |
+| CI/CD | GitHub Actions | In use | Linting, type checks, tests, builds, security checks, and deployment gates |
+| Infrastructure | Terraform | Planned | Version-controlled AWS resources once cloud deployment begins |
+| Frontend tests | Vitest, React Testing Library, Playwright | Partial | Vitest and React Testing Library are in use; Playwright end-to-end journeys are planned |
+| Backend tests | pytest | In use | Domain rules, APIs, persistence, crop rotation, and AI integration boundaries |
+| Observability | Structured logging, OpenTelemetry, CloudWatch | Planned | Error diagnosis, request tracing, performance evidence, and production monitoring |
+| Security | OAuth, authorization, rate limiting, secret management | Planned | Account access, private garden data, public-community controls, and protected external APIs |
 
 ### Adoption Rules
 
