@@ -77,8 +77,10 @@ PostgreSQL + SQLAlchemy + Alembic + pgvector
 ```
 
 The frontend renders measured growing-area layouts with React-Konva. Garden
-data is first created in the browser, then explicitly imported into PostgreSQL.
-After import, PostgreSQL is the workspace's write source. The full data model
+data is created in the browser and synced to PostgreSQL automatically the first
+time it changes; from then on PostgreSQL is the workspace's write source. Every
+save carries a workspace revision, so a stale tab gets an HTTP 409 and a choice
+to reload or overwrite instead of silently losing the other tab's work. The full data model
 and trade-offs are documented in [Technical Architecture](docs/technical-architecture.md)
 and the [Architecture Decision Records](docs/decisions/README.md).
 
@@ -124,20 +126,25 @@ respond; users can continue recording information manually.
 Frontend:
 
 ```bash
+npm run lint
 npm run typecheck
 npm test
 npm run build
 ```
 
-Backend:
+Backend (SQLite by default; point `TEST_DATABASE_URL` at a PostgreSQL database
+to run the same suite plus the PostgreSQL-only concurrency tests):
 
 ```bash
 cd backend
 pytest
+TEST_DATABASE_URL=postgresql+psycopg://garden@localhost:5433/garden_planner_test pytest
 ```
 
-GitHub Actions runs frontend checks, backend tests, and a Docker health check
-on pull requests and pushes to `main`.
+GitHub Actions runs frontend lint, type checks, tests, and build; the backend
+suite twice (SQLite for speed, then a real PostgreSQL service so the
+optimistic-locking `UPDATE` is verified on the production database); and a
+Docker health check on pull requests and pushes to `main`.
 
 ## Product Boundaries
 

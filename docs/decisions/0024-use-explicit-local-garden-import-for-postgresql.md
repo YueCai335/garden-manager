@@ -1,7 +1,8 @@
 # ADR-0024: Use An Explicit Local-Garden Import For PostgreSQL
 
-- Status: Accepted
+- Status: Superseded
 - Date: 2026-08-31
+- Superseded by: [ADR-0055](0055-use-automatic-sync-with-optimistic-locking.md)
 - Related: [ADR-0002](0002-use-fastapi-python-backend.md),
   [ADR-0003](0003-start-with-modular-monolith.md), and
   [ADR-0006](0006-adopt-employment-oriented-production-stack.md)

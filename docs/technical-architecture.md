@@ -17,7 +17,7 @@
 - FastAPI and Pydantic for validated workspace and AI endpoints.
 - SQLAlchemy models and Alembic migrations for PostgreSQL persistence.
 - A complete-workspace import endpoint followed by server-backed workspace
-  updates.
+  updates guarded by an optimistic-locking revision (stale saves return 409).
 - Deterministic crop-rotation guidance by growing area and recent calendar
   years.
 
@@ -42,8 +42,9 @@
 2. Garden Hub manages multiple gardens and opens their detailed layouts.
 3. Layout allocations link to current Planting Records, which provide the
    factual planting history for care and rotation.
-4. An explicit import persists the workspace to PostgreSQL. Later frontend
-   edits update the same server workspace.
+4. The first change syncs the workspace to PostgreSQL automatically. Later
+   frontend edits update the same server workspace, each carrying the revision
+   the tab last read.
 5. The Next season planner reads growing-area history and saves tentative
    choices to a separate Season Plan.
 6. AI services return structured drafts or source-grounded answers. The user
