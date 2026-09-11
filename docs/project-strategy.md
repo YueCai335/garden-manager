@@ -119,7 +119,7 @@ Status as of commit review 2026-09-11: **In use** is present in the repository a
 | Local environment | Docker, Docker Compose | In use | Reproducible frontend, backend, PostgreSQL, and optional Redis environments |
 | CI/CD | GitHub Actions | Partial | In use: lint, type checks, frontend tests, build, backend tests on SQLite and PostgreSQL, container health check. Planned: security scanning and deployment gates (Vercel and Render currently deploy on every push to `main`) |
 | Infrastructure | Terraform | Planned | Version-controlled AWS resources once cloud deployment begins |
-| Frontend tests | Vitest, React Testing Library, Playwright | Partial | Vitest and React Testing Library are in use; Playwright end-to-end journeys are planned |
+| Frontend tests | Vitest, React Testing Library, Playwright | In use | Vitest and React Testing Library for unit and component behaviour; one Playwright end-to-end journey (create, save, plan next season, reload) against the real API and a fresh database, run in CI |
 | Backend tests | pytest | In use | Domain rules, APIs, persistence, crop rotation, and AI integration boundaries |
 | Observability | Structured logging, OpenTelemetry, CloudWatch | Planned | Error diagnosis, request tracing, performance evidence, and production monitoring |
 | Security | OAuth, authorization, rate limiting, secret management | Planned | Account access, private garden data, public-community controls, and protected external APIs |

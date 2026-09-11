@@ -132,6 +132,14 @@ npm test
 npm run build
 ```
 
+End to end (real Chromium against the real Next.js app, FastAPI, and a fresh
+migrated database on ports 3100/8100; first run needs
+`npx playwright install chromium`):
+
+```bash
+npm run test:e2e
+```
+
 Backend (SQLite by default; point `TEST_DATABASE_URL` at a PostgreSQL database
 to run the same suite plus the PostgreSQL-only concurrency tests):
 
@@ -143,8 +151,10 @@ TEST_DATABASE_URL=postgresql+psycopg://garden@localhost:5433/garden_planner_test
 
 GitHub Actions runs frontend lint, type checks, tests, and build; the backend
 suite twice (SQLite for speed, then a real PostgreSQL service so the
-optimistic-locking `UPDATE` is verified on the production database); and a
-Docker health check on pull requests and pushes to `main`.
+optimistic-locking `UPDATE` is verified on the production database); one
+Playwright end-to-end flow (create a garden, save an edit, plan next season,
+reload, and find both served back by the API); and a Docker health check on
+pull requests and pushes to `main`.
 
 ## Product Boundaries
 
