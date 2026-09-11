@@ -2,7 +2,7 @@
 
 ## Working Name
 
-Sun-Aware Garden Planner
+Garden Manager
 
 ## One-Liner
 

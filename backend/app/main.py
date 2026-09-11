@@ -12,7 +12,7 @@ from .database import get_session
 from .schemas import CareNoteDraftRequest, CareNoteDraftResponse, HealthResponse, PlantHealthAssessmentRequest, PlantHealthAssessmentResponse, PlantKnowledgeAnswer, PlantKnowledgeQuestion, RotationGuidanceRequest, RotationGuidanceResponse, RuntimeConfigResponse, WorkspaceImport
 from .service import care_note_draft, import_workspace, load_workspace, plant_health_assessment, plant_knowledge_answer, rotation_guidance, update_workspace, workspace_response
 
-app = FastAPI(title="Sun-Aware Garden Planner API", version="0.1.0")
+app = FastAPI(title="Garden Manager API", version="0.1.0")
 uploads_dir = Path(os.getenv("UPLOADS_DIR", "/tmp/sun-aware-garden-planner-uploads"))
 uploads_dir.mkdir(parents=True, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")

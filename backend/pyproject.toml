@@ -1,5 +1,5 @@
 [project]
-name = "sun-aware-garden-planner-api"
+name = "garden-manager-api"
 version = "0.1.0"
 description = "FastAPI persistence foundation for Sun-Aware Garden Planner"
 requires-python = ">=3.10"
