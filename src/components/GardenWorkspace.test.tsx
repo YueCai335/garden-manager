@@ -9,6 +9,7 @@ import {
   createGarden,
   createGardenWorkspace,
   GARDEN_WORKSPACE_STORAGE_KEY,
+  readGardenWorkspace,
 } from "@/lib/gardenWorkspace";
 import { SERVER_WORKSPACE_STORAGE_KEY } from "@/components/GardenWorkspace";
 
@@ -137,6 +138,112 @@ describe("GardenWorkspace", () => {
       expect.stringMatching(/\/workspaces\/local-/),
       expect.objectContaining({ headers: expect.any(Object) }),
     );
+  });
+
+  it("keeps an edit made while the first PostgreSQL import is still in flight", async () => {
+    const user = userEvent.setup();
+    const workspace = createDemoGardenWorkspace();
+    let finishImport: (() => void) | undefined;
+    const importFinished = new Promise<void>((resolve) => {
+      finishImport = resolve;
+    });
+    const fetch = vi.fn(async (url: string, init?: RequestInit) => {
+      if (/\/import$/.test(url)) await importFinished;
+      return {
+        ok: true,
+        json: async () => JSON.parse(String(init?.body)),
+      };
+    });
+    vi.stubGlobal("fetch", fetch);
+    window.localStorage.setItem(GARDEN_WORKSPACE_STORAGE_KEY, JSON.stringify(workspace));
+
+    render(<GardenWorkspace />);
+    await openSelectedGarden();
+    await waitFor(() => expect(fetch.mock.calls[0]?.[0]).toMatch(/\/import$/));
+
+    // The import is still pending; the gardener renames the garden meanwhile.
+    fireEvent.change(screen.getByLabelText("Garden name"), { target: { value: "Renamed while syncing" } });
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(JSON.parse(window.localStorage.getItem(GARDEN_WORKSPACE_STORAGE_KEY) ?? "{}").gardens[0].name).toBe("Renamed while syncing"));
+
+    finishImport?.();
+    await waitFor(() => expect(window.localStorage.getItem(SERVER_WORKSPACE_STORAGE_KEY)).not.toBeNull());
+
+    // The stale import response must not win over the newer edit...
+    expect(screen.getByLabelText("Garden name")).toHaveValue("Renamed while syncing");
+    // ...and the newer edit must reach PostgreSQL.
+    await waitFor(() => {
+      const put = fetch.mock.calls.find(([url, init]) => init?.method === "PUT" && !/\/import$/.test(url));
+      expect(put).toBeDefined();
+      expect(JSON.parse(String(put?.[1]?.body)).gardens[0].name).toBe("Renamed while syncing");
+    });
+  });
+
+  it("surfaces a save conflict from another tab and lets the gardener reload the newer copy", async () => {
+    const user = userEvent.setup();
+    const workspace = createDemoGardenWorkspace();
+    const otherTabCopy = { ...workspace, gardens: [{ ...workspace.gardens[0], name: "Renamed in another tab" }] };
+    let serverCopy = { workspaceId: "server-workspace", revision: 0, ...workspace };
+    const fetch = vi.fn(async (url: string, init?: RequestInit) => {
+      if (init?.method === "PUT") {
+        // Another tab has already moved the server on to revision 3.
+        serverCopy = { workspaceId: "server-workspace", revision: 3, ...otherTabCopy };
+        return { ok: false, status: 409, json: async () => ({ detail: { message: "stale", currentRevision: 3 } }) };
+      }
+      return { ok: true, status: 200, json: async () => serverCopy };
+    });
+    vi.stubGlobal("fetch", fetch);
+    window.localStorage.setItem(SERVER_WORKSPACE_STORAGE_KEY, "server-workspace");
+
+    render(<GardenWorkspace />);
+    await openSelectedGarden();
+    fireEvent.change(screen.getByLabelText("Garden name"), { target: { value: "Renamed here" } });
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("changed in another tab");
+    // Local edits stay on screen until the gardener decides.
+    expect(screen.getByLabelText("Garden name")).toHaveValue("Renamed here");
+
+    await user.click(within(alert).getByRole("button", { name: "Reload latest" }));
+    await waitFor(() => expect(screen.getByLabelText("Garden name")).toHaveValue("Renamed in another tab"));
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("lets the gardener keep local changes after a save conflict by saving over the newer revision", async () => {
+    const user = userEvent.setup();
+    const workspace = createDemoGardenWorkspace();
+    let currentRevision = 0;
+    const fetch = vi.fn(async (url: string, init?: RequestInit) => {
+      if (init?.method === "PUT") {
+        const sent = JSON.parse(String(init.body));
+        if (sent.revision !== currentRevision)
+          return { ok: false, status: 409, json: async () => ({ detail: { message: "stale", currentRevision } }) };
+        currentRevision += 1;
+        return { ok: true, status: 200, json: async () => ({ ...sent, revision: currentRevision }) };
+      }
+      return { ok: true, status: 200, json: async () => ({ workspaceId: "server-workspace", revision: 0, ...workspace }) };
+    });
+    vi.stubGlobal("fetch", fetch);
+    window.localStorage.setItem(SERVER_WORKSPACE_STORAGE_KEY, "server-workspace");
+
+    render(<GardenWorkspace />);
+    await openSelectedGarden();
+    // Another tab saved first: the server is now at revision 1 while this tab still holds 0.
+    currentRevision = 1;
+    fireEvent.change(screen.getByLabelText("Garden name"), { target: { value: "Renamed here" } });
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    const alert = await screen.findByRole("alert");
+    await user.click(within(alert).getByRole("button", { name: "Keep my changes" }));
+
+    await waitFor(() => {
+      const accepted = fetch.mock.calls.filter(([, init]) => init?.method === "PUT").map(([, init]) => JSON.parse(String(init?.body)));
+      expect(accepted.at(-1)?.revision).toBe(1);
+      expect(accepted.at(-1)?.gardens[0].name).toBe("Renamed here");
+    });
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    await screen.findByText("Changes saved to PostgreSQL.");
   });
 
   it("keeps browser gardens active and usable when PostgreSQL is unreachable", async () => {
@@ -499,6 +606,43 @@ describe("GardenWorkspace", () => {
     await user.click(screen.getByRole("button", { name: "Delete garden" }));
     await cancelDialog(user, "Delete Demo Garden? This removes its 3 planting areas and 2 planting records from this browser.");
     expect(screen.getByRole("button", { name: "Delete garden" })).toBeInTheDocument();
+  });
+
+  it("deletes a planting area together with its next-season plan entries, then restores cleanly", async () => {
+    const user = userEvent.setup();
+    const workspace = createDemoGardenWorkspace();
+    const [garden] = workspace.gardens;
+    window.localStorage.setItem(
+      GARDEN_WORKSPACE_STORAGE_KEY,
+      JSON.stringify({
+        ...workspace,
+        gardens: [{
+          ...garden,
+          seasonPlans: [{
+            id: "plan-next",
+            seasonYear: new Date().getFullYear() + 1,
+            plantings: [
+              { id: "planned-kale", commonName: "Kale", cropFamily: "brassica", growingAreaId: "demo-raised-bed" },
+              { id: "planned-bean", commonName: "Bean", cropFamily: "legume", growingAreaId: garden.growingAreas[1].id },
+            ],
+          }],
+        }],
+      }),
+    );
+
+    const firstRender = render(<GardenWorkspace />);
+    await openPlantingArea(user, "Sample raised bed");
+    await user.click(screen.getByRole("button", { name: "Delete area" }));
+    await confirmDialog(user, "Delete Sample raised bed? This removes the planting area and its 1 planting record, plus 1 next-season plan entry, from this browser. Care history stays in this garden.");
+
+    const saved = window.localStorage.getItem(GARDEN_WORKSPACE_STORAGE_KEY);
+    const restored = readGardenWorkspace(saved);
+    expect(restored).not.toBeUndefined();
+    expect(restored?.gardens[0].seasonPlans?.[0].plantings.map((planting) => planting.id)).toEqual(["planned-bean"]);
+
+    firstRender.unmount();
+    render(<GardenWorkspace />);
+    expect(await screen.findByText("Gardens restored from this browser.")).toBeInTheDocument();
   });
 
   it("removes Demo Garden from a multi-garden browser workspace", async () => {
