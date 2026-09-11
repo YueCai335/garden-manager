@@ -10,7 +10,8 @@
   snapping, direct placement, and zoomed plan previews.
 - Forms for current plantings, care history, care tasks, plant health, future
   season plans, and AI review.
-- Vitest and React Testing Library coverage for core user workflows.
+- Vitest and React Testing Library coverage for core user workflows, plus one
+  Playwright end-to-end flow against the real API and a fresh database.
 
 ### Backend
 
@@ -33,8 +34,9 @@
 ### Delivery
 
 - Docker Compose starts PostgreSQL with pgvector and the FastAPI API.
-- GitHub Actions checks frontend types and tests, backend tests, and API
-  health through Docker Compose.
+- GitHub Actions runs frontend lint, types, tests, and build; backend tests
+  on SQLite and PostgreSQL; one Playwright end-to-end flow; and API health
+  through Docker Compose.
 
 ## Data Flow
 
