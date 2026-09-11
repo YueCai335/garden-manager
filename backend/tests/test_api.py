@@ -94,10 +94,10 @@ def test_import_persists_and_retrieves_complete_workspace(client):
     imported = client.put("/workspaces/local-workspace-1/import", json=payload)
 
     assert imported.status_code == 201
-    assert imported.json() == payload
+    assert imported.json() == {**payload, "revision": 0}
     retrieved = client.get("/workspaces/local-workspace-1")
     assert retrieved.status_code == 200
-    assert retrieved.json() == payload
+    assert retrieved.json() == {**payload, "revision": 0}
 
 
 def test_import_preserves_a_layout_planting_record_link(client):
@@ -131,8 +131,8 @@ def test_import_preserves_season_plan_separately_from_current_plantings(client):
     response = client.put("/workspaces/local-workspace-1/import", json=payload)
 
     assert response.status_code == 201
-    assert response.json() == payload
-    assert client.get("/workspaces/local-workspace-1").json() == payload
+    assert response.json() == {**payload, "revision": 0}
+    assert client.get("/workspaces/local-workspace-1").json() == {**payload, "revision": 0}
 
 
 def test_identical_import_retry_does_not_duplicate_rows(client):
@@ -151,12 +151,55 @@ def test_server_workspace_save_replaces_relational_records(client):
     payload["gardens"][0]["name"] = "Updated garden"
     payload["gardens"][0]["plantings"] = []
     payload["gardens"][0]["careEvents"] = []
+    payload["revision"] = 0
 
     saved = client.put("/workspaces/local-workspace-1", json=payload)
 
     assert saved.status_code == 200
-    assert saved.json() == payload
-    assert client.get("/workspaces/local-workspace-1").json() == payload
+    assert saved.json() == {**payload, "revision": 1}
+    assert client.get("/workspaces/local-workspace-1").json() == {**payload, "revision": 1}
+
+
+def test_stale_client_save_is_rejected_with_409_and_does_not_overwrite(client):
+    payload = workspace_payload()
+    imported = client.put("/workspaces/local-workspace-1/import", json=payload).json()
+    assert imported["revision"] == 0
+
+    # Two tabs read the same snapshot (revision 0).
+    tab_a = deepcopy(imported)
+    tab_b = deepcopy(imported)
+
+    tab_a["gardens"][0]["name"] = "Renamed by tab A"
+    saved_a = client.put("/workspaces/local-workspace-1", json=tab_a)
+    assert saved_a.status_code == 200
+    assert saved_a.json()["revision"] == 1
+
+    tab_b["careTasks"] = [
+        {"id": "task-b", "type": "watering", "dueDate": "2026-09-20", "note": "from tab B", "targetScope": "all-gardens"}
+    ]
+    stale = client.put("/workspaces/local-workspace-1", json=tab_b)
+
+    assert stale.status_code == 409
+    assert stale.json()["detail"]["currentRevision"] == 1
+    current = client.get("/workspaces/local-workspace-1").json()
+    assert current["revision"] == 1
+    assert current["gardens"][0]["name"] == "Renamed by tab A"
+    assert current["careTasks"] == []
+
+    # Tab B re-reads, then its save goes through.
+    tab_b["revision"] = current["revision"]
+    retried = client.put("/workspaces/local-workspace-1", json=tab_b)
+    assert retried.status_code == 200
+    assert retried.json()["revision"] == 2
+
+
+def test_server_workspace_save_requires_a_revision(client):
+    payload = workspace_payload()
+    assert client.put("/workspaces/local-workspace-1/import", json=payload).status_code == 201
+
+    response = client.put("/workspaces/local-workspace-1", json=payload)
+
+    assert response.status_code == 422
 
 
 def test_workspace_care_records_round_trip_separately_from_one_garden(client):
@@ -183,8 +226,8 @@ def test_workspace_care_records_round_trip_separately_from_one_garden(client):
     imported = client.put("/workspaces/local-workspace-1/import", json=payload)
 
     assert imported.status_code == 201
-    assert imported.json() == payload
-    assert client.get("/workspaces/local-workspace-1").json() == payload
+    assert imported.json() == {**payload, "revision": 0}
+    assert client.get("/workspaces/local-workspace-1").json() == {**payload, "revision": 0}
 
 
 def test_garden_care_record_cannot_target_all_gardens(client):
@@ -200,7 +243,7 @@ def test_garden_care_record_cannot_target_all_gardens(client):
 
 
 def test_server_workspace_save_requires_an_import(client):
-    response = client.put("/workspaces/local-workspace-1", json=workspace_payload())
+    response = client.put("/workspaces/local-workspace-1", json={**workspace_payload(), "revision": 0})
 
     assert response.status_code == 404
 
@@ -513,7 +556,7 @@ def test_plant_health_record_round_trips_with_its_target_and_evidence(client):
     response = client.put("/workspaces/local-workspace-1/import", json=payload)
 
     assert response.status_code == 201
-    assert response.json() == payload
+    assert response.json() == {**payload, "revision": 0}
 
 
 def test_plant_knowledge_returns_answer_with_retrieved_source_cards(client):

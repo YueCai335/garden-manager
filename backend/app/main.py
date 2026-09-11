@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from .ai import CareNoteExtractor, CareNoteProviderError, EmbeddingClient, PlantHealthAssessor, PlantKnowledgeAnswerer, configured_care_note_extractor, configured_embedding_client, configured_plant_health_assessor, configured_plant_knowledge_answerer
 from .database import get_session
-from .schemas import CareNoteDraftRequest, CareNoteDraftResponse, HealthResponse, PlantHealthAssessmentRequest, PlantHealthAssessmentResponse, PlantKnowledgeAnswer, PlantKnowledgeQuestion, RotationGuidanceRequest, RotationGuidanceResponse, RuntimeConfigResponse, WorkspaceImport
+from .schemas import CareNoteDraftRequest, CareNoteDraftResponse, HealthResponse, PlantHealthAssessmentRequest, PlantHealthAssessmentResponse, PlantKnowledgeAnswer, PlantKnowledgeQuestion, RotationGuidanceRequest, RotationGuidanceResponse, RuntimeConfigResponse, WorkspaceImport, WorkspaceSave
 from .service import care_note_draft, import_workspace, load_workspace, plant_health_assessment, plant_knowledge_answer, rotation_guidance, update_workspace, workspace_response
 
 app = FastAPI(title="Garden Manager API", version="0.1.0")
@@ -186,7 +186,7 @@ def create_plant_knowledge_answer(
 @app.put("/workspaces/{workspace_id}", tags=["workspaces"])
 def save_server_workspace(
     workspace_id: str,
-    payload: WorkspaceImport,
+    payload: WorkspaceSave,
     session: Session = Depends(get_session),
 ):
     if workspace_id != payload.workspace_id:

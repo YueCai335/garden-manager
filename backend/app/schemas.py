@@ -237,6 +237,12 @@ class WorkspaceImport(ApiModel):
         return self
 
 
+class WorkspaceSave(WorkspaceImport):
+    """A later save of an imported workspace. Must carry the revision the client last read."""
+
+    revision: int = Field(ge=0)
+
+
 class RotationGuidanceRequest(ApiModel):
     growing_area_id: str = Field(min_length=1, max_length=120, serialization_alias="growingAreaId", validation_alias="growingAreaId")
     crop_family: CropFamily = Field(serialization_alias="cropFamily", validation_alias="cropFamily")

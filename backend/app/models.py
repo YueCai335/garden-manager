@@ -24,6 +24,9 @@ class Workspace(Base):
     schema_version: Mapped[int] = mapped_column(Integer)
     selected_garden_external_id: Mapped[str] = mapped_column(String(120))
     import_hash: Mapped[str] = mapped_column(String(64))
+    # Bumped on every successful save; clients echo it back so a stale
+    # snapshot cannot silently overwrite a newer one.
+    revision: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0", default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     gardens: Mapped[list["Garden"]] = relationship(
         back_populates="workspace", cascade="all, delete-orphan", order_by="Garden.position"
