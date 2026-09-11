@@ -3,14 +3,14 @@ import json
 from math import sqrt
 
 from fastapi import HTTPException
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session, selectinload
 
 from .ai import CareNoteExtractor, EmbeddingClient, PlantHealthAssessor, PlantKnowledgeAnswerer, complete_known_care_note_fields
 from .knowledge import SEED_KNOWLEDGE_CARDS
 from .models import CareEvent, CareTask, Garden, GrowingArea, HealthRecord, KnowledgeChunk, KnowledgeSource, PlannedPlanting, Planting, SeasonPlan, Workspace, WorkspaceCareEvent, WorkspaceCareTask
 from .rotation import ROTATION_GROWING_AREA_KINDS, RotationPlanting, evaluate_rotation
-from .schemas import CareNoteDraftRequest, PlantHealthAssessmentRequest, PlantKnowledgeAnswer, PlantKnowledgeQuestion, RotationGuidanceRequest, WorkspaceImport
+from .schemas import CareNoteDraftRequest, PlantHealthAssessmentRequest, PlantKnowledgeAnswer, PlantKnowledgeQuestion, RotationGuidanceRequest, WorkspaceImport, WorkspaceSave
 
 
 def import_fingerprint(workspace: WorkspaceImport) -> str:
@@ -58,10 +58,29 @@ def import_workspace(session: Session, payload: WorkspaceImport) -> Workspace:
     return load_workspace(session, payload.workspace_id)  # type: ignore[return-value]
 
 
-def update_workspace(session: Session, payload: WorkspaceImport) -> Workspace:
+def update_workspace(session: Session, payload: WorkspaceSave) -> Workspace:
     workspace = load_workspace(session, payload.workspace_id)
     if workspace is None:
         raise HTTPException(status_code=404, detail="Workspace not found")
+    # Optimistic lock: bump the revision only if it still matches what the
+    # client read. The conditional UPDATE is atomic, so two clients racing on
+    # the same revision cannot both win.
+    claimed = session.execute(
+        update(Workspace)
+        .where(Workspace.id == payload.workspace_id, Workspace.revision == payload.revision)
+        .values(revision=Workspace.revision + 1)
+    )
+    if claimed.rowcount != 1:
+        session.rollback()
+        current = load_workspace(session, payload.workspace_id)
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "message": "This workspace was changed elsewhere since it was loaded. Reload it before saving again.",
+                "currentRevision": current.revision if current else None,
+            },
+        )
+    session.refresh(workspace)
     write_workspace(workspace, payload)
     session.commit()
     return load_workspace(session, payload.workspace_id)  # type: ignore[return-value]
@@ -511,6 +530,7 @@ def workspace_response(workspace: Workspace) -> dict:
     return {
         "workspaceId": workspace.id,
         "version": 10,
+        "revision": workspace.revision,
         "selectedGardenId": workspace.selected_garden_external_id,
         "gardens": [garden_response(garden) for garden in workspace.gardens],
         "careEvents": [workspace_care_event_response(event) for event in workspace.care_events],

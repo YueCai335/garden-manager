@@ -15,3 +15,4 @@ def test_migrations_create_garden_operations_schema_and_plant_identity_fields(tm
     inspector = inspect(create_engine(f"sqlite+pysqlite:///{database_path}"))
     assert {"workspaces", "gardens", "growing_areas", "plantings", "season_plans", "planned_plantings", "care_events", "care_tasks", "health_records", "knowledge_sources", "knowledge_chunks"} <= set(inspector.get_table_names())
     assert {"plant_type", "variety"} <= {column["name"] for column in inspector.get_columns("plantings")}
+    assert "revision" in {column["name"] for column in inspector.get_columns("workspaces")}
