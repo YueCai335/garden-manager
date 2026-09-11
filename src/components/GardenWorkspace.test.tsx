@@ -246,6 +246,113 @@ describe("GardenWorkspace", () => {
     await screen.findByText("Changes saved to PostgreSQL.");
   });
 
+  function queuedSaveHarness() {
+    const workspace = createDemoGardenWorkspace();
+    const chosenServerCopy = { ...workspace, gardens: [{ ...workspace.gardens[0], name: "Chosen server copy" }] };
+    let serverRevision = 0;
+    let serverCopy = workspace;
+    const pendingPuts: Array<{ sent: { revision: number; gardens: Array<{ name: string }> }; resolve: (response: unknown) => void }> = [];
+    const acceptedPuts: Array<{ revision: number; gardens: Array<{ name: string }> }> = [];
+    const fetch = vi.fn((url: string, init?: RequestInit) => {
+      if (init?.method === "PUT") {
+        const sent = JSON.parse(String(init.body));
+        return new Promise((resolve) => pendingPuts.push({ sent, resolve }));
+      }
+      return Promise.resolve({ ok: true, status: 200, json: async () => ({ workspaceId: "server-workspace", revision: serverRevision, ...serverCopy }) });
+    });
+    vi.stubGlobal("fetch", fetch);
+    window.localStorage.setItem(SERVER_WORKSPACE_STORAGE_KEY, "server-workspace");
+
+    return {
+      pendingPuts,
+      acceptedPuts,
+      /** Another tab saves: the server moves on and now holds "Chosen server copy". */
+      otherTabSaves() {
+        serverRevision = 5;
+        serverCopy = chosenServerCopy;
+      },
+      /** Answer the oldest pending PUT the way the real server would. */
+      answerOldestPut() {
+        const put = pendingPuts.shift();
+        if (!put) throw new Error("no pending PUT");
+        if (put.sent.revision !== serverRevision) {
+          put.resolve({ ok: false, status: 409, json: async () => ({ detail: { message: "stale", currentRevision: serverRevision } }) });
+          return "409";
+        }
+        serverRevision += 1;
+        acceptedPuts.push(put.sent);
+        put.resolve({ ok: true, status: 200, json: async () => ({ ...put.sent, revision: serverRevision }) });
+        return "200";
+      },
+    };
+  }
+
+  async function saveGardenField(user: ReturnType<typeof userEvent.setup>, label: string, value: string) {
+    fireEvent.change(screen.getByLabelText(label), { target: { value } });
+    await user.click(screen.getByRole("button", { name: "Save" }));
+  }
+
+  it("drops queued and in-flight saves once the gardener reloads the server copy after a conflict", async () => {
+    const user = userEvent.setup();
+    const harness = queuedSaveHarness();
+
+    render(<GardenWorkspace />);
+    await openSelectedGarden();
+    harness.otherTabSaves();
+
+    // Three quick edits: A is sent, B and C wait behind it in the queue.
+    await saveGardenField(user, "Garden name", "Local edit A");
+    await waitFor(() => expect(harness.pendingPuts).toHaveLength(1));
+    await saveGardenField(user, "Garden name", "Local edit B");
+    await saveGardenField(user, "Garden name", "Local edit C");
+
+    expect(harness.answerOldestPut()).toBe("409");
+    const alert = await screen.findByRole("alert");
+    // B and C were queued behind A. Once A conflicts they are stale and must not be sent.
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(harness.pendingPuts).toHaveLength(0);
+
+    await user.click(within(alert).getByRole("button", { name: "Reload latest" }));
+    await waitFor(() => expect(screen.getByLabelText("Garden name")).toHaveValue("Chosen server copy"));
+
+    // Nothing may overwrite the copy the gardener just chose.
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(harness.pendingPuts).toHaveLength(0);
+    expect(harness.acceptedPuts).toEqual([]);
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Garden name")).toHaveValue("Chosen server copy");
+  });
+
+  it("sends only the current local copy when the gardener keeps their changes after a conflict", async () => {
+    const user = userEvent.setup();
+    const harness = queuedSaveHarness();
+
+    render(<GardenWorkspace />);
+    await openSelectedGarden();
+    harness.otherTabSaves();
+
+    await saveGardenField(user, "Garden name", "Local edit A");
+    await waitFor(() => expect(harness.pendingPuts).toHaveLength(1));
+    await saveGardenField(user, "Garden name", "Local edit B");
+    await saveGardenField(user, "Garden name", "Local edit C");
+
+    expect(harness.answerOldestPut()).toBe("409");
+    const alert = await screen.findByRole("alert");
+    await user.click(within(alert).getByRole("button", { name: "Keep my changes" }));
+
+    // Whatever is still queued from before the choice is answered; only the
+    // save made for the gardener's choice may be accepted.
+    await waitFor(() => expect(harness.pendingPuts.length).toBeGreaterThan(0));
+    while (harness.pendingPuts.length) {
+      harness.answerOldestPut();
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    }
+    expect(harness.acceptedPuts.map((put) => put.gardens[0].name)).toEqual(["Local edit C"]);
+    expect(harness.acceptedPuts[0].revision).toBe(5);
+    await screen.findByText("Changes saved to PostgreSQL.");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
   it("keeps browser gardens active and usable when PostgreSQL is unreachable", async () => {
     const workspace = createDemoGardenWorkspace();
     const fetch = vi.fn(async () => ({ ok: false, json: async () => ({}) }));
