@@ -73,7 +73,7 @@ function previewContent(feature: Feature) {
       sampleTitle: "Completed care note",
       body: <>
         <p className="feature-preview-label">Note</p>
-        <p>今天给后院菜床的番茄浇水。</p>
+        <p>Watered the tomatoes in the back garden bed today.</p>
         <dl className="feature-preview-details">
           <div><dt>Care type</dt><dd>Watering</dd></div>
           <div><dt>Target</dt><dd>Back garden · Tomato group</dd></div>
@@ -90,7 +90,7 @@ function previewContent(feature: Feature) {
       sampleTitle: "Leaf observation",
       body: <>
         <p className="feature-preview-label">Observation</p>
-        <p>西葫芦叶子上有白色粉末状物质。</p>
+        <p>White powdery spots on the zucchini leaves.</p>
         <dl className="feature-preview-details">
           <div><dt>Possible issue</dt><dd>Powdery mildew</dd></div>
           <div><dt>Suggested next step</dt><dd>Check leaf surfaces, airflow, and recent humidity before taking action.</dd></div>
@@ -106,9 +106,9 @@ function previewContent(feature: Feature) {
     sampleTitle: "Cited garden question",
     body: <>
       <p className="feature-preview-label">Question</p>
-      <p>我的西葫芦叶子上有很多白色的粉，是病了吗？</p>
+      <p>My zucchini leaves have a lot of white powder on them — is it diseased?</p>
       <p className="feature-preview-label">Answer</p>
-      <p>白色粉末状物质可能是粉状霉菌。先观察叶片正反面、黄化或卷曲情况，以及近期浇水和湿度，再决定下一步处理。</p>
+      <p>White powdery residue is likely powdery mildew. Check both sides of the leaves for yellowing or curling, and review recent watering and humidity, before deciding on treatment.</p>
       <p className="feature-preview-source">Sample source: University of Minnesota Extension · Growing summer squash and zucchini in home gardens</p>
     </>,
   };

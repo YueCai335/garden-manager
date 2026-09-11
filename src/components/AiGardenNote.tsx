@@ -90,7 +90,7 @@ export function AiGardenNote({
           <textarea
             id="ai-garden-note"
             onChange={(event) => setNote(event.target.value)}
-            placeholder="今天给后院菜床的番茄浇水。"
+            placeholder="Watered the tomatoes in the back garden bed today."
             required
             rows={4}
             value={note}

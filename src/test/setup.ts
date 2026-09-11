@@ -1,6 +1,6 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup } from "@testing-library/react";
-import { afterEach, vi } from "vitest";
+import { afterEach, beforeEach, vi } from "vitest";
 
 vi.mock("react-konva", async () => {
   const React = await import("react");
@@ -77,6 +77,19 @@ class ResizeObserverMock {
 }
 
 Object.defineProperty(window, "ResizeObserver", { value: ResizeObserverMock });
+
+beforeEach(() => {
+  // Default every test to "no network reachable" so results never depend on
+  // whether something real happens to be listening on localhost:8000. A test
+  // that needs real request/response behavior stubs its own fetch, which
+  // simply overrides this default for that test.
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => {
+      throw new Error("Unmocked fetch call in test — stub fetch explicitly if this test needs network behavior.");
+    }),
+  );
+});
 
 afterEach(() => {
   cleanup();

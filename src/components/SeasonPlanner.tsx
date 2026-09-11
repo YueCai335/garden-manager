@@ -240,7 +240,7 @@ export function SeasonPlanner({
                               };
                             })
                           }
-                          placeholder="e.g. Tomato, 番茄, or Sungold"
+                          placeholder="e.g. Tomato or Sungold"
                           value={choice.plantType}
                         />
                       </label>
