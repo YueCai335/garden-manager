@@ -10,3 +10,7 @@ dist
 .codex/
 AGENTS.md
 .DS_Store
+
+# Personal notes, kept out of the public repo
+docs/interview-stories.md
+docs/study-notes.md
