@@ -111,13 +111,13 @@ Status as of commit review 2026-09-11: **In use** is present in the repository a
 | Maps and place search | Mapbox GL JS, Mapbox Search JS | Retired | Address-map prototype removed 2026-09-11 (ADR-0013 deprioritized it); reintroduce only with a map-backed layout requirement |
 | Vector search | pgvector | In use | Retrieval over plant, climate, and horticultural knowledge for grounded AI responses |
 | Cache and background work | Redis, added when a measured workflow requires it | Planned | Cached retrieval, scheduled task generation, and long-running AI job status |
-| AI application layer | Ollama, OpenAI API, RAG, structured outputs, tool calling | In use | Local garden-log extraction and grounded plant questions; OpenAI remains an optional future provider |
-| AI quality | Evaluation datasets, citations, fallbacks, guardrails | Partial | Citations and deterministic fallbacks are in use; evaluation datasets are planned |
+| AI application layer | Ollama, OpenAI API, RAG, structured outputs, tool calling | Partial | In use: Ollama as the default provider and OpenAI as a configurable alternative (`AI_PROVIDER`), pgvector retrieval for grounded plant questions, JSON-schema structured outputs for care-note and plant-health drafts. Planned: tool calling |
+| AI quality | Evaluation datasets, citations, fallbacks, guardrails | Partial | In use: source citations, deterministic fallbacks for clear care notes, schema validation of model output, and a 3-case retrieval evaluation fixture (`backend/tests/fixtures/plant_knowledge_evaluations.json`, expected source per question). Planned: model-output quality datasets and guardrails beyond schema validation |
 | Image storage | Amazon S3 | Planned | Garden photos and future authorized map or calibration assets |
 | Cloud backend | AWS ECS Fargate, RDS, CloudWatch | Planned | Container hosting, managed PostgreSQL, logs, metrics, and production operations |
 | Web deployment | Vercel | In use | Next.js preview deployments and the public web application |
 | Local environment | Docker, Docker Compose | In use | Reproducible frontend, backend, PostgreSQL, and optional Redis environments |
-| CI/CD | GitHub Actions | In use | Linting, type checks, tests, builds, security checks, and deployment gates |
+| CI/CD | GitHub Actions | Partial | In use: lint, type checks, frontend tests, build, backend tests on SQLite and PostgreSQL, container health check. Planned: security scanning and deployment gates (Vercel and Render currently deploy on every push to `main`) |
 | Infrastructure | Terraform | Planned | Version-controlled AWS resources once cloud deployment begins |
 | Frontend tests | Vitest, React Testing Library, Playwright | Partial | Vitest and React Testing Library are in use; Playwright end-to-end journeys are planned |
 | Backend tests | pytest | In use | Domain rules, APIs, persistence, crop rotation, and AI integration boundaries |
