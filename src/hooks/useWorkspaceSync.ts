@@ -52,6 +52,11 @@ export function useWorkspaceSync({ onMessage }: { onMessage: (message: string) =
   const serverRevisionRef = useRef(0);
   // Where the server actually is when a save is rejected as stale.
   const conflictRevisionRef = useRef<number | undefined>(undefined);
+  // Bumped whenever the saved baseline changes hands (a 409, or the gardener
+  // resolving a conflict). Saves queued under an older generation are
+  // skipped before sending, and their late responses are ignored, so an old
+  // snapshot can never be written with a newer revision.
+  const saveGenerationRef = useRef(0);
   // Always points at the newest workspace, so an async response can tell
   // whether edits happened while it was in flight.
   const latestWorkspaceRef = useRef<GardenWorkspace | undefined>(undefined);
@@ -103,13 +108,20 @@ export function useWorkspaceSync({ onMessage }: { onMessage: (message: string) =
 
   const queueServerSave = useCallback(
     (workspaceId: string, snapshot: GardenWorkspace) => {
+      const generation = saveGenerationRef.current;
       serverSaveQueueRef.current = serverSaveQueueRef.current.then(async () => {
+        // Queued behind a save that hit a conflict, or behind the gardener's
+        // resolution of one: this snapshot no longer reflects their choice.
+        if (generation !== saveGenerationRef.current) return;
         try {
           const saved = await saveServerWorkspace(workspaceId, snapshot, serverRevisionRef.current);
+          if (generation !== saveGenerationRef.current) return;
           serverRevisionRef.current = saved.revision;
           onMessage("Changes saved to PostgreSQL.");
         } catch (error) {
+          if (generation !== saveGenerationRef.current) return;
           if (error instanceof ServerWorkspaceError && error.status === 409) {
+            saveGenerationRef.current += 1;
             conflictRevisionRef.current = error.currentRevision;
             setSaveConflict(true);
             onMessage("This garden was changed in another tab. Choose which copy to keep.");
@@ -179,6 +191,7 @@ export function useWorkspaceSync({ onMessage }: { onMessage: (message: string) =
       const { workspace: restored, revision } = adoptServerWorkspace(
         await loadServerWorkspace(serverWorkspaceId),
       );
+      saveGenerationRef.current += 1;
       serverRevisionRef.current = revision;
       queuedServerWorkspaceRef.current = JSON.stringify(restored);
       setWorkspace(restored);
@@ -192,6 +205,7 @@ export function useWorkspaceSync({ onMessage }: { onMessage: (message: string) =
   /** Conflict resolution: keep this tab's edits and save them over the newer revision. */
   const keepLocalChanges = () => {
     if (!serverWorkspaceId || !workspace) return;
+    saveGenerationRef.current += 1;
     if (conflictRevisionRef.current !== undefined) serverRevisionRef.current = conflictRevisionRef.current;
     setSaveConflict(false);
     queuedServerWorkspaceRef.current = JSON.stringify(workspace);
