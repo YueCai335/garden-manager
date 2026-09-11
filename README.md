@@ -1,4 +1,4 @@
-# Sun-Aware Garden Planner
+# Garden Manager
 
 A full-stack garden operations and seasonal-planning application. It helps a
 gardener organize multiple locations, visualize planting areas, record care,

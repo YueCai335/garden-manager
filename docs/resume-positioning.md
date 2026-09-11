@@ -2,7 +2,7 @@
 
 ## Project Title
 
-**Sun-Aware Garden Planner**
+**Garden Manager**
 
 ## Resume One-Liner
 

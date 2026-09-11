@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Sun-Aware Garden Planner",
+  title: "Garden Manager",
   description: "Plan garden beds from sun exposure and yard shadows."
 };
 

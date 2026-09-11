@@ -5,7 +5,7 @@
 
 ## Context
 
-Sun-Aware Garden Planner is the primary portfolio project for a new-graduate
+Garden Manager is the primary portfolio project for a new-graduate
 software engineering search in North America, with Greater Montreal as the
 initial market. The project needs broad relevance to full-stack, backend,
 cloud-application, and applied-AI roles while remaining coherent, usable, and

@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Sun-Aware Garden Planner is the primary portfolio project for a junior
+Garden Manager is the primary portfolio project for a junior
 backend/full-stack developer path, with applied AI as the differentiator.
 
 The product helps gardeners maintain a reliable record of their gardens and

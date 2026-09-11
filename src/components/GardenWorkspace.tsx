@@ -1118,7 +1118,7 @@ export function GardenWorkspace() {
   return (
     <main className="operations-shell operations-app-shell">
       <header className="operations-header operations-header-active">
-        <p className="product-kicker">Sun-Aware Garden Planner</p>
+        <p className="product-kicker">Garden Manager</p>
         <div className="header-actions">
           {isManagement || isCareLog || isCareHub || isSeasonPlanner || isAiGardenNote || isPlantHealth || isPlantKnowledge ? (
             <button
@@ -1323,7 +1323,7 @@ function Onboarding({
   return (
     <main className="operations-shell">
       <header className="operations-header">
-        <p className="product-kicker">Sun-Aware Garden Planner</p>
+        <p className="product-kicker">Garden Manager</p>
         <h1>Garden operations</h1>
       </header>
       <section
