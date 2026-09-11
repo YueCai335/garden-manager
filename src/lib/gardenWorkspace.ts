@@ -1745,7 +1745,7 @@ function isNamedRecord(value: unknown): value is { id: string; name: string } {
   );
 }
 
-function createId(prefix: string) {
+export function createId(prefix: string) {
   return (
     globalThis.crypto?.randomUUID?.() ??
     `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`

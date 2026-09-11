@@ -390,6 +390,30 @@ select {
   font-size: 14px;
 }
 
+.save-conflict-notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 16px 0 0;
+  padding: 12px 16px;
+  border: 1px solid var(--ops-danger, #af5144);
+  border-radius: 10px;
+  background: #fbf1ef;
+  color: var(--ops-ink, #2c3639);
+  font-size: 14px;
+}
+
+.save-conflict-notice p {
+  margin: 0;
+}
+
+.save-conflict-actions {
+  display: flex;
+  gap: 8px;
+}
+
 .operations-layout {
   display: grid;
   grid-template-columns: 230px minmax(0, 1fr);

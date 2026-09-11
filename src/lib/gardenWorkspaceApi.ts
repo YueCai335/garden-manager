@@ -6,7 +6,20 @@ export function apiUrl(path: string) {
   return `${apiBaseUrl}${path}`;
 }
 
-export type ServerWorkspace = GardenWorkspace & { workspaceId: string };
+export type ServerWorkspace = GardenWorkspace & { workspaceId: string; revision: number };
+
+/** A failed workspace request, keeping the HTTP status so callers can react to 409 conflicts. */
+export class ServerWorkspaceError extends Error {
+  status: number;
+  currentRevision?: number;
+
+  constructor(status: number, message: string, currentRevision?: number) {
+    super(message);
+    this.name = "ServerWorkspaceError";
+    this.status = status;
+    this.currentRevision = currentRevision;
+  }
+}
 
 export type RuntimeConfig = {
   portfolioDemo: boolean;
@@ -65,7 +78,16 @@ async function request(path: string, options?: RequestInit): Promise<ServerWorks
     ...options,
     headers: { "Content-Type": "application/json", ...options?.headers },
   });
-  if (!response.ok) throw new Error("The garden server could not save this workspace.");
+  if (!response.ok) {
+    let currentRevision: number | undefined;
+    try {
+      const detail = (await response.json())?.detail;
+      if (typeof detail?.currentRevision === "number") currentRevision = detail.currentRevision;
+    } catch {
+      // Error bodies are optional.
+    }
+    throw new ServerWorkspaceError(response.status, "The garden server could not save this workspace.", currentRevision);
+  }
   return response.json() as Promise<ServerWorkspace>;
 }
 
@@ -86,10 +108,10 @@ export function importServerWorkspace(workspaceId: string, workspace: GardenWork
   });
 }
 
-export function saveServerWorkspace(workspaceId: string, workspace: GardenWorkspace) {
+export function saveServerWorkspace(workspaceId: string, workspace: GardenWorkspace, revision: number) {
   return request(`/workspaces/${encodeURIComponent(workspaceId)}`, {
     method: "PUT",
-    body: JSON.stringify({ workspaceId, ...workspace }),
+    body: JSON.stringify({ workspaceId, ...workspace, revision }),
   });
 }
 
