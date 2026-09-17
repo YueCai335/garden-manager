@@ -4,9 +4,9 @@ A full-stack garden operations and seasonal-planning application. It helps a
 gardener organize multiple locations, visualize planting areas, record care,
 plan the next season, and ask source-grounded plant questions.
 
-**[▶ Open the live demo](https://garden-manager-demo.vercel.app)** — no install, no account. Select **Demo garden** to explore a populated workspace.
+**[▶ Open the live demo](https://garden-manager-demo.vercel.app)** — no install, no account. Select **Load demo garden** to explore a populated workspace.
 
-`Next.js` `React` `TypeScript` `FastAPI` `Pydantic` `PostgreSQL` `SQLAlchemy` `Alembic` `pgvector` `Docker Compose` `GitHub Actions` `pytest` `Vitest`
+`Next.js` `React` `TypeScript` `FastAPI` `Pydantic` `PostgreSQL` `SQLAlchemy` `Alembic` `pgvector` `Docker Compose` `GitHub Actions` `pytest` `Vitest` `Playwright`
 
 ## Screenshots
 
@@ -33,29 +33,32 @@ plan the next season, and ask source-grounded plant questions.
 - **Applied AI:** Chinese and English care-note extraction, local RAG-backed
   Plant Knowledge answers, visible citations, and user review before records
   are saved.
+- **Reliable persistence:** automatic PostgreSQL sync, revision-checked saves,
+  and explicit conflict resolution when another tab saves first.
 - **Full-stack delivery:** Next.js, FastAPI, PostgreSQL, Alembic, pgvector,
-  Docker Compose, GitHub Actions, Vitest, and pytest.
+  Docker Compose, GitHub Actions, Vitest, pytest, and Playwright.
 
 ## Five-Minute Demo
 
 ### Hosted demo (fastest)
 
-Open the [live demo](https://garden-manager-demo.vercel.app), select **Demo garden**,
-then walk through steps 4-6 below. The API sleeps on the free tier, so the first request can
-take about a minute.
+Open the [live demo](https://garden-manager-demo.vercel.app), select **Load demo garden**,
+then walk through steps 4-6 below. Garden, Care, and Season Planner are available
+online; AI and photo workflows are shown as previews and run in the local app.
+The API sleeps on the free tier, so the first request can take about a minute.
 
 ### Local (full feature set, including AI)
 
 1. Start the API and database with `docker compose up --build`.
-2. In another terminal, start the web app with `npm run dev`.
+2. In another terminal, run `npm install`, then start the web app with `npm run dev`.
 3. Open `http://localhost:3000` and select **Load demo garden**.
 4. Double-click **Demo Garden** to inspect its measured growing areas and
    plant layout.
 5. Return to the dashboard and open **Plan next season**. Review crop-family
    guidance, then add a crop to a growing area's next-season plan.
 6. Open **Care** to create a task or record a completed care event.
-7. Open **Plant knowledge** to ask a Chinese or English question and inspect
-   the cited source cards.
+7. After completing [Enable local AI features](#enable-local-ai-features), open
+   **Plant knowledge** to ask a Chinese or English question and inspect the cited source cards.
 
 The demo uses generic data and can be loaded repeatedly. It replaces the
 gardens saved in the current browser workspace.
@@ -117,9 +120,9 @@ ollama pull qwen3:4b
 ollama pull embeddinggemma
 ```
 
-Restart Docker Compose after downloading the models. Care-note extraction and
-Plant Knowledge remain available as ordinary forms when the AI provider cannot
-respond; users can continue recording information manually.
+Keep Ollama running and restart Docker Compose after downloading the models.
+Care events and plant-health observations can also be entered manually. Plant
+Knowledge answers require the configured embedding and answer models to be available.
 
 ## Verification
 
@@ -133,7 +136,7 @@ npm run build
 ```
 
 End to end (real Chromium against the real Next.js app, FastAPI, and a fresh
-migrated database on ports 3100/8100; first run needs
+migrated SQLite database on ports 3100/8100; first run needs
 `npx playwright install chromium`):
 
 ```bash
@@ -158,8 +161,9 @@ pull requests and pushes to `main`.
 
 ## Product Boundaries
 
-- The current workspace is a local, single-user application. Authentication,
-  authorization, and hosted storage remain a later release concern.
+- The application supports a single-user workspace with PostgreSQL persistence.
+  Account authentication and authorization remain outside the current release;
+  use generic data in the public demo.
 - The portfolio demo deploys Garden, Care, and Season Planner workflows on
   Vercel, Render, and Supabase. It uses generic data and keeps AI and photo
   features in the local app.
