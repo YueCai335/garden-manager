@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   GARDEN_WORKSPACE_STORAGE_KEY,
@@ -45,6 +45,14 @@ export function useWorkspaceSync({ onMessage }: { onMessage: (message: string) =
   const [serverWorkspaceId, setServerWorkspaceId] = useState<string>();
   const [serverLoadFailed, setServerLoadFailed] = useState(false);
   const [saveConflict, setSaveConflict] = useState(false);
+  // The workspace PostgreSQL last confirmed, serialized. The workspace is in
+  // sync only when it equals this: a save still queued or in flight, a failed
+  // save, or an edit made after the last save all leave them different.
+  const [confirmedSnapshot, setConfirmedSnapshot] = useState<string>();
+  // Saves queued or in flight. Matching the confirmed snapshot is not enough
+  // on its own: after A -> B -> A the content matches again while the saves
+  // of B and A are still on their way to the server.
+  const [pendingSaveCount, setPendingSaveCount] = useState(0);
   const queuedServerWorkspaceRef = useRef<string | undefined>(undefined);
   const serverSaveQueueRef = useRef(Promise.resolve());
   const autoSyncInFlightRef = useRef(false);
@@ -77,6 +85,7 @@ export function useWorkspaceSync({ onMessage }: { onMessage: (message: string) =
             if (!active) return;
             serverRevisionRef.current = revision;
             queuedServerWorkspaceRef.current = JSON.stringify(restored);
+            setConfirmedSnapshot(queuedServerWorkspaceRef.current);
             setWorkspace(restored);
             onMessage("Gardens restored from PostgreSQL.");
           } catch {
@@ -109,14 +118,19 @@ export function useWorkspaceSync({ onMessage }: { onMessage: (message: string) =
   const queueServerSave = useCallback(
     (workspaceId: string, snapshot: GardenWorkspace) => {
       const generation = saveGenerationRef.current;
+      setPendingSaveCount((count) => count + 1);
       serverSaveQueueRef.current = serverSaveQueueRef.current.then(async () => {
         // Queued behind a save that hit a conflict, or behind the gardener's
         // resolution of one: this snapshot no longer reflects their choice.
-        if (generation !== saveGenerationRef.current) return;
+        if (generation !== saveGenerationRef.current) {
+          setPendingSaveCount((count) => count - 1);
+          return;
+        }
         try {
           const saved = await saveServerWorkspace(workspaceId, snapshot, serverRevisionRef.current);
           if (generation !== saveGenerationRef.current) return;
           serverRevisionRef.current = saved.revision;
+          setConfirmedSnapshot(JSON.stringify(snapshot));
           onMessage("Changes saved to PostgreSQL.");
         } catch (error) {
           if (generation !== saveGenerationRef.current) return;
@@ -128,6 +142,8 @@ export function useWorkspaceSync({ onMessage }: { onMessage: (message: string) =
             return;
           }
           onMessage("Changes could not be saved to PostgreSQL. Keep this page open and make another change after the API recovers.");
+        } finally {
+          setPendingSaveCount((count) => count - 1);
         }
       });
     },
@@ -156,6 +172,7 @@ export function useWorkspaceSync({ onMessage }: { onMessage: (message: string) =
           window.localStorage.setItem(SERVER_WORKSPACE_STORAGE_KEY, workspaceId);
           serverRevisionRef.current = revision;
           queuedServerWorkspaceRef.current = JSON.stringify(restored);
+          setConfirmedSnapshot(queuedServerWorkspaceRef.current);
           setServerWorkspaceId(workspaceId);
           setStorageSource("server");
           // Only adopt the server's copy if nothing changed while the import
@@ -194,6 +211,7 @@ export function useWorkspaceSync({ onMessage }: { onMessage: (message: string) =
       saveGenerationRef.current += 1;
       serverRevisionRef.current = revision;
       queuedServerWorkspaceRef.current = JSON.stringify(restored);
+      setConfirmedSnapshot(queuedServerWorkspaceRef.current);
       setWorkspace(restored);
       setSaveConflict(false);
       onMessage("Reloaded the latest copy from PostgreSQL.");
@@ -212,9 +230,19 @@ export function useWorkspaceSync({ onMessage }: { onMessage: (message: string) =
     queueServerSave(serverWorkspaceId, workspace);
   };
 
+  const workspaceSnapshot = useMemo(() => (workspace ? JSON.stringify(workspace) : undefined), [workspace]);
+  /** Server-backed, no conflict, no save pending, and every change confirmed by PostgreSQL. */
+  const isSynced =
+    storageSource === "server" &&
+    !saveConflict &&
+    pendingSaveCount === 0 &&
+    workspaceSnapshot !== undefined &&
+    workspaceSnapshot === confirmedSnapshot;
+
   return {
     workspace,
     setWorkspace,
+    isSynced,
     isLoaded,
     storageSource,
     serverWorkspaceId,

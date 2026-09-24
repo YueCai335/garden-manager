@@ -7,6 +7,7 @@ records every request it receives.
 import json
 from copy import deepcopy
 from datetime import date
+from pathlib import Path
 
 import pytest
 
@@ -646,3 +647,33 @@ def test_a_run_writes_nothing_to_the_database_or_the_snapshot(client):
         assert not session.new and not session.dirty and not session.deleted
     assert snapshot == untouched
     assert client.get("/workspaces/local-workspace-1").json() == before
+
+
+# --- Parity with the frontend ---
+
+
+def test_area_selection_and_rotation_summary_match_the_shared_fixture():
+    # src/lib/seasonAllocation.test.ts runs the same fixture through the frontend copy.
+    fixture = json.loads(
+        (Path(__file__).parent / "fixtures" / "allocation_rotation_summary.json").read_text(encoding="utf-8")
+    )
+    snapshot = GardenSnapshot(
+        "garden-1",
+        tuple(AreaSnapshot(area["id"], area["name"], area["kind"]) for area in fixture["growingAreas"]),
+        tuple(
+            PlantingSnapshot(
+                p["id"], p["commonName"], p["cropFamily"], date.fromisoformat(p["plantingDate"]), p["growingAreaId"]
+            )
+            for p in fixture["plantings"]
+        ),
+    )
+
+    scope, missing = build_scope(snapshot, AllocationRequest(crops=["tomato"]), date.fromisoformat(fixture["today"]))
+
+    assert missing == []
+    assert scope.season_year == fixture["seasonYear"]
+    assert [area.id for area in scope.areas] == fixture["expectedAreaIds"]
+    assert [
+        {"growingAreaId": row.growing_area_id, "year": row.year, "rotationGroup": row.rotation_group}
+        for row in rotation_summary(snapshot, scope)
+    ] == fixture["expectedRows"]

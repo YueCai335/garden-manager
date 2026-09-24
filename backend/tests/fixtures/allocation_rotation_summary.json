@@ -1,0 +1,26 @@
+{
+  "note": "Shared by backend/tests/test_season_allocation.py and src/lib/seasonAllocation.test.ts so both sides select the same areas and build the same rotation summary (ADR-0056).",
+  "today": "2026-09-24",
+  "seasonYear": 2027,
+  "growingAreas": [
+    { "id": "bed-a", "name": "Bed A", "kind": "raised-bed" },
+    { "id": "Bed-B", "name": "Bed B", "kind": "raised-bed" },
+    { "id": "glass-1", "name": "Greenhouse 1", "kind": "greenhouse" },
+    { "id": "glass-2", "name": "Greenhouse 2", "kind": "greenhouse" }
+  ],
+  "plantings": [
+    { "id": "p1", "commonName": "Tomatoes", "cropFamily": "nightshade", "plantingDate": "2026-05-01", "growingAreaId": "bed-a" },
+    { "id": "p2", "commonName": "Peppers", "cropFamily": "nightshade", "plantingDate": "2026-06-01", "growingAreaId": "bed-a" },
+    { "id": "p3", "commonName": "Kale", "cropFamily": "brassica", "plantingDate": "2026-04-01", "growingAreaId": "bed-a" },
+    { "id": "p4", "commonName": "Beans", "cropFamily": "legume", "plantingDate": "2024-05-01", "growingAreaId": "Bed-B" },
+    { "id": "p5", "commonName": "Old carrots", "cropFamily": "root", "plantingDate": "2023-05-01", "growingAreaId": "Bed-B" },
+    { "id": "p6", "commonName": "Garlic for next year", "cropFamily": "allium", "plantingDate": "2027-03-01", "growingAreaId": "bed-a" },
+    { "id": "p7", "commonName": "Cucumbers", "cropFamily": "cucurbit", "plantingDate": "2025-05-01", "growingAreaId": "glass-1" }
+  ],
+  "expectedAreaIds": ["bed-a", "Bed-B"],
+  "expectedRows": [
+    { "growingAreaId": "Bed-B", "year": 2024, "rotationGroup": "legume" },
+    { "growingAreaId": "bed-a", "year": 2026, "rotationGroup": "brassica" },
+    { "growingAreaId": "bed-a", "year": 2026, "rotationGroup": "nightshade" }
+  ]
+}
