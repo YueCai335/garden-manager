@@ -1,0 +1,141 @@
+{
+  "note": "Written before any paid run (ADR-0056). A case passes only with a draft that meets every check. Preference checks and rotation checks are separate: a case whose preference forces a repeat does not also require the baseline's warning count.",
+  "smoke": {
+    "id": "smoke-demo-tomato-bean",
+    "garden": "demo",
+    "today": "2026-09-24",
+    "request": { "crops": ["tomato", "bean"] },
+    "checks": []
+  },
+  "cases": [
+    {
+      "id": "demo-tomato-bean",
+      "purpose": "No preference: the agent should avoid both repeats that the rotation rule can avoid.",
+      "garden": "demo",
+      "today": "2026-09-24",
+      "request": { "crops": ["tomato", "bean"] },
+      "checks": [{ "type": "warnings_at_most_baseline" }]
+    },
+    {
+      "id": "demo-three-new-crops",
+      "purpose": "Crops with no history in any area: no warning should appear.",
+      "garden": "demo",
+      "today": "2026-09-24",
+      "request": { "crops": ["lettuce", "carrot", "cucumber"] },
+      "checks": [{ "type": "warnings_at_most_baseline" }]
+    },
+    {
+      "id": "demo-all-five",
+      "purpose": "All five crops on three areas, several crops per area.",
+      "garden": "demo",
+      "today": "2026-09-24",
+      "request": { "crops": ["tomato", "bean", "lettuce", "cucumber", "carrot"] },
+      "checks": [{ "type": "warnings_at_most_baseline" }]
+    },
+    {
+      "id": "demo-lettuce-in-containers",
+      "purpose": "A placement preference that rotation allows.",
+      "garden": "demo",
+      "today": "2026-09-24",
+      "request": { "crops": ["lettuce", "tomato"], "preference": "Put the lettuce in the containers." },
+      "checks": [
+        { "type": "assigned", "crop": "lettuce", "area": "demo-container-group" },
+        { "type": "warnings_at_most_baseline" }
+      ]
+    },
+    {
+      "id": "demo-tomato-stays-in-bed",
+      "purpose": "A preference that forces a repeat: follow it and report the warning; no warning-count check.",
+      "garden": "demo",
+      "today": "2026-09-24",
+      "request": {
+        "crops": ["tomato", "bean"],
+        "preference": "Keep the tomatoes in the raised bed by the kitchen, even if that repeats a crop family."
+      },
+      "checks": [{ "type": "assigned", "crop": "tomato", "area": "demo-raised-bed" }]
+    },
+    {
+      "id": "demo-chinese-preference",
+      "purpose": "A Chinese preference naming two placements.",
+      "garden": "demo",
+      "today": "2026-09-24",
+      "request": { "crops": ["lettuce", "carrot"], "preference": "生菜放在容器里，胡萝卜种在地里。" },
+      "checks": [
+        { "type": "assigned", "crop": "lettuce", "area": "demo-container-group" },
+        { "type": "assigned", "crop": "carrot", "area": "demo-in-ground-area" }
+      ]
+    },
+    {
+      "id": "demo-keep-beans-out",
+      "purpose": "A negative preference plus rotation.",
+      "garden": "demo",
+      "today": "2026-09-24",
+      "request": { "crops": ["bean", "lettuce"], "preference": "Keep the beans out of the in-ground area." },
+      "checks": [
+        { "type": "not_assigned", "crop": "bean", "area": "demo-in-ground-area" },
+        { "type": "warnings_at_most_baseline" }
+      ]
+    },
+    {
+      "id": "demo-conditional-preference",
+      "purpose": "A preference that rotation allows, stated conditionally.",
+      "garden": "demo",
+      "today": "2026-09-24",
+      "request": {
+        "crops": ["tomato", "cucumber"],
+        "preference": "If rotation allows, I'd like the tomatoes in the containers."
+      },
+      "checks": [
+        { "type": "assigned", "crop": "tomato", "area": "demo-container-group" },
+        { "type": "warnings_at_most_baseline" }
+      ]
+    },
+    {
+      "id": "four-areas-chosen",
+      "purpose": "More than three eligible areas plus a greenhouse; the gardener picks three.",
+      "garden": {
+        "gardenId": "eval-four-areas",
+        "growingAreas": [
+          { "id": "bed-a", "name": "Bed A", "kind": "raised-bed" },
+          { "id": "bed-b", "name": "Bed B", "kind": "raised-bed" },
+          { "id": "plot-c", "name": "Plot C", "kind": "in-ground" },
+          { "id": "pots", "name": "Patio pots", "kind": "container" },
+          { "id": "glass", "name": "Greenhouse shelf", "kind": "greenhouse" }
+        ],
+        "plantings": [
+          { "id": "a1", "commonName": "Tomatoes", "cropFamily": "nightshade", "plantingDate": "2026-05-01", "growingAreaId": "bed-a" },
+          { "id": "a2", "commonName": "Kale", "cropFamily": "brassica", "plantingDate": "2025-04-01", "growingAreaId": "bed-a" },
+          { "id": "b1", "commonName": "Beans", "cropFamily": "legume", "plantingDate": "2026-05-01", "growingAreaId": "bed-b" },
+          { "id": "c1", "commonName": "Carrots", "cropFamily": "root", "plantingDate": "2026-04-01", "growingAreaId": "plot-c" },
+          { "id": "p1", "commonName": "Carrots", "cropFamily": "root", "plantingDate": "2025-04-01", "growingAreaId": "pots" }
+        ]
+      },
+      "today": "2026-09-24",
+      "request": { "crops": ["tomato", "bean", "carrot"], "growingAreaIds": ["bed-a", "bed-b", "pots"] },
+      "checks": [{ "type": "warnings_at_most_baseline" }]
+    },
+    {
+      "id": "crowded-unavoidable",
+      "purpose": "Every area grew nightshades and legumes recently, so the tomato and bean warnings cannot be avoided; only cucumber is free.",
+      "garden": {
+        "gardenId": "eval-crowded",
+        "growingAreas": [
+          { "id": "north", "name": "North bed", "kind": "raised-bed" },
+          { "id": "south", "name": "South bed", "kind": "raised-bed" },
+          { "id": "tubs", "name": "Tubs", "kind": "container" }
+        ],
+        "plantings": [
+          { "id": "n1", "commonName": "Peppers", "cropFamily": "nightshade", "plantingDate": "2026-05-01", "growingAreaId": "north" },
+          { "id": "n2", "commonName": "Peas", "cropFamily": "legume", "plantingDate": "2025-04-01", "growingAreaId": "north" },
+          { "id": "s1", "commonName": "Tomatoes", "cropFamily": "nightshade", "plantingDate": "2025-05-01", "growingAreaId": "south" },
+          { "id": "s2", "commonName": "Beans", "cropFamily": "legume", "plantingDate": "2026-05-01", "growingAreaId": "south" },
+          { "id": "t1", "commonName": "Eggplant", "cropFamily": "nightshade", "plantingDate": "2024-05-01", "growingAreaId": "tubs" },
+          { "id": "t2", "commonName": "Beans", "cropFamily": "legume", "plantingDate": "2026-05-01", "growingAreaId": "tubs" }
+        ]
+      },
+      "today": "2026-09-24",
+      "request": { "crops": ["tomato", "bean", "cucumber"] },
+      "checks": [{ "type": "warnings_at_most_baseline" }]
+    }
+  ]
+}

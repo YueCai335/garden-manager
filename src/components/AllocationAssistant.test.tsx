@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { AllocationAssistant, type AllocationConfirmOutcome } from "@/components/AllocationAssistant";
 import type { Garden, GrowingAreaKind } from "@/lib/gardenWorkspace";
-import type { SeasonAllocationResult } from "@/lib/seasonAllocation";
+import type { ExampleAllocationRun, SeasonAllocationResult } from "@/lib/seasonAllocation";
 
 const seasonYear = new Date().getFullYear() + 1;
 const lastYear = seasonYear - 1;
@@ -316,6 +316,76 @@ describe("AllocationAssistant", () => {
     expect(confirmButton()).not.toBeInTheDocument();
     expect(screen.getByRole("checkbox", { name: "Tomato" })).not.toBeChecked();
     expect(screen.getByLabelText("Preference (optional)")).toHaveValue("");
+  });
+
+  describe("example run", () => {
+    const exampleRun: ExampleAllocationRun = {
+      recordedAt: "2026-09-25T10:00:00+00:00",
+      model: "gpt-4o-mini-2024-07-18",
+      gardenId: "demo-garden",
+      gardenName: "Demo Garden",
+      caseId: "demo-tomato-bean",
+      request: { crops: ["tomato", "bean"], preference: "keep it simple" },
+      result: draftResponse({
+        scope: { seasonYear: 2027, areas: [{ id: "demo-raised-bed", name: "Sample raised bed", kind: "raised-bed" }], crops: ["tomato", "bean"], preference: "keep it simple" },
+        allocation: [
+          { growingAreaId: "demo-raised-bed", crop: "bean" },
+          { growingAreaId: "demo-raised-bed", crop: "tomato" },
+        ],
+        explanation: "Recorded explanation.",
+        warnings: [],
+      }),
+      toolResults: [{ tool: "get_planting_history", arguments: "{}", output: { history: { "demo-raised-bed": { "2026": ["nightshade"] } } } }],
+    };
+
+    it.each(["budget_exhausted", "provider_unavailable", "generation_failed"] as const)(
+      "offers a labelled, read-only example run after %s",
+      async (status) => {
+        const user = userEvent.setup();
+        respondWith(draftResponse({ status, allocation: [], trace: [] }));
+        renderPanel({ exampleRun });
+
+        await fillAndPlan(user);
+        await user.click(await screen.findByRole("button", { name: "View example run" }));
+
+        const example = screen.getByRole("region", { name: "Example run" });
+        expect(example).toHaveTextContent(
+          "Recorded on 2026-09-25 with gpt-4o-mini-2024-07-18 on the Demo Garden. This shows how the assistant works. It is not a plan for your garden and cannot be added.",
+        );
+        expect(within(example).getByText("Tomato · Bean — “keep it simple”")).toBeInTheDocument();
+        expect(within(example).getByText("Bean · Tomato")).toBeInTheDocument();
+        expect(within(example).getByText("Recorded explanation.")).toBeInTheDocument();
+        expect(within(example).getByText('{"history":{"demo-raised-bed":{"2026":["nightshade"]}}}')).toBeInTheDocument();
+        expect(within(example).queryByRole("button")).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: /^Add to/ })).not.toBeInTheDocument();
+
+        await user.click(screen.getByRole("button", { name: "Hide example run" }));
+        expect(screen.queryByRole("region", { name: "Example run" })).not.toBeInTheDocument();
+      },
+    );
+
+    it("is not offered for a draft, for missing input, or when no run has been recorded", async () => {
+      const user = userEvent.setup();
+      respondWith(draftResponse());
+      const { unmount } = renderPanel({ exampleRun });
+      await fillAndPlan(user);
+      await screen.findByRole("region", { name: "Draft allocation" });
+      expect(screen.queryByRole("button", { name: "View example run" })).not.toBeInTheDocument();
+      unmount();
+
+      respondWith(draftResponse({ status: "needs_input", scope: null, missingInputs: ["Select at least one crop."] }));
+      const second = renderPanel({ exampleRun });
+      await fillAndPlan(user);
+      await screen.findByText("Select at least one crop.");
+      expect(screen.queryByRole("button", { name: "View example run" })).not.toBeInTheDocument();
+      second.unmount();
+
+      respondWith(draftResponse({ status: "provider_unavailable", allocation: [] }));
+      renderPanel();
+      await fillAndPlan(user);
+      await screen.findByText("The AI planner is not available right now. No plan was created.");
+      expect(screen.queryByRole("button", { name: "View example run" })).not.toBeInTheDocument();
+    });
   });
 
   it("ignores a response that arrives after the workspace changed or the panel closed", async () => {
