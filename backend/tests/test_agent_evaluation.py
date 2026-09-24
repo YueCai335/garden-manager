@@ -17,6 +17,7 @@ from app.agent import live
 from app.agent.live import (
     APPROVED_MODEL,
     BATCH_UNIT_LIMIT,
+    TOTAL_UNIT_LIMIT,
     EVALUATION_DIR,
     BatchHalted,
     Ledger,
@@ -192,6 +193,21 @@ def test_the_ledger_counts_every_kind_against_one_limit_and_persists(tmp_path):
         with pytest.raises(LedgerRefused, match="All 12 paid units are used"):
             reopened.reserve("verify-cost", "one more")
     assert not list(tmp_path.glob("*.tmp"))
+
+
+def test_archiving_a_batch_never_grants_fresh_units(tmp_path):
+    archived = tmp_path / "batch-1"
+    archived.mkdir()
+    (archived / "ledger.json").write_text(
+        json.dumps({"unit_limit": 12, "batch": None, "halted": None, "entries": [{"unit": n} for n in range(1, 6)]})
+    )
+
+    with Ledger.locked(tmp_path / "ledger.json", FINGERPRINT) as ledger:
+        assert ledger.archived_used == 5
+        for unit in range(TOTAL_UNIT_LIMIT - 5):
+            ledger.finish(ledger.reserve("evaluate", f"unit-{unit}"), "passed")
+        with pytest.raises(LedgerRefused, match="All 13 paid units across batches are used \\(5 in archived batches\\)"):
+            ledger.reserve("evaluate", "one more")
 
 
 def test_a_second_command_is_refused_while_the_first_holds_the_ledger(tmp_path):
@@ -516,7 +532,7 @@ def test_evaluation_refuses_until_the_cost_check_has_passed(tmp_path):
 
     assert completed.returncode != 0
     assert "Run verify-cost successfully before the evaluation." in completed.stderr
-    assert "Paid units used: 0/12" in completed.stdout
+    assert "Paid units used: 0/12 in this batch, 0/13 across batches" in completed.stdout
 
 
 def test_a_ready_batch_stops_at_the_disabled_real_model(tmp_path):

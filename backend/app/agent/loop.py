@@ -44,6 +44,8 @@ INSTRUCTIONS = (
     "You assign next-season crops to a gardener's growing areas. "
     "First call get_planting_history. Then call check_allocation with a complete candidate that assigns "
     "every selected crop to exactly one selected area; one area may hold several crops. "
+    "Each selected crop must appear exactly once in assignments. Areas may remain empty; "
+    "you do not need to fill every area. "
     "If a check shows rotation warnings, you may try one revised candidate that follows the gardener's "
     "preference. Do not keep searching for a warning-free plan: a complete plan with warnings is acceptable, "
     "and the gardener decides. Call one tool at a time. "
