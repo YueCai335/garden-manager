@@ -91,8 +91,8 @@ TOOLS = {
         Tool(
             name="get_planting_history",
             description=(
-                "Return the selected growing areas, the selected crops with their rotation groups, "
-                "and which rotation groups each area grew in the previous three years."
+                "Return the rotation group of each selected crop, and which rotation groups each "
+                "selected growing area grew in the previous three years."
             ),
             args_model=GetPlantingHistoryArgs,
             run=get_planting_history,
@@ -112,8 +112,16 @@ TOOLS = {
 
 
 def tool_definitions() -> list[dict]:
+    """Tool definitions in the exact shape the Responses API receives."""
     return [
-        {"name": tool.name, "description": tool.description, "parameters": tool.args_model.model_json_schema()}
+        {
+            "type": "function",
+            "name": tool.name,
+            "description": tool.description,
+            "parameters": tool.args_model.model_json_schema(),
+            # Non-strict first; run_tool validates every call either way.
+            "strict": False,
+        }
         for tool in TOOLS.values()
     ]
 

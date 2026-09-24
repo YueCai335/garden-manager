@@ -33,6 +33,14 @@ jobs:
       - run: python -m pip install -e "backend[dev]"
       - run: python -m pytest
         working-directory: backend
+      # The editable install above reads files from the source tree, so it
+      # cannot catch data files missing from the built package.
+      - name: Check the built package ships the demo garden
+        run: |
+          python -m pip wheel ./backend --no-deps --wheel-dir /tmp/dist
+          python -m venv /tmp/wheel-check
+          /tmp/wheel-check/bin/pip install /tmp/dist/*.whl
+          cd /tmp && /tmp/wheel-check/bin/python -c "from app.agent.service import load_demo_garden; assert len(load_demo_garden().areas) == 3"
 
   backend-postgres:
     runs-on: ubuntu-latest

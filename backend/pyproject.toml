@@ -27,5 +27,9 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools.packages.find]
 include = ["app*"]
 
+[tool.setuptools.package-data]
+# The public demo reads this fixed garden instead of stored data (ADR-0056).
+app = ["agent/demo_garden.json"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
