@@ -466,6 +466,157 @@ select {
   color: #8a4720;
 }
 
+.allocation-assistant {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+  border: 1px solid #cfd7ce;
+  border-radius: 8px;
+  padding: 20px;
+  background: #ffffff;
+}
+
+.allocation-assistant h3 {
+  margin: 0;
+  color: #183a2a;
+  font-size: 18px;
+}
+
+.allocation-context,
+.allocation-notice {
+  margin: 6px 0 0;
+  color: #657268;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.allocation-form {
+  display: grid;
+  gap: 14px;
+}
+
+.allocation-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  margin: 0;
+  border: 0;
+  padding: 0;
+  font-size: 14px;
+}
+
+.allocation-choices legend {
+  margin-bottom: 8px;
+  padding: 0;
+  color: #374034;
+  font-weight: 700;
+}
+
+.allocation-choices label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.allocation-areas,
+.allocation-explanation {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  color: #657268;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.allocation-areas strong,
+.allocation-explanation strong {
+  color: #374034;
+}
+
+.allocation-assistant textarea {
+  width: 100%;
+  border: 1px solid #cfd7ce;
+  border-radius: 6px;
+  padding: 10px;
+  font: inherit;
+  resize: vertical;
+}
+
+.allocation-count {
+  justify-self: end;
+  color: #657268;
+  font-size: 12px;
+}
+
+.allocation-error {
+  margin: 0;
+  border-left: 3px solid #af5144;
+  padding: 4px 0 4px 12px;
+  color: #7a3329;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.allocation-error p,
+.allocation-error ul {
+  margin: 4px 0 0;
+}
+
+.allocation-draft,
+.allocation-trace {
+  display: grid;
+  gap: 10px;
+  border-top: 1px solid #dbe2d9;
+  padding-top: 16px;
+  color: #374034;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.allocation-draft-areas,
+.allocation-trace ol {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.allocation-draft-areas li,
+.allocation-trace li {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.allocation-warning {
+  color: #8a4720;
+}
+
+.allocation-confirmed {
+  margin: 0;
+  color: #276445;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.allocation-trace-tool {
+  font-weight: 700;
+}
+
+.allocation-trace code {
+  overflow-wrap: anywhere;
+  border-radius: 4px;
+  padding: 4px 6px;
+  background: #f4f6f2;
+  color: #374034;
+  font-size: 12px;
+}
+
+.allocation-explanation span {
+  overflow-wrap: anywhere;
+}
+
 .dashboard-heading {
   display: flex;
   align-items: flex-end;
@@ -1597,6 +1748,7 @@ body {
 
 .operations-app-shell .garden-thumbnail-card,
 .operations-app-shell .season-area-card,
+.operations-app-shell .allocation-assistant,
 .operations-app-shell .season-planner-empty,
 .operations-app-shell .care-summary,
 .operations-app-shell .care-task-card,

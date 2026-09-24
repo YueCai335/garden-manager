@@ -38,6 +38,7 @@ const plantAppearanceDefaults = [
   { name: "Kale", aliases: ["kale", "羽衣甘蓝"], color: "#3e7457" },
   { name: "Basil", aliases: ["basil", "罗勒"], color: "#519a55" },
   { name: "Cucumber", aliases: ["cucumber", "黄瓜"], color: "#3d9881" },
+  { name: "Carrot", aliases: ["carrot", "carrots", "胡萝卜"], color: "#e9822f" },
 ] as const;
 
 const fallbackPlantColors = [
@@ -52,6 +53,17 @@ const fallbackPlantColors = [
 const minimumColorDistance = 90;
 
 export const plantTypeSuggestions = plantAppearanceDefaults.map(({ name }) => name);
+
+/**
+ * The known plant type a name stands for, by exact alias only ("Tomatoes" or
+ * "番茄" -> "Tomato"). Unlike defaultPlantColor's substring match, an
+ * unrecognised name returns undefined rather than a near guess.
+ */
+export function knownPlantType(name: string | undefined) {
+  const normalized = name?.trim().toLowerCase();
+  if (!normalized) return undefined;
+  return plantAppearanceDefaults.find(({ aliases }) => (aliases as readonly string[]).includes(normalized))?.name;
+}
 
 export function defaultPlantColor(plantType: string, variety = "") {
   const normalized = `${plantType} ${variety}`.trim().toLowerCase();
