@@ -62,6 +62,18 @@ export type SeasonAllocationResult = {
   trace: AllocationTraceStep[];
 };
 
+/** A real recorded run on the Demo Garden, replayed when live planning is unavailable. */
+export type ExampleAllocationRun = {
+  recordedAt: string;
+  model: string;
+  gardenId: string;
+  gardenName: string;
+  caseId: string;
+  request: { crops: AllocationCropKey[]; preference?: string; growingAreaIds?: string[] };
+  result: SeasonAllocationResult;
+  toolResults: { tool: string; arguments: string; output: unknown }[];
+};
+
 /** What the gardener has entered in the panel right now. */
 export type AllocationInput = {
   crops: AllocationCropKey[];

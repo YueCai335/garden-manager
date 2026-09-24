@@ -4,3 +4,5 @@ __pycache__/
 .venv/
 *.db
 build/
+evaluation/ledger.json.lock
+evaluation/**/*.tmp

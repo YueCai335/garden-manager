@@ -617,6 +617,47 @@ select {
   overflow-wrap: anywhere;
 }
 
+.allocation-example {
+  display: grid;
+  gap: 12px;
+  border: 1px dashed #bfc9bd;
+  border-radius: 6px;
+  padding: 14px;
+  background: #f8faf6;
+}
+
+.allocation-example .section-eyebrow,
+.allocation-example .allocation-notice {
+  margin: 0;
+}
+
+.allocation-tool-results {
+  color: #374034;
+  font-size: 14px;
+}
+
+.allocation-tool-results ol {
+  display: grid;
+  gap: 8px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.allocation-tool-results li {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.allocation-tool-results code {
+  overflow-wrap: anywhere;
+  border-radius: 4px;
+  padding: 4px 6px;
+  background: #f4f6f2;
+  font-size: 12px;
+}
+
 .dashboard-heading {
   display: flex;
   align-items: flex-end;

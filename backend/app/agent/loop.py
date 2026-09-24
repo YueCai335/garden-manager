@@ -255,8 +255,9 @@ FINAL_OUTPUT_FORMAT = {
         "type": "json_schema",
         "name": "final_allocation",
         "schema": FinalAllocation.model_json_schema(),
-        # Non-strict first; the server validates the result either way.
-        # Strict mode is compared in the evaluation (ADR-0056).
+        # Non-strict; the server validates the result either way. Strict mode
+        # needs schema changes and is deferred until real runs show format
+        # failures that it would prevent.
         "strict": False,
     }
 }
