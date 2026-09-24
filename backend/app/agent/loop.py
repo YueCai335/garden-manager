@@ -92,7 +92,7 @@ class ToolCall:
     arguments: str
 
 
-UnusableReason = Literal["refusal", "empty_output", "incomplete_output", "multiple_tool_calls"]
+UnusableReason = Literal["refusal", "empty_output", "incomplete_output", "multiple_tool_calls", "malformed_response"]
 
 
 @dataclass(frozen=True)
@@ -147,6 +147,7 @@ FailureReason = Literal[
     "empty_output",
     "incomplete_output",
     "multiple_tool_calls",
+    "malformed_response",
 ]
 
 

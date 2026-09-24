@@ -5,6 +5,7 @@ Tables come from create_all, which does not run the migration's seed row, so
 public-mode tests insert the budget row themselves.
 """
 
+import json
 import os
 import subprocess
 import sys
@@ -437,6 +438,59 @@ def test_the_adapter_turns_each_response_shape_into_one_model_turn(result, expec
     model, _ = adapter(result)
 
     assert model.respond(sample_request()) == expected
+
+
+@pytest.mark.parametrize(
+    "result",
+    [
+        SimpleNamespace(status="completed", output=None, usage=SimpleNamespace(input_tokens=120, output_tokens=30)),
+        response(message(SimpleNamespace(type="output_text"))),  # text missing
+        SimpleNamespace(output=[], usage=SimpleNamespace(input_tokens=120, output_tokens=30)),  # status missing
+    ],
+)
+def test_a_malformed_response_is_unusable_and_keeps_its_usage(result):
+    model, _ = adapter(result)
+
+    assert model.respond(sample_request()) == ModelTurn(
+        unusable="malformed_response", input_tokens=120, output_tokens=30
+    )
+
+
+def test_a_malformed_public_response_fails_generation_and_is_logged(client, model_slot, public_demo, caplog):
+    model, _ = adapter(SimpleNamespace(status="completed", output=None, usage=SimpleNamespace(input_tokens=120, output_tokens=30)))
+    model_slot["model"] = model
+
+    with caplog.at_level("INFO", logger="app.agent.loop"):
+        response_ = client.post(DEMO_URL, json={"crops": ["tomato"]})
+
+    assert response_.status_code == 200
+    assert (response_.json()["status"], response_.json()["failureReason"]) == ("generation_failed", "malformed_response")
+    records = [json.loads(record.getMessage()) for record in caplog.records if record.name == "app.agent.loop"]
+    assert [(r["outcome"], r["input_tokens"], r["output_tokens"]) for r in records] == [("malformed_response", 120, 30)]
+    assert used_runs() == 1
+
+
+def test_the_model_dependency_closes_the_client_it_created(monkeypatch):
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+    dependency = get_season_allocation_model()
+    model = next(dependency)
+    assert not model.client.is_closed()
+
+    dependency.close()  # FastAPI finishes the generator after the request
+
+    assert model.client.is_closed()
+
+
+def test_the_model_dependency_yields_none_without_a_key(monkeypatch):
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+
+    assert list(get_season_allocation_model()) == [None]
+
+
+def test_closing_the_adapter_leaves_an_injected_client_alone():
+    injected = SimpleNamespace(responses=FakeResponses(None), close=lambda: pytest.fail("closed an injected client"))
+
+    OpenAIAllocationModel("sk-test", client=injected).close()
 
 
 @pytest.mark.parametrize("status", ["failed", "cancelled"])
