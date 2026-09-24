@@ -19,6 +19,7 @@ REQUEST_TIMEOUT_SECONDS = 30.0
 class OpenAIAllocationModel:
     def __init__(self, api_key: str, name: str = DEFAULT_MODEL, client=None):
         self.name = name
+        self.owns_client = client is None
         # max_retries=0: every retry must be a request the loop counts.
         self.client = client or OpenAI(api_key=api_key, max_retries=0, timeout=REQUEST_TIMEOUT_SECONDS)
 
@@ -27,15 +28,28 @@ class OpenAIAllocationModel:
             response = self.client.responses.create(**request.to_params())
         except openai.OpenAIError as error:
             raise ModelProviderError(f"OpenAI request failed: {type(error).__name__}") from error
-        return turn_from_response(response)
+        try:
+            return turn_from_response(response)
+        except (AttributeError, KeyError, TypeError, ValueError):
+            # The request was paid for, so keep its usage for the log even
+            # though the response shape is not one this adapter understands.
+            return ModelTurn(unusable="malformed_response", **usage_tokens(response))
+
+    def close(self) -> None:
+        if self.owns_client:
+            self.client.close()
 
 
-def turn_from_response(response) -> ModelTurn:
+def usage_tokens(response) -> dict:
     usage = getattr(response, "usage", None)
-    tokens = {
+    return {
         "input_tokens": getattr(usage, "input_tokens", None),
         "output_tokens": getattr(usage, "output_tokens", None),
     }
+
+
+def turn_from_response(response) -> ModelTurn:
+    tokens = usage_tokens(response)
 
     if response.status == "incomplete":
         reason = getattr(response.incomplete_details, "reason", None)

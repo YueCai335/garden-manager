@@ -1,5 +1,6 @@
 import logging
 import os
+from collections.abc import Iterator
 from datetime import date
 from pathlib import Path
 from uuid import uuid4
@@ -96,12 +97,18 @@ def get_plant_knowledge_answerer() -> PlantKnowledgeAnswerer:
         raise HTTPException(status_code=503, detail=str(error)) from error
 
 
-def get_season_allocation_model() -> ModelClient | None:
+def get_season_allocation_model() -> Iterator[ModelClient | None]:
     # The agent uses OpenAI regardless of AI_PROVIDER, with its own pinned model.
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
-        return None
-    return OpenAIAllocationModel(api_key, os.getenv("AGENT_OPENAI_MODEL", DEFAULT_MODEL))
+        yield None
+        return
+    model = OpenAIAllocationModel(api_key, os.getenv("AGENT_OPENAI_MODEL", DEFAULT_MODEL))
+    try:
+        yield model
+    finally:
+        # Each request builds its own client; close its connection pool.
+        model.close()
 
 
 @app.put("/workspaces/{workspace_id}/import", status_code=status.HTTP_201_CREATED, tags=["workspaces"])
