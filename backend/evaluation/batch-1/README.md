@@ -29,7 +29,9 @@ an area may stay empty.
 ## Why a new batch
 
 The fix changes the instructions and the duplicate-assignment error message.
-Both belong to the request template in the batch fingerprint, so batch 1
-refuses further paid runs. Batch 2 starts a new ledger. All batches together
+The instructions are part of the request template in the batch fingerprint,
+so this change alters the fingerprint and batch 1 refuses further paid runs.
+The error message is produced at run time and is not part of the fingerprint.
+Batch 2 starts a new ledger. All batches together
 stay within 13 units (`TOTAL_UNIT_LIMIT`), so this archive leaves 12 units,
 and archiving again would not add more.
