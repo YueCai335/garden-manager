@@ -1,1 +1,197 @@
-null
+{
+  "recordedAt": "2026-09-24T20:27:59+00:00",
+  "model": "gpt-4o-mini-2024-07-18",
+  "gardenId": "demo-garden",
+  "gardenName": "Demo Garden",
+  "caseId": "demo-tomato-bean",
+  "request": {
+    "crops": [
+      "tomato",
+      "bean"
+    ]
+  },
+  "result": {
+    "status": "draft",
+    "seasonYear": 2027,
+    "scope": {
+      "seasonYear": 2027,
+      "areas": [
+        {
+          "id": "demo-raised-bed",
+          "name": "Sample raised bed",
+          "kind": "raised-bed"
+        },
+        {
+          "id": "demo-in-ground-area",
+          "name": "Sample in-ground area",
+          "kind": "in-ground"
+        },
+        {
+          "id": "demo-container-group",
+          "name": "Sample container group",
+          "kind": "container"
+        }
+      ],
+      "crops": [
+        "tomato",
+        "bean"
+      ],
+      "preference": ""
+    },
+    "allocation": [
+      {
+        "growingAreaId": "demo-raised-bed",
+        "crop": "bean"
+      },
+      {
+        "growingAreaId": "demo-in-ground-area",
+        "crop": "tomato"
+      }
+    ],
+    "explanation": "I assigned beans to the raised bed and tomatoes to the in-ground area. This arrangement avoids rotation warnings for both areas, following a crop rotation strategy that promotes healthy soil and plant growth.",
+    "warnings": [],
+    "rotationSummary": [
+      {
+        "growingAreaId": "demo-in-ground-area",
+        "year": 2026,
+        "rotationGroup": "legume"
+      },
+      {
+        "growingAreaId": "demo-raised-bed",
+        "year": 2026,
+        "rotationGroup": "nightshade"
+      }
+    ],
+    "missingInputs": [],
+    "failureReason": null,
+    "trace": [
+      {
+        "step": 1,
+        "tool": "get_planting_history",
+        "args": {},
+        "shortResult": "2 history rows for 3 areas"
+      },
+      {
+        "step": 2,
+        "tool": "check_allocation",
+        "args": {
+          "assignments": [
+            {
+              "growing_area_id": "demo-raised-bed",
+              "crop": "tomato"
+            },
+            {
+              "growing_area_id": "demo-in-ground-area",
+              "crop": "bean"
+            }
+          ]
+        },
+        "shortResult": "2 checked, 2 rotation warnings"
+      },
+      {
+        "step": 3,
+        "tool": "check_allocation",
+        "args": {
+          "assignments": [
+            {
+              "growing_area_id": "demo-raised-bed",
+              "crop": "bean"
+            },
+            {
+              "growing_area_id": "demo-in-ground-area",
+              "crop": "tomato"
+            }
+          ]
+        },
+        "shortResult": "2 checked, 0 rotation warnings"
+      }
+    ]
+  },
+  "toolResults": [
+    {
+      "tool": "get_planting_history",
+      "arguments": "{}",
+      "output": {
+        "crop_rotation_groups": {
+          "tomato": "nightshade",
+          "bean": "legume"
+        },
+        "history": {
+          "demo-raised-bed": {
+            "2026": [
+              "nightshade"
+            ]
+          },
+          "demo-in-ground-area": {
+            "2026": [
+              "legume"
+            ]
+          },
+          "demo-container-group": {}
+        }
+      }
+    },
+    {
+      "tool": "check_allocation",
+      "arguments": "{\"assignments\":[{\"growing_area_id\":\"demo-raised-bed\",\"crop\":\"tomato\"},{\"growing_area_id\":\"demo-in-ground-area\",\"crop\":\"bean\"}]}",
+      "output": {
+        "checks": [
+          {
+            "growing_area_id": "demo-raised-bed",
+            "crop": "tomato",
+            "rotation_group": "nightshade",
+            "warning": true,
+            "repeated_years": [
+              2026
+            ],
+            "rotation_friendly_groups": [
+              "brassica",
+              "cucurbit",
+              "legume",
+              "allium",
+              "root",
+              "leafy"
+            ]
+          },
+          {
+            "growing_area_id": "demo-in-ground-area",
+            "crop": "bean",
+            "rotation_group": "legume",
+            "warning": true,
+            "repeated_years": [
+              2026
+            ],
+            "rotation_friendly_groups": [
+              "nightshade",
+              "brassica",
+              "cucurbit",
+              "allium",
+              "root",
+              "leafy"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "tool": "check_allocation",
+      "arguments": "{\"assignments\":[{\"growing_area_id\":\"demo-raised-bed\",\"crop\":\"bean\"},{\"growing_area_id\":\"demo-in-ground-area\",\"crop\":\"tomato\"}]}",
+      "output": {
+        "checks": [
+          {
+            "growing_area_id": "demo-raised-bed",
+            "crop": "bean",
+            "rotation_group": "legume",
+            "warning": false
+          },
+          {
+            "growing_area_id": "demo-in-ground-area",
+            "crop": "tomato",
+            "rotation_group": "nightshade",
+            "warning": false
+          }
+        ]
+      }
+    }
+  ]
+}

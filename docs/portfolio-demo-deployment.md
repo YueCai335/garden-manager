@@ -29,8 +29,8 @@ that begin with either `postgresql://` or `postgres://`.
 2. Render reads `render.yaml` and proposes the FastAPI web service.
 3. Enter the Supabase connection string as `DATABASE_URL`.
 4. Set `FRONTEND_ORIGINS` after the Vercel project has its `vercel.app` URL.
-5. Leave `OPENAI_API_KEY` empty and `AGENT_PUBLIC_RUN_LIMIT` at `0` until the
-   Allocation Assistant cost verification passes (see below).
+5. Leave `OPENAI_API_KEY` empty and `AGENT_PUBLIC_RUN_LIMIT` at `0`. Live
+   Allocation Assistant runs stay closed in the public demo (ADR-0057).
 6. Create the service and open `https://your-render-service.onrender.com/health`.
 
 The API runs Alembic migrations during startup. A successful health response
@@ -62,30 +62,26 @@ page request to finish, then refresh once when necessary.
 - AI Garden Note, Plant Health assessment, Plant Knowledge, and photo uploads
   show a clear local feature preview in the public demo. The working AI and
   photo workflows run in the local app.
-- The Allocation Assistant is the one AI workflow that can run publicly
-  (ADR-0056). It plans the fixed demo garden only, runs one request at a time,
-  and stops at the cumulative `AGENT_PUBLIC_RUN_LIMIT`. The limit does not
-  reset. The start command keeps one API worker so the one-at-a-time lock
-  holds.
+- The Allocation Assistant does not run live in the public demo
+  (ADR-0057). The API answers `provider_unavailable`, and the panel offers a
+  labelled recording of one real evaluation run. The public-run machinery from
+  ADR-0056 stays in place with the limit at `0`: the fixed demo garden, one
+  run at a time, a cumulative limit that never resets, and one API worker.
 
-## Opening the Allocation Assistant
+## Allocation Assistant Status
 
-Keep `AGENT_PUBLIC_RUN_LIMIT` at `0` until all of these are done:
+The cost verification from ADR-0056 has passed, but ADR-0057 keeps live public
+runs closed because the evaluation found misleading explanations. The results
+are in [docs/agent.md](agent.md). Reopening requires:
 
-1. In OpenAI, create a dedicated project and key, prepay US$5, and turn
-   auto-recharge off.
-2. Run the verification from ADR-0056 locally: the longest allowed input and
-   five tool-calling rounds. Compare each logged `input_tokens` with its
-   request `bytes` plus the 1,000-token allowance.
-3. If the allowance holds, set `OPENAI_API_KEY` and `AGENT_PUBLIC_RUN_LIMIT`
-   (150 in ADR-0056) in Render and redeploy. If it does not, keep the limit at
-   `0`, adjust the limits, and update ADR-0056 first.
+1. A new decision record that replaces ADR-0057, based on a new measurement
+   of explanation accuracy.
+2. A new paid budget. The current evaluation ledger is used up.
+3. Then, and only then, `OPENAI_API_KEY` and a non-zero
+   `AGENT_PUBLIC_RUN_LIMIT` in Render.
 
-Every public run increments one database row, `agent_run_budgets`. Check it
-with `SELECT used_runs FROM agent_run_budgets;` in Supabase.
-- The public demo has no account login. Use generic demonstration data only.
-- Supabase and Render free tiers can pause inactive services. Reopen the
-  health URL before sharing the demo link for an interview.
+Every public run would increment one database row, `agent_run_budgets`. Check
+it with `SELECT used_runs FROM agent_run_budgets;` in Supabase.
 
 ## Local AI Demonstration
 

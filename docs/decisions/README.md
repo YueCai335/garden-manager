@@ -98,7 +98,8 @@ changes, mark the old record as superseded and add a new record.
 | [ADR-0053](0053-keep-plant-layout-in-the-planting-area-inspector.md) | Keep plant layout in the planting-area inspector | Accepted |
 | [ADR-0054](0054-use-fixed-canvas-garden-plan-views.md) | Use fixed-canvas Garden Plan views | Accepted |
 | [ADR-0055](0055-use-automatic-sync-with-optimistic-locking.md) | Use automatic workspace sync with optimistic locking | Accepted |
-| [ADR-0056](0056-use-a-budgeted-tool-calling-agent-for-season-allocation.md) | Use a budgeted tool-calling agent for next-season allocation | Accepted |
+| [ADR-0056](0056-use-a-budgeted-tool-calling-agent-for-season-allocation.md) | Use a budgeted tool-calling agent for next-season allocation | Accepted; public run limit amended by ADR-0057 |
+| [ADR-0057](0057-keep-live-allocation-runs-closed-after-evaluation.md) | Keep live allocation runs closed in the public demo after evaluation | Accepted |
 
 ## Interview Use
 

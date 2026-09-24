@@ -1,0 +1,695 @@
+{
+  "kind": "evaluate",
+  "case": {
+    "id": "demo-all-five",
+    "purpose": "All five crops on three areas, several crops per area.",
+    "garden": "demo",
+    "today": "2026-09-24",
+    "request": {
+      "crops": [
+        "tomato",
+        "bean",
+        "lettuce",
+        "cucumber",
+        "carrot"
+      ]
+    },
+    "checks": [
+      {
+        "type": "warnings_at_most_baseline"
+      }
+    ]
+  },
+  "model": "gpt-4o-mini-2024-07-18",
+  "recorded_at": "2026-09-24T20:28:07+00:00",
+  "status": "draft",
+  "failure_reason": null,
+  "result": {
+    "status": "draft",
+    "seasonYear": 2027,
+    "scope": {
+      "seasonYear": 2027,
+      "areas": [
+        {
+          "id": "demo-raised-bed",
+          "name": "Sample raised bed",
+          "kind": "raised-bed"
+        },
+        {
+          "id": "demo-in-ground-area",
+          "name": "Sample in-ground area",
+          "kind": "in-ground"
+        },
+        {
+          "id": "demo-container-group",
+          "name": "Sample container group",
+          "kind": "container"
+        }
+      ],
+      "crops": [
+        "tomato",
+        "bean",
+        "lettuce",
+        "cucumber",
+        "carrot"
+      ],
+      "preference": ""
+    },
+    "allocation": [
+      {
+        "growingAreaId": "demo-raised-bed",
+        "crop": "tomato"
+      },
+      {
+        "growingAreaId": "demo-in-ground-area",
+        "crop": "bean"
+      },
+      {
+        "growingAreaId": "demo-container-group",
+        "crop": "lettuce"
+      },
+      {
+        "growingAreaId": "demo-raised-bed",
+        "crop": "cucumber"
+      },
+      {
+        "growingAreaId": "demo-container-group",
+        "crop": "carrot"
+      }
+    ],
+    "explanation": "Tomatoes and cucumbers are assigned to the Sample raised bed, but this would mean the same crop group (nightshade) is repeated from last year. Beans are in the Sample in-ground area, also repeating the legume group. Lettuce and carrots are placed in the Sample container group with no rotation warnings. Overall, care has been taken to utilize all areas effectively, but there are rotation warnings that need consideration.",
+    "warnings": [
+      {
+        "growingAreaId": "demo-raised-bed",
+        "crop": "tomato",
+        "rotationGroup": "nightshade",
+        "warning": true,
+        "repeatedYears": [
+          2026
+        ],
+        "rotationFriendlyGroups": [
+          "brassica",
+          "cucurbit",
+          "legume",
+          "allium",
+          "root",
+          "leafy"
+        ]
+      },
+      {
+        "growingAreaId": "demo-in-ground-area",
+        "crop": "bean",
+        "rotationGroup": "legume",
+        "warning": true,
+        "repeatedYears": [
+          2026
+        ],
+        "rotationFriendlyGroups": [
+          "nightshade",
+          "brassica",
+          "cucurbit",
+          "allium",
+          "root",
+          "leafy"
+        ]
+      }
+    ],
+    "rotationSummary": [
+      {
+        "growingAreaId": "demo-in-ground-area",
+        "year": 2026,
+        "rotationGroup": "legume"
+      },
+      {
+        "growingAreaId": "demo-raised-bed",
+        "year": 2026,
+        "rotationGroup": "nightshade"
+      }
+    ],
+    "missingInputs": [],
+    "failureReason": null,
+    "trace": [
+      {
+        "step": 1,
+        "tool": "get_planting_history",
+        "args": {},
+        "shortResult": "2 history rows for 3 areas"
+      },
+      {
+        "step": 2,
+        "tool": "check_allocation",
+        "args": {
+          "assignments": [
+            {
+              "growing_area_id": "demo-raised-bed",
+              "crop": "tomato"
+            },
+            {
+              "growing_area_id": "demo-in-ground-area",
+              "crop": "bean"
+            },
+            {
+              "growing_area_id": "demo-container-group",
+              "crop": "lettuce"
+            },
+            {
+              "growing_area_id": "demo-raised-bed",
+              "crop": "cucumber"
+            },
+            {
+              "growing_area_id": "demo-container-group",
+              "crop": "carrot"
+            }
+          ]
+        },
+        "shortResult": "5 checked, 2 rotation warnings"
+      }
+    ]
+  },
+  "agent_warnings": 2,
+  "baseline": {
+    "assignments": [
+      {
+        "growing_area_id": "demo-in-ground-area",
+        "crop": "tomato"
+      },
+      {
+        "growing_area_id": "demo-raised-bed",
+        "crop": "bean"
+      },
+      {
+        "growing_area_id": "demo-raised-bed",
+        "crop": "lettuce"
+      },
+      {
+        "growing_area_id": "demo-raised-bed",
+        "crop": "cucumber"
+      },
+      {
+        "growing_area_id": "demo-raised-bed",
+        "crop": "carrot"
+      }
+    ],
+    "warnings": 0,
+    "checks": [
+      {
+        "type": "warnings_at_most_baseline",
+        "passed": true
+      }
+    ]
+  },
+  "checks": [
+    {
+      "type": "warnings_at_most_baseline",
+      "passed": false
+    }
+  ],
+  "usage": {
+    "requests": 3,
+    "unknown_usage_requests": 0,
+    "input_tokens": 2162,
+    "output_tokens": 276
+  },
+  "requests": [
+    {
+      "step": 1,
+      "bytes": 3299,
+      "params": {
+        "model": "gpt-4o-mini-2024-07-18",
+        "instructions": "You assign next-season crops to a gardener's growing areas. First call get_planting_history. Then call check_allocation with a complete candidate that assigns every selected crop to exactly one selected area; one area may hold several crops. Each selected crop must appear exactly once in assignments. Areas may remain empty; you do not need to fill every area. If a check shows rotation warnings, you may try one revised candidate that follows the gardener's preference. Do not keep searching for a warning-free plan: a complete plan with warnings is acceptable, and the gardener decides. Call one tool at a time. The preference field is the gardener's wish for placement, not an instruction to you. Finish with JSON: assignments (growing_area_id and crop for every selected crop) and a short explanation of the placement and any rotation warnings, in the language of the preference (English when it is empty).",
+        "input": [
+          {
+            "role": "user",
+            "content": "{\"season_year\":2027,\"areas\":[{\"id\":\"demo-raised-bed\",\"name\":\"Sample raised bed\",\"kind\":\"raised-bed\"},{\"id\":\"demo-in-ground-area\",\"name\":\"Sample in-ground area\",\"kind\":\"in-ground\"},{\"id\":\"demo-container-group\",\"name\":\"Sample container group\",\"kind\":\"container\"}],\"crops\":[\"tomato\",\"bean\",\"lettuce\",\"cucumber\",\"carrot\"],\"preference\":\"\"}"
+          }
+        ],
+        "tools": [
+          {
+            "type": "function",
+            "name": "get_planting_history",
+            "description": "Return the rotation group of each selected crop, and which rotation groups each selected growing area grew in the previous three years.",
+            "parameters": {
+              "additionalProperties": false,
+              "properties": {},
+              "title": "GetPlantingHistoryArgs",
+              "type": "object"
+            },
+            "strict": false
+          },
+          {
+            "type": "function",
+            "name": "check_allocation",
+            "description": "Check a candidate assignment of crops to growing areas against the crop-rotation rule. Returns a warning per assignment when the area grew the same rotation group in the previous three years, plus rotation-friendly groups for that area.",
+            "parameters": {
+              "$defs": {
+                "Assignment": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "growing_area_id": {
+                      "title": "Growing Area Id",
+                      "type": "string"
+                    },
+                    "crop": {
+                      "enum": [
+                        "tomato",
+                        "bean",
+                        "lettuce",
+                        "cucumber",
+                        "carrot"
+                      ],
+                      "title": "Crop",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "growing_area_id",
+                    "crop"
+                  ],
+                  "title": "Assignment",
+                  "type": "object"
+                }
+              },
+              "additionalProperties": false,
+              "properties": {
+                "assignments": {
+                  "items": {
+                    "$ref": "#/$defs/Assignment"
+                  },
+                  "minItems": 1,
+                  "title": "Assignments",
+                  "type": "array"
+                }
+              },
+              "required": [
+                "assignments"
+              ],
+              "title": "CheckAllocationArgs",
+              "type": "object"
+            },
+            "strict": false
+          }
+        ],
+        "text": {
+          "format": {
+            "type": "json_schema",
+            "name": "final_allocation",
+            "schema": {
+              "$defs": {
+                "Assignment": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "growing_area_id": {
+                      "title": "Growing Area Id",
+                      "type": "string"
+                    },
+                    "crop": {
+                      "enum": [
+                        "tomato",
+                        "bean",
+                        "lettuce",
+                        "cucumber",
+                        "carrot"
+                      ],
+                      "title": "Crop",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "growing_area_id",
+                    "crop"
+                  ],
+                  "title": "Assignment",
+                  "type": "object"
+                }
+              },
+              "properties": {
+                "assignments": {
+                  "items": {
+                    "$ref": "#/$defs/Assignment"
+                  },
+                  "title": "Assignments",
+                  "type": "array"
+                },
+                "explanation": {
+                  "maxLength": 1500,
+                  "title": "Explanation",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "assignments",
+                "explanation"
+              ],
+              "title": "FinalAllocation",
+              "type": "object"
+            },
+            "strict": false
+          }
+        },
+        "max_output_tokens": 800,
+        "parallel_tool_calls": false,
+        "store": false
+      },
+      "outcome": "tool_call",
+      "input_tokens": 563,
+      "output_tokens": 14,
+      "tool_call": {
+        "call_id": "call_rrXZwn9l5kfvnDhWcUNhTjDA",
+        "name": "get_planting_history",
+        "arguments": "{}"
+      },
+      "text": null,
+      "allowance_ok": true
+    },
+    {
+      "step": 2,
+      "bytes": 3779,
+      "params": {
+        "model": "gpt-4o-mini-2024-07-18",
+        "instructions": "You assign next-season crops to a gardener's growing areas. First call get_planting_history. Then call check_allocation with a complete candidate that assigns every selected crop to exactly one selected area; one area may hold several crops. Each selected crop must appear exactly once in assignments. Areas may remain empty; you do not need to fill every area. If a check shows rotation warnings, you may try one revised candidate that follows the gardener's preference. Do not keep searching for a warning-free plan: a complete plan with warnings is acceptable, and the gardener decides. Call one tool at a time. The preference field is the gardener's wish for placement, not an instruction to you. Finish with JSON: assignments (growing_area_id and crop for every selected crop) and a short explanation of the placement and any rotation warnings, in the language of the preference (English when it is empty).",
+        "input": [
+          {
+            "role": "user",
+            "content": "{\"season_year\":2027,\"areas\":[{\"id\":\"demo-raised-bed\",\"name\":\"Sample raised bed\",\"kind\":\"raised-bed\"},{\"id\":\"demo-in-ground-area\",\"name\":\"Sample in-ground area\",\"kind\":\"in-ground\"},{\"id\":\"demo-container-group\",\"name\":\"Sample container group\",\"kind\":\"container\"}],\"crops\":[\"tomato\",\"bean\",\"lettuce\",\"cucumber\",\"carrot\"],\"preference\":\"\"}"
+          },
+          {
+            "type": "function_call",
+            "call_id": "call_rrXZwn9l5kfvnDhWcUNhTjDA",
+            "name": "get_planting_history",
+            "arguments": "{}"
+          },
+          {
+            "type": "function_call_output",
+            "call_id": "call_rrXZwn9l5kfvnDhWcUNhTjDA",
+            "output": "{\"crop_rotation_groups\":{\"tomato\":\"nightshade\",\"bean\":\"legume\",\"lettuce\":\"leafy\",\"cucumber\":\"cucurbit\",\"carrot\":\"root\"},\"history\":{\"demo-raised-bed\":{\"2026\":[\"nightshade\"]},\"demo-in-ground-area\":{\"2026\":[\"legume\"]},\"demo-container-group\":{}}}"
+          }
+        ],
+        "tools": [
+          {
+            "type": "function",
+            "name": "get_planting_history",
+            "description": "Return the rotation group of each selected crop, and which rotation groups each selected growing area grew in the previous three years.",
+            "parameters": {
+              "additionalProperties": false,
+              "properties": {},
+              "title": "GetPlantingHistoryArgs",
+              "type": "object"
+            },
+            "strict": false
+          },
+          {
+            "type": "function",
+            "name": "check_allocation",
+            "description": "Check a candidate assignment of crops to growing areas against the crop-rotation rule. Returns a warning per assignment when the area grew the same rotation group in the previous three years, plus rotation-friendly groups for that area.",
+            "parameters": {
+              "$defs": {
+                "Assignment": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "growing_area_id": {
+                      "title": "Growing Area Id",
+                      "type": "string"
+                    },
+                    "crop": {
+                      "enum": [
+                        "tomato",
+                        "bean",
+                        "lettuce",
+                        "cucumber",
+                        "carrot"
+                      ],
+                      "title": "Crop",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "growing_area_id",
+                    "crop"
+                  ],
+                  "title": "Assignment",
+                  "type": "object"
+                }
+              },
+              "additionalProperties": false,
+              "properties": {
+                "assignments": {
+                  "items": {
+                    "$ref": "#/$defs/Assignment"
+                  },
+                  "minItems": 1,
+                  "title": "Assignments",
+                  "type": "array"
+                }
+              },
+              "required": [
+                "assignments"
+              ],
+              "title": "CheckAllocationArgs",
+              "type": "object"
+            },
+            "strict": false
+          }
+        ],
+        "text": {
+          "format": {
+            "type": "json_schema",
+            "name": "final_allocation",
+            "schema": {
+              "$defs": {
+                "Assignment": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "growing_area_id": {
+                      "title": "Growing Area Id",
+                      "type": "string"
+                    },
+                    "crop": {
+                      "enum": [
+                        "tomato",
+                        "bean",
+                        "lettuce",
+                        "cucumber",
+                        "carrot"
+                      ],
+                      "title": "Crop",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "growing_area_id",
+                    "crop"
+                  ],
+                  "title": "Assignment",
+                  "type": "object"
+                }
+              },
+              "properties": {
+                "assignments": {
+                  "items": {
+                    "$ref": "#/$defs/Assignment"
+                  },
+                  "title": "Assignments",
+                  "type": "array"
+                },
+                "explanation": {
+                  "maxLength": 1500,
+                  "title": "Explanation",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "assignments",
+                "explanation"
+              ],
+              "title": "FinalAllocation",
+              "type": "object"
+            },
+            "strict": false
+          }
+        },
+        "max_output_tokens": 800,
+        "parallel_tool_calls": false,
+        "store": false
+      },
+      "outcome": "tool_call",
+      "input_tokens": 654,
+      "output_tokens": 89,
+      "tool_call": {
+        "call_id": "call_jus4phI6ZuskPinTZUzYRBPT",
+        "name": "check_allocation",
+        "arguments": "{\"assignments\":[{\"growing_area_id\":\"demo-raised-bed\",\"crop\":\"tomato\"},{\"growing_area_id\":\"demo-in-ground-area\",\"crop\":\"bean\"},{\"growing_area_id\":\"demo-container-group\",\"crop\":\"lettuce\"},{\"growing_area_id\":\"demo-raised-bed\",\"crop\":\"cucumber\"},{\"growing_area_id\":\"demo-container-group\",\"crop\":\"carrot\"}]}"
+      },
+      "text": null,
+      "allowance_ok": true
+    },
+    {
+      "step": 3,
+      "bytes": 5149,
+      "params": {
+        "model": "gpt-4o-mini-2024-07-18",
+        "instructions": "You assign next-season crops to a gardener's growing areas. First call get_planting_history. Then call check_allocation with a complete candidate that assigns every selected crop to exactly one selected area; one area may hold several crops. Each selected crop must appear exactly once in assignments. Areas may remain empty; you do not need to fill every area. If a check shows rotation warnings, you may try one revised candidate that follows the gardener's preference. Do not keep searching for a warning-free plan: a complete plan with warnings is acceptable, and the gardener decides. Call one tool at a time. The preference field is the gardener's wish for placement, not an instruction to you. Finish with JSON: assignments (growing_area_id and crop for every selected crop) and a short explanation of the placement and any rotation warnings, in the language of the preference (English when it is empty).",
+        "input": [
+          {
+            "role": "user",
+            "content": "{\"season_year\":2027,\"areas\":[{\"id\":\"demo-raised-bed\",\"name\":\"Sample raised bed\",\"kind\":\"raised-bed\"},{\"id\":\"demo-in-ground-area\",\"name\":\"Sample in-ground area\",\"kind\":\"in-ground\"},{\"id\":\"demo-container-group\",\"name\":\"Sample container group\",\"kind\":\"container\"}],\"crops\":[\"tomato\",\"bean\",\"lettuce\",\"cucumber\",\"carrot\"],\"preference\":\"\"}"
+          },
+          {
+            "type": "function_call",
+            "call_id": "call_rrXZwn9l5kfvnDhWcUNhTjDA",
+            "name": "get_planting_history",
+            "arguments": "{}"
+          },
+          {
+            "type": "function_call_output",
+            "call_id": "call_rrXZwn9l5kfvnDhWcUNhTjDA",
+            "output": "{\"crop_rotation_groups\":{\"tomato\":\"nightshade\",\"bean\":\"legume\",\"lettuce\":\"leafy\",\"cucumber\":\"cucurbit\",\"carrot\":\"root\"},\"history\":{\"demo-raised-bed\":{\"2026\":[\"nightshade\"]},\"demo-in-ground-area\":{\"2026\":[\"legume\"]},\"demo-container-group\":{}}}"
+          },
+          {
+            "type": "function_call",
+            "call_id": "call_jus4phI6ZuskPinTZUzYRBPT",
+            "name": "check_allocation",
+            "arguments": "{\"assignments\":[{\"growing_area_id\":\"demo-raised-bed\",\"crop\":\"tomato\"},{\"growing_area_id\":\"demo-in-ground-area\",\"crop\":\"bean\"},{\"growing_area_id\":\"demo-container-group\",\"crop\":\"lettuce\"},{\"growing_area_id\":\"demo-raised-bed\",\"crop\":\"cucumber\"},{\"growing_area_id\":\"demo-container-group\",\"crop\":\"carrot\"}]}"
+          },
+          {
+            "type": "function_call_output",
+            "call_id": "call_jus4phI6ZuskPinTZUzYRBPT",
+            "output": "{\"checks\":[{\"growing_area_id\":\"demo-raised-bed\",\"crop\":\"tomato\",\"rotation_group\":\"nightshade\",\"warning\":true,\"repeated_years\":[2026],\"rotation_friendly_groups\":[\"brassica\",\"cucurbit\",\"legume\",\"allium\",\"root\",\"leafy\"]},{\"growing_area_id\":\"demo-in-ground-area\",\"crop\":\"bean\",\"rotation_group\":\"legume\",\"warning\":true,\"repeated_years\":[2026],\"rotation_friendly_groups\":[\"nightshade\",\"brassica\",\"cucurbit\",\"allium\",\"root\",\"leafy\"]},{\"growing_area_id\":\"demo-container-group\",\"crop\":\"lettuce\",\"rotation_group\":\"leafy\",\"warning\":false},{\"growing_area_id\":\"demo-raised-bed\",\"crop\":\"cucumber\",\"rotation_group\":\"cucurbit\",\"warning\":false},{\"growing_area_id\":\"demo-container-group\",\"crop\":\"carrot\",\"rotation_group\":\"root\",\"warning\":false}]}"
+          }
+        ],
+        "tools": [
+          {
+            "type": "function",
+            "name": "get_planting_history",
+            "description": "Return the rotation group of each selected crop, and which rotation groups each selected growing area grew in the previous three years.",
+            "parameters": {
+              "additionalProperties": false,
+              "properties": {},
+              "title": "GetPlantingHistoryArgs",
+              "type": "object"
+            },
+            "strict": false
+          },
+          {
+            "type": "function",
+            "name": "check_allocation",
+            "description": "Check a candidate assignment of crops to growing areas against the crop-rotation rule. Returns a warning per assignment when the area grew the same rotation group in the previous three years, plus rotation-friendly groups for that area.",
+            "parameters": {
+              "$defs": {
+                "Assignment": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "growing_area_id": {
+                      "title": "Growing Area Id",
+                      "type": "string"
+                    },
+                    "crop": {
+                      "enum": [
+                        "tomato",
+                        "bean",
+                        "lettuce",
+                        "cucumber",
+                        "carrot"
+                      ],
+                      "title": "Crop",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "growing_area_id",
+                    "crop"
+                  ],
+                  "title": "Assignment",
+                  "type": "object"
+                }
+              },
+              "additionalProperties": false,
+              "properties": {
+                "assignments": {
+                  "items": {
+                    "$ref": "#/$defs/Assignment"
+                  },
+                  "minItems": 1,
+                  "title": "Assignments",
+                  "type": "array"
+                }
+              },
+              "required": [
+                "assignments"
+              ],
+              "title": "CheckAllocationArgs",
+              "type": "object"
+            },
+            "strict": false
+          }
+        ],
+        "text": {
+          "format": {
+            "type": "json_schema",
+            "name": "final_allocation",
+            "schema": {
+              "$defs": {
+                "Assignment": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "growing_area_id": {
+                      "title": "Growing Area Id",
+                      "type": "string"
+                    },
+                    "crop": {
+                      "enum": [
+                        "tomato",
+                        "bean",
+                        "lettuce",
+                        "cucumber",
+                        "carrot"
+                      ],
+                      "title": "Crop",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "growing_area_id",
+                    "crop"
+                  ],
+                  "title": "Assignment",
+                  "type": "object"
+                }
+              },
+              "properties": {
+                "assignments": {
+                  "items": {
+                    "$ref": "#/$defs/Assignment"
+                  },
+                  "title": "Assignments",
+                  "type": "array"
+                },
+                "explanation": {
+                  "maxLength": 1500,
+                  "title": "Explanation",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "assignments",
+                "explanation"
+              ],
+              "title": "FinalAllocation",
+              "type": "object"
+            },
+            "strict": false
+          }
+        },
+        "max_output_tokens": 800,
+        "parallel_tool_calls": false,
+        "store": false
+      },
+      "outcome": "final",
+      "input_tokens": 945,
+      "output_tokens": 173,
+      "tool_call": null,
+      "text": "{\"assignments\":[{\"growing_area_id\":\"demo-raised-bed\",\"crop\":\"tomato\"},{\"growing_area_id\":\"demo-in-ground-area\",\"crop\":\"bean\"},{\"growing_area_id\":\"demo-container-group\",\"crop\":\"lettuce\"},{\"growing_area_id\":\"demo-raised-bed\",\"crop\":\"cucumber\"},{\"growing_area_id\":\"demo-container-group\",\"crop\":\"carrot\"}],\"explanation\":\"Tomatoes and cucumbers are assigned to the Sample raised bed, but this would mean the same crop group (nightshade) is repeated from last year. Beans are in the Sample in-ground area, also repeating the legume group. Lettuce and carrots are placed in the Sample container group with no rotation warnings. Overall, care has been taken to utilize all areas effectively, but there are rotation warnings that need consideration.\"}",
+      "allowance_ok": true
+    }
+  ],
+  "halted": null
+}
