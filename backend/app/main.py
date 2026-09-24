@@ -1,4 +1,7 @@
+import logging
 import os
+from collections.abc import Iterator
+from datetime import date
 from pathlib import Path
 from uuid import uuid4
 
@@ -7,11 +10,31 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 
+from .agent.allocation import AllocationRequest
+from .agent.loop import ModelClient
+from .agent.openai_model import DEFAULT_MODEL, OpenAIAllocationModel
+from .agent.service import camel_case_response, season_allocation
 from .ai import CareNoteExtractor, CareNoteProviderError, EmbeddingClient, PlantHealthAssessor, PlantKnowledgeAnswerer, configured_care_note_extractor, configured_embedding_client, configured_plant_health_assessor, configured_plant_knowledge_answerer
 from .database import get_session
-from .schemas import CareNoteDraftRequest, CareNoteDraftResponse, HealthResponse, PlantHealthAssessmentRequest, PlantHealthAssessmentResponse, PlantKnowledgeAnswer, PlantKnowledgeQuestion, RotationGuidanceRequest, RotationGuidanceResponse, RuntimeConfigResponse, WorkspaceImport, WorkspaceSave
+from .schemas import CareNoteDraftRequest, CareNoteDraftResponse, HealthResponse, PlantHealthAssessmentRequest, PlantHealthAssessmentResponse, PlantKnowledgeAnswer, PlantKnowledgeQuestion, RotationGuidanceRequest, RotationGuidanceResponse, RuntimeConfigResponse, SeasonAllocationRequest, WorkspaceImport, WorkspaceSave
 from .service import care_note_draft, import_workspace, load_workspace, plant_health_assessment, plant_knowledge_answer, rotation_guidance, update_workspace, workspace_response
 
+def configure_agent_logging() -> None:
+    """Emit the agent's per-request usage records (ADR-0056 cost check).
+
+    Uvicorn configures only its own loggers and leaves the root at WARNING, so
+    INFO records from app.agent would otherwise be dropped.
+    """
+    agent_logger = logging.getLogger("app.agent")
+    agent_logger.setLevel(logging.INFO)
+    if not any(handler.get_name() == "app.agent" for handler in agent_logger.handlers):
+        handler = logging.StreamHandler()
+        handler.set_name("app.agent")
+        handler.setFormatter(logging.Formatter("%(levelname)s %(name)s %(message)s"))
+        agent_logger.addHandler(handler)
+
+
+configure_agent_logging()
 app = FastAPI(title="Garden Manager API", version="0.1.0")
 uploads_dir = Path(os.getenv("UPLOADS_DIR", "/tmp/sun-aware-garden-planner-uploads"))
 uploads_dir.mkdir(parents=True, exist_ok=True)
@@ -72,6 +95,20 @@ def get_plant_knowledge_answerer() -> PlantKnowledgeAnswerer:
         return configured_plant_knowledge_answerer()
     except CareNoteProviderError as error:
         raise HTTPException(status_code=503, detail=str(error)) from error
+
+
+def get_season_allocation_model() -> Iterator[ModelClient | None]:
+    # The agent uses OpenAI regardless of AI_PROVIDER, with its own pinned model.
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        yield None
+        return
+    model = OpenAIAllocationModel(api_key, os.getenv("AGENT_OPENAI_MODEL", DEFAULT_MODEL))
+    try:
+        yield model
+    finally:
+        # Each request builds its own client; close its connection pool.
+        model.close()
 
 
 @app.put("/workspaces/{workspace_id}/import", status_code=status.HTTP_201_CREATED, tags=["workspaces"])
@@ -181,6 +218,30 @@ def create_plant_knowledge_answer(
 ):
     require_local_feature("AI assistance")
     return plant_knowledge_answer(session, workspace_id, payload, embedding_client, answerer)
+
+
+@app.post("/workspaces/{workspace_id}/gardens/{garden_id}/ai/season-allocation", tags=["AI"])
+def create_season_allocation(
+    workspace_id: str,
+    garden_id: str,
+    payload: SeasonAllocationRequest,
+    session: Session = Depends(get_session),
+    model: ModelClient | None = Depends(get_season_allocation_model),
+):
+    # Unlike the other AI endpoints, this one runs in the portfolio demo too,
+    # on the fixed demo garden and a cumulative run limit (ADR-0056).
+    result = season_allocation(
+        session,
+        workspace_id,
+        garden_id,
+        AllocationRequest(
+            crops=payload.crops, preference=payload.preference, growing_area_ids=payload.growing_area_ids
+        ),
+        model,
+        public=is_portfolio_demo(),
+        today=date.today(),
+    )
+    return camel_case_response(result)
 
 
 @app.put("/workspaces/{workspace_id}", tags=["workspaces"])

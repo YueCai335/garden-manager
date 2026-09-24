@@ -260,3 +260,12 @@ class WorkspaceCareTask(Base):
     note: Mapped[str] = mapped_column(Text)
     repeat_interval_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
     workspace: Mapped[Workspace] = relationship(back_populates="care_tasks")
+
+
+class AgentRunBudget(Base):
+    """Cumulative public run counter for one AI agent (ADR-0056). One row per budget."""
+
+    __tablename__ = "agent_run_budgets"
+
+    name: Mapped[str] = mapped_column(String(64), primary_key=True)
+    used_runs: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0", default=0)

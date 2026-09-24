@@ -343,3 +343,13 @@ class HealthResponse(BaseModel):
 
 class RuntimeConfigResponse(BaseModel):
     portfolio_demo: bool = Field(serialization_alias="portfolioDemo")
+
+
+class SeasonAllocationRequest(ApiModel):
+    # Loose on purpose: unsupported crops or a long preference come back as
+    # needs_input from the agent. The caps here only stop oversized payloads.
+    crops: list[str] = Field(default_factory=list, max_length=10)
+    preference: str = Field(default="", max_length=1000)
+    growing_area_ids: list[str] | None = Field(
+        default=None, max_length=10, serialization_alias="growingAreaIds", validation_alias="growingAreaIds"
+    )

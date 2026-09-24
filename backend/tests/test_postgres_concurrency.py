@@ -10,7 +10,8 @@ import threading
 from sqlalchemy import select, update
 
 from app import database
-from app.models import Workspace
+from app.agent.budget import PUBLIC_BUDGET_NAME, reserve_public_run
+from app.models import AgentRunBudget, Workspace
 from app.service import import_workspace
 from app.schemas import WorkspaceImport
 from tests.conftest import requires_postgres
@@ -77,3 +78,26 @@ def test_save_endpoint_conflict_round_trips_on_postgres(client):
     assert response.status_code == 409
     assert response.json()["detail"]["currentRevision"] == 1
     assert client.get("/workspaces/local-workspace-1").json()["gardens"][0]["name"] == "Saved first"
+
+
+@requires_postgres
+def test_two_public_runs_racing_for_the_last_run_only_one_wins():
+    with database.SessionLocal() as session:
+        session.add(AgentRunBudget(name=PUBLIC_BUDGET_NAME, used_runs=4))
+        session.commit()
+    start = threading.Barrier(2)
+    results: list[bool] = []
+
+    def reserve():
+        start.wait()
+        results.append(reserve_public_run(limit=5))
+
+    workers = [threading.Thread(target=reserve) for _ in range(2)]
+    for worker in workers:
+        worker.start()
+    for worker in workers:
+        worker.join(timeout=5.0)
+
+    assert sorted(results) == [False, True]
+    with database.SessionLocal() as session:
+        assert session.scalar(select(AgentRunBudget.used_runs).where(AgentRunBudget.name == PUBLIC_BUDGET_NAME)) == 5

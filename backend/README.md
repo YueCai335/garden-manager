@@ -64,6 +64,21 @@ rebuild the API container. Set `AI_PROVIDER=openai` plus `OPENAI_API_KEY` to
 use OpenAI later. The endpoint returns a draft; the frontend saves a reviewed
 draft with the existing workspace update endpoint.
 
+`POST /workspaces/{workspaceId}/gardens/{gardenId}/ai/season-allocation`
+runs the next-season Allocation Assistant (ADR-0056). The body contains
+`crops` (keys from `tomato`, `bean`, `lettuce`, `cucumber`, `carrot`), an
+optional `preference` of up to 200 characters, and optional `growingAreaIds`
+(up to three). The agent calls two read-only tools, and the server re-checks
+its final allocation with the crop-rotation rule. The response `status` is
+`draft`, `needs_input`, `budget_exhausted`, `provider_unavailable`, or
+`generation_failed`, together with the scope, rotation summary, warnings, and
+a tool-call trace. The endpoint never writes garden data. It always uses
+OpenAI: set `OPENAI_API_KEY`, and optionally `AGENT_OPENAI_MODEL` (default
+`gpt-4o-mini-2024-07-18`). Without a key it returns `provider_unavailable`.
+In `PORTFOLIO_DEMO_MODE` it plans only the fixed demo garden, allows one run
+at a time, and counts each run against `AGENT_PUBLIC_RUN_LIMIT` (default 0,
+which keeps public runs closed).
+
 `POST /workspaces/{workspaceId}/gardens/{gardenId}/plant-health/photos`
 stores one JPEG, PNG, or WebP photo in the local Docker photo volume and
 returns its upload path. The request accepts files up to 10 MB.
