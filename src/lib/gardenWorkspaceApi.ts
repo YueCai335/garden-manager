@@ -1,4 +1,5 @@
 import type { CareEventTargetScope, CareEventType, GardenWorkspace, GrowingAreaKind, HealthAssessment, HealthSeverity, PlantingCropFamily } from "@/lib/gardenWorkspace";
+import type { SeasonAllocationResult } from "@/lib/seasonAllocation";
 
 const apiBaseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000").replace(/\/$/, "");
 
@@ -204,4 +205,50 @@ export async function askPlantKnowledge(
     throw new Error(detail.detail ?? "The garden server could not answer this question.");
   }
   return response.json() as Promise<PlantKnowledgeAnswer>;
+}
+
+export class SeasonAllocationError extends Error {
+  status?: number;
+
+  constructor(message: string, status?: number) {
+    super(message);
+    this.name = "SeasonAllocationError";
+    this.status = status;
+  }
+}
+
+/** Ask the Allocation Assistant for a draft. One response per run; the trace arrives complete. */
+export async function createSeasonAllocation(
+  workspaceId: string,
+  gardenId: string,
+  body: { crops: string[]; preference: string; growingAreaIds?: string[] },
+  signal?: AbortSignal,
+): Promise<SeasonAllocationResult> {
+  let response: Response;
+  try {
+    response = await fetch(
+      `${apiBaseUrl}/workspaces/${encodeURIComponent(workspaceId)}/gardens/${encodeURIComponent(gardenId)}/ai/season-allocation`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        signal,
+      },
+    );
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") throw error;
+    throw new SeasonAllocationError("The garden server could not be reached. Check the connection and try again.");
+  }
+  if (!response.ok) {
+    const detail = await response.json().catch(() => ({}));
+    const message =
+      response.status === 429 || response.status === 404
+        ? (typeof detail.detail === "string" ? detail.detail : undefined)
+        : undefined;
+    throw new SeasonAllocationError(
+      message ?? "The Allocation Assistant could not handle this request. Nothing was changed.",
+      response.status,
+    );
+  }
+  return response.json() as Promise<SeasonAllocationResult>;
 }

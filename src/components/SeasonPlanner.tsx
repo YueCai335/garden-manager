@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 
+import { AllocationAssistant, type AllocationConfirmOutcome } from "@/components/AllocationAssistant";
+import { usePortfolioDemoMode } from "@/components/PortfolioFeaturePreview";
 import {
   defaultPlantColor,
   gardenPlanViewport,
@@ -14,6 +16,7 @@ import {
   type PlannedPlanting,
   type PlantingCropFamily,
 } from "@/lib/gardenWorkspace";
+import type { AllocationInput, SeasonAllocationResult } from "@/lib/seasonAllocation";
 import { companionNotes } from "@/lib/seasonPlanner";
 
 type PlantChoice = {
@@ -26,10 +29,20 @@ type PlanChoice = Pick<PlantChoice, "plantType" | "cropFamily">;
 
 export function SeasonPlanner({
   gardens,
+  workspaceId,
+  isSynced,
   onSavePlan,
   onRemovePlan,
+  onConfirmAllocation,
 }: {
   gardens: Garden[];
+  workspaceId?: string;
+  isSynced: boolean;
+  onConfirmAllocation: (
+    gardenId: string,
+    draft: SeasonAllocationResult,
+    input: AllocationInput,
+  ) => AllocationConfirmOutcome;
   onSavePlan: (
     gardenId: string,
     growingAreaId: string,
@@ -46,6 +59,7 @@ export function SeasonPlanner({
     useState<GardenPlanViewMode>("growing-areas");
   const [choosingAreaKey, setChoosingAreaKey] = useState<string>();
   const [choices, setChoices] = useState<Record<string, PlantChoice>>({});
+  const isPortfolioDemo = usePortfolioDemoMode();
   const planningYear = new Date().getFullYear() + 1;
   const visibleGardens =
     gardenFilter === "all"
@@ -125,6 +139,13 @@ export function SeasonPlanner({
                 </div>
                 <span>{garden.growingAreas.length} planting areas</span>
               </div>
+              <AllocationAssistant
+                garden={garden}
+                isPortfolioDemo={isPortfolioDemo}
+                isSynced={isSynced}
+                onConfirm={onConfirmAllocation}
+                workspaceId={workspaceId}
+              />
               <SeasonGardenPreview
                 garden={garden}
                 planningYear={planningYear}

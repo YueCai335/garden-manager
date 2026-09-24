@@ -46,6 +46,14 @@ import {
   removeSeasonPlanPlanting,
 } from "@/lib/gardenOperations";
 import { type AiCareNoteDraft } from "@/lib/gardenWorkspaceApi";
+import {
+  appendAllocationToGarden,
+  isAllocationDraftStale,
+  nextSeasonYear,
+  type AllocationInput,
+  type SeasonAllocationResult,
+} from "@/lib/seasonAllocation";
+import type { AllocationConfirmOutcome } from "@/components/AllocationAssistant";
 import { isCalendarDate, plantGroupDisplayName } from "@/lib/careRecords";
 
 export { SERVER_WORKSPACE_STORAGE_KEY };
@@ -70,6 +78,7 @@ export function GardenWorkspace() {
   const {
     workspace,
     setWorkspace,
+    isSynced,
     isLoaded,
     storageSource,
     serverWorkspaceId,
@@ -95,6 +104,10 @@ export function GardenWorkspace() {
     onConfirm: () => void;
   }>();
   const gardenPlanHeadingRef = useRef<HTMLHeadingElement>(null);
+  // The newest rendered workspace, so a confirm click checks the draft
+  // against current data rather than the data the draft was shown with.
+  const latestWorkspaceRef = useRef(workspace);
+  latestWorkspaceRef.current = workspace;
   const careLogHeadingRef = useRef<HTMLHeadingElement>(null);
 
   const garden = workspace?.gardens.find(
@@ -478,6 +491,34 @@ export function GardenWorkspace() {
     setMessage(`${choice.plantType} added to the ${planningYear} plan.`);
   };
 
+  const confirmSeasonAllocation = (
+    gardenId: string,
+    draft: SeasonAllocationResult,
+    input: AllocationInput,
+  ): AllocationConfirmOutcome => {
+    // Re-read the season year and re-check the draft at the moment of the click.
+    const seasonYear = nextSeasonYear();
+    const current = latestWorkspaceRef.current?.gardens.find((candidate) => candidate.id === gardenId);
+    if (!current || isAllocationDraftStale(draft, current, input, seasonYear)) return { status: "stale" };
+    const { added, skipped } = appendAllocationToGarden(current, draft, createId);
+    // Apply to the newest state, so plan entries added meanwhile are kept and
+    // a repeated confirm skips what the first one added.
+    setWorkspace((latest) =>
+      latest
+        ? {
+            ...latest,
+            gardens: latest.gardens.map((candidate) =>
+              candidate.id === gardenId && !isAllocationDraftStale(draft, candidate, input, seasonYear)
+                ? appendAllocationToGarden(candidate, draft, createId).garden
+                : candidate,
+            ),
+          }
+        : latest,
+    );
+    setMessage(`Allocation Assistant: added ${added}, skipped ${skipped} in the ${seasonYear} plan.`);
+    return { status: "added", added, skipped, seasonYear };
+  };
+
   const removeSeasonPlanPlant = (
     gardenId: string,
     seasonYear: number,
@@ -616,8 +657,11 @@ export function GardenWorkspace() {
         ) : page.name === "seasonPlanner" ? (
           <SeasonPlanner
             gardens={workspace.gardens}
+            isSynced={isSynced}
+            onConfirmAllocation={confirmSeasonAllocation}
             onRemovePlan={removeSeasonPlanPlant}
             onSavePlan={saveSeasonPlanPlant}
+            workspaceId={serverWorkspaceId}
           />
         ) : page.name === "aiGardenNote" ? (
           <AiGardenNote
