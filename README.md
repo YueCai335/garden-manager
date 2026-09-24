@@ -33,6 +33,12 @@ plan the next season, and ask source-grounded plant questions.
 - **Applied AI:** Chinese and English care-note extraction, local RAG-backed
   Plant Knowledge answers, visible citations, and user review before records
   are saved.
+- **Tool-calling agent:** an Allocation Assistant that calls two read-only
+  tools, revises its plan from rotation feedback, and returns a draft the
+  gardener confirms. It has a hand-written loop, a byte-bounded cost per run,
+  and a paid evaluation against an enumerating baseline. The evaluation found
+  valid drafts in 10 of 10 cases, all automatic checks passed in 7 of 10, and
+  some explanations were inaccurate. See [the agent write-up](docs/agent.md).
 - **Reliable persistence:** automatic PostgreSQL sync, revision-checked saves,
   and explicit conflict resolution when another tab saves first.
 - **Full-stack delivery:** Next.js, FastAPI, PostgreSQL, Alembic, pgvector,
@@ -45,6 +51,8 @@ plan the next season, and ask source-grounded plant questions.
 Open the [live demo](https://garden-manager-demo.vercel.app), select **Load demo garden**,
 then walk through steps 4-6 below. Garden, Care, and Season Planner are available
 online; AI and photo workflows are shown as previews and run in the local app.
+In **Plan next season**, the Allocation Assistant does not run live online; it
+offers a labelled recording of one real evaluation run.
 The API sleeps on the free tier, so the first request can take about a minute.
 
 ### Local (full feature set, including AI)
@@ -167,6 +175,10 @@ pull requests and pushes to `main`.
 - The portfolio demo deploys Garden, Care, and Season Planner workflows on
   Vercel, Render, and Supabase. It uses generic data and keeps AI and photo
   features in the local app.
+- The Allocation Assistant is implemented and runs live in the local app with
+  an OpenAI key. The public demo keeps live runs closed and shows a recorded
+  example instead, because the evaluation found misleading explanations
+  ([ADR-0057](docs/decisions/0057-keep-live-allocation-runs-closed-after-evaluation.md)).
 - Plant Knowledge uses a small curated source set with visible citations. It
   provides educational guidance and requests more detail when evidence is weak.
 - Map-backed yard initialization and yard-wide sun analysis remain deferred
@@ -178,6 +190,7 @@ pull requests and pushes to `main`.
 - [Technical Architecture](docs/technical-architecture.md)
 - [Project Strategy](docs/project-strategy.md)
 - [AI and RAG Design](docs/ai-rag-agent-design.md)
+- [Allocation Assistant: A Small Tool-Calling Agent](docs/agent.md)
 - [Portfolio Demo Deployment](docs/portfolio-demo-deployment.md)
 - [Resume Positioning](docs/resume-positioning.md)
 - [Architecture Decision Records](docs/decisions/README.md)

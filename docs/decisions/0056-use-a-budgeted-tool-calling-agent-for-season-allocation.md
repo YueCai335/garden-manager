@@ -1,6 +1,6 @@
 # ADR-0056: Use a Budgeted Tool-Calling Agent for Next-Season Allocation
 
-- Status: Accepted
+- Status: Accepted; public run limit amended by [ADR-0057](0057-keep-live-allocation-runs-closed-after-evaluation.md)
 - Date: 2026-09-23
 - Amends: [ADR-0040](0040-use-vercel-render-and-supabase-for-the-portfolio-demo.md)
   for this one workflow

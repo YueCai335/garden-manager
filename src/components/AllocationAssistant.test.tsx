@@ -364,6 +364,27 @@ describe("AllocationAssistant", () => {
       },
     );
 
+    it("replays the committed recording by default: the real demo-tomato-bean run", async () => {
+      const user = userEvent.setup();
+      respondWith(draftResponse({ status: "provider_unavailable", allocation: [], trace: [] }));
+      renderPanel();
+
+      await fillAndPlan(user);
+      await user.click(await screen.findByRole("button", { name: "View example run" }));
+
+      const example = screen.getByRole("region", { name: "Example run" });
+      expect(example).toHaveTextContent("with gpt-4o-mini-2024-07-18 on the Demo Garden");
+      const steps = within(within(example).getByRole("region", { name: "Recorded agent steps" })).getAllByRole("listitem");
+      expect(steps.map((step) => step.querySelector(".allocation-trace-tool")?.textContent)).toEqual([
+        "Step 1 · get_planting_history",
+        "Step 2 · check_allocation",
+        "Step 3 · check_allocation",
+      ]);
+      expect(within(example).getByText("2 checked, 2 rotation warnings")).toBeInTheDocument();
+      expect(within(example).getByText("2 checked, 0 rotation warnings")).toBeInTheDocument();
+      expect(within(example).queryByRole("button")).not.toBeInTheDocument();
+    });
+
     it("is not offered for a draft, for missing input, or when no run has been recorded", async () => {
       const user = userEvent.setup();
       respondWith(draftResponse());
@@ -381,7 +402,7 @@ describe("AllocationAssistant", () => {
       second.unmount();
 
       respondWith(draftResponse({ status: "provider_unavailable", allocation: [] }));
-      renderPanel();
+      renderPanel({ exampleRun: null });
       await fillAndPlan(user);
       await screen.findByText("The AI planner is not available right now. No plan was created.");
       expect(screen.queryByRole("button", { name: "View example run" })).not.toBeInTheDocument();
