@@ -29,7 +29,9 @@ that begin with either `postgresql://` or `postgres://`.
 2. Render reads `render.yaml` and proposes the FastAPI web service.
 3. Enter the Supabase connection string as `DATABASE_URL`.
 4. Set `FRONTEND_ORIGINS` after the Vercel project has its `vercel.app` URL.
-5. Create the service and open `https://your-render-service.onrender.com/health`.
+5. Leave `OPENAI_API_KEY` empty and `AGENT_PUBLIC_RUN_LIMIT` at `0` until the
+   Allocation Assistant cost verification passes (see below).
+6. Create the service and open `https://your-render-service.onrender.com/health`.
 
 The API runs Alembic migrations during startup. A successful health response
 contains `{ "status": "ok" }`.
@@ -60,6 +62,27 @@ page request to finish, then refresh once when necessary.
 - AI Garden Note, Plant Health assessment, Plant Knowledge, and photo uploads
   show a clear local feature preview in the public demo. The working AI and
   photo workflows run in the local app.
+- The Allocation Assistant is the one AI workflow that can run publicly
+  (ADR-0056). It plans the fixed demo garden only, runs one request at a time,
+  and stops at the cumulative `AGENT_PUBLIC_RUN_LIMIT`. The limit does not
+  reset. The start command keeps one API worker so the one-at-a-time lock
+  holds.
+
+## Opening the Allocation Assistant
+
+Keep `AGENT_PUBLIC_RUN_LIMIT` at `0` until all of these are done:
+
+1. In OpenAI, create a dedicated project and key, prepay US$5, and turn
+   auto-recharge off.
+2. Run the verification from ADR-0056 locally: the longest allowed input and
+   five tool-calling rounds. Compare each logged `input_tokens` with its
+   request `bytes` plus the 1,000-token allowance.
+3. If the allowance holds, set `OPENAI_API_KEY` and `AGENT_PUBLIC_RUN_LIMIT`
+   (150 in ADR-0056) in Render and redeploy. If it does not, keep the limit at
+   `0`, adjust the limits, and update ADR-0056 first.
+
+Every public run increments one database row, `agent_run_budgets`. Check it
+with `SELECT used_runs FROM agent_run_budgets;` in Supabase.
 - The public demo has no account login. Use generic demonstration data only.
 - Supabase and Render free tiers can pause inactive services. Reopen the
   health URL before sharing the demo link for an interview.
