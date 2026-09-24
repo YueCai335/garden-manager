@@ -198,7 +198,10 @@ def test_allocation_rules_reject_out_of_scope_duplicate_and_missing_crops():
     assert errors(("bed", "tomato"), ("bed", "bean")) == []  # one area may hold several crops
     assert "not one of the selected areas" in errors(("pots", "tomato"), ("bed", "bean"))[0]
     assert "was not selected" in errors(("bed", "tomato"), ("bed", "bean"), ("bed", "lettuce"))[0]
-    assert "more than once" in errors(("bed", "tomato"), ("ground", "tomato"), ("bed", "bean"))[0]
+    assert errors(("bed", "tomato"), ("ground", "tomato"), ("bed", "bean")) == [
+        "Crop tomato appears more than once. Remove its duplicate assignments and keep exactly one "
+        "area for this crop. Areas may remain empty."
+    ]
     assert "not assigned" in errors(("bed", "tomato"))[0]
     assert errors(("bed", "tomato"), complete=False) == []  # a partial candidate may be checked
 
@@ -224,6 +227,14 @@ def test_assignment_checks_match_the_existing_rotation_rule():
         assert check.warning is expected["warning"] is True
         assert check.repeated_years == [2026]
         assert check.rotation_friendly_groups == expected["rotation_friendly_crop_families"]
+
+
+def test_the_instructions_say_areas_may_stay_empty():
+    # A real run (evaluation batch 1) kept assigning a crop twice to fill three areas with two crops.
+    from app.agent.loop import INSTRUCTIONS
+
+    assert "Each selected crop must appear exactly once in assignments." in INSTRUCTIONS
+    assert "Areas may remain empty; you do not need to fill every area." in INSTRUCTIONS
 
 
 def test_tool_schemas_are_generated_from_the_argument_models():
