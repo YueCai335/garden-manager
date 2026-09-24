@@ -1,0 +1,24 @@
+{
+  "gardenId": "demo-garden",
+  "growingAreas": [
+    { "id": "demo-raised-bed", "name": "Sample raised bed", "kind": "raised-bed" },
+    { "id": "demo-in-ground-area", "name": "Sample in-ground area", "kind": "in-ground" },
+    { "id": "demo-container-group", "name": "Sample container group", "kind": "container" }
+  ],
+  "plantings": [
+    {
+      "id": "demo-planting-tomatoes",
+      "commonName": "Tomatoes",
+      "cropFamily": "nightshade",
+      "plantingDate": "2026-05-18",
+      "growingAreaId": "demo-raised-bed"
+    },
+    {
+      "id": "demo-planting-beans",
+      "commonName": "Bush beans",
+      "cropFamily": "legume",
+      "plantingDate": "2026-05-24",
+      "growingAreaId": "demo-in-ground-area"
+    }
+  ]
+}

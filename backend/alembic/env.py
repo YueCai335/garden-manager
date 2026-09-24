@@ -13,7 +13,8 @@ import app.models  # noqa: F401
 
 config = context.config
 if config.config_file_name:
-    fileConfig(config.config_file_name)
+    # Keep loggers the app created before migrations ran (tests run both in one process).
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 target_metadata = Base.metadata
 
 

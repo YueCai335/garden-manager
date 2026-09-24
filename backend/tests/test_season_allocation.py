@@ -25,6 +25,7 @@ from app.agent.allocation import (
     rotation_summary,
 )
 from app.agent.loop import (
+    FINAL_OUTPUT_FORMAT,
     MAX_MODEL_REQUESTS,
     MAX_OUTPUT_TOKENS,
     MAX_REQUEST_BYTES,
@@ -34,6 +35,7 @@ from app.agent.loop import (
     ToolCall,
     run_allocation_agent,
 )
+from app.agent.openai_model import DEFAULT_MODEL
 from app.agent.tools import TOOLS, tool_definitions
 from app.rotation import KNOWN_CROP_FAMILIES, RotationPlanting, evaluate_rotation
 from app.service import load_workspace
@@ -76,6 +78,8 @@ def assign(*pairs):
 
 
 class ScriptedModel:
+    name = "scripted-model"
+
     def __init__(self, *turns):
         self.turns = list(turns)
         self.requests = []
@@ -226,6 +230,8 @@ def test_tool_schemas_are_generated_from_the_argument_models():
 
     assert set(definitions) == {"get_planting_history", "check_allocation"}
     for name, tool in TOOLS.items():
+        assert definitions[name]["type"] == "function"
+        assert definitions[name]["strict"] is False
         assert definitions[name]["parameters"] == tool.args_model.model_json_schema()
 
 
@@ -413,9 +419,15 @@ def test_every_request_carries_the_full_payload_and_output_limit():
     run(model)
 
     for request in model.requests:
-        assert request.max_output_tokens == MAX_OUTPUT_TOKENS == 800
-        assert request.tools == tool_definitions()
-        assert request.output_schema == FinalAllocation.model_json_schema()
+        params = request.to_params()
+        assert params["model"] == "scripted-model"
+        assert params["max_output_tokens"] == MAX_OUTPUT_TOKENS == 800
+        assert params["tools"] == tool_definitions()
+        assert params["text"] == FINAL_OUTPUT_FORMAT
+        assert params["text"]["format"]["schema"] == FinalAllocation.model_json_schema()
+        assert params["text"]["format"]["strict"] is False
+        assert (params["parallel_tool_calls"], params["store"]) == (False, False)
+        assert request.byte_size() == len(json.dumps(params, ensure_ascii=False, separators=(",", ":")).encode())
 
 
 def test_a_first_request_over_the_byte_limit_is_never_sent():
@@ -478,6 +490,7 @@ def test_the_heaviest_five_request_run_fits_the_default_byte_limit():
         *[call("check_allocation", everything, call_id=f"call_{n}" + "x" * 24) for n in range(3)],
         final(everything["assignments"], "说明" * 300),
     )
+    model.name = DEFAULT_MODEL  # the real model name is part of every request
 
     result = run_allocation_agent(
         GardenSnapshot("garden-1", areas, plantings),
@@ -489,6 +502,106 @@ def test_the_heaviest_five_request_run_fits_the_default_byte_limit():
     assert result.status == "draft"
     assert len(result.warnings) == 5
     assert max(request.byte_size() for request in model.requests) <= MAX_REQUEST_BYTES
+
+
+# --- Unusable output, run reservation, and request logs ---
+
+
+@pytest.mark.parametrize("reason", ["refusal", "empty_output", "incomplete_output", "multiple_tool_calls"])
+def test_unusable_model_output_fails_generation_without_running_a_tool(reason):
+    model = ScriptedModel(ModelTurn(tool_call=ToolCall("c1", "get_planting_history", "{}"), unusable=reason))
+
+    result = run(model)
+
+    assert (result.status, result.failure_reason) == ("generation_failed", reason)
+    assert result.trace == []
+    assert result.allocation == []
+
+
+class Reservations:
+    def __init__(self, allow=True):
+        self.allow = allow
+        self.calls = 0
+
+    def __call__(self):
+        self.calls += 1
+        return self.allow
+
+
+def test_a_run_is_reserved_once_just_before_its_first_request():
+    reservations = Reservations()
+    model = ScriptedModel(
+        call("get_planting_history"),
+        call("check_allocation", assign(("ground", "tomato"), ("bed", "bean"))),
+        final([{"growing_area_id": "ground", "crop": "tomato"}, {"growing_area_id": "bed", "crop": "bean"}]),
+    )
+
+    result = run_allocation_agent(
+        garden(BED, GROUND), AllocationRequest(crops=["tomato", "bean"]), model, today=TODAY, reserve_run=reservations
+    )
+
+    assert result.status == "draft"
+    assert reservations.calls == 1
+    assert len(model.requests) == 3
+
+
+def test_a_refused_reservation_ends_the_run_before_any_request():
+    reservations = Reservations(allow=False)
+    model = ScriptedModel()
+
+    result = run_allocation_agent(
+        garden(BED, GROUND), AllocationRequest(crops=["tomato"]), model, today=TODAY, reserve_run=reservations
+    )
+
+    assert result.status == "budget_exhausted"
+    assert (reservations.calls, model.requests) == (1, [])
+
+
+@pytest.mark.parametrize(
+    ("request_fields", "max_request_bytes"),
+    [({"crops": ["potato"]}, MAX_REQUEST_BYTES), ({"crops": ["tomato"]}, 100)],
+)
+def test_needs_input_and_an_oversized_first_request_reserve_nothing(request_fields, max_request_bytes):
+    reservations = Reservations()
+
+    run_allocation_agent(
+        garden(BED, GROUND),
+        AllocationRequest(**request_fields),
+        ScriptedModel(),
+        today=TODAY,
+        max_request_bytes=max_request_bytes,
+        reserve_run=reservations,
+    )
+
+    assert reservations.calls == 0
+
+
+def test_each_request_is_logged_with_unknown_usage_as_null(caplog):
+    model = ScriptedModel(
+        ModelTurn(tool_call=ToolCall("c1", "get_planting_history", "{}"), input_tokens=900, output_tokens=20),
+        ModelProviderError("timeout"),
+    )
+
+    with caplog.at_level("INFO", logger="app.agent.loop"):
+        run(model)
+
+    records = [json.loads(record.getMessage()) for record in caplog.records]
+    assert [(r["step"], r["outcome"], r["input_tokens"], r["output_tokens"]) for r in records] == [
+        (1, "tool_call", 900, 20),
+        (2, "provider_error", None, None),
+    ]
+    assert records[0]["bytes"] == model.requests[0].byte_size()
+
+
+def test_usage_above_the_formatting_allowance_is_logged_as_a_warning(caplog):
+    model = ScriptedModel(ModelTurn(text="", input_tokens=1_000_000))
+
+    with caplog.at_level("INFO", logger="app.agent.loop"):
+        run(model)
+
+    assert [json.loads(r.getMessage())["event"] for r in caplog.records if r.levelname == "WARNING"] == [
+        "season_allocation_allowance_exceeded"
+    ]
 
 
 # --- Persistence boundary ---
