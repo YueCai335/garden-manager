@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import recordedExampleRun from "@/data/exampleAllocationRun.json";
 import { createSeasonAllocation, SeasonAllocationError } from "@/lib/gardenWorkspaceApi";
 import type { Garden } from "@/lib/gardenWorkspace";
 import {
@@ -17,10 +18,15 @@ import {
   selectedAllocationAreaIds,
   type AllocationCropKey,
   type AllocationInput,
+  type AllocationTraceStep,
+  type ExampleAllocationRun,
   type SeasonAllocationResult,
 } from "@/lib/seasonAllocation";
 
 export const PUBLIC_DEMO_GARDEN_ID = "demo-garden";
+
+// null until a real run is recorded (backend/scripts/agent_live.py example).
+const defaultExampleRun = recordedExampleRun as unknown as ExampleAllocationRun | null;
 
 export type AllocationConfirmOutcome =
   | { status: "added"; added: number; skipped: number; seasonYear: number }
@@ -50,6 +56,7 @@ type AllocationAssistantProps = {
   isPortfolioDemo: boolean | undefined;
   isSynced: boolean;
   onConfirm: (gardenId: string, draft: SeasonAllocationResult, input: AllocationInput) => AllocationConfirmOutcome;
+  exampleRun?: ExampleAllocationRun | null;
 };
 
 /**
@@ -67,6 +74,7 @@ function AllocationAssistantPanel({
   isPortfolioDemo,
   isSynced,
   onConfirm,
+  exampleRun = defaultExampleRun,
 }: AllocationAssistantProps) {
   const [crops, setCrops] = useState<AllocationCropKey[]>([]);
   const [preference, setPreference] = useState("");
@@ -75,6 +83,7 @@ function AllocationAssistantPanel({
   const [result, setResult] = useState<SeasonAllocationResult>();
   const [requestError, setRequestError] = useState<string>();
   const [confirmation, setConfirmation] = useState<AllocationConfirmOutcome>();
+  const [showExample, setShowExample] = useState(false);
   const requestIdRef = useRef(0);
   const abortRef = useRef<AbortController | undefined>(undefined);
 
@@ -127,6 +136,7 @@ function AllocationAssistantPanel({
     setResult(undefined);
     setRequestError(undefined);
     setConfirmation(undefined);
+    setShowExample(false);
     try {
       const response = await createSeasonAllocation(
         requestWorkspaceId,
@@ -267,37 +277,20 @@ function AllocationAssistantPanel({
         <div className="allocation-error" role="alert">
           <p>{statusMessages[result.status]}</p>
           {result.failureReason ? <p>{failureReasons[result.failureReason] ?? result.failureReason}</p> : null}
+          {exampleRun ? (
+            <button className="text-button" onClick={() => setShowExample((shown) => !shown)} type="button">
+              {showExample ? "Hide example run" : "View example run"}
+            </button>
+          ) : null}
         </div>
       ) : null}
+
+      {showExample && exampleRun ? <ExampleRun run={exampleRun} /> : null}
 
       {draft?.scope ? (
         <section aria-label="Draft allocation" className="allocation-draft">
           <strong>Draft for {draft.scope.seasonYear}</strong>
-          <ul className="allocation-draft-areas">
-            {draft.scope.areas.map((area) => {
-              const assigned = draft.allocation.filter((assignment) => assignment.growingAreaId === area.id);
-              return (
-                <li key={area.id}>
-                  <strong>{area.name}</strong>
-                  <span>{assigned.length ? assigned.map((item) => cropLabel(item.crop)).join(" · ") : "Nothing planned"}</span>
-                  {draft.warnings
-                    .filter((warning) => warning.growingAreaId === area.id)
-                    .map((warning) => (
-                      <span className="allocation-warning" key={warning.crop}>
-                        Rotation warning: {cropLabel(warning.crop)} is {warning.rotationGroup}, grown here in{" "}
-                        {warning.repeatedYears.join(", ")}.
-                      </span>
-                    ))}
-                </li>
-              );
-            })}
-          </ul>
-          {draft.explanation ? (
-            <p className="allocation-explanation">
-              <strong>AI explanation</strong>
-              <span>{draft.explanation}</span>
-            </p>
-          ) : null}
+          <DraftAreas draft={draft} />
           <div className="form-actions">
             <button className="primary-button" disabled={isStale || isConfirmed} onClick={confirm} type="button">
               Add to {draft.scope.seasonYear} plan
@@ -319,22 +312,97 @@ function AllocationAssistantPanel({
         </section>
       ) : null}
 
-      {result?.trace.length ? (
-        <section aria-label="Agent steps" className="allocation-trace">
-          <strong>Agent steps</strong>
-          <ol>
-            {result.trace.map((step) => (
-              <li key={step.step}>
-                <span className="allocation-trace-tool">
-                  Step {step.step} · {step.tool}
-                </span>
-                <code>{typeof step.args === "string" ? step.args : JSON.stringify(step.args)}</code>
-                <span>{step.shortResult}</span>
-              </li>
-            ))}
-          </ol>
-        </section>
+      {result?.trace.length ? <AgentSteps label="Agent steps" trace={result.trace} /> : null}
+    </section>
+  );
+}
+
+function DraftAreas({ draft }: { draft: SeasonAllocationResult }) {
+  return (
+    <>
+      <ul className="allocation-draft-areas">
+        {draft.scope?.areas.map((area) => {
+          const assigned = draft.allocation.filter((assignment) => assignment.growingAreaId === area.id);
+          return (
+            <li key={area.id}>
+              <strong>{area.name}</strong>
+              <span>{assigned.length ? assigned.map((item) => cropLabel(item.crop)).join(" · ") : "Nothing planned"}</span>
+              {draft.warnings
+                .filter((warning) => warning.growingAreaId === area.id)
+                .map((warning) => (
+                  <span className="allocation-warning" key={warning.crop}>
+                    Rotation warning: {cropLabel(warning.crop)} is {warning.rotationGroup}, grown here in{" "}
+                    {warning.repeatedYears.join(", ")}.
+                  </span>
+                ))}
+            </li>
+          );
+        })}
+      </ul>
+      {draft.explanation ? (
+        <p className="allocation-explanation">
+          <strong>AI explanation</strong>
+          <span>{draft.explanation}</span>
+        </p>
       ) : null}
+    </>
+  );
+}
+
+function AgentSteps({ label, trace }: { label: string; trace: AllocationTraceStep[] }) {
+  return (
+    <section aria-label={label} className="allocation-trace">
+      <strong>{label}</strong>
+      <ol>
+        {trace.map((step) => (
+          <li key={step.step}>
+            <span className="allocation-trace-tool">
+              Step {step.step} · {step.tool}
+            </span>
+            <code>{typeof step.args === "string" ? step.args : JSON.stringify(step.args)}</code>
+            <span>{step.shortResult}</span>
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
+/** A recorded run, clearly labelled, read-only: it is not a plan for this garden. */
+function ExampleRun({ run }: { run: ExampleAllocationRun }) {
+  const recordedOn = run.recordedAt.slice(0, 10);
+  return (
+    <section aria-label="Example run" className="allocation-example">
+      <p className="section-eyebrow">Example run record</p>
+      <p className="allocation-notice">
+        Recorded on {recordedOn} with {run.model} on the {run.gardenName}. This shows how the assistant works. It is
+        not a plan for your garden and cannot be added.
+      </p>
+      <p className="allocation-areas">
+        <strong>Request</strong>
+        <span>
+          {run.request.crops.map(cropLabel).join(" · ")}
+          {run.request.preference ? ` — “${run.request.preference}”` : ""}
+        </span>
+      </p>
+      {run.result.scope ? (
+        <div className="allocation-draft">
+          <strong>Recorded draft for {run.result.scope.seasonYear}</strong>
+          <DraftAreas draft={run.result} />
+        </div>
+      ) : null}
+      {run.result.trace.length ? <AgentSteps label="Recorded agent steps" trace={run.result.trace} /> : null}
+      <details className="allocation-tool-results">
+        <summary>Full tool results</summary>
+        <ol>
+          {run.toolResults.map((item, index) => (
+            <li key={index}>
+              <span className="allocation-trace-tool">{item.tool}</span>
+              <code>{JSON.stringify(item.output)}</code>
+            </li>
+          ))}
+        </ol>
+      </details>
     </section>
   );
 }
