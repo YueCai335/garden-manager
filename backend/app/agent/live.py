@@ -12,6 +12,9 @@ Every paid step draws from one shared ledger (backend/evaluation/ledger.json):
   the provider halts the ledger; the halt is saved before anything else.
 - The first reservation fixes the batch: approved model, cases, demo garden,
   request template, and limits. A later change refuses further paid runs.
+- A changed request template needs a new batch: the old ledger is archived
+  under evaluation/batch-N/, and every batch together stays within
+  TOTAL_UNIT_LIMIT, so archiving never grants fresh units.
 
 Only scripts/agent_live.py calls this with a real client; tests use fakes.
 """
@@ -60,6 +63,9 @@ from .tools import tool_definitions
 
 EVALUATION_DIR = Path(__file__).resolve().parents[2] / "evaluation"
 BATCH_UNIT_LIMIT = 12  # smoke 1 + verify-cost 1 + evaluate 10; the example run reuses an evaluation
+# All batches together, archived ones included. Batch 1 used one unit before a
+# prompt fix; this batch has the remaining twelve.
+TOTAL_UNIT_LIMIT = 13
 # The only model this batch's cost verification covers.
 APPROVED_MODEL = DEFAULT_MODEL
 
@@ -103,6 +109,14 @@ def batch_fingerprint(cases_doc: dict, model_name: str) -> dict:
 # --- Ledger ---
 
 
+def archived_units(evaluation_dir: Path) -> int:
+    """Units used by archived batches (evaluation/batch-N/ledger.json)."""
+    return sum(
+        len(json.loads(path.read_text(encoding="utf-8"))["entries"])
+        for path in sorted(evaluation_dir.glob("batch-*/ledger.json"))
+    )
+
+
 class Ledger:
     """The shared record of paid units. Writable only while locked()."""
 
@@ -110,6 +124,7 @@ class Ledger:
         self.path = path
         self.data = data
         self.fingerprint = fingerprint
+        self.archived_used = archived_units(path.parent)
 
     @staticmethod
     def _load(path: Path, unit_limit: int) -> dict:
@@ -176,6 +191,11 @@ class Ledger:
         self.check_ready()
         if self.used >= self.data["unit_limit"]:
             raise LedgerRefused(f"All {self.data['unit_limit']} paid units are used.")
+        if self.archived_used + self.used >= TOTAL_UNIT_LIMIT:
+            raise LedgerRefused(
+                f"All {TOTAL_UNIT_LIMIT} paid units across batches are used "
+                f"({self.archived_used} in archived batches)."
+            )
         if self.data.get("batch") is None:
             self.data["batch"] = self.fingerprint
         entry = {"unit": self.used + 1, "kind": kind, "label": label, "status": "started", "started_at": now()}

@@ -1,0 +1,33 @@
+{
+  "unit_limit": 12,
+  "batch": {
+    "model": "gpt-4o-mini-2024-07-18",
+    "cases": "85acd8ffd371b0f5",
+    "demo_garden": "5adce3bd905086f0",
+    "request_template": "c1509f860d728be2",
+    "limits": {
+      "max_model_requests": 5,
+      "max_request_bytes": 10000,
+      "max_output_tokens": 800,
+      "format_token_allowance": 1000
+    }
+  },
+  "halted": null,
+  "entries": [
+    {
+      "unit": 1,
+      "kind": "smoke",
+      "label": "smoke-demo-tomato-bean",
+      "status": "failed",
+      "started_at": "2026-09-24T19:57:10+00:00",
+      "finished_at": "2026-09-24T19:57:23+00:00",
+      "record": "01-smoke-smoke-demo-tomato-bean.json",
+      "usage": {
+        "requests": 5,
+        "unknown_usage_requests": 0,
+        "input_tokens": 3451,
+        "output_tokens": 253
+      }
+    }
+  ]
+}
