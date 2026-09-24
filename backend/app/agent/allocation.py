@@ -214,7 +214,10 @@ def allocation_errors(scope: AllocationScope, assignments: list[Assignment], *, 
     assigned = [assignment.crop for assignment in assignments]
     for crop in dict.fromkeys(assigned):
         if assigned.count(crop) > 1:
-            errors.append(f"Crop {crop} is assigned more than once; assign each crop to exactly one area.")
+            errors.append(
+                f"Crop {crop} appears more than once. Remove its duplicate assignments and keep exactly one "
+                "area for this crop. Areas may remain empty."
+            )
     if complete:
         for crop in scope.crops:
             if crop not in assigned:

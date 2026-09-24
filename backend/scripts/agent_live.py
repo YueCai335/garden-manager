@@ -27,6 +27,7 @@ sys.path.insert(0, str(BACKEND_DIR))
 
 from app.agent.live import (  # noqa: E402
     APPROVED_MODEL,
+    TOTAL_UNIT_LIMIT,
     EVALUATION_DIR,
     Ledger,
     LedgerRefused,
@@ -64,7 +65,10 @@ def real_model() -> OpenAIAllocationModel:
 
 
 def print_status(ledger: Ledger) -> None:
-    print(f"Paid units used: {ledger.used}/{ledger.data['unit_limit']}")
+    print(
+        f"Paid units used: {ledger.used}/{ledger.data['unit_limit']} in this batch, "
+        f"{ledger.archived_used + ledger.used}/{TOTAL_UNIT_LIMIT} across batches"
+    )
     if ledger.data["halted"]:
         print(f"HALTED: {ledger.data['halted']['reason']}")
     for entry in ledger.data["entries"]:
