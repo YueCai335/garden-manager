@@ -125,6 +125,14 @@ function AllocationAssistantPanel({
   const draft = result?.status === "draft" ? result : undefined;
   const isStale = draft ? isAllocationDraftStale(draft, garden, input, nextSeasonYear()) : false;
   const isConfirmed = confirmation?.status === "added";
+  // Live runs are closed in the public demo (ADR-0057), so the recorded run is
+  // offered up front instead of only after a request that cannot succeed.
+  const offersDemoExample = Boolean(isPortfolioDemo && !blocker && exampleRun);
+  const exampleToggle = (
+    <button className="text-button" onClick={() => setShowExample((shown) => !shown)} type="button">
+      {showExample ? "Hide example run" : "View example run"}
+    </button>
+  );
 
   const plan = async () => {
     if (!canPlan || !requestWorkspaceId) return;
@@ -176,6 +184,15 @@ function AllocationAssistantPanel({
           Choose crops for next season. The assistant checks each placement against this garden&apos;s crop
           rotation history and returns a draft. Nothing is added until you confirm.
         </p>
+        {offersDemoExample ? (
+          <div className="allocation-demo-note">
+            <p className="allocation-notice">
+              Live AI runs are closed in the public demo. A real run recorded on this garden shows how the
+              assistant works.
+            </p>
+            {exampleToggle}
+          </div>
+        ) : null}
       </div>
 
       {blocker ? (
@@ -274,15 +291,17 @@ function AllocationAssistantPanel({
       ) : null}
 
       {result && result.status !== "draft" && result.status !== "needs_input" ? (
-        <div className="allocation-error" role="alert">
-          <p>{statusMessages[result.status]}</p>
-          {result.failureReason ? <p>{failureReasons[result.failureReason] ?? result.failureReason}</p> : null}
-          {exampleRun ? (
-            <button className="text-button" onClick={() => setShowExample((shown) => !shown)} type="button">
-              {showExample ? "Hide example run" : "View example run"}
-            </button>
-          ) : null}
-        </div>
+        offersDemoExample ? (
+          <p className="allocation-notice" role="status">
+            Live AI runs are closed in the public demo, so no plan was created. View the example run to see a recorded one.
+          </p>
+        ) : (
+          <div className="allocation-error" role="alert">
+            <p>{statusMessages[result.status]}</p>
+            {result.failureReason ? <p>{failureReasons[result.failureReason] ?? result.failureReason}</p> : null}
+            {exampleRun ? exampleToggle : null}
+          </div>
+        )
       ) : null}
 
       {showExample && exampleRun ? <ExampleRun run={exampleRun} /> : null}
