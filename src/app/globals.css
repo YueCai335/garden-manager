@@ -490,6 +490,16 @@ select {
   line-height: 1.5;
 }
 
+.allocation-demo-note {
+  display: grid;
+  justify-items: start;
+  gap: 2px;
+}
+
+.allocation-demo-note .text-button {
+  margin-top: 6px;
+}
+
 .allocation-form {
   display: grid;
   gap: 14px;
