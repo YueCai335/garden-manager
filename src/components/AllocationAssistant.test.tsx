@@ -385,6 +385,32 @@ describe("AllocationAssistant", () => {
       expect(within(example).queryByRole("button")).not.toBeInTheDocument();
     });
 
+    it("offers the recorded run up front in the portfolio demo, before any request", async () => {
+      const user = userEvent.setup();
+      const fetch = respondWith(draftResponse());
+      renderPanel({ garden: garden([{ id: "bed", name: "North bed", kind: "raised-bed" }], "demo-garden"), isPortfolioDemo: true, isSynced: false, workspaceId: undefined, exampleRun });
+
+      expect(screen.getByText("Live AI runs are closed in the public demo. A real run recorded on this garden shows how the assistant works.")).toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: "View example run" }));
+
+      expect(screen.getByRole("region", { name: "Example run" })).toHaveTextContent("Recorded on 2026-09-25");
+      expect(fetch).not.toHaveBeenCalled();
+    });
+
+    it("explains a closed live run in the portfolio demo without an error alert", async () => {
+      const user = userEvent.setup();
+      respondWith(draftResponse({ status: "provider_unavailable", allocation: [], trace: [] }));
+      renderPanel({ garden: garden([{ id: "bed", name: "North bed", kind: "raised-bed" }], "demo-garden"), isPortfolioDemo: true, isSynced: false, workspaceId: undefined, exampleRun });
+
+      await user.click(screen.getByRole("checkbox", { name: "Tomato" }));
+      await user.click(screen.getByRole("button", { name: "Plan with AI" }));
+
+      expect(await screen.findByText("Live AI runs are closed in the public demo, so no plan was created. View the example run to see a recorded one.")).toBeInTheDocument();
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+      expect(screen.getAllByRole("button", { name: "View example run" })).toHaveLength(1);
+      expect(screen.queryByRole("button", { name: /^Add to/ })).not.toBeInTheDocument();
+    });
+
     it("is not offered for a draft, for missing input, or when no run has been recorded", async () => {
       const user = userEvent.setup();
       respondWith(draftResponse());
