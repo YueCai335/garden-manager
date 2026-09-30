@@ -6,21 +6,21 @@ plan the next season, and ask source-grounded plant questions.
 
 **[▶ Open the live demo](https://garden-manager-demo.vercel.app)** — no install, no account. Select **Load demo garden** to explore a populated workspace.
 
-`Next.js` `React` `TypeScript` `FastAPI` `Pydantic` `PostgreSQL` `SQLAlchemy` `Alembic` `pgvector` `Docker Compose` `GitHub Actions` `pytest` `Vitest` `Playwright`
+`Next.js` `React` `TypeScript` `FastAPI` `Pydantic` `PostgreSQL` `SQLAlchemy` `Alembic` `pgvector` `OpenAI API` `Docker Compose` `GitHub Actions` `pytest` `Vitest` `Playwright`
 
 ## Screenshots
 
 **Garden plan** — planting areas laid out on a real metric grid, with plants placed inside each area.
 
-<img width="1000" alt="Garden plan showing measured planting areas on a metric grid" src="https://github.com/user-attachments/assets/94b30a9a-739d-4004-aad8-d4fa66179644" />
+<img width="1000" alt="Garden plan showing three measured planting areas on a metric grid" src="docs/screenshots/garden-plan.png" />
 
 **Next season planner** — deterministic crop-family rotation guidance derived from what each area grew last season.
 
-<img width="1000" alt="Next season planner showing crop rotation guidance per growing area" src="https://github.com/user-attachments/assets/97d16ae8-7ee9-47fd-9bd8-03ad8e0be57a" />
+<img width="1000" alt="Rotation cards per growing area: last season's crop, families to avoid, and good rotation fits" src="docs/screenshots/season-rotation.png" />
 
-**Plant knowledge** — bilingual retrieval over curated source cards, with the supporting source shown next to every answer.
+**Allocation Assistant** — the recorded run shown in the public demo. The agent reads the planting history, checks a first plan (2 rotation warnings), revises it, and returns a draft with none. Nothing is added until the gardener confirms.
 
-<img width="1000" alt="Plant knowledge answer with its cited source" src="docs/screenshots/plant-knowledge.png" />
+<img width="1000" alt="Allocation Assistant with a recorded run: request, draft per area, explanation, and three agent steps" src="docs/screenshots/allocation-assistant.png" />
 
 ## What It Demonstrates
 
