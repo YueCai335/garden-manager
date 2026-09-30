@@ -51,7 +51,7 @@ plan the next season, and ask source-grounded plant questions.
 Open the [live demo](https://garden-manager-demo.vercel.app), select **Load demo garden**,
 then walk through steps 4-6 below. Garden, Care, and Season Planner are available
 online; AI and photo workflows are shown as previews and run in the local app.
-In **Plan next season**, the Allocation Assistant does not run live online; it
+In **Next season plan**, the Allocation Assistant does not run live online; it
 offers a labelled recording of one real evaluation run.
 The API sleeps on the free tier, so the first request can take about a minute.
 
@@ -62,11 +62,11 @@ The API sleeps on the free tier, so the first request can take about a minute.
 3. Open `http://localhost:3000` and select **Load demo garden**.
 4. Double-click **Demo Garden** to inspect its measured growing areas and
    plant layout.
-5. Return to the dashboard and open **Plan next season**. Review crop-family
+5. Return to the dashboard and open **Next season plan**. Review crop-family
    guidance, then add a crop to a growing area's next-season plan.
 6. Open **Care** to create a task or record a completed care event.
 7. After completing [Enable local AI features](#enable-local-ai-features), open
-   **Plant knowledge** to ask a Chinese or English question and inspect the cited source cards.
+   **Plant guide** to ask a Chinese or English question and inspect the cited source cards.
 
 The demo uses generic data and can be loaded repeatedly. It replaces the
 gardens saved in the current browser workspace.
@@ -85,6 +85,8 @@ PostgreSQL + SQLAlchemy + Alembic + pgvector
         |
         +-- deterministic crop-rotation service
         +-- local AI extraction and plant-knowledge retrieval
+        +-- Allocation Assistant: hand-written tool-calling loop
+            over the OpenAI API, two read-only tools, server re-check
 ```
 
 The frontend renders measured growing-area layouts with React-Konva. Garden
@@ -131,6 +133,11 @@ ollama pull embeddinggemma
 Keep Ollama running and restart Docker Compose after downloading the models.
 Care events and plant-health observations can also be entered manually. Plant
 Knowledge answers require the configured embedding and answer models to be available.
+
+The Allocation Assistant uses the OpenAI API whatever `AI_PROVIDER` is set to.
+Put `OPENAI_API_KEY` in the API's environment to run it live; without a key it
+reports that the planner is unavailable. Cost limits and the evaluation are in
+[the agent write-up](docs/agent.md).
 
 ## Verification
 
@@ -192,5 +199,4 @@ pull requests and pushes to `main`.
 - [AI and RAG Design](docs/ai-rag-agent-design.md)
 - [Allocation Assistant: A Small Tool-Calling Agent](docs/agent.md)
 - [Portfolio Demo Deployment](docs/portfolio-demo-deployment.md)
-- [Resume Positioning](docs/resume-positioning.md)
 - [Architecture Decision Records](docs/decisions/README.md)
