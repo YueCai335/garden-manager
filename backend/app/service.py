@@ -1,12 +1,13 @@
 import hashlib
 import json
+from datetime import date
 from math import sqrt
 
 from fastapi import HTTPException
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session, selectinload
 
-from .ai import CareNoteExtractor, EmbeddingClient, PlantHealthAssessor, PlantKnowledgeAnswerer, complete_known_care_note_fields
+from .ai import CareNoteExtractor, CareNoteProviderError, EmbeddingClient, PlantHealthAssessor, PlantKnowledgeAnswerer, complete_known_care_note_fields, drop_unsupported_garden_scope
 from .knowledge import SEED_KNOWLEDGE_CARDS
 from .models import CareEvent, CareTask, Garden, GrowingArea, HealthRecord, KnowledgeChunk, KnowledgeSource, PlannedPlanting, Planting, SeasonPlan, Workspace, WorkspaceCareEvent, WorkspaceCareTask
 from .rotation import ROTATION_GROWING_AREA_KINDS, RotationPlanting, evaluate_rotation
@@ -152,13 +153,29 @@ def rotation_guidance(
     }
 
 
+NOT_COMPLETED_MESSAGES = {
+    "planned": "This note describes care that has not happened yet. Write a completed action, or fill in the record manually.",
+    "negated": "This note says the care did not happen, so there is nothing to record.",
+    "multiple": "This note describes more than one care action. Write one action per note, or fill in the record manually.",
+    "unrelated": "This note does not describe a watering or fertilizing action. Plant health questions belong in Plant Health.",
+}
+
+
 def care_note_draft(
     session: Session,
     workspace_id: str,
     garden_id: str,
     payload: CareNoteDraftRequest,
     extractor: CareNoteExtractor,
+    server_today: date,
 ) -> dict:
+    # One day each way covers UTC-12 to UTC+14 around the server's UTC date.
+    # It rejects an implausible clock; it cannot prove the browser's date (ADR-0058).
+    if abs((payload.today - server_today).days) > 1:
+        raise HTTPException(
+            status_code=422,
+            detail="Your device date is more than a day away from today. Check your device clock and try again.",
+        )
     workspace = load_workspace(session, workspace_id)
     if workspace is None:
         raise HTTPException(status_code=404, detail="Workspace not found")
@@ -171,11 +188,18 @@ def care_note_draft(
         "plantingAreas": [area.name for area in garden.growing_areas],
         "plantGroups": [planting.common_name for planting in garden.plantings],
     }
-    extraction = complete_known_care_note_fields(
-        extractor.extract(payload.note, garden_context),
-        payload.note,
-        garden_context,
-    )
+    try:
+        extraction = extractor.extract(payload.note, garden_context, payload.today)
+    except CareNoteProviderError as error:
+        raise HTTPException(status_code=503, detail=str(error)) from error
+
+    if extraction.kind != "completed":
+        # Only a completed event becomes a draft; the gardener can still enter one by hand.
+        return {"kind": extraction.kind, "note": payload.note, "targetScope": None, "reviewNotes": [NOT_COMPLETED_MESSAGES[extraction.kind]]}
+
+    # Check the wording behind a garden-wide target before any filling or matching.
+    extraction = drop_unsupported_garden_scope(extraction, payload.note)
+    extraction = complete_known_care_note_fields(extraction, payload.note, garden_context, payload.today)
     target = resolve_care_note_target(garden, extraction.target_scope, extraction.target_name)
     review_notes: list[str] = []
     if extraction.type is None:
@@ -183,11 +207,15 @@ def care_note_draft(
     if extraction.date is None:
         review_notes.append("Choose the care date before saving.")
     if target is None:
-        target = {"targetScope": "garden"}
-        if extraction.target_name:
-            review_notes.append("Choose a target because the note did not match one garden item.")
+        target = {"targetScope": None}
+        review_notes.append(
+            "Choose a target because the note did not match one garden item."
+            if extraction.target_name
+            else "Choose a target before saving."
+        )
 
     return {
+        "kind": extraction.kind,
         "type": extraction.type,
         "date": extraction.date,
         "note": payload.note,
@@ -352,11 +380,12 @@ def cosine_similarity(left: list[float], right) -> float:
 
 
 def resolve_care_note_target(garden: Garden, target_scope: str | None, target_name: str | None) -> dict | None:
+    """The unique garden item a draft names, or None so the gardener chooses."""
     if target_scope == "all-gardens":
         return {"targetScope": "all-gardens"}
-    if target_scope in (None, "garden"):
+    if target_scope == "garden":
         return {"targetScope": "garden"}
-    if not target_name:
+    if target_scope is None or not target_name:
         return None
     normalized_name = target_name.casefold()
     if target_scope == "planting-area":

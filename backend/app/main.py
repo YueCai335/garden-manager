@@ -1,7 +1,7 @@
 import logging
 import os
 from collections.abc import Iterator
-from datetime import date
+from datetime import date, datetime, timezone
 from pathlib import Path
 from uuid import uuid4
 
@@ -157,7 +157,7 @@ def create_care_note_draft(
     extractor: CareNoteExtractor = Depends(get_care_note_extractor),
 ):
     require_local_feature("AI assistance")
-    return care_note_draft(session, workspace_id, garden_id, payload, extractor)
+    return care_note_draft(session, workspace_id, garden_id, payload, extractor, server_today=datetime.now(timezone.utc).date())
 
 
 @app.post(

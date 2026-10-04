@@ -10,6 +10,7 @@ import {
   createGardenWorkspace,
   GARDEN_WORKSPACE_STORAGE_KEY,
   readGardenWorkspace,
+  todayDate,
 } from "@/lib/gardenWorkspace";
 import { SERVER_WORKSPACE_STORAGE_KEY } from "@/components/GardenWorkspace";
 
@@ -391,29 +392,42 @@ describe("GardenWorkspace", () => {
     expect(window.localStorage.getItem(GARDEN_WORKSPACE_STORAGE_KEY)).toBe(JSON.stringify(workspace));
   });
 
-  it("reviews an AI garden note before saving it to Care History", async () => {
-    const user = userEvent.setup();
+  const fertilizingDraft = {
+    kind: "completed",
+    type: "fertilizing",
+    date: "2026-08-31",
+    note: "昨天施了 10 mL 鱼肥。",
+    targetScope: "planting-area",
+    growingAreaId: "demo-raised-bed",
+    growingAreaName: "Sample raised bed",
+    plantingRecordId: null,
+    plantingRecordName: null,
+    fertilizerProduct: "Fish fertilizer",
+    fertilizerAmount: 10,
+    fertilizerUnit: "mL",
+    reviewNotes: [],
+  };
+
+  function emptyDraft(overrides: Record<string, unknown>) {
+    return {
+      ...fertilizingDraft,
+      type: null,
+      date: null,
+      targetScope: null,
+      growingAreaId: null,
+      growingAreaName: null,
+      fertilizerProduct: null,
+      fertilizerAmount: null,
+      fertilizerUnit: null,
+      ...overrides,
+    };
+  }
+
+  /** Opens AI Garden Note on a server-backed demo workspace whose draft endpoint returns `draft`. */
+  async function openAiGardenNote(user: ReturnType<typeof userEvent.setup>, draft: () => Promise<unknown>) {
     const workspace = createDemoGardenWorkspace();
     const fetch = vi.fn(async (url: string, init?: RequestInit) => {
-      if (url.includes("/ai/care-note-draft")) {
-        return {
-          ok: true,
-          json: async () => ({
-            type: "fertilizing",
-            date: "2026-08-31",
-            note: "昨天施了 10 mL 鱼肥。",
-            targetScope: "planting-area",
-            growingAreaId: "demo-raised-bed",
-            growingAreaName: "Sample raised bed",
-            plantingRecordId: null,
-            plantingRecordName: null,
-            fertilizerProduct: "Fish fertilizer",
-            fertilizerAmount: 10,
-            fertilizerUnit: "mL",
-            reviewNotes: [],
-          }),
-        };
-      }
+      if (url.includes("/ai/care-note-draft")) return { ok: true, json: async () => draft() };
       return {
         ok: true,
         json: async () => init?.method ? JSON.parse(String(init.body)) : { workspaceId: "server-workspace", ...workspace },
@@ -421,18 +435,118 @@ describe("GardenWorkspace", () => {
     });
     vi.stubGlobal("fetch", fetch);
     window.localStorage.setItem(SERVER_WORKSPACE_STORAGE_KEY, "server-workspace");
-
     render(<GardenWorkspace />);
     await user.click(await screen.findByRole("button", { name: "AI garden note" }));
+    const draftRequests = () => fetch.mock.calls.filter(([url]) => String(url).includes("/ai/care-note-draft"));
+    return { draftRequests };
+  }
+
+  it("reviews an AI garden note before saving it to Care History", async () => {
+    const user = userEvent.setup();
+    const { draftRequests } = await openAiGardenNote(user, async () => fertilizingDraft);
+
     await user.type(screen.getByLabelText("Care note"), "昨天施了 10 mL 鱼肥。");
     await user.click(screen.getByRole("button", { name: "Create draft" }));
     expect(await screen.findByRole("heading", { name: "AI extracted draft" })).toBeInTheDocument();
     expect(screen.getByLabelText("Fertilizer product (optional)")).toHaveValue("Fish fertilizer");
     expect(screen.queryByText("AI care draft saved to Care History.")).not.toBeInTheDocument();
+    // "Today" is the gardener's local date, sent with the note (ADR-0058).
+    expect(JSON.parse(String(draftRequests()[0][1]?.body))).toEqual({ note: "昨天施了 10 mL 鱼肥。", today: todayDate() });
 
     await user.click(screen.getByRole("button", { name: "Save to Care History" }));
     expect(screen.getByRole("heading", { name: "History" })).toBeInTheDocument();
     expect(screen.getByText(/Fish fertilizer/)).toBeInTheDocument();
+  });
+
+  it("saves one care event when Save to Care History is double-clicked", async () => {
+    const user = userEvent.setup();
+    await openAiGardenNote(user, async () => fertilizingDraft);
+
+    await user.type(screen.getByLabelText("Care note"), "昨天施了 10 mL 鱼肥。");
+    await user.click(screen.getByRole("button", { name: "Create draft" }));
+    await user.dblClick(await screen.findByRole("button", { name: "Save to Care History" }));
+
+    expect(screen.getAllByText(/Fish fertilizer/)).toHaveLength(1);
+  });
+
+  it("sends one draft request when Create draft is double-clicked", async () => {
+    const user = userEvent.setup();
+    let finish: (value: unknown) => void = () => undefined;
+    const { draftRequests } = await openAiGardenNote(user, () => new Promise((resolve) => { finish = resolve; }));
+
+    await user.type(screen.getByLabelText("Care note"), "昨天施了 10 mL 鱼肥。");
+    await user.dblClick(screen.getByRole("button", { name: "Create draft" }));
+    finish(fertilizingDraft);
+
+    expect(await screen.findByRole("heading", { name: "AI extracted draft" })).toBeInTheDocument();
+    expect(draftRequests()).toHaveLength(1);
+  });
+
+  it("shows why a negated note has no draft and offers manual entry", async () => {
+    const user = userEvent.setup();
+    await openAiGardenNote(user, async () => emptyDraft({
+      kind: "negated",
+      note: "今天没给番茄浇水",
+      reviewNotes: ["This note says the care did not happen, so there is nothing to record."],
+    }));
+
+    await user.type(screen.getByLabelText("Care note"), "今天没给番茄浇水");
+    await user.click(screen.getByRole("button", { name: "Create draft" }));
+
+    expect(await screen.findByText("This note says the care did not happen, so there is nothing to record.")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "AI extracted draft" })).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Care note")).toHaveValue("今天没给番茄浇水");
+
+    await user.click(screen.getByRole("button", { name: "Fill in the record manually" }));
+    expect(screen.getByRole("heading", { name: "Manual care record" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Care type")).toHaveValue("");
+    expect(screen.getByLabelText("Target")).toHaveValue("");
+  });
+
+  it("requires a target before saving a draft whose note named none", async () => {
+    const user = userEvent.setup();
+    await openAiGardenNote(user, async () => emptyDraft({
+      type: "watering",
+      date: "2026-08-31",
+      note: "今天浇了水。",
+      reviewNotes: ["Choose a target before saving."],
+    }));
+
+    await user.type(screen.getByLabelText("Care note"), "今天浇了水。");
+    await user.click(screen.getByRole("button", { name: "Create draft" }));
+    expect(await screen.findByLabelText("Target")).toHaveValue("");
+
+    await user.click(screen.getByRole("button", { name: "Save to Care History" }));
+    expect(screen.getByRole("alert")).toHaveTextContent("Choose a target before saving.");
+    expect(screen.getByRole("heading", { name: "AI extracted draft" })).toBeInTheDocument();
+
+    await user.selectOptions(screen.getByLabelText("Target"), "Sample raised bed");
+    await user.click(screen.getByRole("button", { name: "Save to Care History" }));
+    expect(screen.getByRole("heading", { name: "History" })).toBeInTheDocument();
+  });
+
+  it("discards a draft when the note changes", async () => {
+    const user = userEvent.setup();
+    await openAiGardenNote(user, async () => fertilizingDraft);
+
+    await user.type(screen.getByLabelText("Care note"), "昨天施了 10 mL 鱼肥。");
+    await user.click(screen.getByRole("button", { name: "Create draft" }));
+    await screen.findByRole("heading", { name: "AI extracted draft" });
+    await user.type(screen.getByLabelText("Care note"), "!");
+
+    expect(screen.queryByRole("heading", { name: "AI extracted draft" })).not.toBeInTheDocument();
+  });
+
+  it("blocks a note longer than 500 characters before sending it", async () => {
+    const user = userEvent.setup();
+    const { draftRequests } = await openAiGardenNote(user, async () => fertilizingDraft);
+
+    fireEvent.change(screen.getByLabelText("Care note"), { target: { value: "浇".repeat(500) } });
+    expect(screen.getByRole("button", { name: "Create draft" })).toBeEnabled();
+    fireEvent.change(screen.getByLabelText("Care note"), { target: { value: "浇".repeat(501) } });
+    expect(screen.getByText("Shorten the note to 500 characters or fewer (501 now).")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Create draft" })).toBeDisabled();
+    expect(draftRequests()).toHaveLength(0);
   });
 
   it("reviews an AI plant-health assessment before saving it to health history", async () => {

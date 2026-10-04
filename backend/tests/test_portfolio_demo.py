@@ -1,9 +1,12 @@
+from datetime import date
+
+
 def test_portfolio_demo_keeps_ai_and_photo_features_local(client, monkeypatch):
     monkeypatch.setenv("PORTFOLIO_DEMO_MODE", "true")
 
     care_note = client.post(
         "/workspaces/local-workspace-1/gardens/garden-1/ai/care-note-draft",
-        json={"note": "Watered the tomatoes."},
+        json={"note": "Watered the tomatoes.", "today": date.today().isoformat()},
     )
     photo = client.post(
         "/workspaces/local-workspace-1/gardens/garden-1/plant-health/photos",

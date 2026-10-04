@@ -561,6 +561,7 @@ export function GardenWorkspace() {
       setMessage("Choose a care type and valid date before saving.");
       return;
     }
+    if (!draft.targetScope) return setMessage("Choose a target before saving.");
     const targetGarden = workspace.gardens.find((candidate) => candidate.id === gardenId);
     if (!targetGarden) return;
     const area = targetGarden.growingAreas.find((candidate) => candidate.id === draft.growingAreaId);

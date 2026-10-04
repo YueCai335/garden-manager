@@ -134,6 +134,10 @@ Keep Ollama running and restart Docker Compose after downloading the models.
 Care events and plant-health observations can also be entered manually. Plant
 Knowledge answers require the configured embedding and answer models to be available.
 
+AI Garden Note has its own provider setting, `CARE_NOTE_AI_PROVIDER` (default
+`ollama`), so switching it does not change Plant Health
+([ADR-0058](docs/decisions/0058-classify-care-notes-before-filling-a-draft.md)).
+
 The Allocation Assistant uses the OpenAI API whatever `AI_PROVIDER` is set to.
 Put `OPENAI_API_KEY` in the API's environment to run it live; without a key it
 reports that the planner is unavailable. Cost limits and the evaluation are in

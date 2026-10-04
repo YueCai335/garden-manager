@@ -45,11 +45,19 @@ export type RotationGuidance = {
   rotationFriendlyCropFamilies: PlantingCropFamily[];
 };
 
+/** How the model classified the note; only "completed" comes with draft fields (ADR-0058). */
+export type AiCareNoteKind = "completed" | "planned" | "negated" | "multiple" | "unrelated";
+
+/** Notes are limited to this many Unicode code points, matching the API. */
+export const AI_CARE_NOTE_MAX_LENGTH = 500;
+
 export type AiCareNoteDraft = {
+  kind: AiCareNoteKind;
   type: CareEventType | null;
   date: string | null;
   note: string;
-  targetScope: CareEventTargetScope;
+  /** Null until the gardener chooses a target. */
+  targetScope: CareEventTargetScope | null;
   growingAreaId: string | null;
   growingAreaName: string | null;
   plantingRecordId: string | null;
@@ -142,18 +150,20 @@ export async function createAiCareNoteDraft(
   workspaceId: string,
   gardenId: string,
   note: string,
+  today: string,
 ): Promise<AiCareNoteDraft> {
   const response = await fetch(
     `${apiBaseUrl}/workspaces/${encodeURIComponent(workspaceId)}/gardens/${encodeURIComponent(gardenId)}/ai/care-note-draft`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ note }),
+      body: JSON.stringify({ note, today }),
     },
   );
   if (!response.ok) {
     const detail = await response.json().catch(() => ({}));
-    throw new Error(detail.detail ?? "The AI service could not create a care draft.");
+    // Request-validation errors carry a list, not a message.
+    throw new Error(typeof detail.detail === "string" ? detail.detail : "The AI service could not create a care draft.");
   }
   return response.json() as Promise<AiCareNoteDraft>;
 }

@@ -74,8 +74,8 @@ changes, mark the old record as superseded and add a new record.
 | [ADR-0029](0029-use-a-thumbnail-first-garden-hub.md) | Use a thumbnail-first Garden Hub | Accepted |
 | [ADR-0030](0030-use-context-aware-plant-colors.md) | Use context-aware plant colors | Accepted |
 | [ADR-0031](0031-use-review-first-ai-care-note-extraction.md) | Use review-first AI care note extraction | Superseded by ADR-0032 |
-| [ADR-0032](0032-use-local-first-ai-providers-for-care-notes.md) | Use local-first AI providers for care notes | Accepted |
-| [ADR-0033](0033-use-deterministic-fallbacks-for-clear-ai-care-notes.md) | Use deterministic fallbacks for clear AI care notes | Accepted |
+| [ADR-0032](0032-use-local-first-ai-providers-for-care-notes.md) | Use local-first AI providers for care notes | Accepted; provider configuration amended by ADR-0058 |
+| [ADR-0033](0033-use-deterministic-fallbacks-for-clear-ai-care-notes.md) | Use deterministic fallbacks for clear AI care notes | Accepted; fallback scope amended by ADR-0058 |
 | [ADR-0034](0034-use-workspace-and-garden-care-targets.md) | Use workspace and garden care targets | Accepted |
 | [ADR-0035](0035-use-reviewable-plant-health-records.md) | Use reviewable plant health records | Accepted |
 | [ADR-0036](0036-use-curated-local-rag-for-plant-knowledge.md) | Use curated local RAG for plant knowledge | Accepted |
@@ -100,6 +100,7 @@ changes, mark the old record as superseded and add a new record.
 | [ADR-0055](0055-use-automatic-sync-with-optimistic-locking.md) | Use automatic workspace sync with optimistic locking | Accepted |
 | [ADR-0056](0056-use-a-budgeted-tool-calling-agent-for-season-allocation.md) | Use a budgeted tool-calling agent for next-season allocation | Accepted; public run limit amended by ADR-0057 |
 | [ADR-0057](0057-keep-live-allocation-runs-closed-after-evaluation.md) | Keep live allocation runs closed in the public demo after evaluation | Accepted |
+| [ADR-0058](0058-classify-care-notes-before-filling-a-draft.md) | Classify care notes before filling a reviewable draft | Accepted |
 
 ## Interview Use
 
