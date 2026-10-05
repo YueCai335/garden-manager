@@ -88,7 +88,9 @@ the deployed service, before C3.
 
 | Stage | Check | Result |
 | --- | --- | --- |
-| Before C1 | Prices, account access, and the 20 C2 inputs with expected outcomes are frozen (8 ordinary / 3 missing or ambiguous / 5 not completed / 4 boundary, including ADR-0058's three local failures) | Pending |
+| Before C1 | The 20 C2 inputs with expected outcomes and scoring rules are frozen (8 ordinary / 3 missing / 5 not completed / 4 boundary, including ADR-0058's three local failures) | Done 2026-10-04: `backend/evaluation/care_note/cases.json`, reviewed in [care-note-evaluation.md](care-note-evaluation.md) |
+| Before C1 | The Garden Note ledger (22 requests: C1 2, C2 20) reserves before sending, never refunds, never resets, refuses repeats, waits for C1 before C2, and halts on usage doubt | Passed 2026-10-04: 40 tests, including the command line through the real SDK against a local fake server (22 requests, then refused); wrong values block the gates; the fingerprint covers whole source files; only the ledger and run records may be uncommitted |
+| Before C1 | Prices and account access are rechecked on the day of C1 | Pending |
 | C1 (≤ 2) | Strict schema accepted; near-maximum request usage within bytes + 1,000; cost recorded | Pending |
 | C2 (20) | Every result published against each ADR-0059 gate, including the hard gate on negated, planned, and multi-event notes | Pending |
 | C3 (≤ 3) | From a Preview build with the live entry on (commit recorded), the browser flow runs on the deployed endpoint with limit 3; each request ID is matched to its log line; the API switch is closed and the preview origin removed afterwards | Pending |
