@@ -207,6 +207,46 @@ def test_a_note_that_is_not_a_completed_event_still_uses_a_reservation_and_retur
     assert public_used_runs() == 1
 
 
+# --- Input text ---
+
+
+@pytest.mark.parametrize("escape", ["\\ud800", "\\udfff", "x\\ud83d"], ids=["high-surrogate", "low-surrogate", "split-pair"])
+def test_a_note_that_is_not_valid_text_is_refused_before_any_reservation(client, public_demo, fake_openai, escape):
+    body = '{"note": "' + escape + ' watered", "today": "' + TODAY.isoformat() + '"}'
+
+    response = client.post(DEMO_URL, content=body, headers={"Content-Type": "application/json"})
+
+    assert response.status_code == 422
+    assert response.json()["detail"][0]["loc"] == ["body", "note"]
+    assert fake_openai.requests == []
+    assert public_used_runs() == 0
+    assert daily_used() is None
+
+
+def test_the_local_app_refuses_a_note_that_is_not_valid_text(client, monkeypatch):
+    monkeypatch.delenv("PORTFOLIO_DEMO_MODE", raising=False)
+    body = '{"note": "\\ud800", "today": "' + TODAY.isoformat() + '"}'
+
+    response = client.post("/workspaces/w/gardens/g/ai/care-note-draft", content=body, headers={"Content-Type": "application/json"})
+
+    assert response.status_code == 422
+
+
+@pytest.mark.parametrize(
+    "note",
+    ["今天给 Sample raised bed 浇了水", "Watered Sample raised bed today 🌱🍅", "今天浇了水 \\ud83c\\udf31"],
+    ids=["chinese", "emoji", "escaped-surrogate-pair"],
+)
+def test_ordinary_chinese_and_emoji_notes_are_still_accepted(client, public_demo, fake_openai, note):
+    fake_openai.queue.append(openai_response())
+    body = '{"note": "' + note + '", "today": "' + TODAY.isoformat() + '"}'
+
+    response = client.post(DEMO_URL, content=body.encode("utf-8"), headers={"Content-Type": "application/json"})
+
+    assert response.status_code == 200
+    assert len(fake_openai.requests) == 1
+
+
 # --- Quota ---
 
 

@@ -40,6 +40,7 @@ database and volumes stay untouched.
 | Usage above bytes + 1,000, output above 800, or missing usage: the cumulative row reaches 78 and other processes and a restart stay blocked, including after the limit is raised | Passed 2026-10-04: in one process on SQLite, and across processes on PostgreSQL 16 (a stop written by one process blocks a new process on a later day) |
 | A failed stop write returns an error, logs the stop as unconfirmed, and the manual Render disable procedure is exercised | Error response and `care_note_public_stop_unconfirmed` log passed 2026-10-04; the manual procedure is written in the deployment guide and is exercised on Render (see below) |
 | Timeout, refusal, truncation, malformed draft: reservation kept, no retry, no partial draft | Passed 2026-10-04 |
+| A note that is not valid text (a lone surrogate from an escape such as `\ud800`) gets a 422, not a 500, with no reservation and no model request; Chinese and emoji notes still work | Passed 2026-10-04: the 422 body is written as ASCII-escaped JSON; the frozen batch fingerprint is unchanged |
 | An oversized note or request is rejected before any reservation | Passed 2026-10-04; a separate test confirms the byte check measures exactly the parameters sent |
 | With a key present and `AGENT_PUBLIC_RUN_LIMIT=0`, the allocation agent makes no provider call | Passed 2026-10-04 |
 

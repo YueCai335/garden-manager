@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 from collections.abc import Iterator
@@ -6,6 +7,8 @@ from pathlib import Path
 from uuid import uuid4
 
 from fastapi import Depends, FastAPI, File, HTTPException, Request, Response, UploadFile, status
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
@@ -49,6 +52,21 @@ app.add_middleware(
     # Lets the browser read the public AI Garden Note request ID (ADR-0059).
     expose_headers=[REQUEST_ID_HEADER],
 )
+
+
+@app.exception_handler(RequestValidationError)
+async def request_validation_error(request: Request, error: RequestValidationError) -> Response:
+    """FastAPI's 422 body, written as ASCII-escaped JSON.
+
+    The default handler echoes the rejected input. A lone surrogate from a JSON
+    escape such as \\ud800 cannot be encoded as UTF-8, so the default response
+    fails with a 500; the escaped form carries the same JSON for any client.
+    """
+    return Response(
+        json.dumps({"detail": jsonable_encoder(error.errors())}, ensure_ascii=True),
+        status_code=422,
+        media_type="application/json",
+    )
 
 
 @app.get("/health", response_model=HealthResponse, tags=["system"])
