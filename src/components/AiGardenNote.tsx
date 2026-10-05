@@ -2,9 +2,21 @@
 
 import { FormEvent, useRef, useState } from "react";
 
-import { todayDate, type CareEventTargetScope, type CareEventType, type Garden } from "@/lib/gardenWorkspace";
-import { AI_CARE_NOTE_MAX_LENGTH, createAiCareNoteDraft, type AiCareNoteDraft } from "@/lib/gardenWorkspaceApi";
-import { PortfolioFeatureLoading, PortfolioFeaturePreview, usePortfolioDemoMode } from "@/components/PortfolioFeaturePreview";
+import { createDemoGardenWorkspace, todayDate, type CareEventTargetScope, type CareEventType, type Garden } from "@/lib/gardenWorkspace";
+import { AI_CARE_NOTE_MAX_LENGTH, AiCareNoteRequestError, createAiCareNoteDraft, type AiCareNoteDraft } from "@/lib/gardenWorkspaceApi";
+import { PortfolioFeatureLoading, PortfolioFeaturePreview, useRuntimeConfig } from "@/components/PortfolioFeaturePreview";
+
+/** The public demo drafts against the server's fixed copy of this garden (ADR-0059). */
+const DEMO_GARDEN_ID = "demo-garden";
+
+/**
+ * Whether this frontend build shows live drafts in the public demo (ADR-0059).
+ * Next.js inlines the value at build time, so changing it needs a new build and
+ * deployment. Only the exact string "true" opens it; the local app ignores it.
+ */
+export function isCareNoteLiveEntryBuild() {
+  return process.env.NEXT_PUBLIC_CARE_NOTE_LIVE_ENTRY === "true";
+}
 
 export function AiGardenNote({
   gardens,
@@ -19,27 +31,41 @@ export function AiGardenNote({
   onSave: (gardenId: string, draft: AiCareNoteDraft) => void;
   workspaceId?: string;
 }) {
-  const isPortfolioDemo = usePortfolioDemoMode();
-  const [gardenId, setGardenId] = useState(initialGardenId);
+  const { config: runtimeConfig, failed: runtimeConfigFailed, retry: retryRuntimeConfig } = useRuntimeConfig();
+  const isPortfolioDemo = runtimeConfig?.portfolioDemo;
+  // Live drafts in the public demo need the server's settings, this build's
+  // entry switch, and the server's availability; otherwise the demo shows a preview.
+  const isPublicDemo = Boolean(isPortfolioDemo && runtimeConfig?.careNotePublicAvailable && isCareNoteLiveEntryBuild());
+  const [chosenGardenId, setGardenId] = useState(initialGardenId);
   const [note, setNote] = useState("");
   const [draft, setDraft] = useState<AiCareNoteDraft>();
   const [error, setError] = useState("");
   // Why a note produced no draft (planned, negated, ...); set only for those kinds.
   const [notice, setNotice] = useState("");
   const [isManual, setIsManual] = useState(false);
+  // The target the server proposed, so saving can check it against the demo snapshot.
+  const [proposedTarget, setProposedTarget] = useState("");
+  // Shown in the public demo so a check can be matched to its server log line.
+  const [requestId, setRequestId] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   // State updates land after a render, so a fast double click could pass an
   // isLoading check twice. The ref blocks the second request immediately.
   const isRequesting = useRef(false);
   // Bumped whenever the note or garden changes, so a late response for the old input is dropped.
-  const requestId = useRef(0);
+  const requestCounter = useRef(0);
+  // The public demo always drafts for Demo Garden, whichever garden was open before.
+  const gardenId = isPublicDemo ? DEMO_GARDEN_ID : chosenGardenId;
   const garden = gardens.find((candidate) => candidate.id === gardenId);
+  const gardenChoices = isPublicDemo ? gardens.filter((candidate) => candidate.id === DEMO_GARDEN_ID) : gardens;
+  // A visitor who deleted Demo Garden can still record care by hand elsewhere.
+  const canGenerate = !isPublicDemo || Boolean(garden);
   // Code points, not UTF-16 units, so the count matches the API's limit.
   const noteLength = Array.from(note.trim()).length;
   const isNoteTooLong = noteLength > AI_CARE_NOTE_MAX_LENGTH;
 
   const discardDraft = () => {
-    requestId.current += 1;
+    requestCounter.current += 1;
+    setRequestId("");
     setDraft(undefined);
     setNotice("");
     setIsManual(false);
@@ -47,19 +73,24 @@ export function AiGardenNote({
 
   const createDraft = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!workspaceId || !note.trim() || isNoteTooLong || isRequesting.current) return;
+    if (!workspaceId || !note.trim() || isNoteTooLong || !canGenerate || isRequesting.current) return;
     isRequesting.current = true;
     discardDraft();
-    const currentRequest = requestId.current;
+    const currentRequest = requestCounter.current;
     setError("");
     setIsLoading(true);
     try {
       const result = await createAiCareNoteDraft(workspaceId, gardenId, note.trim(), todayDate());
-      if (currentRequest !== requestId.current) return;
-      if (result.kind === "completed") setDraft(result);
+      if (currentRequest !== requestCounter.current) return;
+      setRequestId(result.requestId ?? "");
+      if (result.kind === "completed") {
+        setDraft(result);
+        setProposedTarget(targetValue(result));
+      }
       else setNotice(result.reviewNotes[0] ?? "This note cannot become a care record.");
     } catch (reason) {
-      if (currentRequest !== requestId.current) return;
+      if (currentRequest !== requestCounter.current) return;
+      setRequestId(reason instanceof AiCareNoteRequestError ? reason.requestId ?? "" : "");
       setError(reason instanceof Error ? reason.message : "The AI service could not create a care draft.");
     } finally {
       isRequesting.current = false;
@@ -76,6 +107,8 @@ export function AiGardenNote({
 
   const selectTarget = (value: string) => {
     if (!draft || !garden) return;
+    // Any target change is the gardener's own choice, made while seeing current names.
+    setProposedTarget("");
     if (!value) {
       setDraft({ ...draft, targetScope: null, growingAreaId: null, growingAreaName: null, plantingRecordId: null, plantingRecordName: null });
       return;
@@ -93,8 +126,23 @@ export function AiGardenNote({
     });
   };
 
-  if (isPortfolioDemo === undefined && (!isServerBacked || !workspaceId)) return <PortfolioFeatureLoading feature="care-note" />;
-  if (isPortfolioDemo) return <PortfolioFeaturePreview feature="care-note" />;
+  // Until the server's settings are known, the screen cannot tell the local app
+  // from the public demo, so it never offers generation without them.
+  if (runtimeConfigFailed) {
+    return (
+      <section className="operations-content season-planner" aria-labelledby="ai-garden-note-heading">
+        <p className="section-eyebrow">AI garden note</p>
+        <h2 id="ai-garden-note-heading">AI Garden Note settings could not load</h2>
+        <p className="workspace-message" role="alert">The garden server did not answer. Try again in a moment.</p>
+        <p className="section-context">Care records can still be added by hand from Care records.</p>
+        <div className="form-actions">
+          <button className="secondary-button" onClick={retryRuntimeConfig} type="button">Try again</button>
+        </div>
+      </section>
+    );
+  }
+  if (!runtimeConfig) return <PortfolioFeatureLoading feature="care-note" />;
+  if (isPortfolioDemo && !isPublicDemo) return <PortfolioFeaturePreview feature="care-note" />;
 
   if (!isServerBacked || !workspaceId) {
     return (
@@ -113,6 +161,12 @@ export function AiGardenNote({
           <p className="section-eyebrow">AI garden note</p>
           <h2 id="ai-garden-note-heading">Turn a note into care history</h2>
           <p className="section-context">Write one completed watering or fertilizing action in Chinese or English, then review every field before saving.</p>
+          {isPublicDemo ? (
+            <p className="field-hint">
+              Demo drafts use the example Demo Garden. Your note and the example garden&apos;s names are sent to OpenAI to
+              create the draft, so use a generic gardening example. The demo has a small, shared number of AI drafts.
+            </p>
+          ) : null}
         </div>
       </div>
       <form className="care-form" onSubmit={createDraft}>
@@ -126,8 +180,9 @@ export function AiGardenNote({
             }}
             value={gardenId}
           >
-            {gardens.map((candidate) => <option key={candidate.id} value={candidate.id}>{candidate.name}</option>)}
+            {gardenChoices.map((candidate) => <option key={candidate.id} value={candidate.id}>{candidate.name}</option>)}
           </select>
+          {!canGenerate ? <p className="field-hint">AI drafts in the demo work on Demo Garden only, and it is no longer in this workspace.</p> : null}
         </div>
         <div className="field care-note-field">
           <label htmlFor="ai-garden-note">Care note</label>
@@ -149,13 +204,14 @@ export function AiGardenNote({
           </p>
         </div>
         <div className="form-actions">
-          <button className="primary-button" disabled={isLoading || isNoteTooLong} type="submit">
+          <button className="primary-button" disabled={isLoading || isNoteTooLong || !canGenerate} type="submit">
             {isLoading ? "Creating draft..." : "Create draft"}
           </button>
         </div>
       </form>
       {error ? <p className="workspace-message" role="alert">{error}</p> : null}
       {notice ? <p className="workspace-message" role="status">{notice}</p> : null}
+      {isPublicDemo && requestId ? <p className="field-hint">Request ID: {requestId}</p> : null}
       {(error || notice) && !draft ? (
         <div className="form-actions">
           <button className="secondary-button" onClick={startManualRecord} type="button">Fill in the record manually</button>
@@ -168,6 +224,10 @@ export function AiGardenNote({
             event.preventDefault();
             if (!draft.type || !draft.date) return setError("Choose a care type and date before saving.");
             if (!draft.targetScope) return setError("Choose a target before saving.");
+            if (isPublicDemo && targetValue(draft) === proposedTarget && !matchesDemoSnapshot(draft, garden)) {
+              selectTarget("");
+              return setError("The example garden has changed since this draft was made. Choose the target again or fill in the record manually.");
+            }
             setError("");
             onSave(gardenId, draft);
           }}
@@ -203,7 +263,7 @@ export function AiGardenNote({
               value={targetValue(draft)}
             >
               <option value="">Choose target</option>
-              <option value="all-gardens">All gardens</option>
+              {isPublicDemo ? null : <option value="all-gardens">All gardens</option>}
               <option value="garden">{garden.name}</option>
               <optgroup label="Planting areas">
                 {garden.growingAreas.map((area) => <option key={area.id} value={`planting-area:${area.id}`}>{area.name}</option>)}
@@ -249,6 +309,29 @@ function targetValue(draft: AiCareNoteDraft) {
   if (draft.targetScope === "plant-group" && draft.plantingRecordId) return `plant-group:${draft.plantingRecordId}`;
   if (draft.targetScope === "garden") return "garden";
   return "";
+}
+
+/**
+ * Whether a server-proposed target still means the same item in the visitor's
+ * garden: same ID, name, and planting area as the demo snapshot the server used.
+ */
+function matchesDemoSnapshot(draft: AiCareNoteDraft, garden: Garden) {
+  const [snapshot] = createDemoGardenWorkspace().gardens;
+  if (garden.id !== DEMO_GARDEN_ID) return false;
+  if (draft.targetScope === "garden") return true;
+  if (draft.targetScope === "planting-area") {
+    const expected = snapshot.growingAreas.find((area) => area.id === draft.growingAreaId);
+    const actual = garden.growingAreas.find((area) => area.id === draft.growingAreaId);
+    return Boolean(expected && actual && actual.name === expected.name);
+  }
+  if (draft.targetScope === "plant-group") {
+    const expected = snapshot.plantings.find((planting) => planting.id === draft.plantingRecordId);
+    const actual = garden.plantings.find((planting) => planting.id === draft.plantingRecordId);
+    return Boolean(
+      expected && actual && actual.commonName === expected.commonName && actual.growingAreaId === expected.growingAreaId,
+    );
+  }
+  return false;
 }
 
 function manualDraft(note: string): AiCareNoteDraft {

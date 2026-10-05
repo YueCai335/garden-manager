@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { GrowingAreaLayoutEditor } from "@/components/GrowingAreaLayoutEditor";
 import { GardenWorkspace } from "@/components/GardenWorkspace";
+import { isCareNoteLiveEntryBuild } from "@/components/AiGardenNote";
 import {
   createDemoGardenWorkspace,
   createGarden,
@@ -424,10 +425,25 @@ describe("GardenWorkspace", () => {
   }
 
   /** Opens AI Garden Note on a server-backed demo workspace whose draft endpoint returns `draft`. */
-  async function openAiGardenNote(user: ReturnType<typeof userEvent.setup>, draft: () => Promise<unknown>) {
-    const workspace = createDemoGardenWorkspace();
+  async function openAiGardenNote(
+    user: ReturnType<typeof userEvent.setup>,
+    draft: () => Promise<unknown>,
+    options: {
+      runtimeConfig?: Record<string, boolean>;
+      /** Replaces the runtime-config response entirely, e.g. to hang or fail. */
+      runtimeConfigResponse?: () => Promise<unknown>;
+      workspace?: ReturnType<typeof createDemoGardenWorkspace>;
+      draftHeaders?: Record<string, string>;
+      /** Builds the frontend with NEXT_PUBLIC_CARE_NOTE_LIVE_ENTRY="true". */
+      liveEntry?: boolean;
+    } = {},
+  ) {
+    if (options.liveEntry) vi.stubEnv("NEXT_PUBLIC_CARE_NOTE_LIVE_ENTRY", "true");
+    const workspace = options.workspace ?? createDemoGardenWorkspace();
     const fetch = vi.fn(async (url: string, init?: RequestInit) => {
-      if (url.includes("/ai/care-note-draft")) return { ok: true, json: async () => draft() };
+      if (url.includes("/ai/care-note-draft")) return { ok: true, headers: new Headers(options.draftHeaders), json: async () => draft() };
+      if (url.includes("/runtime-config") && options.runtimeConfigResponse) return options.runtimeConfigResponse();
+      if (url.includes("/runtime-config") && options.runtimeConfig) return { ok: true, json: async () => options.runtimeConfig };
       return {
         ok: true,
         json: async () => init?.method ? JSON.parse(String(init.body)) : { workspaceId: "server-workspace", ...workspace },
@@ -456,6 +472,155 @@ describe("GardenWorkspace", () => {
     await user.click(screen.getByRole("button", { name: "Save to Care History" }));
     expect(screen.getByRole("heading", { name: "History" })).toBeInTheDocument();
     expect(screen.getByText(/Fish fertilizer/)).toBeInTheDocument();
+  });
+
+  const publicDemo = { portfolioDemo: true, careNotePublicAvailable: true };
+
+  it("runs live AI Garden Note drafts in the public demo when the server allows them", async () => {
+    const user = userEvent.setup();
+    await openAiGardenNote(user, async () => fertilizingDraft, { runtimeConfig: publicDemo, liveEntry: true });
+
+    expect(await screen.findByText(/Demo drafts use the example Demo Garden/)).toBeInTheDocument();
+    await user.type(screen.getByLabelText("Care note"), "昨天施了 10 mL 鱼肥。");
+    await user.click(screen.getByRole("button", { name: "Create draft" }));
+    await screen.findByRole("heading", { name: "AI extracted draft" });
+    expect(screen.queryByRole("option", { name: "All gardens" })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Save to Care History" }));
+    expect(screen.getByText(/Fish fertilizer/)).toBeInTheDocument();
+  });
+
+  it.each([
+    { liveEntry: false, serverAvailable: false, live: false },
+    { liveEntry: true, serverAvailable: false, live: false },
+    { liveEntry: false, serverAvailable: true, live: false },
+    { liveEntry: true, serverAvailable: true, live: true },
+  ])(
+    "public demo with live-entry build $liveEntry and server availability $serverAvailable shows the live form: $live",
+    async ({ liveEntry, serverAvailable, live }) => {
+      const user = userEvent.setup();
+      await openAiGardenNote(user, async () => fertilizingDraft, {
+        runtimeConfig: { portfolioDemo: true, careNotePublicAvailable: serverAvailable },
+        liveEntry,
+      });
+
+      if (live) {
+        expect(await screen.findByLabelText("Care note")).toBeInTheDocument();
+      } else {
+        expect(await screen.findByText("Sample review state")).toBeInTheDocument();
+        expect(screen.queryByLabelText("Care note")).not.toBeInTheDocument();
+      }
+    },
+  );
+
+  it("generates in the local app whatever the live-entry build switch says", async () => {
+    const user = userEvent.setup();
+    vi.stubEnv("NEXT_PUBLIC_CARE_NOTE_LIVE_ENTRY", "false");
+    await openAiGardenNote(user, async () => fertilizingDraft, { runtimeConfig: { portfolioDemo: false, careNotePublicAvailable: false } });
+
+    await user.type(await screen.findByLabelText("Care note"), "昨天施了 10 mL 鱼肥。");
+    await user.click(screen.getByRole("button", { name: "Create draft" }));
+    expect(await screen.findByRole("heading", { name: "AI extracted draft" })).toBeInTheDocument();
+  });
+
+  it("opens the live entry only for the exact string true", async () => {
+    for (const value of ["TRUE", "1", "yes", " true", ""]) {
+      vi.stubEnv("NEXT_PUBLIC_CARE_NOTE_LIVE_ENTRY", value);
+      expect(isCareNoteLiveEntryBuild()).toBe(false);
+    }
+    vi.stubEnv("NEXT_PUBLIC_CARE_NOTE_LIVE_ENTRY", "true");
+    expect(isCareNoteLiveEntryBuild()).toBe(true);
+  });
+
+  it("shows the public request ID so a check can be matched to its log line", async () => {
+    const user = userEvent.setup();
+    await openAiGardenNote(user, async () => fertilizingDraft, {
+      runtimeConfig: publicDemo,
+      liveEntry: true,
+      draftHeaders: { "X-Care-Note-Request": "a1b2c3d4e5f6" },
+    });
+
+    await user.type(await screen.findByLabelText("Care note"), "昨天施了 10 mL 鱼肥。");
+    await user.click(screen.getByRole("button", { name: "Create draft" }));
+
+    expect(await screen.findByText("Request ID: a1b2c3d4e5f6")).toBeInTheDocument();
+  });
+
+  it("shows the preview in the public demo when live drafts are closed", async () => {
+    const user = userEvent.setup();
+    await openAiGardenNote(user, async () => fertilizingDraft, { runtimeConfig: { portfolioDemo: true, careNotePublicAvailable: false } });
+
+    expect(await screen.findByText("Sample review state")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Care note")).not.toBeInTheDocument();
+  });
+
+  it("does not save a demo draft whose proposed area was renamed in the visitor's garden", async () => {
+    const user = userEvent.setup();
+    const workspace = createDemoGardenWorkspace();
+    workspace.gardens[0].growingAreas[0] = { ...workspace.gardens[0].growingAreas[0], name: "Herb bed" };
+    await openAiGardenNote(user, async () => fertilizingDraft, { runtimeConfig: publicDemo, workspace, liveEntry: true });
+
+    await user.type(await screen.findByLabelText("Care note"), "昨天施了 10 mL 鱼肥。");
+    await user.click(screen.getByRole("button", { name: "Create draft" }));
+    await screen.findByRole("heading", { name: "AI extracted draft" });
+    await user.click(screen.getByRole("button", { name: "Save to Care History" }));
+
+    expect(screen.getByRole("alert")).toHaveTextContent("The example garden has changed since this draft was made.");
+    expect(screen.getByLabelText("Target")).toHaveValue("");
+
+    // A target the visitor picks themselves is their own choice.
+    await user.selectOptions(screen.getByLabelText("Target"), "Herb bed");
+    await user.click(screen.getByRole("button", { name: "Save to Care History" }));
+    expect(screen.getByRole("heading", { name: "History" })).toBeInTheDocument();
+  });
+
+  it("does not save a demo draft whose proposed plant group moved to another area", async () => {
+    const user = userEvent.setup();
+    const workspace = createDemoGardenWorkspace();
+    const tomatoes = workspace.gardens[0].plantings.findIndex((planting) => planting.id === "demo-planting-tomatoes");
+    workspace.gardens[0].plantings[tomatoes] = { ...workspace.gardens[0].plantings[tomatoes], growingAreaId: "demo-in-ground-area" };
+    const tomatoDraft = {
+      ...fertilizingDraft,
+      targetScope: "plant-group",
+      growingAreaId: null,
+      growingAreaName: null,
+      plantingRecordId: "demo-planting-tomatoes",
+      plantingRecordName: "Tomatoes · Sample raised bed",
+    };
+    await openAiGardenNote(user, async () => tomatoDraft, { runtimeConfig: publicDemo, workspace, liveEntry: true });
+
+    await user.type(await screen.findByLabelText("Care note"), "昨天给番茄施了 10 mL 鱼肥。");
+    await user.click(screen.getByRole("button", { name: "Create draft" }));
+    await screen.findByRole("heading", { name: "AI extracted draft" });
+    await user.click(screen.getByRole("button", { name: "Save to Care History" }));
+
+    expect(screen.getByRole("alert")).toHaveTextContent("The example garden has changed since this draft was made.");
+    expect(screen.queryByRole("heading", { name: "History" })).not.toBeInTheDocument();
+  });
+
+  it("offers no generation while the runtime settings are still loading", async () => {
+    const user = userEvent.setup();
+    await openAiGardenNote(user, async () => fertilizingDraft, { runtimeConfigResponse: () => new Promise(() => undefined) });
+
+    expect(await screen.findByRole("heading", { name: "Loading AI Garden Note" })).toBeInTheDocument();
+    expect(screen.queryByLabelText("Care note")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Create draft" })).not.toBeInTheDocument();
+  });
+
+  it("offers no generation when the runtime settings fail to load, and retries on request", async () => {
+    const user = userEvent.setup();
+    let calls = 0;
+    await openAiGardenNote(user, async () => fertilizingDraft, {
+      runtimeConfigResponse: async () => (++calls === 1 ? { ok: false, json: async () => ({}) } : { ok: true, json: async () => publicDemo }),
+      liveEntry: true,
+    });
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("The garden server did not answer.");
+    expect(screen.queryByLabelText("Care note")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByLabelText("Care note")).toBeInTheDocument();
+    expect(screen.getByText(/Demo drafts use the example Demo Garden/)).toBeInTheDocument();
   });
 
   it("saves one care event when Save to Care History is double-clicked", async () => {

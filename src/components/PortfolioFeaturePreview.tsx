@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-import { loadRuntimeConfig } from "@/lib/gardenWorkspaceApi";
+import { loadRuntimeConfig, type RuntimeConfig } from "@/lib/gardenWorkspaceApi";
 
 type Feature = "care-note" | "plant-health" | "plant-knowledge";
 
@@ -12,24 +12,37 @@ const featureNames: Record<Feature, string> = {
   "plant-knowledge": "Plant Knowledge",
 };
 
-export function usePortfolioDemoMode() {
-  const [isPortfolioDemo, setIsPortfolioDemo] = useState<boolean>();
+/**
+ * The server's runtime settings. `config` stays undefined while loading and
+ * after a failure, so a caller can refuse to act on settings it never saw.
+ */
+export function useRuntimeConfig() {
+  const [config, setConfig] = useState<RuntimeConfig>();
+  const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let active = true;
+    setFailed(false);
     void loadRuntimeConfig()
-      .then((config) => {
-        if (active) setIsPortfolioDemo(Boolean(config.portfolioDemo));
+      .then((loaded) => {
+        if (active) setConfig({ portfolioDemo: Boolean(loaded.portfolioDemo), careNotePublicAvailable: Boolean(loaded.careNotePublicAvailable) });
       })
       .catch(() => {
-        if (active) setIsPortfolioDemo(false);
+        if (active) setFailed(true);
       });
     return () => {
       active = false;
     };
-  }, []);
+  }, [attempt]);
 
-  return isPortfolioDemo;
+  return { config, failed, retry: () => setAttempt((current) => current + 1) };
+}
+
+/** Demo mode for the preview-only screens; an unreachable server counts as the local app. */
+export function usePortfolioDemoMode() {
+  const { config, failed } = useRuntimeConfig();
+  return failed ? false : config?.portfolioDemo;
 }
 
 export function PortfolioFeaturePreview({ feature }: { feature: Feature }) {

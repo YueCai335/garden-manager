@@ -95,4 +95,5 @@ afterEach(() => {
   cleanup();
   window.localStorage.clear();
   vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
 });

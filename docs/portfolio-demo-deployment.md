@@ -83,6 +83,73 @@ are in [docs/agent.md](agent.md). Reopening requires:
 Every public run would increment one database row, `agent_run_budgets`. Check
 it with `SELECT used_runs FROM agent_run_budgets;` in Supabase.
 
+## AI Garden Note Status
+
+Live AI Garden Note drafts in the public demo are proposed in ADR-0059 and
+stay closed: `CARE_NOTE_PUBLIC_ENABLED=false` and
+`CARE_NOTE_PUBLIC_RUN_LIMIT=0` in Render, so the panel shows its preview.
+Opening follows the release gates in ADR-0059; the checks and their results
+are in [docs/care-note-public-delivery.md](care-note-public-delivery.md).
+
+Check usage in Supabase with
+`SELECT name, used_runs FROM agent_run_budgets WHERE name LIKE 'care-note-public%';`.
+The `care-note-public` row is the cumulative count; one
+`care-note-public-day-YYYY-MM-DD` row per UTC day holds the daily count. A
+cumulative value of 78 after an API log line `care_note_public_request` with
+`"outcome": "usage_stop"` means the automatic stop ran.
+
+### Open in stages: C3 check, then C4
+
+Two switches must agree before a visitor sees the live form: the API's
+`CARE_NOTE_PUBLIC_ENABLED` (with a non-zero `CARE_NOTE_PUBLIC_RUN_LIMIT`) and
+the frontend build variable `NEXT_PUBLIC_CARE_NOTE_LIVE_ENTRY`. The frontend
+variable accepts only `true`, and Next.js inlines it when the frontend is
+built: changing it in Vercel takes effect only after a new deployment. Record
+the commit of every deployment used below.
+
+C3 check, after ADR-0059 is accepted and the deployment is approved:
+
+1. Confirm the production site shows the AI Garden Note preview.
+2. In Vercel, set `NEXT_PUBLIC_CARE_NOTE_LIVE_ENTRY=true` for the **Preview**
+   environment only, and deploy the approved commit as a preview. Record the
+   commit and the exact preview URL.
+3. Add that exact preview URL to `FRONTEND_ORIGINS` in Render. Do not add a
+   wildcard.
+4. Set `CARE_NOTE_PUBLIC_RUN_LIMIT=3`, then `CARE_NOTE_PUBLIC_ENABLED=true`,
+   and wait for the Render deploy.
+5. Run the check from the preview URL. Note each request ID the page shows
+   and match it to its `care_note_public_request` log line; a used-up count
+   alone does not show a passed check.
+6. Set `CARE_NOTE_PUBLIC_ENABLED=false` and wait for the deploy, then remove
+   the preview URL from `FRONTEND_ORIGINS`. Leave the budget rows untouched.
+
+Removing the origin stops browsers on that site, not direct API calls; the
+closed API switch is what stops those.
+
+C4, after the owner approves opening:
+
+1. Set `NEXT_PUBLIC_CARE_NOTE_LIVE_ENTRY=true` for **Production** in Vercel
+   and deploy the approved commit. Record the commit.
+2. Set `CARE_NOTE_PUBLIC_RUN_LIMIT=78`, then `CARE_NOTE_PUBLIC_ENABLED=true`.
+   The used count carries over from C3.
+
+### Stop public drafts by hand
+
+Use this when the API log shows `care_note_public_stop_unconfirmed`, or
+whenever drafts must stop:
+
+1. In the Render dashboard, open the API service's **Environment** page, set
+   `CARE_NOTE_PUBLIC_ENABLED` to `false`, and save. Render redeploys the
+   service with the new value.
+2. Wait until the new deploy is live, then open the public demo: AI Garden
+   Note shows its preview again, and `/runtime-config` reports
+   `"careNotePublicAvailable": false`.
+3. Manual care records keep working. Requests already sent to OpenAI before
+   the change can still finish and cost money.
+
+Reopening needs a check of the cost assumptions and the owner's decision on
+the remaining allocation; never lower or delete the budget rows.
+
 ## Local AI Demonstration
 
 Use the local Docker Compose setup when demonstrating AI or photo workflows.

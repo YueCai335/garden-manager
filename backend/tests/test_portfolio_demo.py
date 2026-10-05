@@ -1,8 +1,9 @@
 from datetime import date
 
 
-def test_portfolio_demo_keeps_ai_and_photo_features_local(client, monkeypatch):
+def test_portfolio_demo_keeps_photo_upload_local_and_garden_note_closed_by_default(client, monkeypatch):
     monkeypatch.setenv("PORTFOLIO_DEMO_MODE", "true")
+    monkeypatch.delenv("CARE_NOTE_PUBLIC_ENABLED", raising=False)
 
     care_note = client.post(
         "/workspaces/local-workspace-1/gardens/garden-1/ai/care-note-draft",
@@ -14,7 +15,8 @@ def test_portfolio_demo_keeps_ai_and_photo_features_local(client, monkeypatch):
     )
 
     assert care_note.status_code == 503
-    assert care_note.json()["detail"] == "AI assistance is available in the local app for this portfolio demo."
+    # Public Garden Note stays off until CARE_NOTE_PUBLIC_ENABLED is set (ADR-0059).
+    assert care_note.json()["detail"] == "AI Garden Note is not available in the demo right now. You can still fill in the record manually."
     assert photo.status_code == 503
     assert photo.json()["detail"] == "Photo upload is available in the local app for this portfolio demo."
 
@@ -25,4 +27,4 @@ def test_runtime_config_reports_portfolio_demo_mode(client, monkeypatch):
     response = client.get("/runtime-config")
 
     assert response.status_code == 200
-    assert response.json() == {"portfolioDemo": True}
+    assert response.json() == {"portfolioDemo": True, "careNotePublicAvailable": False}

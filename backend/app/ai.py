@@ -186,27 +186,41 @@ def care_note_text_format() -> dict:
     }
 
 
+def care_note_request_bytes(params: dict) -> int:
+    """UTF-8 bytes of every parameter sent, measured as the allocation agent does (ADR-0056).
+
+    A byte-level tokenizer maps every token to at least one byte, so this also
+    bounds the content tokens; OpenAI's formatting tokens need a separate allowance.
+    """
+    return len(json.dumps(params, ensure_ascii=False, separators=(",", ":")).encode("utf-8"))
+
+
 class OpenAICareNoteExtractor:
     def __init__(self, api_key: str, model: str, client=None):
         self.api_key = api_key
         self.model = model
         self.client = client
 
-    def extract(self, note: str, garden_context: dict[str, object], today: date) -> CareNoteExtraction:
+    def request_params(self, note: str, garden_context: dict[str, object], today: date) -> dict:
+        """Every parameter sent to responses.create, exactly as sent."""
+        return {
+            "model": self.model,
+            "store": False,
+            "instructions": care_note_instructions(),
+            "input": care_note_input(note, garden_context, today),
+            "max_output_tokens": CARE_NOTE_MAX_OUTPUT_TOKENS,
+            "text": care_note_text_format(),
+        }
+
+    def send(self, params: dict):
+        """One request with the given parameters, unchanged; returns the raw response."""
         import openai
         from openai import OpenAI
 
         # max_retries=0: one generation sends at most one request.
         client = self.client or OpenAI(api_key=self.api_key, max_retries=0, timeout=CARE_NOTE_TIMEOUT_SECONDS)
         try:
-            response = client.responses.create(
-                model=self.model,
-                store=False,
-                instructions=care_note_instructions(),
-                input=care_note_input(note, garden_context, today),
-                max_output_tokens=CARE_NOTE_MAX_OUTPUT_TOKENS,
-                text=care_note_text_format(),
-            )
+            return client.responses.create(**params)
         except openai.APITimeoutError as error:
             raise CareNoteProviderError("The AI service timed out. Try again or fill in the record manually.") from error
         except openai.OpenAIError as error:
@@ -214,10 +228,16 @@ class OpenAICareNoteExtractor:
         finally:
             if self.client is None:
                 client.close()
-        try:
-            return CareNoteExtraction.model_validate_json(care_note_output_text(response))
-        except ValueError as error:
-            raise CareNoteProviderError("The AI service returned an unusable care draft.") from error
+
+    def extract(self, note: str, garden_context: dict[str, object], today: date) -> CareNoteExtraction:
+        return parse_care_note_response(self.send(self.request_params(note, garden_context, today)))
+
+
+def parse_care_note_response(response) -> CareNoteExtraction:
+    try:
+        return CareNoteExtraction.model_validate_json(care_note_output_text(response))
+    except ValueError as error:
+        raise CareNoteProviderError("The AI service returned an unusable care draft.") from error
 
 
 def care_note_output_text(response) -> str:

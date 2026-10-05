@@ -24,6 +24,8 @@ export class ServerWorkspaceError extends Error {
 
 export type RuntimeConfig = {
   portfolioDemo: boolean;
+  /** Whether the server allows live AI Garden Note drafts in the public demo (ADR-0059). */
+  careNotePublicAvailable?: boolean;
 };
 
 export type RotationHistoryPlanting = {
@@ -66,7 +68,18 @@ export type AiCareNoteDraft = {
   fertilizerAmount: number | null;
   fertilizerUnit: string | null;
   reviewNotes: string[];
+  /** The public demo's request ID, read from a response header; absent in the local app. */
+  requestId?: string;
 };
+
+/** A failed draft request, with the public demo's request ID when the server sent one. */
+export class AiCareNoteRequestError extends Error {
+  constructor(message: string, readonly requestId?: string) {
+    super(message);
+  }
+}
+
+const CARE_NOTE_REQUEST_ID_HEADER = "X-Care-Note-Request";
 
 export type PlantKnowledgeAnswer = {
   answer: string;
@@ -160,12 +173,17 @@ export async function createAiCareNoteDraft(
       body: JSON.stringify({ note, today }),
     },
   );
+  const requestId = response.headers?.get?.(CARE_NOTE_REQUEST_ID_HEADER) ?? undefined;
   if (!response.ok) {
     const detail = await response.json().catch(() => ({}));
     // Request-validation errors carry a list, not a message.
-    throw new Error(typeof detail.detail === "string" ? detail.detail : "The AI service could not create a care draft.");
+    throw new AiCareNoteRequestError(
+      typeof detail.detail === "string" ? detail.detail : "The AI service could not create a care draft.",
+      requestId,
+    );
   }
-  return response.json() as Promise<AiCareNoteDraft>;
+  const draft = (await response.json()) as AiCareNoteDraft;
+  return requestId ? { ...draft, requestId } : draft;
 }
 
 export async function uploadPlantHealthPhoto(

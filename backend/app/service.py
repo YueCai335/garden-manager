@@ -2,6 +2,7 @@ import hashlib
 import json
 from datetime import date
 from math import sqrt
+from typing import NamedTuple
 
 from fastapi import HTTPException
 from sqlalchemy import select, update
@@ -11,7 +12,7 @@ from .ai import CareNoteExtractor, CareNoteProviderError, EmbeddingClient, Plant
 from .knowledge import SEED_KNOWLEDGE_CARDS
 from .models import CareEvent, CareTask, Garden, GrowingArea, HealthRecord, KnowledgeChunk, KnowledgeSource, PlannedPlanting, Planting, SeasonPlan, Workspace, WorkspaceCareEvent, WorkspaceCareTask
 from .rotation import ROTATION_GROWING_AREA_KINDS, RotationPlanting, evaluate_rotation
-from .schemas import CareNoteDraftRequest, PlantHealthAssessmentRequest, PlantKnowledgeAnswer, PlantKnowledgeQuestion, RotationGuidanceRequest, WorkspaceImport, WorkspaceSave
+from .schemas import CareNoteDraftRequest, CareNoteExtraction, PlantHealthAssessmentRequest, PlantKnowledgeAnswer, PlantKnowledgeQuestion, RotationGuidanceRequest, WorkspaceImport, WorkspaceSave
 
 
 def import_fingerprint(workspace: WorkspaceImport) -> str:
@@ -161,6 +162,58 @@ NOT_COMPLETED_MESSAGES = {
 }
 
 
+class CareNoteArea(NamedTuple):
+    id: str
+    name: str
+
+
+class CareNotePlanting(NamedTuple):
+    id: str
+    common_name: str
+    growing_area_id: str | None
+
+
+class CareNoteGarden(NamedTuple):
+    """What a care note needs from a garden: names for the model, IDs for the draft.
+
+    Built from a stored garden locally, and from the fixed demo garden in the
+    public demo (ADR-0059), so both paths share the same draft rules.
+    """
+
+    name: str
+    areas: tuple[CareNoteArea, ...]
+    plantings: tuple[CareNotePlanting, ...]
+
+    def model_context(self) -> dict[str, object]:
+        return {
+            "name": self.name,
+            "plantingAreas": [area.name for area in self.areas],
+            "plantGroups": [planting.common_name for planting in self.plantings],
+        }
+
+
+def stored_care_note_garden(garden: Garden) -> CareNoteGarden:
+    area_ids = {area.id: area.external_id for area in garden.growing_areas}
+    return CareNoteGarden(
+        name=garden.name,
+        areas=tuple(CareNoteArea(area.external_id, area.name) for area in garden.growing_areas),
+        plantings=tuple(
+            CareNotePlanting(planting.external_id, planting.common_name, area_ids.get(planting.growing_area_id))
+            for planting in garden.plantings
+        ),
+    )
+
+
+def check_client_today(today: date, server_today: date) -> None:
+    # One day each way covers UTC-12 to UTC+14 around the server's UTC date.
+    # It rejects an implausible clock; it cannot prove the browser's date (ADR-0058).
+    if abs((today - server_today).days) > 1:
+        raise HTTPException(
+            status_code=422,
+            detail="Your device date is more than a day away from today. Check your device clock and try again.",
+        )
+
+
 def care_note_draft(
     session: Session,
     workspace_id: str,
@@ -169,57 +222,65 @@ def care_note_draft(
     extractor: CareNoteExtractor,
     server_today: date,
 ) -> dict:
-    # One day each way covers UTC-12 to UTC+14 around the server's UTC date.
-    # It rejects an implausible clock; it cannot prove the browser's date (ADR-0058).
-    if abs((payload.today - server_today).days) > 1:
-        raise HTTPException(
-            status_code=422,
-            detail="Your device date is more than a day away from today. Check your device clock and try again.",
-        )
+    check_client_today(payload.today, server_today)
     workspace = load_workspace(session, workspace_id)
     if workspace is None:
         raise HTTPException(status_code=404, detail="Workspace not found")
-    garden = next((garden for garden in workspace.gardens if garden.external_id == garden_id), None)
-    if garden is None:
+    stored_garden = next((garden for garden in workspace.gardens if garden.external_id == garden_id), None)
+    if stored_garden is None:
         raise HTTPException(status_code=404, detail="Garden not found in this workspace")
 
-    garden_context = {
-        "name": garden.name,
-        "plantingAreas": [area.name for area in garden.growing_areas],
-        "plantGroups": [planting.common_name for planting in garden.plantings],
-    }
+    garden = stored_care_note_garden(stored_garden)
     try:
-        extraction = extractor.extract(payload.note, garden_context, payload.today)
+        extraction = extractor.extract(payload.note, garden.model_context(), payload.today)
     except CareNoteProviderError as error:
         raise HTTPException(status_code=503, detail=str(error)) from error
+    return draft_from_extraction(garden, payload.note, extraction, payload.today)
 
+
+ALL_GARDENS_NOT_PUBLIC = "The demo records care for the example garden only. Choose a target in it before saving."
+
+
+def draft_from_extraction(
+    garden: CareNoteGarden,
+    note: str,
+    extraction: CareNoteExtraction,
+    today: date,
+    *,
+    allow_all_gardens: bool = True,
+) -> dict:
+    """Apply ADR-0058's draft rules to one model extraction."""
     if extraction.kind != "completed":
         # Only a completed event becomes a draft; the gardener can still enter one by hand.
-        return {"kind": extraction.kind, "note": payload.note, "targetScope": None, "reviewNotes": [NOT_COMPLETED_MESSAGES[extraction.kind]]}
+        return {"kind": extraction.kind, "note": note, "targetScope": None, "reviewNotes": [NOT_COMPLETED_MESSAGES[extraction.kind]]}
 
     # Check the wording behind a garden-wide target before any filling or matching.
-    extraction = drop_unsupported_garden_scope(extraction, payload.note)
-    extraction = complete_known_care_note_fields(extraction, payload.note, garden_context, payload.today)
-    target = resolve_care_note_target(garden, extraction.target_scope, extraction.target_name)
+    extraction = drop_unsupported_garden_scope(extraction, note)
+    extraction = complete_known_care_note_fields(extraction, note, garden.model_context(), today)
     review_notes: list[str] = []
     if extraction.type is None:
         review_notes.append("Choose a care type before saving.")
     if extraction.date is None:
         review_notes.append("Choose the care date before saving.")
-    if target is None:
-        target = {"targetScope": None}
-        review_notes.append(
-            "Choose a target because the note did not match one garden item."
-            if extraction.target_name
-            else "Choose a target before saving."
-        )
+    if extraction.target_scope == "all-gardens" and not allow_all_gardens:
+        # The public demo works on one example garden (ADR-0059).
+        target = None
+        review_notes.append(ALL_GARDENS_NOT_PUBLIC)
+    else:
+        target = resolve_care_note_target(garden, extraction.target_scope, extraction.target_name)
+        if target is None:
+            review_notes.append(
+                "Choose a target because the note did not match one garden item."
+                if extraction.target_name
+                else "Choose a target before saving."
+            )
 
     return {
         "kind": extraction.kind,
         "type": extraction.type,
         "date": extraction.date,
-        "note": payload.note,
-        **target,
+        "note": note,
+        **(target or {"targetScope": None}),
         **(
             {
                 "fertilizerProduct": extraction.fertilizer_product,
@@ -379,7 +440,7 @@ def cosine_similarity(left: list[float], right) -> float:
     return sum(left_value * right_value for left_value, right_value in zip(left, right_values, strict=True)) / denominator
 
 
-def resolve_care_note_target(garden: Garden, target_scope: str | None, target_name: str | None) -> dict | None:
+def resolve_care_note_target(garden: CareNoteGarden, target_scope: str | None, target_name: str | None) -> dict | None:
     """The unique garden item a draft names, or None so the gardener chooses."""
     if target_scope == "all-gardens":
         return {"targetScope": "all-gardens"}
@@ -389,27 +450,23 @@ def resolve_care_note_target(garden: Garden, target_scope: str | None, target_na
         return None
     normalized_name = target_name.casefold()
     if target_scope == "planting-area":
-        matches = [area for area in garden.growing_areas if area.name.casefold() == normalized_name]
+        matches = [area for area in garden.areas if area.name.casefold() == normalized_name]
         if len(matches) == 1:
             return {
                 "targetScope": "planting-area",
-                "growingAreaId": matches[0].external_id,
+                "growingAreaId": matches[0].id,
                 "growingAreaName": matches[0].name,
             }
     if target_scope == "plant-group":
         matches = [planting for planting in garden.plantings if planting.common_name.casefold() == normalized_name]
         if len(matches) == 1:
+            area = next((area for area in garden.areas if area.id == matches[0].growing_area_id), None)
             return {
                 "targetScope": "plant-group",
-                "plantingRecordId": matches[0].external_id,
-                "plantingRecordName": planting_target_name(matches[0], garden),
+                "plantingRecordId": matches[0].id,
+                "plantingRecordName": f"{matches[0].common_name} · {area.name if area else 'Planting area'}",
             }
     return None
-
-
-def planting_target_name(planting: Planting, garden: Garden) -> str:
-    area = next((area for area in garden.growing_areas if area.id == planting.growing_area_id), None)
-    return f"{planting.common_name} · {area.name if area else 'Planting area'}"
 
 
 def write_workspace(workspace: Workspace, payload: WorkspaceImport) -> None:

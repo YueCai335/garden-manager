@@ -26,7 +26,6 @@ import os
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass, field
 from datetime import date, datetime, timezone
-from importlib import resources
 from pathlib import Path
 from typing import Iterator
 
@@ -57,6 +56,7 @@ from .loop import (
     turn_outcome,
 )
 from .openai_model import DEFAULT_MODEL
+from ..demo_garden import load_demo_garden_data
 from .service import camel_case_response, load_demo_garden
 from .tools import tool_definitions
 
@@ -91,7 +91,7 @@ def digest(value) -> str:
 
 def batch_fingerprint(cases_doc: dict, model_name: str) -> dict:
     """Everything a paid result depends on. Inline gardens live in the cases document."""
-    demo = json.loads(resources.files("app.agent").joinpath("demo_garden.json").read_text(encoding="utf-8"))
+    demo = load_demo_garden_data()
     return {
         "model": model_name,
         "cases": digest(cases_doc),
