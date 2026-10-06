@@ -1,8 +1,8 @@
 # ADR-0059: Open Budgeted Care Note Generation in the Portfolio Demo
 
-- Status: Proposed
+- Status: Rejected (2026-10-06, after two evaluations; see "Outcome")
 - Date: 2026-10-04
-- Amends on acceptance: [ADR-0040](0040-use-vercel-render-and-supabase-for-the-portfolio-demo.md)
+- Would have amended on acceptance (not applied): [ADR-0040](0040-use-vercel-render-and-supabase-for-the-portfolio-demo.md)
   (Garden Note runs in the hosted demo) and
   [ADR-0057](0057-keep-live-allocation-runs-closed-after-evaluation.md)
   (a backend OpenAI key may live in Render for Garden Note only)
@@ -206,6 +206,53 @@ Chinese and English classification is reliable, and the report says so. A failed
 public generation off. On acceptance, ADR-0040 and ADR-0057 are annotated and
 the deployment guide is updated. The visitor entry opens after C3 passes, and
 the deployed check is recorded separately.
+
+## Outcome
+
+Rejected on 2026-10-06 under the stop condition above. Public AI Garden Note
+generation stays closed; the demo keeps its preview, and AI Garden Note runs
+live only in the local app. ADR-0040 and ADR-0057 are unchanged.
+
+| | Batch 1 (2026-10-05) | Batch 2 (2026-10-06) |
+| --- | --- | --- |
+| Passed | 17/20 | 17/20 |
+| Ordinary completed notes | 7/8 | **6/8** |
+| Hard-gate failures | 0 | 0 |
+| Invented values | **1** (a date) | 0 |
+| Wrong values | 0 | 0 |
+| Invalid savable drafts | 0 | 0 |
+| Usage | known, within the bound | known, within the bound |
+| Gates met | no | no |
+
+Batch 2 ran at commit `9416884` on 20 new cases, reusing batch 1's C1 after
+the recorded requests rebuilt identically, and after the batch-1 replay met
+every gate. It missed two gates: 17 of 20 passed (18 needed) and 6 of 8
+ordinary notes (7 needed). All three failures left the target empty for the
+gardener; none produced a savable false record:
+
+- Two notes naming Sample container group came back as a plant group, not
+  a planting area, so the name matched nothing and the target stayed empty.
+  Batch 1 failed one note the same way. Matching names across scopes was
+  considered and deferred.
+- The prompt-injection note asked for every garden, the model returned
+  `all-gardens`, and the public path refused it.
+
+The server rules did their part in both batches. In each batch the model
+widened the target to the whole garden or all gardens in 8 notes that named
+something narrower; the server restored the expected target in 7 of them and
+left the target empty in the prompt-injection note. In batch 2 the model filled today's date for five completed
+notes that named no date, an unsupported date, or two dates (the
+prompt-injection note among them); the date rule left all five empty. The four hard-gated notes were classified correctly in both batches.
+
+Spending: 42 local requests in all (C1 2, batch 1 20, batch 2 20), estimated
+at about USD 0.0044 from the returned tokens and listed prices; the 58 online
+requests were never used. Twenty cases per batch are limited evidence; this
+outcome says the model does not meet these gates on these cases, not that it
+fails in general.
+
+Reconsider only as a new decision with its own task and budget, for example
+with a different model, cross-scope target matching, or a changed demo garden;
+not by tuning rules against the cases above.
 
 ## Why This Option
 

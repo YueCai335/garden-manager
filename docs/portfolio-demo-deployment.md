@@ -85,11 +85,13 @@ it with `SELECT used_runs FROM agent_run_budgets;` in Supabase.
 
 ## AI Garden Note Status
 
-Live AI Garden Note drafts in the public demo are proposed in ADR-0059 and
-stay closed: `CARE_NOTE_PUBLIC_ENABLED=false` and
-`CARE_NOTE_PUBLIC_RUN_LIMIT=0` in Render, so the panel shows its preview.
-Opening follows the release gates in ADR-0059; the checks and their results
-are in [docs/care-note-public-delivery.md](care-note-public-delivery.md).
+Live AI Garden Note drafts in the public demo were evaluated under ADR-0059
+and rejected on 2026-10-06: two paid evaluations missed the quality gates. They stay
+closed: `CARE_NOTE_PUBLIC_ENABLED=false` and `CARE_NOTE_PUBLIC_RUN_LIMIT=0` in
+Render, and the panel shows its preview. The checks and results are in
+[docs/care-note-public-delivery.md](care-note-public-delivery.md). The staged
+opening steps below are kept for reference; they apply only if a new decision
+reopens the feature.
 
 Check usage in Supabase with
 `SELECT name, used_runs FROM agent_run_budgets WHERE name LIKE 'care-note-public%';`.

@@ -101,7 +101,7 @@ changes, mark the old record as superseded and add a new record.
 | [ADR-0056](0056-use-a-budgeted-tool-calling-agent-for-season-allocation.md) | Use a budgeted tool-calling agent for next-season allocation | Accepted; public run limit amended by ADR-0057 |
 | [ADR-0057](0057-keep-live-allocation-runs-closed-after-evaluation.md) | Keep live allocation runs closed in the public demo after evaluation | Accepted |
 | [ADR-0058](0058-classify-care-notes-before-filling-a-draft.md) | Classify care notes before filling a reviewable draft | Accepted |
-| [ADR-0059](0059-open-budgeted-public-care-note-generation.md) | Open budgeted care note generation in the portfolio demo | Proposed |
+| [ADR-0059](0059-open-budgeted-public-care-note-generation.md) | Open budgeted care note generation in the portfolio demo | Rejected after two evaluations |
 
 ## Interview Use
 

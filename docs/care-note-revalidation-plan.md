@@ -1,9 +1,9 @@
 # AI Garden Note Revalidation — Batch 2 Plan
 
-- Status: **implemented offline, awaiting review**. The 42/58 allocation, the
-  batch ledgers, the C1 reuse check, the regression gate, and the frozen
-  batch-2 cases are in code and tests. No paid request has been sent; batch 2
-  needs the owner's separate authorization.
+- Status: **done; gates not met**. Batch 2 ran on 2026-10-06 at commit `9416884`
+  (20 requests): 17/20, ordinary 6/8, nothing invented or wrong, no hard-gate
+  failure. Under the stop condition ADR-0059 is rejected and public
+  generation stays closed. Results: [care-note-public-delivery.md](care-note-public-delivery.md).
 - Decision: [ADR-0059](decisions/0059-open-budgeted-public-care-note-generation.md) (Proposed)
 - Batch 1: [care-note-evaluation.md](care-note-evaluation.md); results and
   checks in [care-note-public-delivery.md](care-note-public-delivery.md)
