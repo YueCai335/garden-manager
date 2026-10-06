@@ -502,3 +502,30 @@ def test_a_paid_command_refuses_uncommitted_code(tmp_path, fake_openai_server, m
     )
     assert completed.returncode != 0 and "Commit or stash" in completed.stderr
     assert FakeOpenAIServer.requests == []
+
+
+# --- Replay of the saved C2 responses ---
+
+
+def test_the_replay_reads_saved_responses_without_changing_them():
+    runs_dir = care_note_live.EVALUATION_DIR / "runs"
+    before = {path.name: path.read_bytes() for path in runs_dir.glob("*.json")}
+    records = care_note_live.evaluation_records(runs_dir)
+
+    replay = care_note_live.replay_evaluation(records, code_version="test")
+
+    assert {path.name: path.read_bytes() for path in runs_dir.glob("*.json")} == before
+    assert replay["description"].startswith("New rules applied to existing model responses")
+    # The recorded C2 result is reproduced exactly from the records, unchanged by the replay.
+    assert replay["recorded_summary"]["passed"] == 17
+    assert replay["recorded_summary"]["invented"] == ["en-missing-date"]
+    assert len(replay["cases"]) == 20
+
+
+def test_the_replay_names_every_case_whose_draft_or_result_changed():
+    records = care_note_live.evaluation_records(care_note_live.EVALUATION_DIR / "runs")
+    replay = care_note_live.replay_evaluation(records, code_version="test")
+
+    for item in replay["cases"]:
+        listed = item["id"] in replay["changed_cases"]
+        assert listed == bool(item["changed_fields"] or item["recorded_passed"] != item["replayed_passed"])

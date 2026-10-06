@@ -23,6 +23,7 @@ import hashlib
 import json
 import time
 from dataclasses import dataclass
+from types import SimpleNamespace
 from datetime import date
 from pathlib import Path
 
@@ -431,3 +432,58 @@ def request_sizes(cases_doc: dict) -> dict[str, int]:
         **{f"evaluation/{case['id']}": case["note"] for case in cases_doc["cases"]},
     }
     return {label: care_note_request_bytes(extractor.request_params(note, garden.model_context(), today)) for label, note in notes.items()}
+
+
+# --- Replay: current rules on saved responses, no requests ---
+
+
+REPLAY_FIELDS = (
+    "kind", "type", "date", "targetScope", "growingAreaId", "plantingRecordId",
+    "fertilizerProduct", "fertilizerAmount", "fertilizerUnit", "reviewNotes",
+)
+
+
+def replay_evaluation(records: list[dict], *, code_version: str) -> dict:
+    """Re-run today's draft rules and scoring on saved model responses.
+
+    Nothing is sent and the saved records are not changed: this measures what
+    the current rules would make of responses the model already gave, which is
+    not a new evaluation of the model.
+    """
+    garden = demo_care_note_garden()
+    cases = []
+    for record in records:
+        case = record["case"]
+        today = date.fromisoformat(record["today"])
+        try:
+            extraction = parse_care_note_response(
+                SimpleNamespace(status="completed", output=[SimpleNamespace(type="message", content=[SimpleNamespace(type="output_text", text=record["output_text"])])])
+            )
+            draft = json.loads(json.dumps(draft_from_extraction(garden, case["note"], extraction, today, allow_all_gardens=False), default=str))
+        except CareNoteProviderError:
+            draft = None
+        score = score_case(case, draft)
+        before = record["draft"] or {}
+        changed_fields = {
+            key: {"recorded": before.get(key), "replayed": (draft or {}).get(key)}
+            for key in REPLAY_FIELDS
+            if before.get(key) != (draft or {}).get(key)
+        }
+        cases.append({
+            "id": case["id"],
+            "recorded_passed": record["score"]["passed"],
+            "replayed_passed": score["passed"],
+            "replayed_score": score,
+            "changed_fields": changed_fields,
+            "replayed_record": {"case": case, "input_tokens": record.get("input_tokens"), "score": score},
+        })
+    return {
+        "description": "New rules applied to existing model responses. No request was sent; the recorded C2 results stay as they are.",
+        "recorded_at": now(),
+        "code_version": code_version,
+        "source": source_digest(SOURCE_FILES),
+        "recorded_summary": summarize(records),
+        "replayed_summary": summarize([item.pop("replayed_record") for item in cases]),
+        "changed_cases": [item["id"] for item in cases if item["changed_fields"] or item["recorded_passed"] != item["replayed_passed"]],
+        "cases": cases,
+    }

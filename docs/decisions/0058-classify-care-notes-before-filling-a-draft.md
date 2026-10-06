@@ -86,6 +86,18 @@ every missing field visibly empty until the gardener fills it.
 - The local app keeps ADR-0034's `all-gardens` target for a note that
   explicitly says all gardens. Any public-demo restriction on that target
   belongs to the deployment ADR.
+- The server, not the prompt, also enforces the evidence behind a date, in
+  one step on the path both providers share (added 2026-10-06 after the C2
+  evaluation, where the model gave today's date to a note with no date). The
+  first version recognizes today, yesterday, and the day before yesterday in
+  English and Chinese, and `YYYY-MM-DD`. A model date stays only when the
+  note's recognized expressions name exactly that one date. Two different
+  dates, a date that is not a real calendar date, or one later than today
+  leave the date empty; such a date is never dropped first, so it cannot hide
+  a conflict. A cleared date is never filled back in; an empty date is filled
+  only from one unambiguous expression in a completed note without a
+  negation or future marker. Other wording, such as a month and day without
+  a year, leaves the date for the gardener.
 - `completed` is necessary, not sufficient, for saving. The gardener saves
   only after the type, date, and target are all set and pass the existing
   Care History validation.

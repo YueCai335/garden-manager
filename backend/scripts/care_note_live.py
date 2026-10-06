@@ -15,6 +15,7 @@ The API key is read from OPENAI_API_KEY or backend/.env and is never printed.
     python scripts/care_note_live.py compatibility --confirm-spend
     python scripts/care_note_live.py evaluate --confirm-spend
     python scripts/care_note_live.py report            # no API call
+    python scripts/care_note_live.py replay            # no API call: current rules on saved responses
     python scripts/care_note_live.py resolve-interrupted --unit N --note "what the usage page showed"
 """
 
@@ -40,6 +41,7 @@ from app.care_note_live import (  # noqa: E402
     blocking_changes,
     evaluation_records,
     load_cases,
+    replay_evaluation,
     request_sizes,
     run_compatibility,
     run_evaluation,
@@ -108,6 +110,36 @@ def print_report() -> None:
     print(json.dumps(summarize(records), indent=2))
 
 
+def current_version() -> str:
+    """The commit, marked when the working tree has other changes; a replay costs nothing, so it never refuses."""
+    repository = BACKEND_DIR.parent
+    commit = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=repository, capture_output=True, text=True, check=True).stdout.strip()
+    changes = subprocess.run(
+        ["git", "status", "--porcelain", "--untracked-files=all"], cwd=repository, capture_output=True, text=True, check=True
+    ).stdout
+    return commit + ("+uncommitted" if blocking_changes(changes) else "")
+
+
+def write_replay() -> None:
+    replay = replay_evaluation(evaluation_records(RUNS_DIR), code_version=current_version())
+    path = EVALUATION_PATH / "replays" / f"replay-{replay['source']}.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(replay, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    print(replay["description"])
+    for item in replay["cases"]:
+        if item["id"] in replay["changed_cases"]:
+            print(f"  {item['id']}: recorded {'PASS' if item['recorded_passed'] else 'FAIL'} -> replayed {'PASS' if item['replayed_passed'] else 'FAIL'}")
+            for key, change in item["changed_fields"].items():
+                print(f"      {key}: {change['recorded']!r} -> {change['replayed']!r}")
+    for label in ("recorded_summary", "replayed_summary"):
+        summary = replay[label]
+        print(
+            f"{label}: passed {summary['passed']}/20, ordinary {summary['ordinary_passed']}/8, "
+            f"hard-gate {summary['hard_gate_failures']}, invented {summary['invented']}, wrong values {summary['wrong_values']}"
+        )
+    print(f"Wrote {path.relative_to(BACKEND_DIR)} at {replay['code_version']}.")
+
+
 def run_paid(command: str, ledger: CareNoteLedger, cases: dict, version: str) -> None:
     ledger.check_ready()
     extractor = real_extractor()
@@ -125,7 +157,7 @@ def run_paid(command: str, ledger: CareNoteLedger, cases: dict, version: str) ->
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("command", choices=["validate", "status", "compatibility", "evaluate", "report", "resolve-interrupted"])
+    parser.add_argument("command", choices=["validate", "status", "compatibility", "evaluate", "report", "replay", "resolve-interrupted"])
     parser.add_argument("--confirm-spend", action="store_true", help="required for commands that call OpenAI")
     parser.add_argument("--unit", type=int, help="resolve-interrupted: the request that did not finish")
     parser.add_argument("--note", default="", help="resolve-interrupted: what the usage check found")
@@ -140,6 +172,9 @@ def main() -> None:
         return
     if args.command == "report":
         print_report()
+        return
+    if args.command == "replay":
+        write_replay()
         return
     if args.command in {"compatibility", "evaluate"} and not args.confirm_spend:
         sys.exit(f"{args.command} calls the paid API. Re-run with --confirm-spend.")

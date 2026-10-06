@@ -8,7 +8,7 @@ from fastapi import HTTPException
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session, selectinload
 
-from .ai import CareNoteExtractor, CareNoteProviderError, EmbeddingClient, PlantHealthAssessor, PlantKnowledgeAnswerer, complete_known_care_note_fields, drop_unsupported_garden_scope
+from .ai import CareNoteExtractor, CareNoteProviderError, EmbeddingClient, PlantHealthAssessor, PlantKnowledgeAnswerer, complete_known_care_note_fields, drop_unsupported_garden_scope, settle_care_note_date
 from .knowledge import SEED_KNOWLEDGE_CARDS
 from .models import CareEvent, CareTask, Garden, GrowingArea, HealthRecord, KnowledgeChunk, KnowledgeSource, PlannedPlanting, Planting, SeasonPlan, Workspace, WorkspaceCareEvent, WorkspaceCareTask
 from .rotation import ROTATION_GROWING_AREA_KINDS, RotationPlanting, evaluate_rotation
@@ -255,6 +255,8 @@ def draft_from_extraction(
         return {"kind": extraction.kind, "note": note, "targetScope": None, "reviewNotes": [NOT_COMPLETED_MESSAGES[extraction.kind]]}
 
     # Check the wording behind a garden-wide target before any filling or matching.
+    # The date first, in one step, so a cleared date is never filled back in.
+    extraction = settle_care_note_date(extraction, note, today)
     extraction = drop_unsupported_garden_scope(extraction, note)
     extraction = complete_known_care_note_fields(extraction, note, garden.model_context(), today)
     review_notes: list[str] = []

@@ -1,7 +1,7 @@
 import json
 import os
 import re
-from datetime import date
+from datetime import date, timedelta
 from typing import Protocol
 from urllib.request import Request, urlopen
 
@@ -63,11 +63,12 @@ def complete_known_care_note_fields(
     garden_context: dict[str, object],
     today: date,
 ) -> CareNoteExtraction:
-    """Fill only unambiguous care details stated directly in a completed-event note.
+    """Fill only an unambiguous care type and target stated directly in a completed-event note.
 
     The model decides the kind; this never changes it. A note with a negation
     or future marker gets no keyword filling even when the model says
     completed, because a keyword cannot tell "watered" from "did not water".
+    Dates are settled separately, by settle_care_note_date.
     """
     if extraction.kind != "completed" or has_not_completed_marker(note):
         return extraction
@@ -80,9 +81,6 @@ def complete_known_care_note_fields(
         elif any(term in normalized_note for term in ("water", "浇水", "浇了", "浇灌")):
             updates["type"] = "watering"
 
-    if extraction.date is None and any(term in normalized_note for term in ("today", "今天")):
-        updates["date"] = today
-
     if extraction.target_scope is None:
         target = known_target_from_note(normalized_note, garden_context)
         if target is not None:
@@ -90,6 +88,73 @@ def complete_known_care_note_fields(
             updates["target_name"] = target[1]
 
     return extraction.model_copy(update=updates)
+
+
+# The date expressions the first version recognizes (ADR-0058), as days before
+# the request's today. English phrases match whole words, longest first, so
+# "the day before yesterday" is not also read as "yesterday".
+ENGLISH_DATE_PHRASES = (
+    (re.compile(r"\b(?:the\s+)?day\s+before\s+yesterday\b"), 2),
+    (re.compile(r"\byesterday\b"), 1),
+    (re.compile(r"\btoday\b"), 0),
+)
+CHINESE_DATE_WORDS = (("前天", 2), ("昨天", 1), ("昨日", 1), ("今天", 0), ("今日", 0))
+# Words that contain a recognized word but mean another date. They are not
+# supported in this version: they make the evidence unusable, and they are
+# removed before matching so "大前天" (three days ago) is not read as "前天".
+CHINESE_UNSUPPORTED_DATE_WORDS = ("大前天",)
+ISO_DATE = re.compile(r"(?<!\d)(\d{4})-(\d{2})-(\d{2})(?!\d)")
+
+
+def note_date_evidence(note: str, today: date) -> date | None:
+    """The one date the note's recognized expressions name, or None.
+
+    None when the note names no recognized date, names two different ones, or
+    names one that is not a real calendar date or is later than today. An
+    unusable date is kept in view, not dropped, so it cannot hide a conflict.
+    """
+    text = note.casefold()
+    dates: set[date] = set()
+    unusable = False
+    for phrase, days_before in ENGLISH_DATE_PHRASES:
+        if phrase.search(text):
+            dates.add(today - timedelta(days=days_before))
+            text = phrase.sub(" ", text)
+    for word in CHINESE_UNSUPPORTED_DATE_WORDS:
+        if word in text:
+            unusable = True
+            text = text.replace(word, " ")
+    for word, days_before in CHINESE_DATE_WORDS:
+        if word in text:
+            dates.add(today - timedelta(days=days_before))
+    for year, month, day in ISO_DATE.findall(text):
+        try:
+            named = date(int(year), int(month), int(day))
+        except ValueError:
+            unusable = True
+            continue
+        if named > today:
+            unusable = True
+        else:
+            dates.add(named)
+    return next(iter(dates)) if len(dates) == 1 and not unusable else None
+
+
+def settle_care_note_date(extraction: CareNoteExtraction, note: str, today: date) -> CareNoteExtraction:
+    """Keep the model's date only when the note supports exactly that date (ADR-0058).
+
+    - A model date that matches the note's one recognized date stays.
+    - Any other model date is cleared, and nothing fills it back in.
+    - An empty date is filled with the note's one recognized date, only for a
+      completed note without a negation or future marker.
+    - Everything else stays empty for the gardener.
+    """
+    evidence = note_date_evidence(note, today)
+    if extraction.date is not None:
+        return extraction if extraction.date == evidence else extraction.model_copy(update={"date": None})
+    if evidence is not None and extraction.kind == "completed" and not has_not_completed_marker(note):
+        return extraction.model_copy(update={"date": evidence})
+    return extraction
 
 
 def note_says_all_gardens(note: str) -> bool:
