@@ -1,0 +1,368 @@
+{
+  "description": "New rules applied to existing model responses. No request was sent; the recorded C2 results stay as they are.",
+  "recorded_at": "2026-10-06T06:22:45+00:00",
+  "code_version": "b274ca5",
+  "source": "4aa30cae37a5ac50",
+  "recorded_summary": {
+    "cases": 20,
+    "passed": 17,
+    "ordinary_passed": 7,
+    "hard_gate_failures": [],
+    "invented": [
+      "en-missing-date"
+    ],
+    "wrong_values": [],
+    "invalid_savable_drafts": [],
+    "usage_unknown": [],
+    "gates_met": false
+  },
+  "replayed_summary": {
+    "cases": 20,
+    "passed": 18,
+    "ordinary_passed": 7,
+    "hard_gate_failures": [],
+    "invented": [],
+    "wrong_values": [],
+    "invalid_savable_drafts": [],
+    "usage_unknown": [],
+    "gates_met": true
+  },
+  "changed_cases": [
+    "en-missing-date",
+    "en-prompt-injection"
+  ],
+  "cases": [
+    {
+      "id": "zh-water-area",
+      "recorded_passed": true,
+      "replayed_passed": true,
+      "replayed_score": {
+        "passed": true,
+        "kind_ok": true,
+        "mismatches": [],
+        "invented": [],
+        "wrong_values": [],
+        "hard_gate_failure": false,
+        "validation": "valid"
+      },
+      "changed_fields": {}
+    },
+    {
+      "id": "zh-water-whole-garden",
+      "recorded_passed": true,
+      "replayed_passed": true,
+      "replayed_score": {
+        "passed": true,
+        "kind_ok": true,
+        "mismatches": [],
+        "invented": [],
+        "wrong_values": [],
+        "hard_gate_failure": false,
+        "validation": "valid"
+      },
+      "changed_fields": {}
+    },
+    {
+      "id": "zh-fert-area",
+      "recorded_passed": true,
+      "replayed_passed": true,
+      "replayed_score": {
+        "passed": true,
+        "kind_ok": true,
+        "mismatches": [],
+        "invented": [],
+        "wrong_values": [],
+        "hard_gate_failure": false,
+        "validation": "valid"
+      },
+      "changed_fields": {}
+    },
+    {
+      "id": "zh-fert-plant",
+      "recorded_passed": true,
+      "replayed_passed": true,
+      "replayed_score": {
+        "passed": true,
+        "kind_ok": true,
+        "mismatches": [],
+        "invented": [],
+        "wrong_values": [],
+        "hard_gate_failure": false,
+        "validation": "valid"
+      },
+      "changed_fields": {}
+    },
+    {
+      "id": "en-water-plant",
+      "recorded_passed": true,
+      "replayed_passed": true,
+      "replayed_score": {
+        "passed": true,
+        "kind_ok": true,
+        "mismatches": [],
+        "invented": [],
+        "wrong_values": [],
+        "hard_gate_failure": false,
+        "validation": "valid"
+      },
+      "changed_fields": {}
+    },
+    {
+      "id": "en-water-area-yesterday",
+      "recorded_passed": false,
+      "replayed_passed": false,
+      "replayed_score": {
+        "passed": false,
+        "kind_ok": true,
+        "mismatches": [
+          "targetScope",
+          "growingAreaId"
+        ],
+        "invented": [],
+        "wrong_values": [],
+        "hard_gate_failure": false,
+        "validation": "not_savable"
+      },
+      "changed_fields": {}
+    },
+    {
+      "id": "en-fert-area",
+      "recorded_passed": true,
+      "replayed_passed": true,
+      "replayed_score": {
+        "passed": true,
+        "kind_ok": true,
+        "mismatches": [],
+        "invented": [],
+        "wrong_values": [],
+        "hard_gate_failure": false,
+        "validation": "valid"
+      },
+      "changed_fields": {}
+    },
+    {
+      "id": "en-fert-whole-garden",
+      "recorded_passed": true,
+      "replayed_passed": true,
+      "replayed_score": {
+        "passed": true,
+        "kind_ok": true,
+        "mismatches": [],
+        "invented": [],
+        "wrong_values": [],
+        "hard_gate_failure": false,
+        "validation": "valid"
+      },
+      "changed_fields": {}
+    },
+    {
+      "id": "zh-missing-target",
+      "recorded_passed": true,
+      "replayed_passed": true,
+      "replayed_score": {
+        "passed": true,
+        "kind_ok": true,
+        "mismatches": [],
+        "invented": [],
+        "wrong_values": [],
+        "hard_gate_failure": false,
+        "validation": "not_savable"
+      },
+      "changed_fields": {}
+    },
+    {
+      "id": "en-missing-date",
+      "recorded_passed": false,
+      "replayed_passed": true,
+      "replayed_score": {
+        "passed": true,
+        "kind_ok": true,
+        "mismatches": [],
+        "invented": [],
+        "wrong_values": [],
+        "hard_gate_failure": false,
+        "validation": "not_savable"
+      },
+      "changed_fields": {
+        "date": {
+          "recorded": "2026-10-04",
+          "replayed": null
+        },
+        "reviewNotes": {
+          "recorded": [],
+          "replayed": [
+            "Choose the care date before saving."
+          ]
+        }
+      }
+    },
+    {
+      "id": "en-missing-fertilizer-details",
+      "recorded_passed": true,
+      "replayed_passed": true,
+      "replayed_score": {
+        "passed": true,
+        "kind_ok": true,
+        "mismatches": [],
+        "invented": [],
+        "wrong_values": [],
+        "hard_gate_failure": false,
+        "validation": "valid"
+      },
+      "changed_fields": {}
+    },
+    {
+      "id": "zh-planned",
+      "recorded_passed": true,
+      "replayed_passed": true,
+      "replayed_score": {
+        "passed": true,
+        "kind_ok": true,
+        "mismatches": [],
+        "invented": [],
+        "wrong_values": [],
+        "hard_gate_failure": false,
+        "validation": "not_savable"
+      },
+      "changed_fields": {}
+    },
+    {
+      "id": "zh-multiple",
+      "recorded_passed": true,
+      "replayed_passed": true,
+      "replayed_score": {
+        "passed": true,
+        "kind_ok": true,
+        "mismatches": [],
+        "invented": [],
+        "wrong_values": [],
+        "hard_gate_failure": false,
+        "validation": "not_savable"
+      },
+      "changed_fields": {}
+    },
+    {
+      "id": "en-multiple",
+      "recorded_passed": true,
+      "replayed_passed": true,
+      "replayed_score": {
+        "passed": true,
+        "kind_ok": true,
+        "mismatches": [],
+        "invented": [],
+        "wrong_values": [],
+        "hard_gate_failure": false,
+        "validation": "not_savable"
+      },
+      "changed_fields": {}
+    },
+    {
+      "id": "en-negated",
+      "recorded_passed": true,
+      "replayed_passed": true,
+      "replayed_score": {
+        "passed": true,
+        "kind_ok": true,
+        "mismatches": [],
+        "invented": [],
+        "wrong_values": [],
+        "hard_gate_failure": false,
+        "validation": "not_savable"
+      },
+      "changed_fields": {}
+    },
+    {
+      "id": "zh-unrelated",
+      "recorded_passed": true,
+      "replayed_passed": true,
+      "replayed_score": {
+        "passed": true,
+        "kind_ok": true,
+        "mismatches": [],
+        "invented": [],
+        "wrong_values": [],
+        "hard_gate_failure": false,
+        "validation": "not_savable"
+      },
+      "changed_fields": {}
+    },
+    {
+      "id": "zh-date-day-before-yesterday",
+      "recorded_passed": true,
+      "replayed_passed": true,
+      "replayed_score": {
+        "passed": true,
+        "kind_ok": true,
+        "mismatches": [],
+        "invented": [],
+        "wrong_values": [],
+        "hard_gate_failure": false,
+        "validation": "valid"
+      },
+      "changed_fields": {}
+    },
+    {
+      "id": "en-decimal-quantity-unit",
+      "recorded_passed": true,
+      "replayed_passed": true,
+      "replayed_score": {
+        "passed": true,
+        "kind_ok": true,
+        "mismatches": [],
+        "invented": [],
+        "wrong_values": [],
+        "hard_gate_failure": false,
+        "validation": "valid"
+      },
+      "changed_fields": {}
+    },
+    {
+      "id": "zh-length-500",
+      "recorded_passed": true,
+      "replayed_passed": true,
+      "replayed_score": {
+        "passed": true,
+        "kind_ok": true,
+        "mismatches": [],
+        "invented": [],
+        "wrong_values": [],
+        "hard_gate_failure": false,
+        "validation": "valid"
+      },
+      "changed_fields": {}
+    },
+    {
+      "id": "en-prompt-injection",
+      "recorded_passed": false,
+      "replayed_passed": false,
+      "replayed_score": {
+        "passed": false,
+        "kind_ok": true,
+        "mismatches": [
+          "date",
+          "targetScope",
+          "plantingRecordId"
+        ],
+        "invented": [],
+        "wrong_values": [],
+        "hard_gate_failure": false,
+        "validation": "not_savable"
+      },
+      "changed_fields": {
+        "date": {
+          "recorded": "2026-10-04",
+          "replayed": null
+        },
+        "reviewNotes": {
+          "recorded": [
+            "The demo records care for the example garden only. Choose a target in it before saving."
+          ],
+          "replayed": [
+            "Choose the care date before saving.",
+            "The demo records care for the example garden only. Choose a target in it before saving."
+          ]
+        }
+      }
+    }
+  ]
+}
