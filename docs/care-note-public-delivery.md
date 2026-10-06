@@ -91,8 +91,8 @@ the deployed service, before C3.
 | --- | --- | --- |
 | Before C1 | The 20 C2 inputs with expected outcomes and scoring rules are frozen (8 ordinary / 3 missing / 5 not completed / 4 boundary, including ADR-0058's three local failures) | Done 2026-10-04: `backend/evaluation/care_note/cases.json`, reviewed in [care-note-evaluation.md](care-note-evaluation.md) |
 | Before C1 | The Garden Note ledger (22 requests: C1 2, C2 20) reserves before sending, never refunds, never resets, refuses repeats, waits for C1 before C2, and halts on usage doubt | Passed 2026-10-04: 40 tests, including the command line through the real SDK against a local fake server (22 requests, then refused); wrong values block the gates; the fingerprint covers whole source files; only the ledger and run records may be uncommitted |
-| Before C1 | Prices and account access are rechecked on the day of C1 | Pending |
-| C1 (≤ 2) | Strict schema accepted; near-maximum request usage within bytes + 1,000; cost recorded | Pending |
+| Before C1 | Prices and account access are rechecked on the day of C1 | Passed 2026-10-05: the official model page lists USD 0.15 input and USD 0.60 output per 1M tokens, the `gpt-4o-mini-2024-07-18` snapshot, Structured Outputs, and the Responses endpoint; the key worked |
+| C1 (≤ 2) | Strict schema accepted; near-maximum request usage within bytes + 1,000; cost recorded | Passed 2026-10-05 at commit `f34cd75`, batch source `6816fdcb7703c45b`: `strict-schema` 2,137 bytes, 440 input / 52 output tokens, estimated USD 0.0000972; `near-maximum` 5,597 bytes, 1,930 input / 46 output tokens, estimated USD 0.0003171. Both completed under strict mode and parsed; input stayed at 14% and 29% of bytes + 1,000. The cost estimated from the returned tokens and the listed prices is USD 0.0004143; the stage reserved USD 0.02 of budget. 20 of 22 local requests remain, all for C2. In `strict-schema` the model returned `targetScope: garden` for a note naming Sample raised bed; the server check cleared it and matched the bed, so the draft was right |
 | C2 (20) | Every result published against each ADR-0059 gate, including the hard gate on negated, planned, and multi-event notes | Pending |
 | C3 (≤ 3) | From a Preview build with the live entry on (commit recorded), the browser flow runs on the deployed endpoint with limit 3; each request ID is matched to its log line; the API switch is closed and the preview origin removed afterwards | Pending |
 | C3 extra checks | Owner approval recorded; each extra check reduces C4 | Not needed yet |
@@ -104,4 +104,5 @@ the deployed service, before C3.
 | --- | --- |
 | ADR-0059 | Proposed |
 | Task B offline checks | Passed 2026-10-04; Render checks remain for before C3 |
-| C1–C4 | Pending |
+| C1 | Passed 2026-10-05 |
+| C2–C4 | Pending |

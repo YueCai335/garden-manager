@@ -1,0 +1,44 @@
+{
+  "unit_limit": 22,
+  "batch": {
+    "model": "gpt-4o-mini-2024-07-18",
+    "cases": "45c971c44a6f1e2a",
+    "demo_garden": "5adce3bd905086f0",
+    "request_template": "d92d3dd86007b6af",
+    "source": "6816fdcb7703c45b",
+    "limits": {
+      "max_request_bytes": 8000,
+      "format_token_allowance": 1000,
+      "max_output_tokens": 800
+    }
+  },
+  "halted": null,
+  "entries": [
+    {
+      "unit": 1,
+      "kind": "compatibility",
+      "label": "strict-schema",
+      "status": "passed",
+      "started_at": "2026-10-05T04:27:10+00:00",
+      "finished_at": "2026-10-05T04:27:13+00:00",
+      "bytes": 2137,
+      "input_tokens": 440,
+      "output_tokens": 52,
+      "duration_ms": 3301,
+      "code_version": "f34cd75214ffba35838150d75b12800fb183cf03"
+    },
+    {
+      "unit": 2,
+      "kind": "compatibility",
+      "label": "near-maximum",
+      "status": "passed",
+      "started_at": "2026-10-05T04:27:13+00:00",
+      "finished_at": "2026-10-05T04:27:14+00:00",
+      "bytes": 5597,
+      "input_tokens": 1930,
+      "output_tokens": 46,
+      "duration_ms": 1173,
+      "code_version": "f34cd75214ffba35838150d75b12800fb183cf03"
+    }
+  ]
+}
