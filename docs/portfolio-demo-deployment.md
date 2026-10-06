@@ -95,7 +95,7 @@ Check usage in Supabase with
 `SELECT name, used_runs FROM agent_run_budgets WHERE name LIKE 'care-note-public%';`.
 The `care-note-public` row is the cumulative count; one
 `care-note-public-day-YYYY-MM-DD` row per UTC day holds the daily count. A
-cumulative value of 78 after an API log line `care_note_public_request` with
+cumulative value of 58 after an API log line `care_note_public_request` with
 `"outcome": "usage_stop"` means the automatic stop ran.
 
 ### Open in stages: C3 check, then C4
@@ -130,7 +130,7 @@ C4, after the owner approves opening:
 
 1. Set `NEXT_PUBLIC_CARE_NOTE_LIVE_ENTRY=true` for **Production** in Vercel
    and deploy the approved commit. Record the commit.
-2. Set `CARE_NOTE_PUBLIC_RUN_LIMIT=78`, then `CARE_NOTE_PUBLIC_ENABLED=true`.
+2. Set `CARE_NOTE_PUBLIC_RUN_LIMIT=58`, then `CARE_NOTE_PUBLIC_ENABLED=true`.
    The used count carries over from C3.
 
 ### Stop public drafts by hand

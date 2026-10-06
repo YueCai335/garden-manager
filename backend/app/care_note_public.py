@@ -52,7 +52,9 @@ APPROVED_MODEL = DEFAULT_CARE_NOTE_OPENAI_MODEL
 CUMULATIVE_BUDGET_NAME = "care-note-public"
 DAILY_BUDGET_PREFIX = "care-note-public-day-"
 # The online share of this release's 100 paid requests; no configuration can exceed it.
-HARD_RUN_CAP = 78
+# 58 since the batch-2 revalidation moved 20 requests to the local evaluation
+# (ADR-0059). A counter already above it keeps its value and stays refused.
+HARD_RUN_CAP = 58
 DAILY_RUN_LIMIT = 30
 MAX_REQUEST_BYTES = 8_000
 FORMAT_TOKEN_ALLOWANCE = 1_000
@@ -74,7 +76,7 @@ Reservation = Literal["reserved", "used_up", "daily_limit", "unavailable"]
 
 
 def public_run_limit() -> int | None:
-    """CARE_NOTE_PUBLIC_RUN_LIMIT as an integer from 0 to 78; anything else is None (closed)."""
+    """CARE_NOTE_PUBLIC_RUN_LIMIT as an integer from 0 to HARD_RUN_CAP; anything else is None (closed)."""
     raw = os.getenv("CARE_NOTE_PUBLIC_RUN_LIMIT")
     try:
         limit = int(raw) if raw is not None else None

@@ -26,7 +26,7 @@ services:
       - key: AGENT_PUBLIC_RUN_LIMIT
         value: "0"
       # Public AI Garden Note (ADR-0059). Closed until the release gates pass:
-      # the limit is 3 for the C3 check and at most 78 afterwards.
+      # the limit is 3 for the C3 check and at most 58 afterwards.
       - key: CARE_NOTE_PUBLIC_ENABLED
         value: "false"
       - key: CARE_NOTE_PUBLIC_RUN_LIMIT

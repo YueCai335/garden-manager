@@ -1,4 +1,8 @@
-# AI Garden Note Paid Checks — Review Before Spending
+# AI Garden Note Paid Checks — Batch 1 Review Before Spending
+
+Batch 1's files are archived under `backend/evaluation/care_note/batch-1/`
+(cases, ledger, run records, replay). Batch 2 is planned in
+[care-note-revalidation-plan.md](care-note-revalidation-plan.md).
 
 - Decision: [ADR-0059](decisions/0059-open-budgeted-public-care-note-generation.md) (Proposed)
 - Checks and results: [care-note-public-delivery.md](care-note-public-delivery.md)
@@ -23,12 +27,12 @@ largest planned request is 5,597 bytes (USD 0.00147); C2's requests are
 ## What is fixed
 
 The first paid request fixes the batch; any later change refuses further paid
-requests (`python scripts/care_note_live.py validate` prints it):
+requests (`python scripts/care_note_live.py validate --batch batch-1` prints it):
 
 | Part | Value |
 | --- | --- |
 | Model | `gpt-4o-mini-2024-07-18` |
-| Cases | `45c971c44a6f1e2a` (`backend/evaluation/care_note/cases.json`) |
+| Cases | `45c971c44a6f1e2a` (`backend/evaluation/care_note/batch-1/cases.json`) |
 | Demo garden | `5adce3bd905086f0` |
 | Prompt, schema, output cap | `d92d3dd86007b6af` |
 | Source files that build the request, make the draft, or score it: `ai.py`, `schemas.py`, `service.py`, `care_note_public.py`, `care_note_live.py`, `demo_garden.py`, `demo_garden.json` (whole files) | `6816fdcb7703c45b` |
@@ -41,7 +45,7 @@ the batch; for 22 requests that cost is accepted.
 
 ## The ledger
 
-`backend/evaluation/care_note/ledger.json` reuses the allocation agent's
+`backend/evaluation/care_note/batch-1/ledger.json` reuses the allocation agent's
 ledger with Garden Note's own limits; the agent's ledger and its 13-unit
 limit stay untouched.
 
@@ -131,14 +135,14 @@ bounded release check; they do not show that classification is reliable.
 
 ```bash
 cd backend
-python scripts/care_note_live.py validate
-python scripts/care_note_live.py compatibility --confirm-spend
-python scripts/care_note_live.py status
+python scripts/care_note_live.py validate --batch batch-1
+python scripts/care_note_live.py compatibility --confirm-spend --batch batch-1
+python scripts/care_note_live.py status --batch batch-1
 ```
 
 C2, after C1 passes and the owner approves it:
 
 ```bash
-python scripts/care_note_live.py evaluate --confirm-spend
-python scripts/care_note_live.py report
+python scripts/care_note_live.py evaluate --confirm-spend --batch batch-1
+python scripts/care_note_live.py report --batch batch-1
 ```

@@ -104,9 +104,9 @@ def post(client, note="今天给 Sample raised bed 浇了水", url=DEMO_URL, tod
 
 @pytest.mark.parametrize(
     ("raw", "limit"),
-    [(None, None), ("", None), ("ten", None), ("-1", None), ("79", None), ("0", 0), ("3", 3), ("78", 78)],
+    [(None, None), ("", None), ("ten", None), ("-1", None), ("59", None), ("78", None), ("0", 0), ("3", 3), ("58", 58)],
 )
-def test_run_limit_must_be_an_integer_from_0_to_78(monkeypatch, raw, limit):
+def test_run_limit_must_be_an_integer_from_0_to_58(monkeypatch, raw, limit):
     if raw is None:
         monkeypatch.delenv("CARE_NOTE_PUBLIC_RUN_LIMIT", raising=False)
     else:
@@ -119,7 +119,7 @@ def test_run_limit_must_be_an_integer_from_0_to_78(monkeypatch, raw, limit):
     [
         ("CARE_NOTE_PUBLIC_ENABLED", "false"),
         ("CARE_NOTE_PUBLIC_RUN_LIMIT", "0"),
-        ("CARE_NOTE_PUBLIC_RUN_LIMIT", "79"),
+        ("CARE_NOTE_PUBLIC_RUN_LIMIT", "59"),
         ("CARE_NOTE_AI_PROVIDER", "ollama"),
         ("CARE_NOTE_OPENAI_MODEL", "gpt-other"),
         ("OPENAI_API_KEY", ""),
@@ -282,6 +282,14 @@ def test_raising_the_limit_from_3_to_78_keeps_the_used_count(public_demo):
 
     assert reserve_public_request(HARD_RUN_CAP, TODAY) == "reserved"
     assert public_used_runs() == 4
+
+
+def test_a_counter_already_above_the_cap_keeps_its_value_and_refuses_reservations():
+    seed_budget(used=70)
+
+    assert reserve_public_request(HARD_RUN_CAP, TODAY) == "used_up"
+    assert exhaust_public_allocation() is True
+    assert public_used_runs() == 70
 
 
 def test_a_missing_budget_row_or_an_out_of_range_limit_means_no_reservation():

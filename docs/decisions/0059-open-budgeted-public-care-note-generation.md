@@ -65,7 +65,7 @@ fixed context, durable limits, measured quality, and a way to stop.
 | Format allowance | 1,000 input tokens beyond the byte bound |
 | Output | 800 tokens |
 | Requests per generation | One; SDK retries disabled; 30-second timeout |
-| Paid allocation | 22 local (C1 + C2) and 78 online (C3 + C4); 100 in total |
+| Paid allocation | 42 local (C1 2, batch-1 C2 20, batch-2 C2 20) and 58 online (C3 + C4); 100 in total. The first plan was 22 local and 78 online; 20 online requests moved to batch 2 after batch 1 |
 | Online daily limit | 30 per UTC day |
 | Short-term limit | 5 per client IP per rolling minute |
 
@@ -91,13 +91,14 @@ Prices and account access are rechecked before C1.
 - A reservation is never refunded: success, refusal, invalid output,
   timeout, and crashes all keep it.
 - The cumulative limit comes from `CARE_NOTE_PUBLIC_RUN_LIMIT`, an integer
-  from 0 to 78; a missing or out-of-range value disables public calls, and 78
-  stays a hard cap in code. Nothing resets or recreates the cumulative row;
+  from 0 to 58; a missing or out-of-range value disables public calls, and 58
+  stays a hard cap in code. A counter already above 58 keeps its value and
+  refuses every call. Nothing resets or recreates the cumulative row;
   changing the limit never restores used requests.
 - Every response's usage is checked before its draft is returned. When
   `input_tokens` exceeds the request's bytes plus 1,000, output exceeds 800
   tokens, or usage is missing or invalid, the request fails and a separate
-  transaction raises the cumulative row to 78. All workers, restarts, and
+  transaction raises the cumulative row to 58. All workers, restarts, and
   later days then refuse new calls. Calls already sent can still finish and
   cost money.
 - If that stop write fails, the request returns an error and logs it, and
@@ -125,13 +126,16 @@ measured, public generation stays off.
 | Stage | Paid requests | Purpose |
 | --- | --- | --- |
 | C1 local compatibility | 2 | Strict-schema acceptance, account access, usage of a near-maximum request |
-| C2 fixed local evaluation | 20 | One run per frozen case; every result published |
+| C2 batch 1, fixed local evaluation | 20 | One run per frozen case; every result published |
+| C2 batch 2, fixed local evaluation | 20 | 20 new cases after the date rule; every result published |
 | C3 deployment check | 3 | Real public path, save, refresh, and online quota |
-| C4 visitor trial | Up to 75 | Whatever remains of the online allocation |
+| C4 visitor trial | Up to 55 | Whatever remains of the online allocation |
 
-C1 and C2 use a Garden Note file ledger capped at 22, built like the agent's
-ledger (file lock, reserve before each request, atomic writes, batch
-fingerprint); the agent's ledger and limit stay untouched. C3 runs with the
+C1 and C2 use Garden Note file ledgers, one per batch directory
+(`backend/evaluation/care_note/batch-N/`), capped at 42 for all batches
+together and built like the agent's ledger (file lock, reserve before each
+request, atomic writes, batch fingerprint); the agent's ledger and limit stay
+untouched. C3 runs with the
 online limit set to 3 and the visitor entry hidden: the production frontend
 is built with `NEXT_PUBLIC_CARE_NOTE_LIVE_ENTRY` off and keeps the preview,
 while a Preview build with it on serves the check. The API switch closes
@@ -140,8 +144,8 @@ on. Anyone calling the
 endpoint directly in that window uses one of those 3. A used-up count does
 not show that the check passed; the request logs must show the owner's
 checks. Any extra check needs the owner's approval, uses what remains of the
-78, and reduces C4 by the same amount; the count never resets. C4 raises the
-limit to 78 and keeps the count.
+58, and reduces C4 by the same amount; the count never resets. C4 raises the
+limit to 58 and keeps the count.
 
 The 20 C2 cases and their expected outcomes are frozen before any spending:
 8 ordinary completed notes (4 Chinese, 4 English, watering and
@@ -150,7 +154,38 @@ completed events (the Chinese planned note and both multi-event notes from
 ADR-0058's local run, one negated note, one unrelated question), and 4
 boundary cases (date, quantity and unit, length, prompt injection).
 
-This ADR is accepted only when all of these hold:
+### Batch 1 and batch 2
+
+Batch 1 (2026-10-05) passed C1 and scored 17/20 in C2: no hard-gate failure
+and no wrong value, but one invented date and a score below 18, so public
+generation stayed closed. ADR-0058 then made the date need evidence in the
+note; replaying batch 1's saved responses under that rule gives 18/20 with
+nothing invented. A replay re-scores old answers and is not a new
+measurement, so batch 2 measures again:
+
+- 20 new cases in the same 8/3/5/4 split, none used to build the date rule,
+  frozen before any spending, with the same gates. Batch 1's results stay as
+  recorded.
+- Batch 2 reuses batch 1's C1 instead of repeating it, because the requests
+  are unchanged: before its first request the ledger rebuilds each recorded
+  C1 request from its own note and date with the current code and refuses
+  unless both checks passed, the model, prompt and schema, limits, and demo
+  garden are unchanged, and every rebuilt request equals what was sent. It
+  records a reference, not a new passed entry.
+- Before batch 2's first request, the batch-1 replay at the same code must
+  meet every gate (the complete verdict, not a subset). Batch 1's frozen
+  prompt-injection case expects today's date, which the date rule now
+  leaves empty, so 19 of 20 is that replay's best possible score.
+- A draft that leaves an unsupported or conflicting date empty is scored as
+  following the rule; it does not show that the model understood the date.
+
+**Stop condition.** If batch 2 misses any gate, public generation stays
+closed, this opening attempt ends, and this ADR becomes `Rejected` with both
+batches' results and the reasons. Further improvement needs a new task, a new
+decision, and a new budget, not rule changes tuned to cases already seen.
+
+This ADR is accepted only when all of these hold, with the evaluation gates
+measured on batch 2:
 
 - C1 succeeds.
 - No negated, planned, or multi-event case comes back as `kind: completed`.
