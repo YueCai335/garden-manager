@@ -1,6 +1,7 @@
 # ADR-0057: Keep Live Allocation Runs Closed in the Public Demo After Evaluation
 
-- Status: Accepted
+- Status: Accepted; key scope amended by [ADR-0060](0060-offer-assisted-care-note-drafting-in-the-portfolio-demo.md)
+  (the backend OpenAI key may live in Render for AI Garden Note; the allocation agent stays at 0)
 - Date: 2026-09-24
 - Amends: [ADR-0056](0056-use-a-budgeted-tool-calling-agent-for-season-allocation.md)
   (public run limit)

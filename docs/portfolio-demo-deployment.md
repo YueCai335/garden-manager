@@ -89,9 +89,11 @@ Live AI Garden Note drafts in the public demo were evaluated under ADR-0059
 and rejected on 2026-10-06: two paid evaluations missed the quality gates. They stay
 closed: `CARE_NOTE_PUBLIC_ENABLED=false` and `CARE_NOTE_PUBLIC_RUN_LIMIT=0` in
 Render, and the panel shows its preview. The checks and results are in
-[docs/care-note-public-delivery.md](care-note-public-delivery.md). The staged
-opening steps below are kept for reference; they apply only if a new decision
-reopens the feature.
+[docs/care-note-public-delivery.md](care-note-public-delivery.md). ADR-0060 (accepted)
+offers the feature again as assisted drafting: the model fills what a note
+states clearly, leaves the rest empty, and the visitor confirms every record.
+The staged opening steps below apply under ADR-0060, each with the owner's
+separate approval.
 
 Check usage in Supabase with
 `SELECT name, used_runs FROM agent_run_budgets WHERE name LIKE 'care-note-public%';`.

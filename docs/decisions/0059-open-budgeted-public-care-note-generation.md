@@ -1,6 +1,8 @@
 # ADR-0059: Open Budgeted Care Note Generation in the Portfolio Demo
 
 - Status: Rejected (2026-10-06, after two evaluations; see "Outcome")
+- Followed by: [ADR-0060](0060-offer-assisted-care-note-drafting-in-the-portfolio-demo.md),
+  a separate product decision that leaves this rejection and its scores unchanged
 - Date: 2026-10-04
 - Would have amended on acceptance (not applied): [ADR-0040](0040-use-vercel-render-and-supabase-for-the-portfolio-demo.md)
   (Garden Note runs in the hosted demo) and

@@ -1,7 +1,9 @@
 # Public Care Note Delivery — Checks and Evidence
 
 - Decision: [ADR-0059](decisions/0059-open-budgeted-public-care-note-generation.md)
-  (Proposed). Design, limits, and gates live there; this file lists the
+  (Rejected 2026-10-06), followed by
+  [ADR-0060](decisions/0060-offer-assisted-care-note-drafting-in-the-portfolio-demo.md)
+  (Accepted 2026-10-06: assisted drafting). Design, limits, and gates live there; this file lists the
   checks that show they hold and records the results.
 - Branch: `care-note-public-budget`, on task A `6e7aba0`.
 - Task B spends no model fees. Paid stages C1–C4, deployment, commits, and
@@ -101,9 +103,10 @@ the deployed service, before C3.
 | Batch 2 prep (no requests) | Batch 2 starts only when the batch-1 replay at the same code meets every gate | Passed 2026-10-06: the real records replay at 18/20, ordinary 7/8, nothing invented or wrong, gates met; with the date rule removed the gate refuses. Batch 1's frozen prompt-injection case can no longer pass under the date rule, so 19/20 is that replay's ceiling |
 | Batch 2 prep (no requests) | 20 new batch-2 cases frozen (8/3/5/4), none shared with batch 1 or used for the date rule; 大前天 kept as an offline regression test instead | Done 2026-10-06: `batch-2/cases.json` passes the batch-aware validator; with its expected answer every case passes under the current rules; requests 2,131–2,597 bytes, computed bound USD 0.01912 |
 | C2 batch 2 (≤ 20) | Every result published against each ADR-0059 gate; the stop condition applies | Done 2026-10-06 at commit `9416884`: the batch-1 regression replay met every gate and C1 was reused (recorded requests rebuilt identically); 20 requests, 8,955 input / 1,044 output tokens, estimated USD 0.0019696 from the returned tokens and listed prices (USD 0.20 of budget reserved). 17/20 passed; ordinary 6/8; hard-gate failures 0; invented 0; wrong values 0; invalid savable drafts 0; usage known and within bounds. **Gates not met** (17 < 18, 6 < 7). The three failures left the target empty: `b2-zh-water-area` and `b2-en-fert-area` (an area returned as a plant group) and `b2-zh-prompt-injection` (all-gardens refused). The date rule cleared the model's date in five completed notes with no, unsupported, or conflicting dates, the prompt-injection note among them. Stop condition applied: ADR-0059 rejected |
-| C3 (≤ 3) | From a Preview build with the live entry on (commit recorded), the browser flow runs on the deployed endpoint with limit 3; each request ID is matched to its log line; the API switch is closed and the preview origin removed afterwards | Not run: ADR-0059 rejected |
+| ADR-0060 acceptance (no requests) | With a fake model replaying recorded real answers, the browser covers a correct prefill, a target left empty, and a date left empty: generate, complete, save, refresh | Passed 2026-10-06: API in demo mode (limit 3) on an isolated PostgreSQL database, live-entry build, the OpenAI SDK pointed at a local server returning batch 2's recorded answers. `b2-en-water-area` prefilled Watering, today, Sample in-ground area and saved unchanged; `b2-zh-water-area` (area returned as a plant group) left the target empty with a review note, saving was refused, the visitor chose Sample container group and saved; `b2-zh-no-date` had the model's date cleared with a review note, saving was refused, the visitor entered 2026-10-05 and saved. After a refresh, Care records showed the three records; the database rows held the saved values; the budget read 3 cumulative and 3 for the day; the page's request IDs `764c2f4e8b47`, `0e9ffb549e06`, `bf031290e4b1` matched the API log lines; the local server received exactly 3 requests |
+| C3 (≤ 3) | From a Preview build with the live entry on (commit recorded), the browser flow runs on the deployed endpoint with limit 3; each request ID is matched to its log line; the API switch is closed and the preview origin removed afterwards | Pending under ADR-0060; needs the owner's separate approval |
 | C3 extra checks | Owner approval recorded; each extra check reduces C4 | Not needed yet |
-| C4 (≤ 55) | A Production build with the live entry on is deployed (commit recorded), then the limit is raised to 58; used count kept | Not run: ADR-0059 rejected |
+| C4 (≤ 55) | A Production build with the live entry on is deployed (commit recorded), then the limit is raised to 58; used count kept | Pending under ADR-0060; needs the owner's separate approval |
 
 ## Status
 
@@ -114,4 +117,5 @@ the deployed service, before C3.
 | C1 | Passed 2026-10-05 |
 | C2 | Run 2026-10-05; gates not met, public generation stays closed |
 | C2 batch 2 | Run 2026-10-06; gates not met |
-| C3–C4 | Not run: ADR-0059 rejected; public generation stays closed |
+| ADR-0060 | Accepted 2026-10-06; assisted-drafting acceptance passed with a fake model |
+| C3–C4 | Pending under ADR-0060; public generation stays closed until approved |

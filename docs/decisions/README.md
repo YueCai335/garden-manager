@@ -82,7 +82,7 @@ changes, mark the old record as superseded and add a new record.
 | [ADR-0037](0037-use-area-summary-and-pairing-notes-for-season-planning.md) | Use area summaries and pairing notes for season planning | Superseded by ADR-0039 |
 | [ADR-0038](0038-link-current-plantings-to-layout-positions.md) | Link current plantings to layout positions | Accepted |
 | [ADR-0039](0039-use-separate-season-plans-for-future-planting.md) | Use separate season plans for future planting | Accepted |
-| [ADR-0040](0040-use-vercel-render-and-supabase-for-the-portfolio-demo.md) | Use Vercel, Render, and Supabase for the portfolio demo | Accepted |
+| [ADR-0040](0040-use-vercel-render-and-supabase-for-the-portfolio-demo.md) | Use Vercel, Render, and Supabase for the portfolio demo | Accepted; amended by ADR-0060 |
 | [ADR-0041](0041-use-a-garden-operations-ui-shell.md) | Use a Garden Operations UI shell | Superseded |
 | [ADR-0042](0042-use-a-direct-garden-editing-workflow.md) | Use a direct garden editing workflow | Superseded |
 | [ADR-0043](0043-use-a-single-planting-area-editor.md) | Use a single planting-area editor | Superseded |
@@ -99,9 +99,10 @@ changes, mark the old record as superseded and add a new record.
 | [ADR-0054](0054-use-fixed-canvas-garden-plan-views.md) | Use fixed-canvas Garden Plan views | Accepted |
 | [ADR-0055](0055-use-automatic-sync-with-optimistic-locking.md) | Use automatic workspace sync with optimistic locking | Accepted |
 | [ADR-0056](0056-use-a-budgeted-tool-calling-agent-for-season-allocation.md) | Use a budgeted tool-calling agent for next-season allocation | Accepted; public run limit amended by ADR-0057 |
-| [ADR-0057](0057-keep-live-allocation-runs-closed-after-evaluation.md) | Keep live allocation runs closed in the public demo after evaluation | Accepted |
+| [ADR-0057](0057-keep-live-allocation-runs-closed-after-evaluation.md) | Keep live allocation runs closed in the public demo after evaluation | Accepted; key scope amended by ADR-0060 |
 | [ADR-0058](0058-classify-care-notes-before-filling-a-draft.md) | Classify care notes before filling a reviewable draft | Accepted |
 | [ADR-0059](0059-open-budgeted-public-care-note-generation.md) | Open budgeted care note generation in the portfolio demo | Rejected after two evaluations |
+| [ADR-0060](0060-offer-assisted-care-note-drafting-in-the-portfolio-demo.md) | Offer assisted care-note drafting in the portfolio demo | Accepted |
 
 ## Interview Use
 
