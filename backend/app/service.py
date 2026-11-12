@@ -21,13 +21,14 @@ def import_fingerprint(workspace: WorkspaceImport) -> str:
 
 
 def load_workspace(session: Session, workspace_id: str) -> Workspace | None:
-    return session.scalar(
+    query = (
         select(Workspace)
         .where(Workspace.id == workspace_id)
+        .execution_options(populate_existing=True)
         .options(
             selectinload(Workspace.gardens).selectinload(Garden.growing_areas),
-            selectinload(Workspace.gardens).selectinload(Garden.plantings),
-            selectinload(Workspace.gardens).selectinload(Garden.season_plans).selectinload(SeasonPlan.plantings),
+            selectinload(Workspace.gardens).selectinload(Garden.plantings).joinedload(Planting.growing_area),
+            selectinload(Workspace.gardens).selectinload(Garden.season_plans).selectinload(SeasonPlan.plantings).joinedload(PlannedPlanting.growing_area),
             selectinload(Workspace.gardens).selectinload(Garden.care_events),
             selectinload(Workspace.gardens).selectinload(Garden.care_tasks),
             selectinload(Workspace.gardens).selectinload(Garden.health_records),
@@ -35,6 +36,13 @@ def load_workspace(session: Session, workspace_id: str) -> Workspace | None:
             selectinload(Workspace.care_tasks),
         )
     )
+    revision_query = select(Workspace.revision).where(Workspace.id == workspace_id)
+    # Relationship queries can straddle a concurrent commit under READ COMMITTED.
+    for _ in range(3):
+        workspace = session.scalar(query)
+        if workspace is None or workspace.revision == session.scalar(revision_query):
+            return workspace
+    raise HTTPException(status_code=503, detail="The workspace is being updated. Try again.")
 
 
 def import_workspace(session: Session, payload: WorkspaceImport) -> Workspace:
@@ -60,10 +68,7 @@ def import_workspace(session: Session, payload: WorkspaceImport) -> Workspace:
     return load_workspace(session, payload.workspace_id)  # type: ignore[return-value]
 
 
-def update_workspace(session: Session, payload: WorkspaceSave) -> Workspace:
-    workspace = load_workspace(session, payload.workspace_id)
-    if workspace is None:
-        raise HTTPException(status_code=404, detail="Workspace not found")
+def update_workspace(session: Session, payload: WorkspaceSave) -> dict:
     # Optimistic lock: bump the revision only if it still matches what the
     # client read. The conditional UPDATE is atomic, so two clients racing on
     # the same revision cannot both win.
@@ -74,18 +79,25 @@ def update_workspace(session: Session, payload: WorkspaceSave) -> Workspace:
     )
     if claimed.rowcount != 1:
         session.rollback()
-        current = load_workspace(session, payload.workspace_id)
+        current_revision = session.scalar(select(Workspace.revision).where(Workspace.id == payload.workspace_id))
+        if current_revision is None:
+            raise HTTPException(status_code=404, detail="Workspace not found")
         raise HTTPException(
             status_code=409,
             detail={
                 "message": "This workspace was changed elsewhere since it was loaded. Reload it before saving again.",
-                "currentRevision": current.revision if current else None,
+                "currentRevision": current_revision,
             },
         )
-    session.refresh(workspace)
+    workspace = load_workspace(session, payload.workspace_id)
+    assert workspace is not None
     write_workspace(workspace, payload)
+    session.flush()
+    saved = load_workspace(session, payload.workspace_id)
+    assert saved is not None
+    response = workspace_response(saved)
     session.commit()
-    return load_workspace(session, payload.workspace_id)  # type: ignore[return-value]
+    return response
 
 
 def rotation_guidance(

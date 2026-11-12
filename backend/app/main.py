@@ -309,4 +309,4 @@ def save_server_workspace(
 ):
     if workspace_id != payload.workspace_id:
         raise HTTPException(status_code=422, detail="workspaceId must match the path parameter")
-    return workspace_response(update_workspace(session, payload))
+    return update_workspace(session, payload)

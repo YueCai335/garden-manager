@@ -1,6 +1,7 @@
 import os
 
 from sqlalchemy import create_engine
+from sqlalchemy.engine import make_url
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
@@ -29,10 +30,10 @@ def database_url() -> str:
 def make_engine(url: str):
     options: dict = {"pool_pre_ping": True}
     if url.startswith("sqlite"):
-        options.update(
-            connect_args={"check_same_thread": False},
-            poolclass=StaticPool,
-        )
+        options["connect_args"] = {"check_same_thread": False}
+        sqlite_url = make_url(url)
+        if sqlite_url.database in {None, "", ":memory:"} or sqlite_url.query.get("mode") == "memory":
+            options["poolclass"] = StaticPool
     return create_engine(url, **options)
 
 

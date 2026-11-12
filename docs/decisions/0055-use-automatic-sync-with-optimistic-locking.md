@@ -37,6 +37,11 @@ paths in the save flow:
   choices: reload the newer copy, or save over it with the current revision.
 - An import response is adopted only if nothing changed while the request was
   in flight; otherwise the newer local edits win and are queued as a save.
+- Each workspace read verifies the revision again after loading related rows.
+  If a save committed during those queries, the read retries with fresh rows.
+  File-backed SQLite sessions use separate connections so requests only read
+  committed rows. A successful save acknowledges the revision and snapshot
+  produced by its own transaction.
 
 ## Why This Option
 
