@@ -104,8 +104,9 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
   const [newGardenName, setNewGardenName] = useWorkspaceDraft("setup:name", "");
   const [areaName, setAreaName] = useWorkspaceDraft(`area-create:${route.gardenId ?? ""}:areaName`, "");
   const [areaKind, setAreaKind] = useWorkspaceDraft<GrowingAreaKind>(`area-create:${route.gardenId ?? ""}:areaKind`, "raised-bed");
-  const [areaLength, setAreaLength] = useWorkspaceDraft(`area-create:${route.gardenId ?? ""}:areaLength`, "2");
-  const [areaWidth, setAreaWidth] = useWorkspaceDraft(`area-create:${route.gardenId ?? ""}:areaWidth`, "1");
+  // Width runs left to right (widthMeters); length runs top to bottom (depthMeters).
+  const [areaWidth, setAreaWidth] = useWorkspaceDraft(`area-create:${route.gardenId ?? ""}:width`, "2");
+  const [areaLength, setAreaLength] = useWorkspaceDraft(`area-create:${route.gardenId ?? ""}:length`, "1");
   const [areaRotationDegrees, setAreaRotationDegrees] = useWorkspaceDraft(`area-create:${route.gardenId ?? ""}:areaRotationDegrees`, "0");
   const [isAreaFormOpen, setIsAreaFormOpen] = useWorkspaceDraft(`area-create:${route.gardenId ?? ""}:isAreaFormOpen`, false);
   const [pendingConfirmation, setPendingConfirmation] = useState<{
@@ -254,7 +255,7 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
     setPendingConfirmation({ message: "Your changes have not been submitted. Discard them or keep editing.", confirmLabel: "Discard changes", cancelLabel: "Keep editing", onConfirm });
   };
   const discardNewArea = () => {
-    setIsAreaFormOpen(false); setAreaName(""); setAreaKind("raised-bed"); setAreaLength("2"); setAreaWidth("1"); setAreaRotationDegrees("0");
+    setIsAreaFormOpen(false); setAreaName(""); setAreaKind("raised-bed"); setAreaWidth("2"); setAreaLength("1"); setAreaRotationDegrees("0");
   };
   const loadDemo = () => {
     const applyDemo = () => {
@@ -286,12 +287,12 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
   const saveArea = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const name = areaName.trim();
-    const length = Number(areaLength);
     const width = Number(areaWidth);
+    const length = Number(areaLength);
     const rotationDegrees = Number(areaRotationDegrees);
     if (!garden || !name)
       return setMessage("Enter a planting-area name to continue.");
-    if (!validateLayoutDimensions(length, width))
+    if (!validateLayoutDimensions(width, length))
       return setMessage("Enter planting-area dimensions of at least 0.1 metres.");
     if (!Number.isFinite(rotationDegrees))
       return setMessage("Enter a valid rotation angle.");
@@ -307,7 +308,7 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
             id: areaId,
             name,
             kind: areaKind,
-            layout: createRectangularLayout(snapToGrid(length), snapToGrid(width)),
+            layout: createRectangularLayout(snapToGrid(width), snapToGrid(length)),
             planPlacement: {
               ...placement,
               ...clampPlanPosition(placement, current.plan),
@@ -319,8 +320,8 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
     });
     setAreaName("");
     setAreaKind("raised-bed");
-    setAreaLength("2");
-    setAreaWidth("1");
+    setAreaWidth("2");
+    setAreaLength("1");
     setAreaRotationDegrees("0");
     setIsAreaFormOpen(false);
     setMessage(`${name} added. Drag it on the plan to position it.`);
@@ -338,7 +339,7 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
     const currentArea = latestGarden?.growingAreas.find((item) => item.id === areaId);
     const point = position ?? currentArea?.planPlacement ?? { x: 0, y: 0 };
     const trimmedName = name.trim();
-    const values = { name: trimmedName, kind, length: String(layout.widthMeters), width: String(layout.depthMeters), rotation: String(rotationDegrees), x: String(point.x), y: String(point.y) };
+    const values = { name: trimmedName, kind, width: String(layout.widthMeters), length: String(layout.depthMeters), rotation: String(rotationDegrees), x: String(point.x), y: String(point.y) };
     const error = Object.values(areaPropertyErrors(values, latestGarden?.plan))[0];
     if (error) { setMessage(error); return false; }
     if (!latestWorkspaceRef.current?.gardens.find((item) => item.id === garden?.id)?.growingAreas.some((item) => item.id === areaId)) {
@@ -640,18 +641,18 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
                   mode={mode}
                   gardenName={garden.name}
                   areaKind={areaKind}
-                  areaLength={areaLength}
+                  areaWidth={areaWidth}
                   areaName={areaName}
                   areaRotationDegrees={areaRotationDegrees}
-                  areaWidth={areaWidth}
+                  areaLength={areaLength}
                   isAreaFormOpen={isAreaFormOpen}
                   onSave={saveArea}
                   onSetAreaKind={setAreaKind}
-                  onSetAreaLength={setAreaLength}
+                  onSetAreaWidth={setAreaWidth}
                   onSetAreaName={setAreaName}
                   onSetAreaRotationDegrees={setAreaRotationDegrees}
-                  onSetAreaWidth={setAreaWidth}
-                  onSetFormOpen={(open) => open ? setIsAreaFormOpen(true) : confirmDiscard(Boolean(areaName || areaKind !== "raised-bed" || areaLength !== "2" || areaWidth !== "1" || areaRotationDegrees !== "0"), discardNewArea)}
+                  onSetAreaLength={setAreaLength}
+                  onSetFormOpen={(open) => open ? setIsAreaFormOpen(true) : confirmDiscard(Boolean(areaName || areaKind !== "raised-bed" || areaWidth !== "2" || areaLength !== "1" || areaRotationDegrees !== "0"), discardNewArea)}
                 />
                 {editingArea ? (
                   <PlantingAreaInspector
@@ -911,33 +912,33 @@ function GardenManagement({
 function PlantingAreaCreation({
   mode, gardenName,
   areaKind,
-  areaLength,
+  areaWidth,
   areaName,
   areaRotationDegrees,
-  areaWidth,
+  areaLength,
   isAreaFormOpen,
   onSave,
   onSetAreaKind,
-  onSetAreaLength,
+  onSetAreaWidth,
   onSetAreaName,
   onSetAreaRotationDegrees,
-  onSetAreaWidth,
+  onSetAreaLength,
   onSetFormOpen,
 }: {
   mode: EditorMode;
   gardenName: string;
   areaKind: GrowingAreaKind;
-  areaLength: string;
+  areaWidth: string;
   areaName: string;
   areaRotationDegrees: string;
-  areaWidth: string;
+  areaLength: string;
   isAreaFormOpen: boolean;
   onSave: (event: FormEvent<HTMLFormElement>) => void;
   onSetAreaKind: (kind: GrowingAreaKind) => void;
-  onSetAreaLength: (length: string) => void;
+  onSetAreaWidth: (width: string) => void;
   onSetAreaName: (name: string) => void;
   onSetAreaRotationDegrees: (rotationDegrees: string) => void;
-  onSetAreaWidth: (width: string) => void;
+  onSetAreaLength: (length: string) => void;
   onSetFormOpen: (open: boolean) => void;
 }) {
   if (!isAreaFormOpen) return null;
@@ -975,18 +976,6 @@ function PlantingAreaCreation({
           </select>
         </div>
         <div className="planting-area-creation-measurements">
-          <FormField id="planting-area-length" className="field">
-            <label htmlFor="planting-area-length">Length (m)</label>
-            <input
-              id="planting-area-length"
-              min="0.1"
-              onChange={(event) => onSetAreaLength(event.target.value)}
-              required
-              step="0.1"
-              type="number"
-              value={areaLength}
-            />
-          </FormField>
           <FormField id="planting-area-width" className="field">
             <label htmlFor="planting-area-width">Width (m)</label>
             <input
@@ -997,6 +986,18 @@ function PlantingAreaCreation({
               step="0.1"
               type="number"
               value={areaWidth}
+            />
+          </FormField>
+          <FormField id="planting-area-length" className="field">
+            <label htmlFor="planting-area-length">Length (m)</label>
+            <input
+              id="planting-area-length"
+              min="0.1"
+              onChange={(event) => onSetAreaLength(event.target.value)}
+              required
+              step="0.1"
+              type="number"
+              value={areaLength}
             />
           </FormField>
         </div>

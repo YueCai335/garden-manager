@@ -914,10 +914,10 @@ describe("GardenWorkspace", () => {
     await user.click(screen.getByRole("button", { name: "Save" }));
     await user.click(screen.getByRole("button", { name: "Add planting area" }));
     await user.type(screen.getByLabelText("Planting-area name"), "North bed");
-    await user.clear(screen.getByLabelText("Length (m)"));
-    await user.type(screen.getByLabelText("Length (m)"), "2");
     await user.clear(screen.getByLabelText("Width (m)"));
-    await user.type(screen.getByLabelText("Width (m)"), "1");
+    await user.type(screen.getByLabelText("Width (m)"), "2");
+    await user.clear(screen.getByLabelText("Length (m)"));
+    await user.type(screen.getByLabelText("Length (m)"), "1");
     await user.clear(screen.getByLabelText("Rotation (degrees)"));
     await user.type(screen.getByLabelText("Rotation (degrees)"), "90");
     await user.click(screen.getByRole("button", { name: "Add area" }));
@@ -958,13 +958,13 @@ describe("GardenWorkspace", () => {
     const name = screen.getByLabelText("Planting-area name");
     await user.clear(name);
     await user.type(name, "Kitchen bed");
-    await user.clear(screen.getByLabelText("Length (m)"));
-    await user.type(screen.getByLabelText("Length (m)"), "2.5");
+    await user.clear(screen.getByLabelText("Width (m)"));
+    await user.type(screen.getByLabelText("Width (m)"), "2.5");
     await user.clear(screen.getByLabelText("Rotation (degrees)"));
     await user.type(screen.getByLabelText("Rotation (degrees)"), "45");
     await user.click(areaInspectorForm().getByRole("button", { name: "Save" }));
     expect(screen.getByRole("heading", { name: "Edit planting area" })).toBeInTheDocument();
-    expect(screen.getByLabelText("Length (m)")).toHaveValue(2.5);
+    expect(screen.getByLabelText("Width (m)")).toHaveValue(2.5);
     expect(screen.getByLabelText("Rotation (degrees)")).toHaveValue(45);
 
     await user.click(screen.getByRole("button", { name: "Add plant" }));
@@ -982,10 +982,10 @@ describe("GardenWorkspace", () => {
     await user.clear(screen.getByLabelText("Planting-area name"));
     await user.type(screen.getByLabelText("Planting-area name"), "Kitchen bed");
     await user.selectOptions(screen.getByLabelText("Planting-area type"), "container");
-    await user.clear(screen.getByLabelText("Length (m)"));
-    await user.type(screen.getByLabelText("Length (m)"), "1.5");
     await user.clear(screen.getByLabelText("Width (m)"));
-    await user.type(screen.getByLabelText("Width (m)"), "0.8");
+    await user.type(screen.getByLabelText("Width (m)"), "1.5");
+    await user.clear(screen.getByLabelText("Length (m)"));
+    await user.type(screen.getByLabelText("Length (m)"), "0.8");
     await user.clear(screen.getByLabelText("Rotation (degrees)"));
     await user.type(screen.getByLabelText("Rotation (degrees)"), "45");
     await user.click(screen.getByRole("button", { name: "Save" }));

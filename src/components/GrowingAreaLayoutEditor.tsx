@@ -349,8 +349,8 @@ export function GrowingAreaLayoutEditor({
       <FeedbackForm notice={hasAreaPropertyChanges ? "Unsaved changes" : ""} className="planting-area-property-form" onSubmit={saveAreaProperties}>
         <FormField id="editing-planting-area-name" className="field"><label htmlFor="editing-planting-area-name">Planting-area name</label><input id="editing-planting-area-name" required onChange={(event) => setName(event.target.value)} value={name} /></FormField>
         <div className="field"><label htmlFor="editing-planting-area-kind">Planting-area type</label><select id="editing-planting-area-kind" onChange={(event) => setKind(event.target.value as GrowingAreaKind)} value={kind}>{growingAreaKinds.map((candidate) => <option key={candidate} value={candidate}>{growingAreaKindLabels[candidate]}</option>)}</select></div>
-        <FormField id="layout-length" className="field"><label htmlFor="layout-length">Length (m)</label><input id="layout-length" required min="0.1" onChange={(event) => setWidth(event.target.value)} step="0.1" type="number" value={width} /></FormField>
-        <FormField id="layout-width" className="field"><label htmlFor="layout-width">Width (m)</label><input id="layout-width" required min="0.1" onChange={(event) => setDepth(event.target.value)} step="0.1" type="number" value={depth} /></FormField>
+        <FormField id="layout-width" className="field"><label htmlFor="layout-width">Width (m)</label><input id="layout-width" required min="0.1" onChange={(event) => setWidth(event.target.value)} step="0.1" type="number" value={width} /></FormField>
+        <FormField id="layout-length" className="field"><label htmlFor="layout-length">Length (m)</label><input id="layout-length" required min="0.1" onChange={(event) => setDepth(event.target.value)} step="0.1" type="number" value={depth} /></FormField>
         <FormField id="editing-planting-area-rotation" className="field"><label htmlFor="editing-planting-area-rotation">Rotation (degrees)</label><input id="editing-planting-area-rotation" required onChange={(event) => setRotationDegrees(event.target.value)} step="1" type="number" value={rotationDegrees} /></FormField>
         {hasAreaPropertyChanges ? <button className="save-button" type="submit">Save</button> : null}
       </FeedbackForm>
@@ -401,7 +401,7 @@ function MetricLayoutCanvas({ layout, onMove, onSelect, selectedId, preview }: {
     <div className={canvasStyles.toolbar}><Button aria-pressed={moveMode} onClick={() => setMoveMode((value) => !value)}>Move plants</Button><p>{moveMode ? "Drag a plant to move it. Turn off Move to scroll." : "Tap a plant or choose it below to edit."}</p></div>
     {preview && <p className={canvasStyles.preview}>Preview: {preview.label} · {Math.round(preview.diameterMeters * 100)} cm spacing · X {preview.x} m, Y {preview.y} m</p>}
     <div ref={size.ref} className={canvasStyles.surface}>
-      {transform ? <Stage aria-label={`Metric layout, ${layout.widthMeters} metres long by ${layout.depthMeters} metres wide`} height={height} width={width} style={{ touchAction: moveMode ? "none" : "pan-y" }}>
+      {transform ? <Stage aria-label={`Metric layout, ${layout.widthMeters} metres wide by ${layout.depthMeters} metres long`} height={height} width={width} style={{ touchAction: moveMode ? "none" : "pan-y" }}>
         <Layer>
           <Rect preventDefault={false} fill="#f8fbf6" height={layout.depthMeters * scale} stroke="#183a2a" strokeWidth={2} width={layout.widthMeters * scale} x={padding} y={padding} />
           {grid.map((metre) => <Line listening={false} key={`vertical-${metre}`} points={[padding + metre * scale, padding, padding + metre * scale, padding + layout.depthMeters * scale]} stroke="#cfd7ce" strokeWidth={1} />)}

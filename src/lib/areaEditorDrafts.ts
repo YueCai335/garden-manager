@@ -3,10 +3,11 @@ import {
   validateLayoutDimensions, type GardenPlan, type GrowingArea, type GrowingAreaKind, type GrowingAreaLayout, type PlantAllocation,
 } from "@/lib/gardenWorkspace";
 
-export type AreaProperties = { name: string; kind: GrowingAreaKind; length: string; width: string; rotation: string; x: string; y: string };
+/** Width runs left to right (layout.widthMeters); length runs top to bottom (layout.depthMeters). */
+export type AreaProperties = { name: string; kind: GrowingAreaKind; width: string; length: string; rotation: string; x: string; y: string };
 export type AreaPropertiesDraft = { baseline: AreaProperties; values: AreaProperties };
 export function areaProperties(area: GrowingArea): AreaProperties {
-  return { x: String(area.planPlacement.x), y: String(area.planPlacement.y), name: area.name, kind: area.kind, length: String(area.layout?.widthMeters ?? ""), width: String(area.layout?.depthMeters ?? ""), rotation: String(area.planPlacement.rotationDegrees) };
+  return { x: String(area.planPlacement.x), y: String(area.planPlacement.y), name: area.name, kind: area.kind, width: String(area.layout?.widthMeters ?? ""), length: String(area.layout?.depthMeters ?? ""), rotation: String(area.planPlacement.rotationDegrees) };
 }
 export function sameAreaProperties(a: AreaProperties, b: AreaProperties) {
   const number = (value: string) => value.trim() === "" ? "" : Number(value);
@@ -16,8 +17,8 @@ export function sameAreaProperties(a: AreaProperties, b: AreaProperties) {
 export function areaPropertyErrors(values: AreaProperties, plan?: GardenPlan): Partial<Record<keyof AreaProperties, string>> {
   const errors: Partial<Record<keyof AreaProperties, string>> = {};
   if (!values.name.trim()) errors.name = "Enter a planting-area name.";
-  if (!values.length.trim() || !validateLayoutDimensions(Number(values.length), 1)) errors.length = "Enter a length of at least 0.1 metres.";
-  if (!values.width.trim() || !validateLayoutDimensions(1, Number(values.width))) errors.width = "Enter a width of at least 0.1 metres.";
+  if (!values.width.trim() || !validateLayoutDimensions(Number(values.width), 1)) errors.width = "Enter a width of at least 0.1 metres.";
+  if (!values.length.trim() || !validateLayoutDimensions(1, Number(values.length))) errors.length = "Enter a length of at least 0.1 metres.";
   if (!values.rotation.trim() || !Number.isFinite(Number(values.rotation))) errors.rotation = "Enter a valid rotation angle.";
   for (const axis of ["x", "y"] as const) {
     const limit = plan ? (axis === "x" ? plan.widthMeters : plan.depthMeters) : Infinity;
@@ -28,7 +29,7 @@ export function areaPropertyErrors(values: AreaProperties, plan?: GardenPlan): P
 /** Only properties change here; allocations always come from the latest area. */
 export function applyAreaProperties(area: GrowingArea, values: AreaProperties, plan: GardenPlan): GrowingArea {
   if (Object.keys(areaPropertyErrors(values, plan)).length) throw new Error("Invalid planting-area properties");
-  const layout = createRectangularLayout(snapToGrid(Number(values.length)), snapToGrid(Number(values.width)));
+  const layout = createRectangularLayout(snapToGrid(Number(values.width)), snapToGrid(Number(values.length)));
   return {
     ...area, name: values.name.trim(), kind: values.kind,
     planPlacement: { ...clampPlanPosition({ x: Number(values.x), y: Number(values.y) }, plan), rotationDegrees: normalizePlanRotation(Number(values.rotation)) },

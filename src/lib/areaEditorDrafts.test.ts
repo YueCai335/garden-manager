@@ -13,9 +13,19 @@ describe("area property merge", () => {
     expect(result.planPlacement.rotationDegrees).toBe(90);
     expect(latest.layout.allocations.at(-1)).toMatchObject({ x: 2, y: 1.5 });
   });
+  it("maps width to the left-right size and length to the top-bottom size", () => {
+    const area = createDemoGardenWorkspace().gardens[0].growingAreas[0];
+    const values = areaProperties(area);
+    expect(values.width).toBe(String(area.layout!.widthMeters));
+    expect(values.length).toBe(String(area.layout!.depthMeters));
+    const result = applyAreaProperties(area, { ...values, width: "2.4", length: "1.2" }, { widthMeters: 10, depthMeters: 6 });
+    expect(result.layout).toMatchObject({ widthMeters: 2.4, depthMeters: 1.2 });
+    expect(areaPropertyErrors({ ...values, width: "0" })).toEqual({ width: "Enter a width of at least 0.1 metres." });
+    expect(areaPropertyErrors({ ...values, length: "0" })).toEqual({ length: "Enter a length of at least 0.1 metres." });
+  });
   it("compares normalized values and rejects blank numeric fields", () => {
     const values = areaProperties(createDemoGardenWorkspace().gardens[0].growingAreas[0]);
-    expect(sameAreaProperties(values, { ...values, name: ` ${values.name} `, length: `${values.length}.0`, rotation: String(Number(values.rotation) + 360) })).toBe(true);
+    expect(sameAreaProperties(values, { ...values, name: ` ${values.name} `, length: Number(values.length).toFixed(2), rotation: String(Number(values.rotation) + 360) })).toBe(true);
     expect(areaPropertyErrors({ ...values, length: "", width: "-1", rotation: "" })).toHaveProperty("rotation");
     expect(areaPropertyErrors({ ...values, name: "园".repeat(200), length: "2.5" })).toEqual({});
   });

@@ -740,3 +740,33 @@ All 292 frontend tests, lint, type checking, the isolated production build,
 `git diff --check`, and 421 backend tests passed, with seven PostgreSQL-only
 cases skipped. The macOS Chromium run passed 27 of 37 cases, and the rerun of
 the ten updated cases passed all ten.
+
+## G1: Garden Plan area styling and Width/Length labels
+
+Phase G1 of the single-canvas plan ([ADR-0072](decisions/0072-use-a-single-plan-canvas-with-guided-setup.md)).
+Each planting-area type now has its own look on the plan and on Overview
+thumbnails: raised beds show light soil inside a heavy wooden frame, in-ground
+beds show dark soil with a dashed edge, containers have a rounded outline, and
+greenhouses use a glass fill with a ridge line. A selected area keeps its type
+colours and gains a separate green ring. The colours live in
+`src/lib/planAppearance.ts` because Konva cannot read CSS custom properties;
+the app has a single light theme.
+
+Area names already sat above the outline. They now truncate to the area's
+width plus a small margin instead of a fixed 80 px minimum, so names of narrow
+beds no longer run into their neighbours. The selected area shows its size,
+width by length, below the outline.
+
+The area editor, the add-area form, and the session drafts behind them stored
+the left-right size under "length" and the top-bottom size under "width",
+opposite to the garden form. Every form now uses Width for the left-right size
+(`widthMeters`) and Length for the top-bottom size (`depthMeters`). The stored
+field names are unchanged. The canvas descriptions now read "wide by long".
+
+All 303 frontend tests, lint, type checking, the isolated production build, and
+`git diff --check` passed. New unit tests cover the per-type appearance, label
+placement above or below the outline, truncation, rotated bounds, and the
+width/length mapping; a component test checks the selected size label against
+the form. The 19 canvas, editor, draft, garden-flow, and Overview Chromium
+cases passed, and screenshots at 1440px and 390px confirmed the four area types
+and label spacing.

@@ -82,7 +82,7 @@ export function PlantingAreaInspector({
       formRef.current?.querySelector<HTMLElement>(`[name="${first}"]`)?.focus();
       return;
     }
-    const layout = createRectangularLayout(snapToGrid(Number(length)), snapToGrid(Number(width)));
+    const layout = createRectangularLayout(snapToGrid(Number(width)), snapToGrid(Number(length)));
     if (onSave(area.id, name.trim(), kind, Number(rotationDegrees), layout, { x: Number(values.x), y: Number(values.y) })) onDraftChange(undefined);
   };
 
@@ -92,7 +92,7 @@ export function PlantingAreaInspector({
       {hasChanges && <p role="status">Unsaved changes</p>}
       {changedElsewhere && <div role="alert">
         <p>These properties changed elsewhere. Your edits are kept. Saving applies your values.</p>
-        <p>Current values: {current.name}, {growingAreaKindLabels[current.kind]}, {current.length} × {current.width} m, {current.rotation}°, position {current.x}, {current.y} m.</p>
+        <p>Current values: {current.name}, {growingAreaKindLabels[current.kind]}, {current.width} × {current.length} m, {current.rotation}°, position {current.x}, {current.y} m.</p>
         <button className="secondary-button" type="button" onClick={() => { onDraftChange(undefined); setErrors({}); }}>Reload properties</button>
       </div>}
       {closing && <ConfirmDialog message="Discard unsaved changes in this planting area?" confirmLabel="Discard changes" cancelLabel="Keep editing" onCancel={() => setClosing(false)} onConfirm={() => { onDraftChange(undefined); onDiscardPlants(); onClose(); }} />}
@@ -124,19 +124,6 @@ export function PlantingAreaInspector({
         </div>
         <div className="planting-area-creation-measurements">
           <div className="field">
-            <label htmlFor="layout-length">Length (m)</label>
-            <input
-              id="layout-length" name="length" aria-invalid={Boolean(errors.length)} aria-describedby={errors.length ? "layout-length-error" : undefined}
-              min="0.1"
-              onChange={(event) => setLength(event.target.value)}
-              required
-              step="0.1"
-              type="number"
-              value={length}
-            />
-            {errors.length && <p id="layout-length-error" role="alert">{errors.length}</p>}
-          </div>
-          <div className="field">
             <label htmlFor="layout-width">Width (m)</label>
             <input
               id="layout-width" name="width" aria-invalid={Boolean(errors.width)} aria-describedby={errors.width ? "layout-width-error" : undefined}
@@ -148,6 +135,19 @@ export function PlantingAreaInspector({
               value={width}
             />
             {errors.width && <p id="layout-width-error" role="alert">{errors.width}</p>}
+          </div>
+          <div className="field">
+            <label htmlFor="layout-length">Length (m)</label>
+            <input
+              id="layout-length" name="length" aria-invalid={Boolean(errors.length)} aria-describedby={errors.length ? "layout-length-error" : undefined}
+              min="0.1"
+              onChange={(event) => setLength(event.target.value)}
+              required
+              step="0.1"
+              type="number"
+              value={length}
+            />
+            {errors.length && <p id="layout-length-error" role="alert">{errors.length}</p>}
           </div>
         </div>
         <div className="field">

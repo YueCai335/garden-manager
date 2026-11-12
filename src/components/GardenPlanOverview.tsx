@@ -9,6 +9,7 @@ import { areaPath } from "@/lib/workspaceRoutes";
 import { Circle, Group, Layer, Line, Rect, Stage, Text } from "react-konva";
 import { useCanvasSize } from "@/hooks/useCanvasSize";
 import { canvasToMetres, canvasGridTicks, fitCanvas, metresToCanvas, type CanvasTransform } from "@/lib/canvasViewport";
+import { areaAppearance, areaLabelPosition, areaSizeText, isRectangularLayout, planColors, ridgeLine } from "@/lib/planAppearance";
 import { Button } from "./ui/Button";
 import { useConfirmation } from "./ConfirmDialog";
 import editorStyles from "./editor/Editor.module.css";
@@ -24,7 +25,6 @@ import {
   type LayoutPoint,
   type GardenPlan,
   type GardenPlanViewMode,
-  type GardenPlanViewport,
   type GrowingArea,
   type PlanPlacement,
 } from "@/lib/gardenWorkspace";
@@ -340,7 +340,7 @@ function GardenPlanCanvas({
     </div>}
     <div ref={size.ref} className={`${canvasStyles.surface} ${compact ? canvasStyles.compact : ""}`} data-move={moveMode} data-dragging={Boolean(drag)}>
     {transform ? <Stage
-      aria-label={`Garden Plan, ${plan.widthMeters} metres long by ${plan.depthMeters} metres wide`}
+      aria-label={`Garden Plan, ${plan.widthMeters} metres wide by ${plan.depthMeters} metres long`}
       height={height}
       width={width}
       style={{ touchAction: moveMode ? "none" : "pan-y" }}
@@ -348,9 +348,9 @@ function GardenPlanCanvas({
       <Layer listening={!compact} x={offsetX} y={offsetY}>
         {!compact && <Rect
           preventDefault={false}
-          fill="#f8fbf6"
+          fill={planColors.ground}
           height={plan.depthMeters * scale}
-          stroke="#183a2a"
+          stroke={planColors.boundary}
           strokeWidth={2}
           width={plan.widthMeters * scale}
           x={padding - viewport.x * scale}
@@ -366,7 +366,7 @@ function GardenPlanCanvas({
               padding + (metre - viewport.x) * scale,
               padding + (plan.depthMeters - viewport.y) * scale,
             ]}
-            stroke="#cfd7ce"
+            stroke={planColors.grid}
             strokeWidth={1}
           />
         ))}
@@ -380,7 +380,7 @@ function GardenPlanCanvas({
               padding + (plan.widthMeters - viewport.x) * scale,
               padding + (metre - viewport.y) * scale,
             ]}
-            stroke="#cfd7ce"
+            stroke={planColors.grid}
             strokeWidth={1}
           />
         ))}
@@ -449,17 +449,7 @@ function GardenPlanCanvas({
             x={padding + (area.planPlacement.x - viewport.x) * scale}
             y={padding + (area.planPlacement.y - viewport.y) * scale}
           >
-            <Line
-              preventDefault={moveMode}
-              closed
-              fill={compact ? "#d7e5d2" : "#dcebdc"}
-              points={area.layout!.boundary.flatMap((point) => [
-                point.x * scale,
-                point.y * scale,
-              ])}
-              stroke={selectedAreaId === area.id || drag?.id === area.id ? "#183a2a" : "#276445"}
-              strokeWidth={selectedAreaId === area.id || drag?.id === area.id ? 4 : 2}
-            />
+            <AreaShape area={area} scale={scale} compact={compact} selected={selectedAreaId === area.id || drag?.id === area.id} preventDefault={moveMode} />
             {area.layout!.allocations.map((allocation) => (
               <Group key={allocation.id}>
                 <Circle
@@ -505,7 +495,7 @@ function GardenPlanCanvas({
             align="center"
             data-testid={`area-label-${area.id}`}
             ellipsis
-            fill="#183a2a"
+            fill={planColors.label}
             fontSize={compact ? 12 : 13}
             fontStyle="bold"
             height={16}
@@ -518,9 +508,26 @@ function GardenPlanCanvas({
             y={y}
           />
         ))}
+        {!compact && areaLabels.filter(({ area }) => area.id === selectedAreaId).map(({ area, width, x, sizeY }) => {
+          const sizeWidth = Math.max(width, 88);
+          return <Text
+            align="center"
+            data-testid={`area-size-${area.id}`}
+            fill={planColors.mutedLabel}
+            fontSize={12}
+            height={16}
+            key={`area-size-${area.id}`}
+            listening={false}
+            text={areaSizeText(area.layout!)}
+            width={sizeWidth}
+            wrap="none"
+            x={x + (width - sizeWidth) / 2}
+            y={sizeY}
+          />;
+        })}
         {!compact && !measuredAreas.length ? (
           <Text
-            fill="#657268"
+            fill={planColors.mutedLabel}
             fontSize={14}
             text="Add a planting area to set its dimensions and show it here."
             width={Math.max(0, width - padding * 2)}
@@ -534,28 +541,26 @@ function GardenPlanCanvas({
   </div>;
 }
 
-function areaLabelPosition(
-  area: GrowingArea,
-  scale: number,
-  padding: number,
-  viewport: GardenPlanViewport,
-) {
-  const angle = (area.planPlacement.rotationDegrees * Math.PI) / 180;
-  const origin = {
-    x: padding + (area.planPlacement.x - viewport.x) * scale,
-    y: padding + (area.planPlacement.y - viewport.y) * scale,
-  };
-  const points = area.layout!.boundary.map((point) => ({
-    x: origin.x + point.x * scale * Math.cos(angle) - point.y * scale * Math.sin(angle),
-    y: origin.y + point.x * scale * Math.sin(angle) + point.y * scale * Math.cos(angle),
-  }));
-  const left = Math.min(...points.map((point) => point.x));
-  const right = Math.max(...points.map((point) => point.x));
-  const top = Math.min(...points.map((point) => point.y));
-  const bottom = Math.max(...points.map((point) => point.y));
-  const width = Math.max(80, Math.min(180, right - left + 24));
-  const y = top - 20 >= 24 ? top - 20 : bottom + 6;
-  return { width, x: (left + right - width) / 2, y, left, right, top, bottom };
+/** One planting area's outline, drawn in area-local canvas pixels inside its positioned Group. */
+function AreaShape({ area, scale, compact, selected, preventDefault }: { area: GrowingArea; scale: number; compact: boolean; selected: boolean; preventDefault: boolean }) {
+  const layout = area.layout!;
+  const look = areaAppearance(area.kind, compact);
+  const width = layout.widthMeters * scale;
+  const height = layout.depthMeters * scale;
+  const points = layout.boundary.flatMap((point) => [point.x * scale, point.y * scale]);
+  const rectangle = isRectangularLayout(layout);
+  const radius = look.rounded ? Math.min(width, height) / 2 : Math.min(3, width / 4, height / 4);
+  const ring = 4;
+  return <>
+    {/* Selection draws a separate ring so the area keeps its type colours. */}
+    {selected && (rectangle
+      ? <Rect listening={false} x={-ring} y={-ring} width={width + ring * 2} height={height + ring * 2} cornerRadius={radius + ring} stroke={planColors.selection} strokeWidth={3} />
+      : <Line listening={false} closed points={points} stroke={planColors.selection} strokeWidth={look.strokeWidth + 6} opacity={0.45} />)}
+    {rectangle
+      ? <Rect preventDefault={preventDefault} width={width} height={height} cornerRadius={radius} fill={look.fill} stroke={look.stroke} strokeWidth={look.strokeWidth} dash={look.dash} />
+      : <Line preventDefault={preventDefault} closed points={points} fill={look.fill} stroke={look.stroke} strokeWidth={look.strokeWidth} dash={look.dash} />}
+    {look.ridge && <Line listening={false} points={ridgeLine(layout).map((value) => value * scale)} stroke={look.stroke} strokeWidth={1} dash={[5, 4]} />}
+  </>;
 }
 
 function fitThumbnailLabels(

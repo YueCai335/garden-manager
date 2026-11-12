@@ -5,6 +5,7 @@ import { GardenPlanOverview } from "./GardenPlanOverview";
 import { GrowingAreaLayoutEditor } from "./GrowingAreaLayoutEditor";
 import { createRectangularLayout, gardenPlanViewport, type GrowingArea } from "@/lib/gardenWorkspace";
 import { fitCanvas, metresToCanvas } from "@/lib/canvasViewport";
+import { areaAppearances } from "@/lib/planAppearance";
 
 const size = vi.hoisted(() => ({ width: 700, height: 420 }));
 vi.mock("@/hooks/useCanvasSize", async () => {
@@ -21,9 +22,9 @@ describe("responsive canvas interactions", () => {
     size.height = 112;
     const area = { ...bed(), planPlacement: { x: 30, y: 40, rotationDegrees: 0 } };
     const { container } = render(<GardenPlanOverview compact plan={plan} growingAreas={[area]} />);
-    const points = container.querySelector("[points]")?.getAttribute("points")?.split(",").map(Number) ?? [];
-    const xCoordinates = points.filter((_, index) => index % 2 === 0);
-    expect(Math.max(...xCoordinates) - Math.min(...xCoordinates)).toBeGreaterThan(size.width * 0.7);
+    // Rectangular beds draw as a Rect filled with their type colour.
+    const outline = container.querySelector(`[fill="${areaAppearances["raised-bed"].fill}"]`);
+    expect(Number(outline?.getAttribute("width"))).toBeGreaterThan(size.width * 0.7);
   });
 
   it("keeps nearby thumbnail labels from overlapping on narrow cards", () => {

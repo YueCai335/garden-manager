@@ -59,7 +59,7 @@ it("keeps a plant coordinate draft through resizing and navigation, then validat
   const user = await openBed();
   await user.click(screen.getByLabelText("Tomato plant"));
   fireEvent.change(screen.getByLabelText("X position (m)"), { target: { value: "1.8" } });
-  fireEvent.change(screen.getByLabelText("Length (m)"), { target: { value: "1" } });
+  fireEvent.change(screen.getByLabelText("Width (m)"), { target: { value: "1" } });
   await user.click(properties().getByRole("button", { name: "Save" }));
   expect(screen.getByLabelText("X position (m)")).toHaveValue(1.8);
   expect(screen.getByText(/outside this area's current dimensions/)).toBeInTheDocument();
@@ -89,17 +89,26 @@ it("keeps a new plant draft through area property changes and asks before closin
   expect(screen.getByLabelText("Plant type")).toHaveValue("Kale");
 });
 
+it("shows the selected area's width and length below it on the plan, matching the form", async () => {
+  await openBed();
+  const size = screen.getByTestId("area-size-demo-raised-bed");
+  const area = saved().gardens[0].growingAreas[0];
+  expect(size).toHaveTextContent(`${area.layout.widthMeters} × ${area.layout.depthMeters} m`);
+  expect(screen.getByLabelText("Width (m)")).toHaveValue(area.layout.widthMeters);
+  expect(screen.getByLabelText("Length (m)")).toHaveValue(area.layout.depthMeters);
+});
+
 it("validates blank and negative dimensions locally without discarding the name", async () => {
   const user = await openBed();
   fireEvent.change(screen.getByLabelText("Planting-area name"), { target: { value: "Changed" } });
   expect(screen.getByLabelText("Planting-area name")).toHaveValue("Changed");
   for (const value of ["", "0", "-1"]) {
-    fireEvent.change(screen.getByLabelText("Length (m)"), { target: { value } });
+    fireEvent.change(screen.getByLabelText("Width (m)"), { target: { value } });
     await user.click(properties().getByRole("button", { name: "Save" }));
-    expect(screen.getByLabelText("Length (m)")).toHaveAttribute("aria-invalid", "true");
-    expect(screen.getByLabelText("Length (m)")).toHaveFocus();
+    expect(screen.getByLabelText("Width (m)")).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByLabelText("Width (m)")).toHaveFocus();
   }
-  fireEvent.change(screen.getByLabelText("Length (m)"), { target: { value: "2.5" } });
+  fireEvent.change(screen.getByLabelText("Width (m)"), { target: { value: "2.5" } });
   await user.click(properties().getByRole("button", { name: "Save" }));
   expect(saved().gardens[0].growingAreas[0].layout.widthMeters).toBe(2.5);
 });
