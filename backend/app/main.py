@@ -19,6 +19,7 @@ from .agent.openai_model import DEFAULT_MODEL, OpenAIAllocationModel
 from .agent.service import camel_case_response, season_allocation
 from .ai import DEFAULT_CARE_NOTE_OPENAI_MODEL, CareNoteExtractor, CareNoteProviderError, OpenAICareNoteExtractor, EmbeddingClient, PlantHealthAssessor, PlantKnowledgeAnswerer, configured_care_note_extractor, configured_embedding_client, configured_plant_health_assessor, configured_plant_knowledge_answerer
 from .care_note_public import REQUEST_ID_HEADER, new_request_id, public_care_note_draft, public_generation_available
+from .care_note_batch import CareNoteBatchDraftResponse, CareNoteBatchExtractor, care_note_batch, configured_batch_extractor
 from .database import get_session
 from .schemas import CareNoteDraftRequest, CareNoteDraftResponse, HealthResponse, PlantHealthAssessmentRequest, PlantHealthAssessmentResponse, PlantKnowledgeAnswer, PlantKnowledgeQuestion, RotationGuidanceRequest, RotationGuidanceResponse, RuntimeConfigResponse, SeasonAllocationRequest, WorkspaceImport, WorkspaceSave
 from .service import care_note_draft, import_workspace, load_workspace, plant_health_assessment, plant_knowledge_answer, rotation_guidance, update_workspace, workspace_response
@@ -79,6 +80,7 @@ def runtime_config() -> RuntimeConfigResponse:
     return RuntimeConfigResponse(
         portfolio_demo=is_portfolio_demo(),
         care_note_public_available=is_portfolio_demo() and public_generation_available(),
+        care_note_batch_available=not is_portfolio_demo(),
     )
 
 
@@ -102,6 +104,15 @@ def get_care_note_extractor() -> CareNoteExtractor | None:
         return configured_care_note_extractor()
     except CareNoteProviderError as error:
         raise HTTPException(status_code=503, detail=str(error)) from error
+
+
+def get_care_note_batch_extractor() -> CareNoteBatchExtractor:
+    if is_portfolio_demo():
+        raise HTTPException(status_code=403, detail="Cross-garden AI note batches are unavailable in the public demo. Use the single-record or manual workflow.")
+    try:
+        return configured_batch_extractor()
+    except CareNoteProviderError as error:
+        raise HTTPException(status_code=503, detail="AI Garden Note is unavailable. Enter records manually or try again later.") from error
 
 
 def get_public_care_note_extractor() -> OpenAICareNoteExtractor | None:
@@ -178,6 +189,19 @@ def get_rotation_guidance(
     session: Session = Depends(get_session),
 ):
     return rotation_guidance(session, workspace_id, garden_id, payload)
+
+
+@app.post("/workspaces/{workspace_id}/ai/care-note-drafts", response_model=CareNoteBatchDraftResponse, tags=["AI"])
+def create_care_note_batch(
+    workspace_id: str,
+    payload: CareNoteDraftRequest,
+    extractor: CareNoteBatchExtractor = Depends(get_care_note_batch_extractor),
+    session: Session = Depends(get_session),
+):
+    # The route also enforces scope when a test/deployment overrides its dependency.
+    if is_portfolio_demo():
+        raise HTTPException(status_code=403, detail="Cross-garden AI note batches are unavailable in the public demo.")
+    return care_note_batch(session, workspace_id, payload, extractor, datetime.now(timezone.utc).date())
 
 
 @app.post(

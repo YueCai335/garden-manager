@@ -387,6 +387,8 @@ class RuntimeConfigResponse(BaseModel):
     portfolio_demo: bool = Field(serialization_alias="portfolioDemo")
     # Whether the configuration allows public AI Garden Note drafts; quotas are checked per request (ADR-0059).
     care_note_public_available: bool = Field(default=False, serialization_alias="careNotePublicAvailable")
+    # Capability, not a provider health check. Never true in the public demo.
+    care_note_batch_available: bool = Field(default=False, serialization_alias="careNoteBatchAvailable")
 
 
 class SeasonAllocationRequest(ApiModel):
