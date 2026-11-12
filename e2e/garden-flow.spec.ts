@@ -13,26 +13,28 @@ test("create a garden, save an edit, plan next season, and find both after a rel
 
   // Load the demo garden so there is a planting area to plan against.
   await page.getByRole("button", { name: "Load demo garden" }).click();
-  await expect(page.getByRole("button", { name: "Open Demo Garden" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Open Demo Garden" })).toBeVisible();
 
   // Rename the garden and save.
-  await page.getByRole("button", { name: "Open Demo Garden" }).click();
+  await page.getByRole("link", { name: "Open Demo Garden" }).click();
   await expect(page.getByRole("heading", { name: "Garden Plan" })).toBeVisible();
+  await page.getByRole("button", { name: "Edit garden details" }).click();
   await page.getByLabel("Garden name").fill("E2E Kitchen Garden");
   await page.getByRole("button", { name: "Save" }).click();
-  await expect(page.getByText("Changes saved to PostgreSQL.")).toBeVisible();
+  await expect(page.getByText("All changes saved")).toBeVisible();
 
   // Plan a plant for next season in the raised bed.
-  await page.getByRole("button", { name: "Back to gardens" }).click();
-  await page.getByRole("button", { name: "Next season plan" }).click();
-  await expect(page.getByRole("heading", { name: "Next season planner" })).toBeVisible();
+  await page.getByRole("link", { name: "Back to gardens" }).click();
+  await expect(page).toHaveURL("/");
+  await page.getByRole("navigation", { name: "Workspace sections" }).getByRole("link", { name: "Next Season", exact: true }).click();
+  await expect(page.getByRole("heading", { name: /Next Season ·/ })).toBeVisible();
   const raisedBed = page.locator("article", { has: page.getByRole("heading", { name: "Sample raised bed" }) });
   await raisedBed.getByRole("button", { name: "Choose a plant" }).click();
   await raisedBed.getByLabel("Plant type").fill("Kale");
   await raisedBed.getByRole("button", { name: `Add to ${nextYear} plan` }).click();
   await expect(page.getByRole("region", { name: "plan for Sample raised bed" }).getByText("Kale", { exact: true })).toBeVisible();
 
-  // The planner has no status line, so ask the API directly: both edits must
+  // Verify both edits directly at the API: both edits must
   // be on the server before we reload.
   await expect
     .poll(async () => {
@@ -47,9 +49,8 @@ test("create a garden, save an edit, plan next season, and find both after a rel
 
   // Reload: the app restores from PostgreSQL (a server id is remembered).
   await page.reload();
-  await expect(page.getByText("Gardens restored from PostgreSQL.")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Open E2E Kitchen Garden" })).toBeVisible();
-  await page.getByRole("button", { name: "Next season plan" }).click();
+  await expect(page.getByText("All changes saved")).toBeVisible();
+  await expect(page).toHaveURL(/\/season$/);
   await expect(page.getByRole("region", { name: "plan for Sample raised bed" }).getByText("Kale", { exact: true })).toBeVisible();
 });
 

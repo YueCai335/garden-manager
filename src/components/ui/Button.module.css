@@ -1,0 +1,2 @@
+.label { display: grid; }
+.label > span { grid-area: 1 / 1; }

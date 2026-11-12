@@ -29,8 +29,9 @@ that begin with either `postgresql://` or `postgres://`.
 2. Render reads `render.yaml` and proposes the FastAPI web service.
 3. Enter the Supabase connection string as `DATABASE_URL`.
 4. Set `FRONTEND_ORIGINS` after the Vercel project has its `vercel.app` URL.
-5. Leave `OPENAI_API_KEY` empty and `AGENT_PUBLIC_RUN_LIMIT` at `0`. Live
-   Allocation Assistant runs stay closed in the public demo (ADR-0057).
+5. Keep `AGENT_PUBLIC_RUN_LIMIT` at `0`: live Allocation Assistant runs stay
+   closed in the public demo (ADR-0057). Leave `OPENAI_API_KEY` empty until the
+   AI Garden Note steps below call for it (ADR-0060).
 6. Create the service and open `https://your-render-service.onrender.com/health`.
 
 The API runs Alembic migrations during startup. A successful health response
@@ -101,6 +102,37 @@ The `care-note-public` row is the cumulative count; one
 `care-note-public-day-YYYY-MM-DD` row per UTC day holds the daily count. A
 cumulative value of 58 after an API log line `care_note_public_request` with
 `"outcome": "usage_stop"` means the automatic stop ran.
+
+### Before C3: deploy closed, then check Render
+
+Each step below needs the owner's approval when it publishes code, enters a
+key, or spends money.
+
+1. **Publish the code.** Render and Vercel build from GitHub, so the approved
+   branch is pushed and merged into `main` through a reviewed pull request.
+   Render then deploys with AI Garden Note closed: `render.yaml` sets
+   `CARE_NOTE_PUBLIC_ENABLED=false` and `CARE_NOTE_PUBLIC_RUN_LIMIT=0`.
+2. **Confirm the closed deploy.** `/health` answers `ok`; `/runtime-config`
+   reports `"careNotePublicAvailable": false`; in Supabase,
+   `SELECT name, used_runs FROM agent_run_budgets;` shows a
+   `care-note-public` row at 0 (created by the startup migration).
+3. **Enter the key.** The owner sets `OPENAI_API_KEY` in the Render
+   dashboard only; it never goes into Git or chat. With the switch off,
+   nothing calls OpenAI.
+4. **Client-IP source.** Read one request's access-log line in Render and
+   record which address Uvicorn sees. With the default
+   `FORWARDED_ALLOW_IPS`, it is Render's proxy, so the five-per-minute limit
+   applies to all visitors together rather than per visitor. Keep that safe
+   default unless a measured, stable proxy range justifies trusting
+   forwarding headers; never trust every forwarding header.
+5. **Switch-off drill.** Set `CARE_NOTE_PUBLIC_RUN_LIMIT=3` and
+   `CARE_NOTE_PUBLIC_ENABLED=true`; after the redeploy `/runtime-config`
+   reports `true`. Set `CARE_NOTE_PUBLIC_ENABLED=false`; after the redeploy
+   it reports `false`. No frontend has the live entry yet, and no OpenAI
+   request is made.
+
+A Blueprint sync rewrites the values set in `render.yaml`, which closes the
+feature again (`false`, `0`); after any sync, check `/runtime-config`.
 
 ### Open in stages: C3 check, then C4
 

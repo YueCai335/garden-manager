@@ -1,6 +1,7 @@
 # ADR-0054: Use Fixed-Canvas Garden Plan Views
 
 - Status: Accepted
+- Responsive sizing and explicit Move interaction refined by [ADR-0065](0065-fit-metric-canvases-to-their-containers.md).
 - Date: 2026-09-03
 - Refines: [ADR-0027](0027-use-persistent-plant-colors-and-garden-plan-zoom.md)
 - Related: [ADR-0015](0015-use-a-metric-garden-plan-overview.md) and [ADR-0053](0053-keep-plant-layout-in-the-planting-area-inspector.md)

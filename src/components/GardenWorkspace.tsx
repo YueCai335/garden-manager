@@ -1,19 +1,31 @@
 "use client";
 
-import { FormEvent, type ReactNode, useEffect, useRef, useState } from "react";
+import { FeedbackForm, FormField } from "@/components/forms/FormFeedback";
+import { Button, ButtonLink } from "@/components/ui/Button";
 
-import { SERVER_WORKSPACE_STORAGE_KEY, useWorkspaceSync } from "@/hooks/useWorkspaceSync";
+import { FormEvent, useEffect, useRef, useState } from "react";
 
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { SERVER_WORKSPACE_STORAGE_KEY } from "@/hooks/useWorkspaceSync";
+import { useWorkspace, useWorkspaceDraft, useUnsavedDraft } from "@/components/workspace/WorkspaceProvider";
+import { WorkspaceHome, WorkspaceHomeLoading } from "@/components/workspace/WorkspaceHome";
+import { ServerWorkspaceUnavailable } from "@/components/workspace/ServerWorkspaceUnavailable";
+import homeStyles from "@/components/workspace/WorkspaceHome.module.css";
+import { gardenPath, areaPath, careView, type WorkspaceRoute } from "@/lib/workspaceRoutes";
+
+import { PlantingAreaInspector } from "@/components/PlantingAreaInspector";
+import { applyAreaProperties, areaPropertyErrors, areaDraftKey, emptyPlantEditorDraft, plantDraftIsDirty } from "@/lib/areaEditorDrafts";
 import { CareWorkspace, type CareRecords } from "@/components/CareWorkspace";
+import { areaDeletionMessage, gardenDeletionMessage } from "@/lib/deletionImpact";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { GardenPlanOverview } from "@/components/GardenPlanOverview";
+import { GardenAreaList, GardenPlanOverview } from "@/components/GardenPlanOverview";
 import { GrowingAreaLayoutEditor } from "@/components/GrowingAreaLayoutEditor";
 import { SeasonPlanner } from "@/components/SeasonPlanner";
-import { AiGardenNote } from "@/components/AiGardenNote";
+import { WorkspaceGardenNote } from "@/components/notes/WorkspaceGardenNote";
 import { PlantHealth } from "@/components/PlantHealth";
 import { PlantKnowledge } from "@/components/PlantKnowledge";
 import {
-  clampAllocationCenter,
   clampPlanPosition,
   createRectangularLayout,
   createDemoGardenWorkspace,
@@ -29,7 +41,6 @@ import {
   validateLayoutDimensions,
   type Garden,
   type HealthRecord,
-  type CareEvent,
   type GardenPlan,
   type GardenWorkspace,
   type GrowingArea,
@@ -45,7 +56,6 @@ import {
   removeGrowingArea,
   removeSeasonPlanPlanting,
 } from "@/lib/gardenOperations";
-import { type AiCareNoteDraft } from "@/lib/gardenWorkspaceApi";
 import {
   appendAllocationToGarden,
   isAllocationDraftStale,
@@ -54,52 +64,55 @@ import {
   type SeasonAllocationResult,
 } from "@/lib/seasonAllocation";
 import type { AllocationConfirmOutcome } from "@/components/AllocationAssistant";
-import { isCalendarDate, plantGroupDisplayName } from "@/lib/careRecords";
+
+import { EditorWorkbench, type EditorMode } from "./editor/EditorWorkbench";
+import { EditorPanel } from "./editor/EditorPanel";
+import { updateCareOwner, type CareOwner } from "@/lib/careViews";
+import editorStyles from "./editor/Editor.module.css";
 
 export { SERVER_WORKSPACE_STORAGE_KEY };
 
-/**
- * Which screen is showing. Exactly one at a time, so switching screens is a
- * single assignment and two screens can never be open together.
- */
-type Page =
-  | { name: "home" }
-  | { name: "gardenSetup" }
-  | { name: "management"; isSetup: boolean }
-  | { name: "careLog"; gardenId?: string; view?: "tasks" | "history" }
-  | { name: "careHub" }
-  | { name: "seasonPlanner" }
-  | { name: "aiGardenNote" }
-  | { name: "plantHealth" }
-  | { name: "plantKnowledge" };
-
-export function GardenWorkspace() {
-  const [message, setMessage] = useState("");
+export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
+  const router = useRouter();
+  const search = useSearchParams();
   const {
-    workspace,
-    setWorkspace,
-    isSynced,
-    isLoaded,
-    storageSource,
-    serverWorkspaceId,
-    serverLoadFailed,
-    saveConflict,
-    clearBrowserWorkspace,
-    reloadFromServer,
-    keepLocalChanges,
-  } = useWorkspaceSync({ onMessage: setMessage });
-  const [page, setPage] = useState<Page>({ name: "home" });
-  const careGardenId = page.name === "careLog" ? page.gardenId : undefined;
-  const [newGardenName, setNewGardenName] = useState("");
-  const [areaName, setAreaName] = useState("");
-  const [areaKind, setAreaKind] = useState<GrowingAreaKind>("raised-bed");
-  const [areaLength, setAreaLength] = useState("2");
-  const [areaWidth, setAreaWidth] = useState("1");
-  const [areaRotationDegrees, setAreaRotationDegrees] = useState("0");
-  const [isAreaFormOpen, setIsAreaFormOpen] = useState(false);
-  const [editingLayoutId, setEditingLayoutId] = useState<string>();
+    workspace, setWorkspace, message, setMessage, isSynced, isLoaded, storageSource,
+    serverWorkspaceId, serverLoadFailed, clearBrowserWorkspace,
+    areaDrafts, plantDrafts, setPlantDrafts, setAreaDraft, discardDrafts,
+  } = useWorkspace();
+  const [setupGardenId, setSetupGardenId] = useWorkspaceDraft<string | undefined>("setup:garden", undefined);
+  const page = {
+    name: ({ home: "home", new: "gardenSetup", plan: "management", care: "careLog", season: "seasonPlanner", notes: "aiGardenNote", guide: "plantKnowledge", doctor: "plantHealth" } as const)[route.module],
+    isSetup: route.gardenId === setupGardenId,
+    view: careView(search.get("view")),
+  };
+  const careGardenId = route.module === "care" ? route.gardenId ?? "all-gardens" : undefined;
+  const navigate = (href: string, replace = false) => {
+    if (typeof window !== "undefined" && `${window.location.pathname}${window.location.search}` === href) return;
+    if (replace) router.replace(href); else router.push(href);
+  };
+  const editingLayoutId = route.module === "plan" ? search.get("area") ?? undefined : undefined;
+  const [previewAreaId, setPreviewAreaId] = useWorkspaceDraft<string | undefined>(`plan:area-preview:${route.gardenId ?? ""}`, undefined);
+  const setEditingLayoutId = (id?: string) => {
+    if (route.gardenId) navigate(id ? areaPath(route.gardenId, id) : gardenPath(route.gardenId));
+  };
+  useEffect(() => {
+    if (route.module !== "care" || !search.has("view") || ["tasks", "history"].includes(search.get("view") ?? "")) return;
+    const query = new URLSearchParams(search.toString()); query.set("view", "tasks");
+    router.replace(`${route.gardenId ? gardenPath(route.gardenId, "care") : "/care"}?${query}`);
+  }, [route.module, route.gardenId, router, search]);
+  const [newGardenName, setNewGardenName] = useWorkspaceDraft("setup:name", "");
+  const [areaName, setAreaName] = useWorkspaceDraft(`area-create:${route.gardenId ?? ""}:areaName`, "");
+  const [areaKind, setAreaKind] = useWorkspaceDraft<GrowingAreaKind>(`area-create:${route.gardenId ?? ""}:areaKind`, "raised-bed");
+  const [areaLength, setAreaLength] = useWorkspaceDraft(`area-create:${route.gardenId ?? ""}:areaLength`, "2");
+  const [areaWidth, setAreaWidth] = useWorkspaceDraft(`area-create:${route.gardenId ?? ""}:areaWidth`, "1");
+  const [areaRotationDegrees, setAreaRotationDegrees] = useWorkspaceDraft(`area-create:${route.gardenId ?? ""}:areaRotationDegrees`, "0");
+  const [isAreaFormOpen, setIsAreaFormOpen] = useWorkspaceDraft(`area-create:${route.gardenId ?? ""}:isAreaFormOpen`, false);
   const [pendingConfirmation, setPendingConfirmation] = useState<{
     message: string;
+    confirmLabel: string;
+    cancelLabel?: string;
+    fallbackFocusId?: string;
     tone?: "default" | "danger";
     onConfirm: () => void;
   }>();
@@ -108,10 +121,9 @@ export function GardenWorkspace() {
   // against current data rather than the data the draft was shown with.
   const latestWorkspaceRef = useRef(workspace);
   latestWorkspaceRef.current = workspace;
-  const careLogHeadingRef = useRef<HTMLHeadingElement>(null);
 
   const garden = workspace?.gardens.find(
-    (candidate) => candidate.id === workspace.selectedGardenId,
+    (candidate) => candidate.id === route.gardenId,
   );
   const careGarden = careGardenId === "all-gardens" && workspace
     ? {
@@ -129,21 +141,13 @@ export function GardenWorkspace() {
     (area) => area.id === editingLayoutId,
   );
 
-  useEffect(() => {
-    if ((page.name !== "management" && page.name !== "careLog") || editingArea) return;
-    const heading = page.name === "careLog"
-      ? careLogHeadingRef.current
-      : gardenPlanHeadingRef.current;
-    heading?.focus();
-  }, [editingArea, page.name, garden?.id]);
-
   const updateGarden = (update: (current: Garden) => Garden) => {
     setWorkspace((current) =>
       current
         ? {
             ...current,
             gardens: current.gardens.map((candidate) =>
-              candidate.id === current.selectedGardenId
+              candidate.id === garden?.id
                 ? update(candidate)
                 : candidate,
             ),
@@ -152,47 +156,21 @@ export function GardenWorkspace() {
     );
   };
 
-  const clearTransientState = () => {
-    setNewGardenName("");
-    setEditingLayoutId(undefined);
-    setIsAreaFormOpen(false);
-  };
-
-  const openManagement = (gardenId = garden?.id) => {
-    if (gardenId)
-      setWorkspace((current) =>
-        current ? { ...current, selectedGardenId: gardenId } : current,
-      );
-    setPage({ name: "management", isSetup: false });
-    clearTransientState();
-  };
-
-  const openCareLog = (gardenId = garden?.id) => {
-    if (gardenId && gardenId !== "all-gardens")
-      setWorkspace((current) =>
-        current ? { ...current, selectedGardenId: gardenId } : current,
-      );
-    setPage({ name: "careLog", gardenId });
-    clearTransientState();
-  };
-
-  const openCareHub = () => {
-    setPage({ name: "careHub" });
-    clearTransientState();
-  };
-
-  const returnToDashboard = () => {
-    setPage({ name: "home" });
-    clearTransientState();
-  };
+  useUnsavedDraft(`area-create:${route.gardenId ?? ""}`, Boolean(areaName));
+  useUnsavedDraft("setup:name", Boolean(newGardenName));
+  const openManagement = (gardenId?: string) => { if (gardenId) navigate(gardenPath(gardenId)); };
+  const returnToDashboard = () => { setSetupGardenId(undefined); navigate("/"); };
 
   const createFirstGarden = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const name = newGardenName.trim();
     if (!name) return setMessage("Enter a garden name to continue.");
-    setWorkspace(createGardenWorkspace(name));
+    const created = createGardenWorkspace(name);
+    setWorkspace(created);
+    setSetupGardenId(created.selectedGardenId);
+    navigate(gardenPath(created.selectedGardenId));
     setNewGardenName("");
-    setPage({ name: "management", isSetup: true });
+
     setMessage("Garden created. Continue with its plan and planting areas.");
   };
 
@@ -211,7 +189,8 @@ export function GardenWorkspace() {
         : current,
     );
     setNewGardenName("");
-    setPage({ name: "management", isSetup: true });
+    setSetupGardenId(newGarden.id);
+    navigate(gardenPath(newGarden.id));
     setMessage(`${name} created. Continue with its plan and planting areas.`);
   };
 
@@ -234,53 +213,59 @@ export function GardenWorkspace() {
           }
         : current,
     );
-    setPage({ name: "management", isSetup: false });
-    clearTransientState();
+    navigate(gardenPath(createdDemoGarden.id));
     setMessage("Demo garden opened.");
-  };
-
-  const openGardenSetup = () => {
-    setNewGardenName("");
-    setPage({ name: "gardenSetup" });
-    clearTransientState();
   };
 
   const deleteGarden = () => {
     if (!workspace || !garden) return;
-    const impact = `${garden.growingAreas.length} planting area${garden.growingAreas.length === 1 ? "" : "s"} and ${garden.plantings.length} planting record${garden.plantings.length === 1 ? "" : "s"}`;
     setPendingConfirmation({
-      message: `Delete ${garden.name}? This removes its ${impact} from this browser.`,
+      message: storageSource === "server" && workspace.gardens.length === 1
+        ? `“${garden.name}” is your last synced garden. Add another garden before deleting it.`
+        : gardenDeletionMessage(workspace, garden),
+      confirmLabel: "Delete garden",
       tone: "danger",
       onConfirm: () => {
-        const next = removeGarden(workspace, garden.id);
+        const latest = latestWorkspaceRef.current;
+        const target = latest?.gardens.find((item) => item.id === garden.id);
+        if (!latest || !target) throw new Error("This garden no longer exists. Cancel to return to your workspace.");
+        if (JSON.stringify(target) !== JSON.stringify(garden) || latest.gardens.length !== workspace.gardens.length)
+          throw new Error("This garden changed while the confirmation was open. Cancel and review the deletion again.");
+        const next = removeGarden(latest, garden.id);
         if (!next) {
-          if (storageSource === "server") {
-            setMessage("Add another garden before deleting the last PostgreSQL garden.");
-            return;
-          }
-          clearBrowserWorkspace();
-          setPage({ name: "home" });
+          if (storageSource === "server") throw new Error("Add another garden before deleting the last synced garden.");
+          if (JSON.stringify(latest) !== JSON.stringify(workspace)) throw new Error("Your workspace changed. Cancel and review the deletion again.");
+          if (!clearBrowserWorkspace()) throw new Error("The workspace could not be removed from this device. Keep this page open and try again.");
+          garden.growingAreas.forEach((area) => discardDrafts(areaDraftKey(garden.id, area.id)));
+          navigate("/");
           setMessage("Create a garden when you are ready.");
           return;
         }
-
         setWorkspace(next);
-        clearTransientState();
+        navigate("/");
+        garden.growingAreas.forEach((area) => discardDrafts(areaDraftKey(garden.id, area.id)));
         setMessage(`${garden.name} deleted.`);
       },
     });
   };
 
+  const confirmDiscard = (dirty: boolean, onConfirm: () => void) => {
+    if (!dirty) { onConfirm(); return; }
+    setPendingConfirmation({ message: "Your changes have not been submitted. Discard them or keep editing.", confirmLabel: "Discard changes", cancelLabel: "Keep editing", onConfirm });
+  };
+  const discardNewArea = () => {
+    setIsAreaFormOpen(false); setAreaName(""); setAreaKind("raised-bed"); setAreaLength("2"); setAreaWidth("1"); setAreaRotationDegrees("0");
+  };
   const loadDemo = () => {
     const applyDemo = () => {
       const demo = createDemoGardenWorkspace();
       setWorkspace(demo);
-      clearTransientState();
-      setMessage("Demo garden loaded.");
+        setMessage("Demo garden loaded.");
     };
     if (workspace) {
       setPendingConfirmation({
-        message: "Load the demo garden? This replaces gardens saved in this browser.",
+        message: "Load the demo garden? This replaces your current workspace, including its gardens and records.",
+        confirmLabel: "Replace with demo garden",
         onConfirm: applyDemo,
       });
       return;
@@ -290,11 +275,6 @@ export function GardenWorkspace() {
 
   const openAreaForm = () => {
     setEditingLayoutId(undefined);
-    setAreaName("");
-    setAreaKind("raised-bed");
-    setAreaLength("2");
-    setAreaWidth("1");
-    setAreaRotationDegrees("0");
     setIsAreaFormOpen(true);
   };
 
@@ -352,50 +332,46 @@ export function GardenWorkspace() {
     kind: GrowingAreaKind,
     rotationDegrees: number,
     layout: GrowingAreaLayout,
+    position?: { x: number; y: number },
   ) => {
+    const latestGarden = latestWorkspaceRef.current?.gardens.find((item) => item.id === garden?.id);
+    const currentArea = latestGarden?.growingAreas.find((item) => item.id === areaId);
+    const point = position ?? currentArea?.planPlacement ?? { x: 0, y: 0 };
     const trimmedName = name.trim();
-    if (!trimmedName)
-      return setMessage("Enter a planting-area name to continue.");
-    if (!Number.isFinite(rotationDegrees))
-      return setMessage("Enter a valid rotation angle.");
+    const values = { name: trimmedName, kind, length: String(layout.widthMeters), width: String(layout.depthMeters), rotation: String(rotationDegrees), x: String(point.x), y: String(point.y) };
+    const error = Object.values(areaPropertyErrors(values, latestGarden?.plan))[0];
+    if (error) { setMessage(error); return false; }
+    if (!latestWorkspaceRef.current?.gardens.find((item) => item.id === garden?.id)?.growingAreas.some((item) => item.id === areaId)) {
+      setMessage("This planting area no longer exists. Your draft has been kept.");
+      return false;
+    }
     updateGarden((current) =>
       linkCurrentLayoutPlants({
         ...current,
         growingAreas: current.growingAreas.map((area) =>
           area.id === areaId
-            ? {
-                ...area,
-                name: trimmedName,
-                kind,
-                layout,
-                planPlacement: {
-                  ...area.planPlacement,
-                  rotationDegrees: normalizePlanRotation(rotationDegrees),
-                },
-              }
+            ? applyAreaProperties(area, values, current.plan)
             : area,
         ),
       }),
     );
-    setMessage(`${trimmedName} saved.`);
+    setMessage(`${trimmedName} updated.`);
+    return true;
   };
 
   const deleteArea = (area: GrowingArea) => {
     if (!garden) return;
-    const linkedPlantings = garden.plantings.filter(
-      (planting) => planting.growingAreaId === area.id,
-    );
-    const linkedPlans = (garden.seasonPlans ?? []).flatMap((plan) =>
-      plan.plantings.filter((planting) => planting.growingAreaId === area.id),
-    );
-    const planNote = linkedPlans.length
-      ? `, plus ${linkedPlans.length} next-season plan entr${linkedPlans.length === 1 ? "y" : "ies"},`
-      : "";
     setPendingConfirmation({
-      message: `Delete ${area.name}? This removes the planting area and its ${linkedPlantings.length} planting record${linkedPlantings.length === 1 ? "" : "s"}${planNote} from this browser. Care history stays in this garden.`,
+      message: areaDeletionMessage(garden, area),
+      confirmLabel: "Delete planting area",
+      fallbackFocusId: "garden-plan-heading",
       tone: "danger",
       onConfirm: () => {
-        updateGarden((current) => removeGrowingArea(current, area.id));
+        const current = latestWorkspaceRef.current?.gardens.find((item) => item.id === garden.id);
+        if (!current?.growingAreas.some((item) => item.id === area.id)) throw new Error("This planting area no longer exists. Cancel to return to your garden.");
+        if (JSON.stringify(current) !== JSON.stringify(garden)) throw new Error("This garden changed while the confirmation was open. Cancel and review the deletion again.");
+        updateGarden((latest) => removeGrowingArea(latest, area.id));
+        discardDrafts(areaDraftKey(garden.id, area.id));
         if (editingLayoutId === area.id) setEditingLayoutId(undefined);
         setMessage(`${area.name} deleted.`);
       },
@@ -423,7 +399,7 @@ export function GardenWorkspace() {
     updateGarden((current) => ({
       ...current,
       growingAreas: current.growingAreas.map((area) =>
-        area.id === areaId ? { ...area, planPlacement } : area,
+        area.id === areaId ? { ...area, planPlacement: { ...area.planPlacement, ...clampPlanPosition(planPlacement, current.plan) } } : area,
       ),
     }));
   };
@@ -441,26 +417,6 @@ export function GardenWorkspace() {
 
   const archivePlantingRecord = (plantingRecordId: string) => {
     updateGarden((current) => archivePlanting(current, plantingRecordId));
-  };
-
-  const openSeasonPlanner = () => {
-    setPage({ name: "seasonPlanner" });
-    clearTransientState();
-  };
-
-  const openAiGardenNote = () => {
-    setPage({ name: "aiGardenNote" });
-    clearTransientState();
-  };
-
-  const openPlantHealth = () => {
-    setPage({ name: "plantHealth" });
-    clearTransientState();
-  };
-
-  const openPlantKnowledge = () => {
-    setPage({ name: "plantKnowledge" });
-    clearTransientState();
   };
 
   const saveSeasonPlanPlant = (
@@ -540,62 +496,9 @@ export function GardenWorkspace() {
   };
 
   /** Apply an edit to the care records the Care screen is showing. */
-  const updateCareRecords = (update: (records: CareRecords) => CareRecords) => {
-    setWorkspace((current) => {
-      if (!current) return current;
-      if (careGardenId === "all-gardens")
-        return { ...current, ...update({ careEvents: current.careEvents, careTasks: current.careTasks }) };
-      return {
-        ...current,
-        gardens: current.gardens.map((candidate) =>
-          candidate.id === current.selectedGardenId
-            ? { ...candidate, ...update({ careEvents: candidate.careEvents, careTasks: candidate.careTasks }) }
-            : candidate,
-        ),
-      };
-    });
-  };
-
-  const saveAiCareNote = (gardenId: string, draft: AiCareNoteDraft) => {
-    if (!workspace || !draft.type || !draft.date || !isCalendarDate(draft.date)) {
-      setMessage("Choose a care type and valid date before saving.");
-      return;
-    }
-    if (!draft.targetScope) return setMessage("Choose a target before saving.");
-    const targetGarden = workspace.gardens.find((candidate) => candidate.id === gardenId);
-    if (!targetGarden) return;
-    const area = targetGarden.growingAreas.find((candidate) => candidate.id === draft.growingAreaId);
-    const planting = targetGarden.plantings.find((candidate) => candidate.id === draft.plantingRecordId);
-    if (draft.targetScope === "planting-area" && !area) return setMessage("Choose an existing planting area.");
-    if (draft.targetScope === "plant-group" && !planting) return setMessage("Choose an existing plant group.");
-    if (draft.type === "fertilizing" && draft.fertilizerAmount !== null && (!Number.isFinite(draft.fertilizerAmount) || draft.fertilizerAmount <= 0)) {
-      return setMessage("Enter a fertilizer amount greater than zero.");
-    }
-    const event: CareEvent = {
-      id: createId("care"),
-      type: draft.type,
-      date: draft.date,
-      note: draft.note.trim(),
-      targetScope: draft.targetScope,
-      ...(draft.targetScope === "planting-area" ? { growingAreaId: area?.id, growingAreaName: area?.name } : {}),
-      ...(draft.targetScope === "plant-group" ? { plantingRecordId: planting?.id, plantingRecordName: planting ? plantGroupDisplayName(planting, targetGarden) : undefined } : {}),
-      ...(draft.type === "fertilizing"
-        ? {
-            ...(draft.fertilizerProduct?.trim() ? { fertilizerProduct: draft.fertilizerProduct.trim() } : {}),
-            ...(draft.fertilizerAmount !== null ? { fertilizerAmount: draft.fertilizerAmount } : {}),
-            ...(draft.fertilizerUnit?.trim() ? { fertilizerUnit: draft.fertilizerUnit.trim() } : {}),
-          }
-        : {}),
-    };
-    setWorkspace((current) => current ? {
-      ...current,
-      selectedGardenId: gardenId,
-      ...(draft.targetScope === "all-gardens"
-        ? { careEvents: [...current.careEvents, event] }
-        : { gardens: current.gardens.map((candidate) => candidate.id === gardenId ? { ...candidate, careEvents: [...candidate.careEvents, event] } : candidate) }),
-    } : current);
-    setPage({ name: "careLog", view: "history" });
-    setMessage("AI care draft saved to Care History.");
+  const updateCareRecords = (update: (records: CareRecords) => CareRecords, owner?: CareOwner) => {
+    const target: CareOwner = owner ?? (careGardenId === "all-gardens" ? { ownerScope: "workspace" } : { ownerScope: "garden", gardenId: careGardenId! });
+    setWorkspace((current) => current ? updateCareOwner(current, target, update) : current);
   };
 
   const saveHealthRecord = (gardenId: string, record: HealthRecord) => {
@@ -606,19 +509,23 @@ export function GardenWorkspace() {
         ? { ...candidate, healthRecords: [...candidate.healthRecords, record] }
         : candidate),
     } : current);
-    setMessage("Plant health record saved.");
+    setMessage("Plant health record added.");
   };
 
   if (!isLoaded)
-    return (
-      <main className="operations-shell">
-        <p className="loading-state">Loading garden workspace...</p>
-      </main>
+    return route.module === "home" ? <WorkspaceHomeLoading /> : (
+      <p className="loading-state">Loading garden workspace...</p>
     );
   if (serverLoadFailed)
-    return <ServerWorkspaceUnavailable message={message} />;
-  if (!workspace || !garden)
-    return (
+    return <ServerWorkspaceUnavailable />;
+  if (route.gardenId && !garden) return <div className={homeStyles.home}>
+    <section className={homeStyles.onboarding} aria-labelledby="garden-not-found-heading">
+      <h2 id="garden-not-found-heading">Garden not found in this workspace</h2>
+      <ButtonLink href="/">Return to overview</ButtonLink>
+    </section>
+  </div>;
+  if (!workspace && ["home", "new", "plan", "care", "season"].includes(route.module)) {
+    const onboarding = (
       <Onboarding
         newGardenName={newGardenName}
         message={message}
@@ -627,37 +534,33 @@ export function GardenWorkspace() {
         onLoadDemo={loadDemo}
       />
     );
+    return route.module === "home" ? <WorkspaceHome onOpenDemoGarden={openDemoGarden} onboarding={onboarding} />
+      : <div className={homeStyles.home}>{onboarding}</div>;
+  }
 
   return (
-    <main className="operations-shell operations-app-shell">
-      <header className="operations-header operations-header-active">
-        <p className="product-kicker">Garden Manager</p>
-        <div className="header-actions">
-          {page.name !== "home" && page.name !== "gardenSetup" ? (
-            <button
-              className="secondary-button"
-              onClick={returnToDashboard}
-              type="button"
-            >
-              Back to gardens
-            </button>
-          ) : null}
-        </div>
-      </header>
-      {saveConflict ? (
-        <SaveConflictNotice onReload={reloadFromServer} onKeepLocal={keepLocalChanges} />
-      ) : null}
+    <>
+      {Object.keys({ ...areaDrafts, ...plantDrafts }).filter((key) => {
+        const [gardenId, areaId] = JSON.parse(key) as [string, string];
+        return (areaDrafts[key] || plantDraftIsDirty(plantDrafts[key])) && !workspace?.gardens.find((item) => item.id === gardenId)?.growingAreas.some((item) => item.id === areaId);
+      }).map((key) => <section key={key} role="alert">
+        <p>A planting area with unsaved edits no longer exists. Copy the draft before discarding it.</p>
+        <textarea aria-label="Unavailable planting-area draft" readOnly value={JSON.stringify({ properties: areaDrafts[key]?.values, plant: plantDrafts[key] }, null, 2)} />
+        <button type="button" onClick={() => confirmDiscard(true, () => discardDrafts(key))}>Discard unavailable draft</button>
+      </section>)}
       {page.name === "gardenSetup" ? (
           <GardenSetupStart
             name={newGardenName}
             message={message}
             onChangeName={setNewGardenName}
-            onCreate={addGarden}
-            onCancel={returnToDashboard}
+            onCreate={workspace ? addGarden : createFirstGarden}
+            onCancel={() => confirmDiscard(Boolean(newGardenName), () => { setNewGardenName(""); returnToDashboard(); })}
           />
         ) : page.name === "seasonPlanner" ? (
           <SeasonPlanner
-            gardens={workspace.gardens}
+            gardenId={route.gardenId}
+            notice={message}
+            gardens={route.gardenId && garden ? [garden] : workspace?.gardens ?? []}
             isSynced={isSynced}
             onConfirmAllocation={confirmSeasonAllocation}
             onRemovePlan={removeSeasonPlanPlant}
@@ -665,77 +568,77 @@ export function GardenWorkspace() {
             workspaceId={serverWorkspaceId}
           />
         ) : page.name === "aiGardenNote" ? (
-          <AiGardenNote
-            gardens={workspace.gardens}
-            initialGardenId={garden.id}
-            isServerBacked={storageSource === "server"}
-            onSave={saveAiCareNote}
-            workspaceId={serverWorkspaceId}
-          />
+          <WorkspaceGardenNote />
         ) : page.name === "plantHealth" ? (
           <PlantHealth
-            gardens={workspace.gardens}
-            initialGardenId={garden.id}
+            key={search.get("garden") ?? ""}
+            onGardenContextChange={(id) => navigate(`/doctor${id ? `?${new URLSearchParams({ garden: id })}` : ""}`)}
+            gardens={workspace?.gardens ?? []}
+            initialGardenId={search.get("garden") ?? ""}
             isServerBacked={storageSource === "server"}
             onSave={saveHealthRecord}
             workspaceId={serverWorkspaceId}
           />
         ) : page.name === "plantKnowledge" ? (
           <PlantKnowledge
-            gardens={workspace.gardens}
-            initialGardenId={garden.id}
+            key={search.get("garden") ?? ""}
+            onGardenContextChange={(id) => navigate(`/guide${id ? `?${new URLSearchParams({ garden: id })}` : ""}`)}
+            gardens={workspace?.gardens ?? []}
+            initialGardenId={search.get("garden") ?? ""}
             isServerBacked={storageSource === "server"}
             workspaceId={serverWorkspaceId}
           />
-        ) : page.name === "careHub" ? (
-          <CareHub
-            gardens={workspace.gardens}
-            onOpenCare={openCareLog}
-            workspace={workspace}
-          />
       ) : page.name === "home" ? (
-          <Home
-            gardens={workspace.gardens}
-            onCare={openCareHub}
-            onAiGardenNote={openAiGardenNote}
-            onPlantHealth={openPlantHealth}
-            onPlantKnowledge={openPlantKnowledge}
-            onPlanSeason={openSeasonPlanner}
-            onOpenDemoGarden={openDemoGarden}
-            onAddGarden={openGardenSetup}
-            onManage={openManagement}
-            message={message}
-          />
+          <WorkspaceHome onOpenDemoGarden={openDemoGarden} />
         ) : page.name === "careLog" && careGarden ? (
           <section className="operations-content">
+
             <CareWorkspace
-              key={careGardenId ?? garden.id}
+              key={careGardenId}
               garden={careGarden}
-              headingRef={careLogHeadingRef}
+              gardens={!route.gardenId ? workspace?.gardens : undefined}
+              locationFilter={!route.gardenId ? search.get("location") ?? "all" : undefined}
+              onLocationChange={(location) => navigate(`/care?${new URLSearchParams({ view: page.view, location })}`)}
+              sharedRecords={route.gardenId && workspace ? { careEvents: workspace.careEvents, careTasks: workspace.careTasks } : undefined}
               initialView={page.view}
+              viewHref={route.gardenId ? gardenPath(route.gardenId, "care") : "/care"}
               onMessage={setMessage}
               onUpdateRecords={updateCareRecords}
             />
             <Status message={message} />
+            {!route.gardenId && workspace && <details><summary>Open a garden Care page</summary><CareHub gardens={workspace.gardens} workspace={workspace} /></details>}
           </section>
-        ) : (
+        ) : garden ? (
           <section className="operations-content management-content">
             <>
-              <div className={`garden-plan-workbench${isAreaFormOpen || editingArea ? " is-area-inspector-open" : ""}`}>
+              {editingLayoutId && !editingArea && <p role="alert">Planting area not found in this garden. <Link href={gardenPath(garden.id)}>Back to plan</Link></p>}
+              <EditorWorkbench>{(mode) => <>
+                <div className={editorStyles.plan} hidden={mode === "mobile" && (isAreaFormOpen || Boolean(editingArea))}>
                 <GardenPlanOverview
                   editable
+                  gardenId={garden.id}
                   gardenName={garden.name}
                   growingAreas={garden.growingAreas}
                   headingRef={gardenPlanHeadingRef}
                   isAreaInspectorOpen={isAreaFormOpen || Boolean(editingArea)}
+                  selectedAreaId={editingArea?.id ?? (mode === "mobile" ? previewAreaId : undefined)}
+                  areaListInSidebar={mode === "wide" && !isAreaFormOpen && !editingArea}
+                  showAreaPreview={mode === "mobile"}
+                  onDismissPreview={() => setPreviewAreaId(undefined)}
                   onAddArea={openAreaForm}
-                  onEditLayout={openAreaInspector}
+                  onEditLayout={mode === "mobile" ? setPreviewAreaId : openAreaInspector}
                   onGardenNameChange={(name) => updateGarden((current) => ({ ...current, name }))}
                   onPlacementChange={updateAreaPlacement}
                   onPlanChange={updatePlan}
                   plan={garden.plan}
                 />
+                </div>
+                {mode === "wide" && !isAreaFormOpen && !editingArea && <aside className={editorStyles.summary} aria-label="Garden area summary">
+                  <GardenAreaList gardenId={garden.id} areas={garden.growingAreas} />
+                </aside>}
                 <PlantingAreaCreation
+                  mode={mode}
+                  gardenName={garden.name}
                   areaKind={areaKind}
                   areaLength={areaLength}
                   areaName={areaName}
@@ -748,18 +651,35 @@ export function GardenWorkspace() {
                   onSetAreaName={setAreaName}
                   onSetAreaRotationDegrees={setAreaRotationDegrees}
                   onSetAreaWidth={setAreaWidth}
-                  onSetFormOpen={setIsAreaFormOpen}
+                  onSetFormOpen={(open) => open ? setIsAreaFormOpen(true) : confirmDiscard(Boolean(areaName || areaKind !== "raised-bed" || areaLength !== "2" || areaWidth !== "1" || areaRotationDegrees !== "0"), discardNewArea)}
                 />
                 {editingArea ? (
                   <PlantingAreaInspector
+                    key={areaDraftKey(garden.id, editingArea.id)}
                     area={editingArea}
-                    onClose={() => setEditingLayoutId(undefined)}
+                    plan={garden.plan}
+                    mode={mode}
+                    gardenName={garden.name}
+                    draft={areaDrafts[areaDraftKey(garden.id, editingArea.id)]}
+                    onDraftChange={(draft) => setAreaDraft(areaDraftKey(garden.id, editingArea.id), draft)}
+                    hasPlantChanges={plantDraftIsDirty(plantDrafts[areaDraftKey(garden.id, editingArea.id)])}
+                    onDiscardPlants={() => discardDrafts(areaDraftKey(garden.id, editingArea.id))}
+                    onClose={() => { setPreviewAreaId(editingArea.id); setEditingLayoutId(undefined); }}
                     onDelete={() => deleteArea(editingArea)}
                     onSave={saveAreaEditor}
                   >
                     <GrowingAreaLayoutEditor
                       area={editingArea}
                       inInspector
+                      draft={plantDrafts[areaDraftKey(garden.id, editingArea.id)] ?? emptyPlantEditorDraft()}
+                      onDraftChange={(update) => setPlantDrafts((current) => {
+                        const key = areaDraftKey(garden.id, editingArea.id);
+                        const nextDraft = update(current[key] ?? emptyPlantEditorDraft());
+                        const next = { ...current };
+                        if (!nextDraft.selectedId && !nextDraft.isAddFormOpen && !nextDraft.isEditOpen && !plantDraftIsDirty(nextDraft)) delete next[key];
+                        else next[key] = nextDraft;
+                        return next;
+                      })}
                       onArchivePlantingRecord={archivePlantingRecord}
                       onChange={(layout) => updateAreaLayout(editingArea.id, layout)}
                       onSaveArea={(name, kind, rotationDegrees, layout) =>
@@ -769,20 +689,25 @@ export function GardenWorkspace() {
                     />
                   </PlantingAreaInspector>
                 ) : null}
-              </div>
+              </>}</EditorWorkbench>
+              <div hidden={Boolean(editingArea) || isAreaFormOpen}>
               <GardenManagement
                 onDeleteGarden={deleteGarden}
                 isSetup={page.name === "management" && page.isSetup}
                 onFinishSetup={returnToDashboard}
                 storageSource={storageSource}
               />
+              </div>
             </>
             <Status message={message} />
           </section>
-        )}
+        ) : null}
       {pendingConfirmation ? (
         <ConfirmDialog
           message={pendingConfirmation.message}
+          confirmLabel={pendingConfirmation.confirmLabel}
+          cancelLabel={pendingConfirmation.cancelLabel}
+          fallbackFocusId={pendingConfirmation.fallbackFocusId}
           tone={pendingConfirmation.tone}
           onCancel={() => setPendingConfirmation(undefined)}
           onConfirm={() => {
@@ -791,7 +716,7 @@ export function GardenWorkspace() {
           }}
         />
       ) : null}
-    </main>
+    </>
   );
 }
 
@@ -809,24 +734,17 @@ function Onboarding({
   onLoadDemo: () => void;
 }) {
   return (
-    <main className="operations-shell">
-      <header className="operations-header">
-        <p className="product-kicker">Garden Manager</p>
-        <h1>Garden operations</h1>
-      </header>
       <section
-        className="garden-onboarding"
+        className={homeStyles.onboarding}
         aria-labelledby="create-garden-heading"
       >
         <div>
-          <p className="section-eyebrow">Seasonal workspace</p>
           <h2 id="create-garden-heading">Create your garden</h2>
         </div>
-        <form className="garden-form" onSubmit={onCreate}>
+        <FeedbackForm className="garden-form" onSubmit={onCreate}>
           <label htmlFor="garden-name">Garden name</label>
-          <div className="inline-form-row">
+          <FormField id="garden-name" className="inline-form-row">
             <input
-              autoFocus
               id="garden-name"
               onChange={(event) => onChangeName(event.target.value)}
               placeholder="e.g. Home garden"
@@ -836,14 +754,13 @@ function Onboarding({
             <button className="primary-button" type="submit">
               Create garden
             </button>
-          </div>
-        </form>
+          </FormField>
+        </FeedbackForm>
         <button className="text-button" onClick={onLoadDemo} type="button">
           Load demo garden
         </button>
         <Status message={message} />
       </section>
-    </main>
   );
 }
 
@@ -861,141 +778,35 @@ function GardenSetupStart({
   onCancel: () => void;
 }) {
   return (
-    <section className="operations-content garden-onboarding" aria-labelledby="garden-setup-heading">
-      <div>
-        <p className="section-eyebrow">Garden setup</p>
-        <h2 id="garden-setup-heading">Start a new garden</h2>
-        <p>Name the garden, then add its plan, planting areas, and plants.</p>
-      </div>
-      <form className="garden-form" onSubmit={onCreate}>
-        <label htmlFor="new-garden">Garden name</label>
-        <div className="inline-form-row">
-          <input
-            autoFocus
-            id="new-garden"
-            onChange={(event) => onChangeName(event.target.value)}
-            placeholder="e.g. Home garden"
-            required
-            value={name}
-          />
-          <button className="primary-button" type="submit">Continue setup</button>
-          <button className="secondary-button" onClick={onCancel} type="button">Cancel</button>
-        </div>
-      </form>
-      <Status message={message} />
-    </section>
-  );
-}
-
-function Home({
-  gardens,
-  onOpenDemoGarden,
-  onAddGarden,
-  onCare,
-  onAiGardenNote,
-  onPlantHealth,
-  onPlantKnowledge,
-  onPlanSeason,
-  onManage,
-  message,
-}: {
-  gardens: Garden[];
-  onOpenDemoGarden: () => void;
-  onAddGarden: () => void;
-  onCare: () => void;
-  onAiGardenNote: () => void;
-  onPlantHealth: () => void;
-  onPlantKnowledge: () => void;
-  onPlanSeason: () => void;
-  onManage: (gardenId?: string) => void;
-  message: string;
-}) {
-  const hasPersonalGardens = gardens.some(
-    (candidate) => candidate.id !== "demo-garden",
-  );
-  const visibleGardens = hasPersonalGardens
-    ? gardens.filter((candidate) => candidate.id !== "demo-garden")
-    : gardens;
-
-  return (
-    <section className="operations-content garden-dashboard">
-      <div className="dashboard-heading">
-        <div>
-          <p className="section-eyebrow">Garden dashboard</p>
-          <h2>Choose a garden</h2>
-        </div>
-        <div className="dashboard-actions">
-          {hasPersonalGardens ? (
-            <button className="demo-garden-button" onClick={onOpenDemoGarden} type="button">
-              Demo garden
-            </button>
-          ) : null}
-          <button className="primary-button" onClick={onAddGarden} type="button">Add garden</button>
-        </div>
-      </div>
-      <div className="garden-card-grid">
-        {visibleGardens.map((candidate) => {
-          return (
-            <button
-              aria-label={`Open ${candidate.name}`}
-              className="garden-thumbnail-card"
-              key={candidate.id}
-              onClick={() => onManage(candidate.id)}
-              type="button"
-            >
-              <GardenPlanOverview
-                compact
-                growingAreas={candidate.growingAreas}
-                plan={candidate.plan}
-              />
-              <span className="garden-card-details">
-                <strong>{candidate.name}</strong>
-                <span>
-                  {candidate.growingAreas.length} planting{" "}
-                  {candidate.growingAreas.length === 1 ? "area" : "areas"}
-                </span>
-              </span>
-            </button>
-          );
-        })}
-      </div>
-      <section aria-labelledby="daily-garden-work-heading" className="dashboard-module-group">
-        <p className="section-eyebrow" id="daily-garden-work-heading">Daily garden work</p>
-        <div className="dashboard-module-actions dashboard-daily-actions">
-          <button className="module-action module-action-care" onClick={onCare} type="button">
-            <span>Care records</span><span aria-hidden="true">→</span>
-          </button>
-          <button className="module-action module-action-note" onClick={onAiGardenNote} type="button">
-            <span>AI garden note</span><span aria-hidden="true">→</span>
-          </button>
-        </div>
+    <div className={homeStyles.home}>
+      <section className={homeStyles.onboarding} aria-label="Garden setup">
+        <FeedbackForm aria-label="Add garden" className={`garden-form ${homeStyles.setupForm}`} onSubmit={onCreate}>
+          <FormField id="new-garden" label="Garden name" hint="You can set dimensions and add planting areas on the next screen.">
+            <input
+              autoFocus
+              id="new-garden"
+              onChange={(event) => onChangeName(event.target.value)}
+              placeholder="e.g. Home garden"
+              required
+              value={name}
+            />
+          </FormField>
+          <div className={homeStyles.onboardingActions}>
+            <Button variant="primary" type="submit">Continue setup</Button>
+            <Button onClick={onCancel}>Cancel</Button>
+          </div>
+        </FeedbackForm>
+        <Status message={message} />
       </section>
-      <section aria-labelledby="garden-tools-heading" className="dashboard-module-group">
-        <p className="section-eyebrow" id="garden-tools-heading">Garden tools</p>
-        <div className="dashboard-module-actions">
-          <button className="module-action module-action-health" onClick={onPlantHealth} type="button">
-            <span>Plant doctor</span><span aria-hidden="true">→</span>
-          </button>
-          <button className="module-action module-action-knowledge" onClick={onPlantKnowledge} type="button">
-            <span>Plant guide</span><span aria-hidden="true">→</span>
-          </button>
-          <button className="module-action module-action-season" onClick={onPlanSeason} type="button">
-            <span>Next season plan</span><span aria-hidden="true">→</span>
-          </button>
-        </div>
-      </section>
-      <Status message={message} />
-    </section>
+    </div>
   );
 }
 
 function CareHub({
   gardens,
-  onOpenCare,
   workspace,
 }: {
   gardens: Garden[];
-  onOpenCare: (gardenId: string) => void;
   workspace: GardenWorkspace;
 }) {
   return (
@@ -1003,23 +814,21 @@ function CareHub({
       <div className="section-header">
         <div>
           <p className="section-eyebrow">Garden operations</p>
-          <h2 id="care-hub-heading">Care</h2>
+          <h2 id="care-hub-heading">Care locations</h2>
           <p className="section-context">Manage care for all gardens or one location.</p>
         </div>
       </div>
       <div className="season-planner-grid">
         <article className="season-area-card">
           <div>
-            <p className="section-eyebrow">All locations</p>
+            <p className="section-eyebrow">Workspace-wide records</p>
             <h3>All gardens</h3>
           </div>
           <p className="season-history">
             <strong>{workspace.careTasks.length} open {workspace.careTasks.length === 1 ? "task" : "tasks"}</strong>
             <span>{workspace.careEvents.length} completed care {workspace.careEvents.length === 1 ? "record" : "records"}</span>
           </p>
-          <button className="secondary-button" onClick={() => onOpenCare("all-gardens")} type="button">
-            Open care
-          </button>
+          <Link className="secondary-button" href="/care?view=tasks&location=all-gardens#care-workspace-heading">Open care</Link>
         </article>
         {gardens.map((candidate) => {
           const openTasks = candidate.careTasks.length;
@@ -1034,53 +843,12 @@ function CareHub({
                 <strong>{openTasks} open {openTasks === 1 ? "task" : "tasks"}</strong>
                 <span>{recentEvents} completed care {recentEvents === 1 ? "record" : "records"}</span>
               </p>
-              <button className="secondary-button" onClick={() => onOpenCare(candidate.id)} type="button">
-                Open care
-              </button>
+              <Link className="secondary-button" href={gardenPath(candidate.id, "care")}>Open care</Link>
             </article>
           );
         })}
       </div>
     </section>
-  );
-}
-
-function SaveConflictNotice({
-  onReload,
-  onKeepLocal,
-}: {
-  onReload: () => void;
-  onKeepLocal: () => void;
-}) {
-  return (
-    <div className="save-conflict-notice" role="alert">
-      <p>
-        This garden was changed in another tab after this page loaded. Your latest edits here are
-        not saved yet.
-      </p>
-      <div className="save-conflict-actions">
-        <button className="secondary-button" onClick={onReload} type="button">
-          Reload latest
-        </button>
-        <button className="primary-button" onClick={onKeepLocal} type="button">
-          Keep my changes
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function ServerWorkspaceUnavailable({ message }: { message: string }) {
-  return (
-    <main className="operations-shell">
-      <section className="garden-onboarding" aria-labelledby="server-workspace-heading">
-        <p className="section-eyebrow">Workspace storage</p>
-        <h1 id="server-workspace-heading">PostgreSQL workspace unavailable</h1>
-        <p>Start the local API and database, then reload this page.</p>
-        <button className="secondary-button" onClick={() => window.location.reload()} type="button">Try again</button>
-        <Status message={message} />
-      </section>
-    </main>
   );
 }
 
@@ -1097,16 +865,19 @@ function GardenManagement({
 }) {
   if (!isSetup) {
     return (
-      <section aria-label="Garden actions" className="garden-management-actions">
+      <details className={editorStyles.settings}>
+        <summary>Garden settings</summary>
+        <div className={editorStyles.danger}><h3>Delete this garden</h3>
         {storageSource === "browser" ? (
           <div className="data-settings">
-            <p>Saved in this browser. This syncs to PostgreSQL automatically once the local API and PostgreSQL service are reachable.</p>
+            <p>You can work on this device. Check the saving status above before closing this page.</p>
           </div>
         ) : null}
         <button className="remove-button" onClick={onDeleteGarden} type="button">
           Delete garden
         </button>
-      </section>
+        </div>
+      </details>
     );
   }
 
@@ -1122,14 +893,15 @@ function GardenManagement({
         </div>
         {isSetup ? <button className="primary-button" onClick={onFinishSetup} type="button">Finish setup</button> : null}
       </div>
-      <div className="garden-management-actions">
+      <details className={editorStyles.settings}><summary>Garden settings</summary>
+      <div className={editorStyles.danger}><h3>Delete this garden</h3>
         <button className="remove-button" onClick={onDeleteGarden} type="button">
           Delete garden
         </button>
-      </div>
+      </div></details>
       {storageSource === "browser" ? (
         <div className="data-settings">
-          <p>Saved in this browser. This syncs to PostgreSQL automatically once the local API and PostgreSQL service are reachable.</p>
+          <p>You can work on this device. Check the saving status above before closing this page.</p>
         </div>
       ) : null}
     </section>
@@ -1137,6 +909,7 @@ function GardenManagement({
 }
 
 function PlantingAreaCreation({
+  mode, gardenName,
   areaKind,
   areaLength,
   areaName,
@@ -1151,6 +924,8 @@ function PlantingAreaCreation({
   onSetAreaWidth,
   onSetFormOpen,
 }: {
+  mode: EditorMode;
+  gardenName: string;
   areaKind: GrowingAreaKind;
   areaLength: string;
   areaName: string;
@@ -1168,18 +943,12 @@ function PlantingAreaCreation({
   if (!isAreaFormOpen) return null;
 
   return (
-    <aside className="planting-area-creation-panel" aria-labelledby="add-planting-area-heading">
-      <div className="planting-area-creation-header">
-        <div>
-          <p className="section-eyebrow">Garden Plan</p>
-          <h2 id="add-planting-area-heading">Add planting area</h2>
-        </div>
-      </div>
+    <EditorPanel mode={mode} title="Add planting area" context={gardenName} headingId="add-planting-area-heading" returnFocusId="add-planting-area" onClose={() => onSetFormOpen(false)}>
       <p className="planting-area-creation-intro">
         Define the bed, then place it directly on the plan.
       </p>
-      <form className="planting-area-creation-form" onSubmit={onSave}>
-        <div className="field">
+      <FeedbackForm className="planting-area-creation-form" onSubmit={onSave}>
+        <FormField id="planting-area-name" className="field">
           <label htmlFor="planting-area-name">Planting-area name</label>
           <input
             autoFocus
@@ -1188,7 +957,7 @@ function PlantingAreaCreation({
             required
             value={areaName}
           />
-        </div>
+        </FormField>
         <div className="field">
           <label htmlFor="planting-area-kind">Planting-area type</label>
           <select
@@ -1206,7 +975,7 @@ function PlantingAreaCreation({
           </select>
         </div>
         <div className="planting-area-creation-measurements">
-          <div className="field">
+          <FormField id="planting-area-length" className="field">
             <label htmlFor="planting-area-length">Length (m)</label>
             <input
               id="planting-area-length"
@@ -1217,8 +986,8 @@ function PlantingAreaCreation({
               type="number"
               value={areaLength}
             />
-          </div>
-          <div className="field">
+          </FormField>
+          <FormField id="planting-area-width" className="field">
             <label htmlFor="planting-area-width">Width (m)</label>
             <input
               id="planting-area-width"
@@ -1229,18 +998,18 @@ function PlantingAreaCreation({
               type="number"
               value={areaWidth}
             />
-          </div>
+          </FormField>
         </div>
-        <div className="field">
+        <FormField id="planting-area-rotation" className="field">
           <label htmlFor="planting-area-rotation">Rotation (degrees)</label>
           <input
-            id="planting-area-rotation"
+            id="planting-area-rotation" required
             onChange={(event) => onSetAreaRotationDegrees(event.target.value)}
             step="1"
             type="number"
             value={areaRotationDegrees}
           />
-        </div>
+        </FormField>
         <div className="form-actions">
           <button className="primary-button" type="submit">
             Add area
@@ -1255,162 +1024,11 @@ function PlantingAreaCreation({
             Cancel
           </button>
         </div>
-      </form>
-    </aside>
+      </FeedbackForm>
+    </EditorPanel>
   );
 }
 
-function PlantingAreaInspector({
-  area,
-  children,
-  onClose,
-  onDelete,
-  onSave,
-}: {
-  area: GrowingArea;
-  children: ReactNode;
-  onClose: () => void;
-  onDelete: () => void;
-  onSave: (
-    areaId: string,
-    name: string,
-    kind: GrowingAreaKind,
-    rotationDegrees: number,
-    layout: GrowingAreaLayout,
-  ) => void;
-}) {
-  const [name, setName] = useState(area.name);
-  const [kind, setKind] = useState<GrowingAreaKind>(area.kind);
-  const [length, setLength] = useState(String(area.layout?.widthMeters ?? ""));
-  const [width, setWidth] = useState(String(area.layout?.depthMeters ?? ""));
-  const [rotationDegrees, setRotationDegrees] = useState(
-    String(area.planPlacement.rotationDegrees),
-  );
-
-  useEffect(() => {
-    setName(area.name);
-    setKind(area.kind);
-    setLength(String(area.layout?.widthMeters ?? ""));
-    setWidth(String(area.layout?.depthMeters ?? ""));
-    setRotationDegrees(String(area.planPlacement.rotationDegrees));
-  }, [area]);
-
-  const hasChanges =
-    name !== area.name ||
-    kind !== area.kind ||
-    Number(length) !== area.layout?.widthMeters ||
-    Number(width) !== area.layout?.depthMeters ||
-    Number(rotationDegrees) !== area.planPlacement.rotationDegrees;
-
-  const save = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const trimmedName = name.trim();
-    const lengthMeters = Number(length);
-    const widthMeters = Number(width);
-    const nextRotationDegrees = Number(rotationDegrees);
-    if (!trimmedName || !validateLayoutDimensions(lengthMeters, widthMeters)) return;
-    if (!Number.isFinite(nextRotationDegrees)) return;
-
-    const nextLayout = createRectangularLayout(
-      snapToGrid(lengthMeters),
-      snapToGrid(widthMeters),
-    );
-    onSave(
-      area.id,
-      trimmedName,
-      kind,
-      nextRotationDegrees,
-      {
-        ...nextLayout,
-        allocations: (area.layout?.allocations ?? []).map((allocation) => ({
-          ...allocation,
-          ...clampAllocationCenter(allocation, nextLayout),
-        })),
-      },
-    );
-  };
-
-  return (
-    <aside className="planting-area-creation-panel planting-area-inspector" aria-labelledby="edit-planting-area-heading">
-      <div className="planting-area-creation-header">
-        <div>
-          <p className="section-eyebrow">Garden Plan</p>
-          <h2 id="edit-planting-area-heading">Edit planting area</h2>
-        </div>
-      </div>
-      <p className="planting-area-creation-intro">
-        Update this bed while its position remains visible on the plan.
-      </p>
-      <form className="planting-area-creation-form" onSubmit={save}>
-        <div className="field">
-          <label htmlFor="editing-planting-area-name">Planting-area name</label>
-          <input
-            id="editing-planting-area-name"
-            onChange={(event) => setName(event.target.value)}
-            required
-            value={name}
-          />
-        </div>
-        <div className="field">
-          <label htmlFor="editing-planting-area-kind">Planting-area type</label>
-          <select
-            id="editing-planting-area-kind"
-            onChange={(event) => setKind(event.target.value as GrowingAreaKind)}
-            value={kind}
-          >
-            {growingAreaKinds.map((candidate) => (
-              <option key={candidate} value={candidate}>
-                {growingAreaKindLabels[candidate]}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="planting-area-creation-measurements">
-          <div className="field">
-            <label htmlFor="layout-length">Length (m)</label>
-            <input
-              id="layout-length"
-              min="0.1"
-              onChange={(event) => setLength(event.target.value)}
-              required
-              step="0.1"
-              type="number"
-              value={length}
-            />
-          </div>
-          <div className="field">
-            <label htmlFor="layout-width">Width (m)</label>
-            <input
-              id="layout-width"
-              min="0.1"
-              onChange={(event) => setWidth(event.target.value)}
-              required
-              step="0.1"
-              type="number"
-              value={width}
-            />
-          </div>
-        </div>
-        <div className="field">
-          <label htmlFor="editing-planting-area-rotation">Rotation (degrees)</label>
-          <input
-            id="editing-planting-area-rotation"
-            onChange={(event) => setRotationDegrees(event.target.value)}
-            step="1"
-            type="number"
-            value={rotationDegrees}
-          />
-        </div>
-        <div className="form-actions">
-          {hasChanges ? <button className="save-button" type="submit">Save</button> : null}
-          <button className="secondary-button" onClick={onClose} type="button">Close</button>
-          <button className="remove-button" onClick={onDelete} type="button">Delete area</button>
-        </div>
-      </form>
-      {children}
-    </aside>
-  );
-}
 
 function Status({ message }: { message: string }) {
   return (

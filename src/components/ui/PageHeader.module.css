@@ -1,0 +1,5 @@
+.header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 16px; }
+.header h1 { margin: 0; font-size: 28px; line-height: 1.25; font-weight: 650; overflow-wrap: anywhere; }
+.header p { margin: 8px 0 0; color: var(--color-muted); }
+.header h1:focus:not(:focus-visible) { outline: none; }
+@media (max-width: 767px) { .header h1 { font-size: 24px; line-height: 1.3; } }

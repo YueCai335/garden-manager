@@ -1,0 +1,41 @@
+.planner :global(.season-planner-grid) {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+  align-items: start;
+}
+.planner :global(.season-area-card),
+.planner :global(.season-garden-section) {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.planner :global(.season-garden-heading) {
+  flex-wrap: wrap;
+}
+.planner :global(.season-garden-preview) {
+  min-width: 0;
+  width: 100%;
+}
+.disclosure {
+  min-width: 0;
+  border-top: 1px solid var(--color-line);
+  padding-top: 8px;
+  color: var(--color-text);
+}
+.disclosure > summary {
+  min-height: 44px;
+  padding: 10px 0;
+  cursor: pointer;
+  font-weight: 600;
+}
+.disclosure p, .disclosure li {
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+.emptyPlan {
+  margin: 0;
+  padding: 12px;
+  background: var(--color-soft);
+  border-radius: var(--radius-control);
+  line-height: 1.5;
+}
+.planner :global(.season-filter) { justify-self: start; max-width: 100%; }
+.planner :global(.season-planner-empty) a { margin-top: 12px; }

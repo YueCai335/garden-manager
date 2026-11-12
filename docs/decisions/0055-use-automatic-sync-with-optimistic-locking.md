@@ -1,6 +1,7 @@
 # ADR-0055: Use Automatic Workspace Sync With Optimistic Locking
 
 - Status: Accepted
+- Implementation refinement: [ADR-0064](0064-separate-workspace-save-status-and-explicit-retries.md) adds typed global feedback, explicit retry, timeouts, and confirmed conflict resolution while retaining revision checks.
 - Date: 2026-09-11
 - Supersedes: [ADR-0024](0024-use-explicit-local-garden-import-for-postgresql.md)
 - Related: [ADR-0002](0002-use-fastapi-python-backend.md) and

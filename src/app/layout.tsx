@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Garden Manager",
-  description: "Plan garden beds from sun exposure and yard shadows."
+  description: "Record garden care, manage planting areas, and plan the next growing season."
 };
 
 export default function RootLayout({

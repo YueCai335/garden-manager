@@ -5,6 +5,9 @@
 - Supersedes: [ADR-0021](0021-use-dashboard-garden-setup-and-direct-editing.md)
 - Related: [ADR-0018](0018-use-a-multi-garden-thumbnail-dashboard.md) and [ADR-0026](0026-use-a-next-season-planning-workspace.md)
 
+- Implementation refinement: Route ownership and navigation are refined by ADR-0063; selectedGardenId no longer selects a URL garden.
+- Implementation refinement: Overview shows compact garden cards that open on one activation. The gallery fits up to three columns, and thumbnails fit measured beds with a tighter frame. The detailed plan owns full-garden scale and editing.
+
 ## Context
 
 The home page already presents each garden as a visual thumbnail with a green

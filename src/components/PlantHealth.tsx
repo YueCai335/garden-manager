@@ -1,10 +1,17 @@
 "use client";
 
+import { FeedbackForm, FormField } from "@/components/forms/FormFeedback";
+
+import { useWorkspaceDraft, useUnsavedDraft } from "@/components/workspace/WorkspaceProvider";
+
 import { FormEvent, useState } from "react";
+import { isCalendarDate } from "@/lib/careRecords";
 
 import type { Garden, HealthAssessment, HealthRecord, HealthRecordTargetScope, HealthSeverity } from "@/lib/gardenWorkspace";
-import { apiUrl, createPlantHealthAssessment, uploadPlantHealthPhoto } from "@/lib/gardenWorkspaceApi";
-import { PortfolioFeatureLoading, PortfolioFeaturePreview, usePortfolioDemoMode } from "@/components/PortfolioFeaturePreview";
+import { featureErrorMessage, apiUrl, createPlantHealthAssessment, uploadPlantHealthPhoto } from "@/lib/gardenWorkspaceApi";
+import { PortfolioFeatureLoading, PortfolioFeaturePreview, PortfolioFeatureSettingsError, useRuntimeConfig } from "@/components/PortfolioFeaturePreview";
+import { Button, ButtonLink } from "@/components/ui/Button";
+import styles from "./plant/PlantTools.module.css";
 
 type HealthForm = {
   observedOn: string;
@@ -17,30 +24,39 @@ type HealthForm = {
 export function PlantHealth({
   gardens,
   initialGardenId,
+  onGardenContextChange,
   isServerBacked,
   onSave,
   workspaceId,
 }: {
   gardens: Garden[];
   initialGardenId: string;
+  onGardenContextChange?: (id: string) => void;
   isServerBacked: boolean;
   onSave: (gardenId: string, record: HealthRecord) => void;
   workspaceId?: string;
 }) {
-  const isPortfolioDemo = usePortfolioDemoMode();
-  const [gardenId, setGardenId] = useState(initialGardenId);
-  const [form, setForm] = useState<HealthForm>(emptyHealthForm());
-  const [photoPaths, setPhotoPaths] = useState<string[]>([]);
-  const [assessment, setAssessment] = useState<HealthAssessment>();
-  const [error, setError] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const { config, failed, retry } = useRuntimeConfig();
+  const isPortfolioDemo = config?.portfolioDemo;
+  const [localGardenId, setLocalGardenId] = useState(initialGardenId);
+  const gardenId = onGardenContextChange ? initialGardenId : localGardenId;
+  const setGardenId = onGardenContextChange ?? setLocalGardenId;
+  const [form, setForm] = useWorkspaceDraft<HealthForm>(`doctor:${initialGardenId}:form`, emptyHealthForm());
+  const [photoPaths, setPhotoPaths] = useWorkspaceDraft<string[]>(`doctor:${initialGardenId}:photoPaths`, []);
+  const [assessment, setAssessment] = useWorkspaceDraft<HealthAssessment | undefined>(`doctor:${initialGardenId}:assessment`, undefined);
+  const [notice, setNotice] = useState("");
+  const [error, setError] = useWorkspaceDraft(`doctor:${initialGardenId}:error`, "");
+  const [operation, setOperation] = useWorkspaceDraft<"assessment" | "photos" | undefined>(`doctor:${initialGardenId}:operation`, undefined);
+  const isLoading = Boolean(operation);
+  useUnsavedDraft(`doctor:${initialGardenId}`, Boolean(form.symptoms || photoPaths.length));
   const garden = gardens.find((candidate) => candidate.id === gardenId);
 
   const createAssessment = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!workspaceId || !garden || !form.symptoms.trim()) return;
+    if (!workspaceId || !garden || !form.symptoms.trim() || isLoading) return;
     setError("");
-    setIsLoading(true);
+    setNotice("");
+    setOperation("assessment");
     try {
       setAssessment(await createPlantHealthAssessment(workspaceId, gardenId, {
         symptoms: form.symptoms.trim(),
@@ -48,30 +64,31 @@ export function PlantHealth({
         photoCount: photoPaths.length,
       }));
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "The AI service could not create a plant-health assessment.");
+      setError(featureErrorMessage(reason, "Plant Doctor could not connect. Your observations are kept. Check your connection and try again."));
     } finally {
-      setIsLoading(false);
+      setOperation(undefined);
     }
   };
 
   const addPhotos = async (files: FileList | null) => {
-    if (!workspaceId || !files || !garden) return;
+    if (!workspaceId || !files || !garden || isLoading) return;
     const nextPhotos = [...files].slice(0, 3 - photoPaths.length);
     if (!nextPhotos.length) return;
     setError("");
-    setIsLoading(true);
+    setNotice("");
+    setOperation("photos");
     try {
       const paths = await Promise.all(nextPhotos.map((photo) => uploadPlantHealthPhoto(workspaceId, gardenId, photo)));
       setPhotoPaths((current) => [...current, ...paths]);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "The garden server could not upload this photo.");
+      setError(featureErrorMessage(reason, "The photo could not upload. Your observations are kept. Check your connection and choose the photo again."));
     } finally {
-      setIsLoading(false);
+      setOperation(undefined);
     }
   };
 
   const save = () => {
-    if (!garden || !assessment || !form.symptoms.trim()) return;
+    if (!garden || !assessment || !form.symptoms.trim() || isLoading) return;
     const target = healthTarget(form, garden);
     onSave(gardenId, {
       id: `health-${crypto.randomUUID()}`,
@@ -82,36 +99,53 @@ export function PlantHealth({
       assessment,
       ...target,
     });
+    setNotice("Health record added.");
     setForm(emptyHealthForm());
     setPhotoPaths([]);
     setAssessment(undefined);
   };
 
-  if (isPortfolioDemo === undefined && (!isServerBacked || !workspaceId)) return <PortfolioFeatureLoading feature="plant-health" />;
+  if (failed) return <PortfolioFeatureSettingsError featureName="Plant Doctor" onRetry={retry} />;
+  if (isPortfolioDemo === undefined) return <PortfolioFeatureLoading feature="plant-health" />;
   if (isPortfolioDemo) return <PortfolioFeaturePreview feature="plant-health" />;
 
   if (!isServerBacked || !workspaceId) {
     return (
-      <section className="operations-content season-planner" aria-labelledby="plant-health-heading">
-        <p className="section-eyebrow">Plant health</p>
-        <h2 id="plant-health-heading">Import gardens to PostgreSQL first</h2>
-        <p className="section-context">Plant Health stores photos and records through the local API.</p>
+      <section className={styles.workspace} aria-labelledby="plant-health-heading">
+        <div className={styles.panel}>
+          <h2 id="plant-health-heading">Sync your workspace</h2>
+          <p>Your workspace needs to sync before Plant Doctor is available. Check the save status and retry syncing.</p>
+        </div>
       </section>
     );
   }
 
-  if (!garden) return null;
+  if (!garden) return <section className={styles.workspace} aria-label="Garden for the observation">
+    <div className={`care-form ${styles.panel}`}>
+      {initialGardenId && <p role="alert">Garden not found in this workspace.</p>}
+      {gardens.length ? <FormField id="doctor-garden-choice" label="Choose a garden for this record">
+        <select id="doctor-garden-choice" value="" onChange={(event) => setGardenId(event.target.value)}>
+          <option value="">Choose garden</option>
+          {gardens.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+        </select>
+      </FormField> : <>
+        <h2>Add a garden to record observations</h2>
+        <div><ButtonLink href="/gardens/new" variant="primary">Add garden</ButtonLink></div>
+      </>}
+    </div>
+  </section>;
 
   return (
-    <section className="operations-content season-planner" aria-labelledby="plant-health-heading">
-      <div className="section-header">
-        <div>
-          <p className="section-eyebrow">Plant health</p>
-          <h2 id="plant-health-heading">Record a plant health concern</h2>
-          <p className="section-context">Save photos and observations, then review a cautious AI assessment before adding it to history.</p>
-        </div>
-      </div>
-      <form className="care-form" onSubmit={createAssessment}>
+    <section className={styles.workspace} aria-label="Plant observations and assessments">
+      <FeedbackForm id="health-observations" aria-labelledby="health-observations-heading" className={`care-form ${styles.panel} ${styles.columns}`} error={error} notice={notice || (form.symptoms || assessment ? "Unsaved changes" : "")} validate={() => ({
+        "health-observed-on": !isCalendarDate(form.observedOn) ? "Enter a valid observation date." : undefined,
+        "health-target": form.targetScope === "planting-area" && !garden.growingAreas.some((area) => area.id === form.targetId) ? "Choose an existing planting area." : form.targetScope === "plant-group" && !garden.plantings.some((plant) => plant.id === form.targetId) ? "Choose an existing plant group." : undefined,
+      })} onSubmit={(event) => {
+        const submitter = (event.nativeEvent as SubmitEvent).submitter;
+        if (submitter?.getAttribute("data-action") === "save") save();
+        else void createAssessment(event);
+      }}>
+        <h2 id="health-observations-heading">Observations</h2>
         <HealthFields
           form={form}
           garden={garden}
@@ -119,31 +153,30 @@ export function PlantHealth({
           isLoading={isLoading}
           onChange={setForm}
           onGardenChange={(nextGardenId) => {
+            if (onGardenContextChange) { onGardenContextChange(nextGardenId); return; }
             setGardenId(nextGardenId);
             setForm(emptyHealthForm());
             setPhotoPaths([]);
             setAssessment(undefined);
           }}
         />
-        <div className="field">
-          <label htmlFor="health-photos">Photos (optional, up to 3)</label>
+        <FormField id="health-photos" label="Photos (optional, up to 3)" hint="Photos are saved with the record. The assessment uses your written observations." className="field care-note-field">
           <input accept="image/jpeg,image/png,image/webp" disabled={isLoading || photoPaths.length === 3} id="health-photos" multiple onChange={(event) => void addPhotos(event.target.files)} type="file" />
-          <p className="field-hint">Photos are stored as evidence. The current local text model uses your written observations.</p>
-        </div>
+        </FormField>
+        {operation === "photos" && <p role="status">Uploading photos…</p>}
         {photoPaths.length ? <PhotoStrip photoPaths={photoPaths} onRemove={(path) => setPhotoPaths((current) => current.filter((item) => item !== path))} /> : null}
-        <div className="form-actions">
-          <button className="primary-button" disabled={isLoading} type="submit">{isLoading ? "Creating assessment..." : "Create AI assessment"}</button>
+        <div className={styles.actions}>
+          <Button variant={assessment ? "secondary" : "primary"} disabled={isLoading} loading={operation === "assessment"} loadingLabel="Creating assessment…" type="submit">Create AI assessment</Button>
         </div>
-      </form>
-      {error ? <p className="workspace-message" role="alert">{error}</p> : null}
+      </FeedbackForm>
       {assessment ? (
-        <section className="care-form" aria-labelledby="health-assessment-heading">
-          <h3 id="health-assessment-heading">Review assessment</h3>
+        <section className={`care-form ${styles.panel} ${styles.columns}`} aria-labelledby="health-assessment-heading">
+          <h2 id="health-assessment-heading">Review assessment</h2>
           <p className="section-context">The assessment is a starting point for observation. It does not confirm a diagnosis or prescribe treatment.</p>
           <AssessmentEditor assessment={assessment} onChange={setAssessment} />
-          <div className="form-actions">
-            <button className="primary-button" onClick={save} type="button">Save health record</button>
-            <button className="secondary-button" onClick={() => setAssessment(undefined)} type="button">Start over</button>
+          <div className={styles.actions}>
+            <Button variant="primary" data-action="save" form="health-observations" type="submit" disabled={isLoading}>Save health record</Button>
+            <Button onClick={() => setAssessment(undefined)}>Discard assessment</Button>
           </div>
         </section>
       ) : null}
@@ -169,11 +202,11 @@ function HealthFields({ form, garden, gardens, isLoading, onChange, onGardenChan
           {gardens.map((candidate) => <option key={candidate.id} value={candidate.id}>{candidate.name}</option>)}
         </select>
       </div>
-      <div className="field">
+      <FormField id="health-observed-on" className="field">
         <label htmlFor="health-observed-on">Observed on</label>
         <input id="health-observed-on" onChange={(event) => onChange({ ...form, observedOn: event.target.value })} required type="date" value={form.observedOn} />
-      </div>
-      <div className="field">
+      </FormField>
+      <FormField id="health-target" className="field">
         <label htmlFor="health-target">Target</label>
         <select id="health-target" onChange={(event) => {
           const [targetScope, targetId = ""] = event.target.value.split(":");
@@ -183,7 +216,7 @@ function HealthFields({ form, garden, gardens, isLoading, onChange, onGardenChan
           <optgroup label="Planting areas">{garden.growingAreas.map((area) => <option key={area.id} value={`planting-area:${area.id}`}>{area.name}</option>)}</optgroup>
           <optgroup label="Plant groups">{garden.plantings.map((planting) => <option key={planting.id} value={`plant-group:${planting.id}`}>{plantGroupName(planting.commonName, planting.growingAreaId, garden)}</option>)}</optgroup>
         </select>
-      </div>
+      </FormField>
       <div className="field">
         <label htmlFor="health-severity">Concern level</label>
         <select id="health-severity" onChange={(event) => onChange({ ...form, severity: event.target.value as HealthSeverity })} value={form.severity}>
@@ -192,10 +225,10 @@ function HealthFields({ form, garden, gardens, isLoading, onChange, onGardenChan
           <option value="high">Urgent observation</option>
         </select>
       </div>
-      <div className="field care-note-field">
+      <FormField id="health-symptoms" className="field care-note-field">
         <label htmlFor="health-symptoms">What do you observe?</label>
         <textarea id="health-symptoms" onChange={(event) => onChange({ ...form, symptoms: event.target.value })} placeholder="Yellowing leaves, white powder on the lower leaves, and slower growth." required rows={5} value={form.symptoms} />
-      </div>
+      </FormField>
     </>
   );
 }

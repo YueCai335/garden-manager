@@ -1,22 +1,21 @@
 "use client";
 
-import { FormEvent, useRef, useState } from "react";
+import { FeedbackForm, FormField } from "@/components/forms/FormFeedback";
 
-import { createDemoGardenWorkspace, todayDate, type CareEventTargetScope, type CareEventType, type Garden } from "@/lib/gardenWorkspace";
-import { AI_CARE_NOTE_MAX_LENGTH, AiCareNoteRequestError, createAiCareNoteDraft, type AiCareNoteDraft } from "@/lib/gardenWorkspaceApi";
-import { PortfolioFeatureLoading, PortfolioFeaturePreview, useRuntimeConfig } from "@/components/PortfolioFeaturePreview";
+import { useGardenNoteDraft, targetValue } from "@/hooks/useGardenNoteDraft";
 
-/** The public demo drafts against the server's fixed copy of this garden (ADR-0059). */
-const DEMO_GARDEN_ID = "demo-garden";
+import { isCalendarDate } from "@/lib/careRecords";
 
-/**
- * Whether this frontend build shows live drafts in the public demo (ADR-0059).
- * Next.js inlines the value at build time, so changing it needs a new build and
- * deployment. Only the exact string "true" opens it; the local app ignores it.
- */
-export function isCareNoteLiveEntryBuild() {
-  return process.env.NEXT_PUBLIC_CARE_NOTE_LIVE_ENTRY === "true";
-}
+import { WorkspaceNoteEntry } from "@/components/workspace/WorkspaceNoteEntry";
+import { createDemoGardenWorkspace, type CareEventTargetScope, type CareEventType, type Garden } from "@/lib/gardenWorkspace";
+import { AI_CARE_NOTE_MAX_LENGTH, type AiCareNoteDraft } from "@/lib/gardenWorkspaceApi";
+import { PortfolioFeatureLoading, PortfolioFeaturePreview } from "@/components/PortfolioFeaturePreview";
+import { BatchGardenNote } from "@/components/notes/BatchGardenNote";
+import { useConfirmation } from "@/components/ConfirmDialog";
+import { Button } from "@/components/ui/Button";
+import dialogStyles from "@/components/notes/GardenNoteDialog.module.css";
+
+export { isCareNoteLiveEntryBuild } from "@/hooks/useGardenNoteDraft";
 
 export function AiGardenNote({
   gardens,
@@ -24,79 +23,17 @@ export function AiGardenNote({
   isServerBacked,
   onSave,
   workspaceId,
+  onClose,
 }: {
   gardens: Garden[];
   initialGardenId: string;
   isServerBacked: boolean;
-  onSave: (gardenId: string, draft: AiCareNoteDraft) => void;
+  onSave: (gardenId: string, draft: AiCareNoteDraft) => boolean | void;
   workspaceId?: string;
+  onClose?: () => void;
 }) {
-  const { config: runtimeConfig, failed: runtimeConfigFailed, retry: retryRuntimeConfig } = useRuntimeConfig();
-  const isPortfolioDemo = runtimeConfig?.portfolioDemo;
-  // Live drafts in the public demo need the server's settings, this build's
-  // entry switch, and the server's availability; otherwise the demo shows a preview.
-  const isPublicDemo = Boolean(isPortfolioDemo && runtimeConfig?.careNotePublicAvailable && isCareNoteLiveEntryBuild());
-  const [chosenGardenId, setGardenId] = useState(initialGardenId);
-  const [note, setNote] = useState("");
-  const [draft, setDraft] = useState<AiCareNoteDraft>();
-  const [error, setError] = useState("");
-  // Why a note produced no draft (planned, negated, ...); set only for those kinds.
-  const [notice, setNotice] = useState("");
-  const [isManual, setIsManual] = useState(false);
-  // The target the server proposed, so saving can check it against the demo snapshot.
-  const [proposedTarget, setProposedTarget] = useState("");
-  // Shown in the public demo so a check can be matched to its server log line.
-  const [requestId, setRequestId] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  // State updates land after a render, so a fast double click could pass an
-  // isLoading check twice. The ref blocks the second request immediately.
-  const isRequesting = useRef(false);
-  // Bumped whenever the note or garden changes, so a late response for the old input is dropped.
-  const requestCounter = useRef(0);
-  // The public demo always drafts for Demo Garden, whichever garden was open before.
-  const gardenId = isPublicDemo ? DEMO_GARDEN_ID : chosenGardenId;
-  const garden = gardens.find((candidate) => candidate.id === gardenId);
-  const gardenChoices = isPublicDemo ? gardens.filter((candidate) => candidate.id === DEMO_GARDEN_ID) : gardens;
-  // A visitor who deleted Demo Garden can still record care by hand elsewhere.
-  const canGenerate = !isPublicDemo || Boolean(garden);
-  // Code points, not UTF-16 units, so the count matches the API's limit.
-  const noteLength = Array.from(note.trim()).length;
-  const isNoteTooLong = noteLength > AI_CARE_NOTE_MAX_LENGTH;
-
-  const discardDraft = () => {
-    requestCounter.current += 1;
-    setRequestId("");
-    setDraft(undefined);
-    setNotice("");
-    setIsManual(false);
-  };
-
-  const createDraft = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!workspaceId || !note.trim() || isNoteTooLong || !canGenerate || isRequesting.current) return;
-    isRequesting.current = true;
-    discardDraft();
-    const currentRequest = requestCounter.current;
-    setError("");
-    setIsLoading(true);
-    try {
-      const result = await createAiCareNoteDraft(workspaceId, gardenId, note.trim(), todayDate());
-      if (currentRequest !== requestCounter.current) return;
-      setRequestId(result.requestId ?? "");
-      if (result.kind === "completed") {
-        setDraft(result);
-        setProposedTarget(targetValue(result));
-      }
-      else setNotice(result.reviewNotes[0] ?? "This note cannot become a care record.");
-    } catch (reason) {
-      if (currentRequest !== requestCounter.current) return;
-      setRequestId(reason instanceof AiCareNoteRequestError ? reason.requestId ?? "" : "");
-      setError(reason instanceof Error ? reason.message : "The AI service could not create a care draft.");
-    } finally {
-      isRequesting.current = false;
-      setIsLoading(false);
-    }
-  };
+  const { runtimeConfig, runtimeConfigFailed, retryRuntimeConfig, isPortfolioDemo, isPublicDemo, gardenId, garden, gardenChoices, canGenerate, noteLength, isNoteTooLong, note, setNote, draft, setDraft, saveError, setSaveError, error, setError, notice, isManual, setIsManual, proposedTarget, setProposedTarget, requestId, isLoading, setGardenId, discardDraft, createDraft } = useGardenNoteDraft(gardens, initialGardenId, workspaceId, isServerBacked);
+  const { confirmation, requestConfirmation } = useConfirmation();
 
   const startManualRecord = () => {
     discardDraft();
@@ -131,8 +68,8 @@ export function AiGardenNote({
   if (runtimeConfigFailed) {
     return (
       <section className="operations-content season-planner" aria-labelledby="ai-garden-note-heading">
-        <p className="section-eyebrow">AI garden note</p>
-        <h2 id="ai-garden-note-heading">AI Garden Note settings could not load</h2>
+        <p className="section-eyebrow">AI Garden Note</p>
+        <WorkspaceNoteEntry gardens={gardens} /><h2 id="ai-garden-note-heading">AI Garden Note settings could not load</h2>
         <p className="workspace-message" role="alert">The garden server did not answer. Try again in a moment.</p>
         <p className="section-context">Care records can still be added by hand from Care records.</p>
         <div className="form-actions">
@@ -142,24 +79,25 @@ export function AiGardenNote({
     );
   }
   if (!runtimeConfig) return <PortfolioFeatureLoading feature="care-note" />;
-  if (isPortfolioDemo && !isPublicDemo) return <PortfolioFeaturePreview feature="care-note" />;
+  if (runtimeConfig.careNoteBatchAvailable && !isPortfolioDemo) return <BatchGardenNote onClose={onClose} />;
+  if (isPortfolioDemo && !isPublicDemo) return <><WorkspaceNoteEntry /><PortfolioFeaturePreview feature="care-note" /></>;
 
   if (!isServerBacked || !workspaceId) {
     return (
       <section className="operations-content season-planner" aria-labelledby="ai-garden-note-heading">
-        <p className="section-eyebrow">AI garden note</p>
-        <h2 id="ai-garden-note-heading">Import gardens to PostgreSQL first</h2>
-        <p className="section-context">AI Garden Note uses the local API to create a reviewable care draft.</p>
+        <p className="section-eyebrow">AI Garden Note</p>
+        <WorkspaceNoteEntry gardens={gardens} /><h2 id="ai-garden-note-heading">Your workspace needs to sync before generating a draft</h2>
+        <p className="section-context">Check the save status and retry syncing. Your note stays here.</p>
       </section>
     );
   }
 
   return (
-    <section className="operations-content season-planner" aria-labelledby="ai-garden-note-heading">
+    <section className="operations-content season-planner" aria-labelledby={onClose ? "garden-note-title" : "ai-garden-note-heading"}>
+      {confirmation}
       <div className="section-header">
         <div>
-          <p className="section-eyebrow">AI garden note</p>
-          <h2 id="ai-garden-note-heading">Turn a note into care history</h2>
+          {!onClose && <h2 id="ai-garden-note-heading">AI Garden Note</h2>}
           <p className="section-context">Write one completed watering or fertilizing action in Chinese or English, then review every field before saving.</p>
           {isPublicDemo ? (
             <p className="field-hint">
@@ -169,67 +107,87 @@ export function AiGardenNote({
           ) : null}
         </div>
       </div>
-      <form className="care-form" onSubmit={createDraft}>
-        <div className="field">
+      <FeedbackForm id="single-note-source" className="care-form" onSubmit={() => {
+        const generate = () => { void createDraft(); };
+        if (onClose && draft) requestConfirmation({ message: "Replace the current review draft? Your original note stays available.", confirmLabel: "Replace draft", onConfirm: generate });
+        else generate();
+      }} error={error} validate={() => ({
+        "ai-note-garden": !garden ? "Choose an existing garden." : undefined,
+        "ai-garden-note": isNoteTooLong ? `Shorten the note to ${AI_CARE_NOTE_MAX_LENGTH} characters or fewer.` : undefined,
+      })}>
+        <FormField id="ai-note-garden" className="field">
           <label htmlFor="ai-note-garden">Garden</label>
           <select
-            id="ai-note-garden"
+            id="ai-note-garden" required disabled={Boolean(onClose && draft)}
             onChange={(event) => {
               setGardenId(event.target.value);
               discardDraft();
             }}
             value={gardenId}
           >
+            <option value="">Choose a garden for this record</option>
             {gardenChoices.map((candidate) => <option key={candidate.id} value={candidate.id}>{candidate.name}</option>)}
           </select>
-          {!canGenerate ? <p className="field-hint">AI drafts in the demo work on Demo Garden only, and it is no longer in this workspace.</p> : null}
-        </div>
-        <div className="field care-note-field">
+          {!canGenerate ? <p className="field-hint">{isPublicDemo ? "AI drafts in the demo work on Demo Garden only, and it is no longer in this workspace." : "Choose the garden where this care took place before creating a draft."}</p> : null}
+        </FormField>
+        <FormField id="ai-garden-note" className="field care-note-field">
           <label htmlFor="ai-garden-note">Care note</label>
           <textarea
             id="ai-garden-note"
+            aria-invalid={isNoteTooLong}
+            aria-describedby="ai-note-length"
             onChange={(event) => {
               setNote(event.target.value);
               discardDraft();
             }}
             placeholder="Watered the tomatoes in the back garden bed today."
             required
+            readOnly={Boolean(onClose && draft)}
             rows={4}
             value={note}
           />
-          <p className="field-hint">
+          <p className="field-hint" id="ai-note-length">
             {isNoteTooLong
               ? `Shorten the note to ${AI_CARE_NOTE_MAX_LENGTH} characters or fewer (${noteLength} now).`
               : `${noteLength} / ${AI_CARE_NOTE_MAX_LENGTH} characters`}
           </p>
-        </div>
-        <div className="form-actions">
+        </FormField>
+        {!onClose && <div className="form-actions">
           <button className="primary-button" disabled={isLoading || isNoteTooLong || !canGenerate} type="submit">
             {isLoading ? "Creating draft..." : "Create draft"}
           </button>
-        </div>
-      </form>
-      {error ? <p className="workspace-message" role="alert">{error}</p> : null}
+        </div>}
+      </FeedbackForm>
       {notice ? <p className="workspace-message" role="status">{notice}</p> : null}
       {isPublicDemo && requestId ? <p className="field-hint">Request ID: {requestId}</p> : null}
-      {(error || notice) && !draft ? (
+      {!onClose && (error || notice) && !draft ? (
         <div className="form-actions">
           <button className="secondary-button" onClick={startManualRecord} type="button">Fill in the record manually</button>
         </div>
       ) : null}
       {draft && garden ? (
-        <form
+        <FeedbackForm
+          id="single-note-review"
           className="care-form"
+          error={saveError}
+          notice="Unsaved changes"
+          validate={() => ({
+            "ai-care-type": !draft.type ? "Choose a care type." : undefined,
+            "ai-care-date": !draft.date || !isCalendarDate(draft.date) ? "Enter a valid care date." : undefined,
+            "ai-care-target": !draft.targetScope ? "Choose a target before saving." : draft.targetScope === "planting-area" && !garden.growingAreas.some((area) => area.id === draft.growingAreaId) ? "Choose an existing planting area." : draft.targetScope === "plant-group" && !garden.plantings.some((plant) => plant.id === draft.plantingRecordId) ? "Choose an existing plant group." : undefined,
+            "ai-fertilizer-amount": draft.type === "fertilizing" && draft.fertilizerAmount !== null && (!Number.isFinite(draft.fertilizerAmount) || draft.fertilizerAmount <= 0) ? "Enter a fertilizer amount greater than zero." : undefined,
+          })}
           onSubmit={(event) => {
             event.preventDefault();
             if (!draft.type || !draft.date) return setError("Choose a care type and date before saving.");
             if (!draft.targetScope) return setError("Choose a target before saving.");
             if (isPublicDemo && targetValue(draft) === proposedTarget && !matchesDemoSnapshot(draft, garden)) {
               selectTarget("");
-              return setError("The example garden has changed since this draft was made. Choose the target again or fill in the record manually.");
+              return setSaveError("The example garden has changed since this draft was made. Choose the target again or fill in the record manually.");
             }
-            setError("");
-            onSave(gardenId, draft);
+            setSaveError("");
+            if (onSave(gardenId, draft)) { setDraft(undefined); setNote(""); }
+            else setSaveError("This record could not be added. Check its garden and target, then try again.");
           }}
         >
           <h3>{isManual ? "Manual care record" : "AI extracted draft"}</h3>
@@ -239,10 +197,10 @@ export function AiGardenNote({
           {draft.reviewNotes.length ? (
             <ul className="rotation-note-list">{draft.reviewNotes.map((item) => <li key={item}>{item}</li>)}</ul>
           ) : null}
-          <div className="field">
+          <FormField id="ai-care-type" className="field">
             <label htmlFor="ai-care-type">Care type</label>
             <select
-              id="ai-care-type"
+              id="ai-care-type" required
               onChange={(event) => setDraft({ ...draft, type: event.target.value as CareEventType })}
               value={draft.type ?? ""}
             >
@@ -250,15 +208,15 @@ export function AiGardenNote({
               <option value="watering">Watering</option>
               <option value="fertilizing">Fertilizing</option>
             </select>
-          </div>
-          <div className="field">
+          </FormField>
+          <FormField id="ai-care-date" className="field">
             <label htmlFor="ai-care-date">Date</label>
-            <input id="ai-care-date" onChange={(event) => setDraft({ ...draft, date: event.target.value })} type="date" value={draft.date ?? ""} />
-          </div>
-          <div className="field">
+            <input id="ai-care-date" required onChange={(event) => setDraft({ ...draft, date: event.target.value })} type="date" value={draft.date ?? ""} />
+          </FormField>
+          <FormField id="ai-care-target" className="field">
             <label htmlFor="ai-care-target">Target</label>
             <select
-              id="ai-care-target"
+              id="ai-care-target" required
               onChange={(event) => selectTarget(event.target.value)}
               value={targetValue(draft)}
             >
@@ -272,17 +230,17 @@ export function AiGardenNote({
                 {garden.plantings.map((planting) => <option key={planting.id} value={`plant-group:${planting.id}`}>{plantGroupName(planting.commonName, planting.growingAreaId, garden)}</option>)}
               </optgroup>
             </select>
-          </div>
+          </FormField>
           {draft.type === "fertilizing" ? (
             <>
               <div className="field">
                 <label htmlFor="ai-fertilizer-product">Fertilizer product (optional)</label>
                 <input id="ai-fertilizer-product" onChange={(event) => setDraft({ ...draft, fertilizerProduct: event.target.value || null })} value={draft.fertilizerProduct ?? ""} />
               </div>
-              <div className="field">
+              <FormField id="ai-fertilizer-amount" className="field">
                 <label htmlFor="ai-fertilizer-amount">Fertilizer amount (optional)</label>
-                <input id="ai-fertilizer-amount" min="0.01" onChange={(event) => setDraft({ ...draft, fertilizerAmount: event.target.value ? Number(event.target.value) : null })} step="any" type="number" value={draft.fertilizerAmount ?? ""} />
-              </div>
+                <input id="ai-fertilizer-amount" min="0" onChange={(event) => setDraft({ ...draft, fertilizerAmount: event.target.value ? Number(event.target.value) : null })} step="any" type="number" value={draft.fertilizerAmount ?? ""} />
+              </FormField>
               <div className="field">
                 <label htmlFor="ai-fertilizer-unit">Fertilizer unit (optional)</label>
                 <input id="ai-fertilizer-unit" onChange={(event) => setDraft({ ...draft, fertilizerUnit: event.target.value || null })} value={draft.fertilizerUnit ?? ""} />
@@ -293,22 +251,27 @@ export function AiGardenNote({
             <label htmlFor="ai-review-note">Original note</label>
             <textarea id="ai-review-note" onChange={(event) => setDraft({ ...draft, note: event.target.value })} rows={3} value={draft.note} />
           </div>
-          <div className="form-actions">
+          {!onClose && <div className="form-actions">
             <button className="primary-button" type="submit">Save to Care History</button>
             <button className="secondary-button" onClick={discardDraft} type="button">Start over</button>
-          </div>
-        </form>
+          </div>}
+        </FeedbackForm>
       ) : null}
+      {onClose && <div className={dialogStyles.footer}>
+        {(note || draft) && <Button variant="text" disabled={isLoading} onClick={() => requestConfirmation({
+          message: "Discard this note and its unsaved draft?", confirmLabel: "Discard note", tone: "danger",
+          fallbackFocusId: "garden-note-title", onConfirm: () => { discardDraft(); setNote(""); setError(""); },
+        })}>Discard note</Button>}
+        {draft ? <>
+          <Button type="submit" form="single-note-source" loading={isLoading} loadingLabel="Creating draft…" disabled={isNoteTooLong || !canGenerate}>Generate again</Button>
+          <Button variant="primary" type="submit" form="single-note-review" disabled={isLoading}>Save to Care History</Button>
+        </> : <>
+          <Button disabled={!canGenerate || isLoading} onClick={startManualRecord}>Fill in the record manually</Button>
+          <Button variant="primary" type="submit" form="single-note-source" loading={isLoading} loadingLabel="Creating draft…" disabled={isNoteTooLong || !canGenerate}>Create draft</Button>
+        </>}
+      </div>}
     </section>
   );
-}
-
-function targetValue(draft: AiCareNoteDraft) {
-  if (draft.targetScope === "all-gardens") return "all-gardens";
-  if (draft.targetScope === "planting-area" && draft.growingAreaId) return `planting-area:${draft.growingAreaId}`;
-  if (draft.targetScope === "plant-group" && draft.plantingRecordId) return `plant-group:${draft.plantingRecordId}`;
-  if (draft.targetScope === "garden") return "garden";
-  return "";
 }
 
 /**
@@ -317,7 +280,7 @@ function targetValue(draft: AiCareNoteDraft) {
  */
 function matchesDemoSnapshot(draft: AiCareNoteDraft, garden: Garden) {
   const [snapshot] = createDemoGardenWorkspace().gardens;
-  if (garden.id !== DEMO_GARDEN_ID) return false;
+  if (garden.id !== "demo-garden") return false;
   if (draft.targetScope === "garden") return true;
   if (draft.targetScope === "planting-area") {
     const expected = snapshot.growingAreas.find((area) => area.id === draft.growingAreaId);

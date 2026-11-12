@@ -1,0 +1,21 @@
+.review textarea { width: 100%; min-width: 0; }
+.review { max-width: 1000px; overflow-wrap: anywhere; }
+.review > p:first-child { margin-top: 0; }
+.review h3:focus { outline: none; }
+.noteLength { color: var(--color-muted); font-size: 14px; }
+.row { margin: 16px 0; padding: 16px; border: 1px solid var(--color-line); border-radius: var(--radius-card); background: var(--color-surface); }
+.rowHeading { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+.rowSummary { flex: 1 1 180px; min-width: 0; }
+.rowSummary h4, .rowSummary p { margin: 0; }
+.rowSummary p { color: var(--color-muted); font-size: 14px; }
+.rowHeading label { display: flex; align-items: center; min-height: 44px; gap: 8px; }
+.fields { border: 0; margin: 0; padding: 0; display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); min-width: 0; }
+.fields > div { min-width: 0; }
+.fields input, .fields select, .fields textarea { width: 100%; min-width: 0; }
+.fullWidth { grid-column: 1 / -1; }
+.legend { padding: 8px 0; color: var(--color-muted); }
+.quote { white-space: pre-wrap; overflow-wrap: anywhere; color: var(--color-muted); }
+.needsReview { color: var(--color-warning); }
+.row summary { min-height: 44px; padding: 12px 0; cursor: pointer; }
+
+.originalNote { display: block; white-space: pre-wrap; margin-top: 8px; }

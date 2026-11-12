@@ -178,6 +178,7 @@ export function gardenPlanViewport(
   plan: GardenPlan,
   growingAreas: GrowingArea[],
   viewMode: GardenPlanViewMode,
+  paddingRatio = 0.15,
 ): GardenPlanViewport {
   if (viewMode === "full") {
     return { x: 0, y: 0, ...plan };
@@ -205,7 +206,7 @@ export function gardenPlanViewport(
   const bottom = Math.max(...points.map((point) => point.y));
   const widthMeters = Math.max(right - left, 0.5);
   const depthMeters = Math.max(bottom - top, 0.5);
-  const padding = Math.max(0.3, Math.max(widthMeters, depthMeters) * 0.15);
+  const padding = Math.max(0.3, Math.max(widthMeters, depthMeters) * paddingRatio);
   const areasStayWithinPlan =
     left >= 0 && top >= 0 && right <= plan.widthMeters && bottom <= plan.depthMeters;
   const frameLeft = areasStayWithinPlan ? Math.max(0, left - padding) : left - padding;

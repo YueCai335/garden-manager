@@ -1,0 +1,34 @@
+.workspace {
+  display: grid;
+  gap: 16px;
+  width: min(var(--content-width), calc(100% - var(--workspace-gutters)));
+  margin: 20px auto 48px;
+  overflow-wrap: anywhere;
+}
+.workspace > * { width: min(100%, 900px); min-width: 0; }
+
+.panel.panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: 16px;
+  margin: 0;
+  padding: clamp(14px, 3vw, 24px);
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-card);
+}
+
+.panel h2, .panel p { margin: 0; }
+.panel h2 { font-size: 1.125rem; }
+.panel > * { min-width: 0; }
+.panel input, .panel textarea, .panel select { min-width: 0; max-width: 100%; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.answer { line-height: 1.6; }
+.answer a { text-decoration: underline; text-underline-offset: 0.15em; }
+
+@media (min-width: 768px) {
+  .columns.columns { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .columns > :not(:global(.field)) { grid-column: 1 / -1; }
+  .columns > :global(.care-note-field) { grid-column: 1 / -1; }
+}

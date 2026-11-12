@@ -1,6 +1,7 @@
 # ADR-0048: Place Garden Properties Above the Plan Canvas
 
 - Status: Accepted
+- Form presentation refined by [ADR-0066](0066-adapt-area-editing-to-available-space.md): show a summary above the plan and open the form explicitly in the same location.
 - Date: 2026-09-03
 - Related: [ADR-0045](0045-use-a-garden-properties-panel-and-module-cards.md)
 

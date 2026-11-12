@@ -103,6 +103,17 @@ changes, mark the old record as superseded and add a new record.
 | [ADR-0058](0058-classify-care-notes-before-filling-a-draft.md) | Classify care notes before filling a reviewable draft | Accepted |
 | [ADR-0059](0059-open-budgeted-public-care-note-generation.md) | Open budgeted care note generation in the portfolio demo | Rejected after two evaluations |
 | [ADR-0060](0060-offer-assisted-care-note-drafting-in-the-portfolio-demo.md) | Offer assisted care-note drafting in the portfolio demo | Accepted |
+| [ADR-0061](0061-prioritize-global-garden-notes-and-consistent-workflows.md) | Prioritize global AI garden notes, clear workspace scopes, and consistent feedback | Accepted for product direction; implementation pending |
+| [ADR-0062](0062-preserve-planting-area-editor-drafts.md) | Preserve planting-area property and plant-editor drafts | Accepted |
+| [ADR-0063](0063-use-workspace-routes-and-shared-session-state.md) | Use workspace routes and shared session state | Accepted |
+| [ADR-0064](0064-separate-workspace-save-status-and-explicit-retries.md) | Separate workspace save status and explicit retries | Accepted |
+| [ADR-0065](0065-fit-metric-canvases-to-their-containers.md) | Fit metric canvases to their containers | Accepted |
+| [ADR-0066](0066-adapt-area-editing-to-available-space.md) | Adapt area editing to available space | Accepted |
+| [ADR-0067](0067-project-care-across-locations-with-explicit-ownership.md) | Project Care across locations with explicit ownership | Accepted |
+| [ADR-0068](0068-extract-bounded-workspace-care-note-batches.md) | Extract bounded workspace care-note batches | Accepted; real-model evaluation pending |
+| [ADR-0069](0069-open-garden-notes-in-place-from-overview.md) | Open Garden Notes in place from Overview | Accepted; entry amended to Overview only |
+| [ADR-0070](0070-preview-and-position-planting-areas-on-the-plan.md) | Preview and position planting areas on the plan | Accepted |
+| [ADR-0071](0071-recover-missing-workspaces-from-browser-copies.md) | Recover missing workspaces from browser copies | Accepted |
 
 ## Interview Use
 
