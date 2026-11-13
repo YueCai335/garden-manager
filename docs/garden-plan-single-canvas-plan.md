@@ -1,7 +1,7 @@
 # Garden Plan：单画布与首次引导实施计划
 
 - 日期：2026-11-12（America/Toronto）
-- 状态：方向与分阶段计划已确认（[ADR-0072](decisions/0072-use-a-single-plan-canvas-with-guided-setup.md)）；第 7 节记录确认结果。当前处于 G0。
+- 状态：方向与分阶段计划已确认（[ADR-0072](decisions/0072-use-a-single-plan-canvas-with-guided-setup.md)）；第 7 节记录确认结果。G1、G2 已完成；下一步 G3。
 - 依据：用户确认的可点原型（第 4 版）、Native Garden Planner 与 Sunplot 的对比分析、当前代码核查。
 
 ## 1. 目标

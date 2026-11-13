@@ -1,6 +1,6 @@
 # ADR-0054: Use Fixed-Canvas Garden Plan Views
 
-- Status: Accepted
+- Status: Superseded in part by [ADR-0072](0072-use-a-single-plan-canvas-with-guided-setup.md) for Garden Plan (phase G2). Garden Plan drops the `Focus beds` and `Full garden` buttons: the whole-garden view keeps the `Focus beds` framing, and selecting an area zooms the same canvas to that area. The Next Season preview keeps both buttons.
 - Responsive sizing and explicit Move interaction refined by [ADR-0065](0065-fit-metric-canvases-to-their-containers.md).
 - Date: 2026-09-03
 - Refines: [ADR-0027](0027-use-persistent-plant-colors-and-garden-plan-zoom.md)

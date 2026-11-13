@@ -8,6 +8,7 @@ import Link from "next/link";
 import { areaPath } from "@/lib/workspaceRoutes";
 import { Circle, Group, Layer, Line, Rect, Stage, Text } from "react-konva";
 import { useCanvasSize } from "@/hooks/useCanvasSize";
+import { useAnimatedViewport } from "@/hooks/useAnimatedViewport";
 import { canvasToMetres, canvasGridTicks, fitCanvas, metresToCanvas, type CanvasTransform } from "@/lib/canvasViewport";
 import { areaAppearance, areaLabelPosition, areaSizeText, isRectangularLayout, planColors, ridgeLine } from "@/lib/planAppearance";
 import { Button } from "./ui/Button";
@@ -17,6 +18,7 @@ import canvasStyles from "./canvas/Canvas.module.css";
 
 import {
   allocationPlantColor,
+  areaFocusViewport,
   clampPlanPosition,
   gardenPlanViewport,
   growingAreaKindLabels,
@@ -24,7 +26,6 @@ import {
   validateGardenPlanDimensions,
   type LayoutPoint,
   type GardenPlan,
-  type GardenPlanViewMode,
   type GrowingArea,
   type PlanPlacement,
 } from "@/lib/gardenWorkspace";
@@ -46,7 +47,8 @@ type GardenPlanOverviewProps = {
   onPlanChange?: (plan: GardenPlan) => void;
   onPlacementChange?: (areaId: string, placement: PlanPlacement) => void;
   onEditLayout?: (areaId: string) => void;
-  onDismissPreview?: () => void;
+  /** Leaves the zoomed area and returns the canvas to the whole garden. */
+  onExitArea?: () => void;
 };
 
 export function GardenPlanOverview({
@@ -66,7 +68,7 @@ export function GardenPlanOverview({
   onPlanChange,
   onPlacementChange,
   onEditLayout,
-  onDismissPreview,
+  onExitArea,
 }: GardenPlanOverviewProps) {
   type Details = { name: string; width: string; depth: string };
   const current = { name: gardenNameFromProps, width: String(plan.widthMeters), depth: String(plan.depthMeters) };
@@ -77,7 +79,6 @@ export function GardenPlanOverview({
   const setGardenName = (value: string) => change("name", value);
   const setWidth = (value: string) => change("width", value);
   const setDepth = (value: string) => change("depth", value);
-  const [viewMode, setViewMode] = useState<GardenPlanViewMode>("growing-areas");
   const [message, setMessage] = useState("");
   const [editingDetails, setEditingDetails] = useWorkspaceDraft(`garden-details-open:${gardenId ?? "standalone"}`, false);
   const detailsButton = useRef<HTMLButtonElement>(null);
@@ -88,6 +89,34 @@ export function GardenPlanOverview({
   };
   const hasPropertyChanges = gardenName.trim() !== gardenNameFromProps || !width.trim() || !depth.trim() || Number(width) !== plan.widthMeters || Number(depth) !== plan.depthMeters;
   useUnsavedDraft(`garden-details:${gardenId ?? "standalone"}`, Boolean(editable && hasPropertyChanges));
+  const selectedArea = growingAreas.find((area) => area.id === selectedAreaId);
+  // A selected area with a size zooms the canvas; one without a size has nothing to frame.
+  const focusedArea = !compact && selectedArea?.layout ? selectedArea : undefined;
+  const exitArea = () => {
+    if (!focusedArea || !onExitArea) return;
+    const id = focusedArea.id;
+    onExitArea();
+    requestAnimationFrame(() => {
+      if (document.querySelector('dialog[open][aria-modal="true"]')) return;
+      document.getElementById(`area-link-${id}`)?.focus({ preventScroll: true });
+    });
+  };
+  const exitAreaRef = useRef(exitArea);
+  useEffect(() => { exitAreaRef.current = exitArea; });
+  const canExitArea = Boolean(focusedArea && onExitArea);
+  useEffect(() => {
+    if (!canExitArea) return;
+    const escape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || event.defaultPrevented) return;
+      // Modal panels and confirmations handle their own Escape; typing keeps it for the field.
+      if (document.querySelector('dialog[open][aria-modal="true"]')) return;
+      if (event.target instanceof HTMLElement && event.target.closest("input, textarea, select, [contenteditable='true']")) return;
+      event.preventDefault();
+      exitAreaRef.current();
+    };
+    window.addEventListener("keydown", escape);
+    return () => window.removeEventListener("keydown", escape);
+  }, [canExitArea]);
 
   if (compact)
     return (
@@ -98,7 +127,6 @@ export function GardenPlanOverview({
           interactive={false}
           onMove={() => undefined}
           plan={plan}
-          viewMode="growing-areas"
         />
       </div>
     );
@@ -133,7 +161,6 @@ export function GardenPlanOverview({
     onPlacementChange(areaId, { ...area.planPlacement, ...point });
     setMessage(`${area.name} moved to ${point.x.toFixed(1)}, ${point.y.toFixed(1)} m.`);
   };
-  const selectedArea = growingAreas.find((area) => area.id === selectedAreaId);
 
   return (
     <section className="garden-plan" aria-labelledby="garden-plan-heading">
@@ -207,24 +234,7 @@ export function GardenPlanOverview({
         <div className="plan-view">
           <div className={editorStyles.planToolbar}>
           {editable && onAddArea && <Button id="add-planting-area" variant="primary" onClick={onAddArea}>Add planting area</Button>}
-          <div aria-label="Garden Plan tools" className="plan-view-controls">
-            <button
-              aria-pressed={viewMode === "growing-areas"}
-              className="plan-view-control"
-              onClick={() => setViewMode("growing-areas")}
-              type="button"
-            >
-              Focus beds
-            </button>
-            <button
-              aria-pressed={viewMode === "full"}
-              className="plan-view-control"
-              onClick={() => setViewMode("full")}
-              type="button"
-            >
-              Full garden
-            </button>
-          </div>
+          {canExitArea && <Button id="plan-whole-garden" onClick={exitArea}><span aria-hidden="true">← </span>Whole garden</Button>}
           </div>
           <div>
             <GardenPlanCanvas
@@ -235,7 +245,7 @@ export function GardenPlanOverview({
               onEditLayout={onEditLayout}
               onMove={moveArea}
               plan={plan}
-              viewMode={viewMode}
+              focusedAreaId={focusedArea?.id}
             />
           </div>
         </div>
@@ -243,10 +253,6 @@ export function GardenPlanOverview({
       {showAreaPreview && gardenId && selectedArea && <section className={editorStyles.areaPreview} aria-label="Selected planting area">
         <div><h3>{selectedArea.name}</h3><p>{areaSizeLabel(selectedArea)}</p></div>
         <Link className="primary-button" href={areaPath(gardenId, selectedArea.id)}>Edit area</Link>
-        <Button variant="text" aria-label="Dismiss selected area summary" onClick={() => {
-          onDismissPreview?.();
-          document.getElementById(`area-link-${selectedArea.id}`)?.focus({ preventScroll: true });
-        }}>Dismiss</Button>
       </section>}
       {editable && !areaListInSidebar && growingAreas.length > 0 && <GardenAreaList gardenId={gardenId} areas={growingAreas} selectedAreaId={selectedAreaId} onEditLayout={onEditLayout} />}
       {editable ? (
@@ -285,7 +291,8 @@ type GardenPlanCanvasProps = {
   selectedAreaId?: string;
   onMove: (areaId: string, point: LayoutPoint) => void;
   onEditLayout?: (areaId: string) => void;
-  viewMode: GardenPlanViewMode;
+  /** The area the canvas zooms to; other areas dim. Undefined frames the whole garden. */
+  focusedAreaId?: string;
 };
 
 function GardenPlanCanvas({
@@ -296,7 +303,7 @@ function GardenPlanCanvas({
   selectedAreaId,
   onMove,
   onEditLayout,
-  viewMode,
+  focusedAreaId,
 }: GardenPlanCanvasProps) {
   const size = useCanvasSize();
   const [moveMode, setMoveMode] = useState(false);
@@ -316,10 +323,13 @@ function GardenPlanCanvas({
       event.preventDefault();
       cancelDrag();
     };
-    if (moveMode) window.addEventListener("keydown", escape);
-    return () => window.removeEventListener("keydown", escape);
+    // Capture runs before the zoom's Escape handler, so Escape cancels a drag first.
+    if (moveMode) window.addEventListener("keydown", escape, true);
+    return () => window.removeEventListener("keydown", escape, true);
   }, [moveMode]);
-  const bounds = gardenPlanViewport(plan, growingAreas, viewMode, compact ? 0.05 : undefined);
+  const focusedArea = growingAreas.find((area) => area.id === focusedAreaId && area.layout);
+  const target = (focusedArea && areaFocusViewport(focusedArea)) || gardenPlanViewport(plan, growingAreas, "growing-areas", compact ? 0.05 : undefined);
+  const { viewport: bounds } = useAnimatedViewport(target, focusedArea?.id ?? "whole-garden");
   const calculated = fitCanvas(bounds, size.width, size.height, compact ? 12 : 34);
   const transform = drag?.transform ?? calculated;
   const viewport = transform?.bounds ?? bounds;
@@ -331,14 +341,16 @@ function GardenPlanCanvas({
   const measuredAreas = growingAreas.filter((area) => area.layout);
   const draggedArea = measuredAreas.find((area) => area.id === drag?.id);
   const areaLabels = measuredAreas.map((area) => ({ area, ...areaLabelPosition(area, scale, padding, viewport) }));
-  const labels = compact ? fitThumbnailLabels(areaLabels, width, height, offsetX, offsetY) : areaLabels;
+  // While zoomed, only the focused area keeps its name so neighbours' labels never cover its plants.
+  const labels = compact ? fitThumbnailLabels(areaLabels, width, height, offsetX, offsetY) : areaLabels.filter(({ area }) => !focusedArea || area.id === focusedArea.id);
+  const dimmed = (area: GrowingArea) => Boolean(focusedArea && area.id !== focusedArea.id);
 
   return <div className={compact ? undefined : canvasStyles.frame}>
     {interactive && !compact && measuredAreas.length > 0 && <div className={canvasStyles.toolbar}>
       <Button aria-pressed={moveMode} onClick={() => { cancelDrag(); setMoveMode((value) => !value); }}>Move planting areas</Button>
-      <p>{drag ? `${draggedArea?.name ?? "Area"} · ${drag.point.x.toFixed(1)}, ${drag.point.y.toFixed(1)} m` : moveMode ? "Drag an area. Escape cancels a move." : "Select an area, or turn on Move to drag it."}</p>
+      <p>{drag ? `${draggedArea?.name ?? "Area"} · ${drag.point.x.toFixed(1)}, ${drag.point.y.toFixed(1)} m` : moveMode ? "Drag an area. Escape cancels a move." : focusedArea ? `Viewing ${focusedArea.name}. Escape returns to the whole garden.` : "Select an area, or turn on Move to drag it."}</p>
     </div>}
-    <div ref={size.ref} className={`${canvasStyles.surface} ${compact ? canvasStyles.compact : ""}`} data-move={moveMode} data-dragging={Boolean(drag)}>
+    <div ref={size.ref} className={`${canvasStyles.surface} ${compact ? canvasStyles.compact : ""}`} data-move={moveMode} data-dragging={Boolean(drag)} data-focused-area={focusedArea?.id}>
     {transform ? <Stage
       aria-label={`Garden Plan, ${plan.widthMeters} metres wide by ${plan.depthMeters} metres long`}
       height={height}
@@ -445,6 +457,7 @@ function GardenPlanCanvas({
               setDrag(undefined);
             }}
             onTap={() => onEditLayout?.(area.id)}
+            opacity={dimmed(area) ? 0.35 : 1}
             rotation={area.planPlacement.rotationDegrees}
             x={padding + (area.planPlacement.x - viewport.x) * scale}
             y={padding + (area.planPlacement.y - viewport.y) * scale}
@@ -471,7 +484,7 @@ function GardenPlanCanvas({
                     onEditLayout?.(area.id);
                   }}
                 />
-                {!compact && viewMode === "growing-areas" && allocation.diameterMeters * scale >= 36 ? (
+                {!compact && allocation.diameterMeters * scale >= 36 ? (
                   <Text
                     align="center"
                     fill="#183a2a"

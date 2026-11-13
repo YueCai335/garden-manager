@@ -1326,22 +1326,48 @@ describe("GardenWorkspace", () => {
     expect(areaInspectorForm().getByRole("button", { name: "Save" })).toBeInTheDocument();
   });
 
-  it("focuses Garden Plan beds without changing the canvas frame and persists a selected plant color", async () => {
+  it("zooms Garden Plan into an opened area, persists a selected plant color, and returns to the whole garden", async () => {
     const user = userEvent.setup();
     await loadDemo(user);
     await openSelectedGarden();
-    expect(screen.getByRole("button", { name: "Focus beds" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.queryByRole("button", { name: "Whole garden" })).not.toBeInTheDocument();
     expect(screen.getByText("Tomato")).toBeInTheDocument();
     const areaLabel = screen.getByTestId("area-label-demo-raised-bed");
     expect(areaLabel).toHaveAttribute("align", "center");
     expect(Number(areaLabel.getAttribute("y"))).toBeGreaterThan(0);
-    await user.click(screen.getByRole("button", { name: "Full garden" }));
-    expect(screen.getByRole("button", { name: "Full garden" })).toHaveAttribute("aria-pressed", "true");
     await user.click(screen.getByLabelText("Open Sample raised bed on Garden Plan"));
+    expect(window.location.search).toBe("?area=demo-raised-bed");
+    expect(screen.getByRole("button", { name: "Whole garden" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Open Sample raised bed on Garden Plan")).toHaveAttribute("opacity", "1");
+    expect(screen.getByLabelText("Open Sample in-ground area on Garden Plan")).toHaveAttribute("opacity", "0.35");
+    expect(screen.queryByTestId("area-label-demo-in-ground-area")).not.toBeInTheDocument();
     fireEvent.click(screen.getByLabelText("Tomato plant"));
     fireEvent.change(screen.getByLabelText("Plant color"), { target: { value: "#1f77b4" } });
     await user.click(screen.getByRole("button", { name: "Save plant" }));
     await waitFor(() => expect(JSON.parse(window.localStorage.getItem(GARDEN_WORKSPACE_STORAGE_KEY) ?? "{}").gardens[0].growingAreas[0].layout.allocations[0].color).toBe("#1f77b4"));
+    await user.click(screen.getByRole("button", { name: "Whole garden" }));
+    expect(window.location.search).toBe("");
+    expect(screen.queryByRole("button", { name: "Whole garden" })).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Open Sample in-ground area on Garden Plan")).toHaveAttribute("opacity", "1");
+    await waitFor(() => expect(document.activeElement).toHaveAttribute("id", "area-link-demo-raised-bed"));
+  });
+
+  it("asks before Whole garden discards unsaved planting-area edits", async () => {
+    const user = userEvent.setup();
+    await loadDemo(user);
+    await openPlantingArea(user, "Sample raised bed");
+    await user.clear(screen.getByLabelText("Rotation (degrees)"));
+    await user.type(screen.getByLabelText("Rotation (degrees)"), "45");
+    await user.click(screen.getByRole("button", { name: "Whole garden" }));
+    expect(await screen.findByText("Your changes have not been submitted. Discard them or keep editing.")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Keep editing" }));
+    expect(window.location.search).toBe("?area=demo-raised-bed");
+    expect(screen.getByLabelText("Rotation (degrees)")).toHaveValue(45);
+    await user.click(screen.getByRole("button", { name: "Whole garden" }));
+    await user.click(await screen.findByRole("button", { name: "Discard changes" }));
+    expect(window.location.search).toBe("");
+    await user.click(screen.getByLabelText("Open Sample raised bed on Garden Plan"));
+    expect(screen.getByLabelText("Rotation (degrees)")).toHaveValue(0);
   });
 
   it("saves planting-area rotation with its other properties", async () => {

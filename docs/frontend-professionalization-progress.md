@@ -770,3 +770,41 @@ width/length mapping; a component test checks the selected size label against
 the form. The 19 canvas, editor, draft, garden-flow, and Overview Chromium
 cases passed, and screenshots at 1440px and 390px confirmed the four area types
 and label spacing.
+
+## G2: Zoom the Garden Plan canvas into one planting area
+
+Phase G2 of the single-canvas plan ([ADR-0072](decisions/0072-use-a-single-plan-canvas-with-guided-setup.md)).
+Selecting a planting area on the plan or in the area list now zooms the same
+canvas to that area over 0.4 seconds. The other areas fade to 35 % opacity and
+hide their names, so no label covers the focused area's plants. A "Whole
+garden" button and the Escape key return to the whole-garden frame and move
+focus to the area's link in the list. Escape inside a text field stays with
+the field, and Escape during an area drag cancels the drag first. Reduced
+motion switches the frame without animation. Opening a `?area=` link starts
+zoomed.
+
+The frame is the bounding box of the area's rotated corners plus a margin of
+20 % of its longer side, at least 30 cm. The frame may extend past the garden
+edge, so an area in a corner stays centred with room for its name. A selected
+area without a size keeps the whole-garden frame.
+
+"Whole garden" closes the area editor through the same path as its Close
+button: unsaved area or plant edits ask for confirmation first. On phones the
+area editor still opens as a full page; tapping an area zooms the plan and
+shows the existing summary card with "Edit area", and "Whole garden" replaces
+the card's separate Dismiss button.
+
+The Garden Plan no longer shows the `Focus beds` and `Full garden` buttons
+([ADR-0054](decisions/0054-use-fixed-canvas-garden-plan-views.md) is marked as
+superseded in part). The whole-garden view keeps the area-fitted framing. The
+Next Season preview keeps both buttons.
+
+All 314 frontend tests, lint, and type checking passed. New unit tests cover
+the area frame (unrotated, rotated 30°, 90°, 180°, and 225°, at the garden
+origin, a 20 cm container, and an area without a size) and the eased
+interpolation. Component tests cover framing a 30° area inside the canvas,
+dimming and label hiding, Whole garden and Escape, Escape inside a field and
+during a drag, the animated and reduced-motion transitions, and the unsaved-
+edit confirmation. Three new Chromium journeys passed: zoom and return at
+1440px and 390px, and a 30° area that stays zoomed after reload and returns
+with Escape.

@@ -24,3 +24,16 @@ export function canvasGridTicks(start: number, end: number, scale: number) {
   const first = Math.ceil(start / step) * step;
   return Array.from({ length: Math.min(81, Math.max(0, Math.floor((end - first) / step) + 1)) }, (_, index) => first + index * step);
 }
+
+/** Blend two viewports for a zoom animation; progress runs 0 → 1 with ease-in-out. */
+export function interpolateViewport(from: GardenPlanViewport, to: GardenPlanViewport, progress: number): GardenPlanViewport {
+  const t = Math.min(1, Math.max(0, progress));
+  const eased = t < 0.5 ? 4 * t ** 3 : 1 - (-2 * t + 2) ** 3 / 2;
+  const blend = (start: number, end: number) => start + (end - start) * eased;
+  return {
+    x: blend(from.x, to.x),
+    y: blend(from.y, to.y),
+    widthMeters: blend(from.widthMeters, to.widthMeters),
+    depthMeters: blend(from.depthMeters, to.depthMeters),
+  };
+}

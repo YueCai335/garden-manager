@@ -12,6 +12,7 @@ import {
   defaultPlanPlacement,
   findDuplicatePlantPosition,
   gardenPlanViewport,
+  areaFocusViewport,
   inferPlantCropFamily,
   isPlantColor,
   plantDisplayName,
@@ -20,6 +21,7 @@ import {
   snapToGrid,
   validateGardenPlanDimensions,
   validateLayoutDimensions,
+  type GrowingArea,
 } from "@/lib/gardenWorkspace";
 
 describe("readGardenWorkspace", () => {
@@ -674,5 +676,45 @@ describe("readGardenWorkspace", () => {
       "due-today",
     );
     expect(addDays("2026-02-28", 1)).toBe("2026-03-01");
+  });
+
+});
+
+describe("areaFocusViewport", () => {
+  const area = (x: number, y: number, rotationDegrees: number, width = 2, length = 1): GrowingArea => ({
+    id: "bed", name: "Bed", kind: "raised-bed", planPlacement: { x, y, rotationDegrees }, layout: createRectangularLayout(width, length),
+  });
+  const contains = (frame: { x: number; y: number; widthMeters: number; depthMeters: number }, point: { x: number; y: number }) =>
+    point.x > frame.x && point.x < frame.x + frame.widthMeters && point.y > frame.y && point.y < frame.y + frame.depthMeters;
+
+  it("frames an unrotated area with an even margin", () => {
+    expect(areaFocusViewport(area(3, 4, 0))).toEqual({ x: 2.6, y: 3.6, widthMeters: 2.8, depthMeters: 1.8 });
+  });
+  it("keeps every rotated corner inside the frame", () => {
+    for (const rotation of [30, 90, 180, 225]) {
+      const rotated = area(5, 5, rotation, 3, 1.2);
+      const frame = areaFocusViewport(rotated)!;
+      const angle = (rotation * Math.PI) / 180;
+      for (const point of rotated.layout!.boundary) {
+        expect(contains(frame, {
+          x: 5 + point.x * Math.cos(angle) - point.y * Math.sin(angle),
+          y: 5 + point.x * Math.sin(angle) + point.y * Math.cos(angle),
+        })).toBe(true);
+      }
+    }
+  });
+  it("extends past the garden edge so an area at the origin stays centred", () => {
+    const frame = areaFocusViewport(area(0, 0, 0))!;
+    expect(frame.x).toBeLessThan(0);
+    expect(frame.y).toBeLessThan(0);
+    expect(frame.x + frame.widthMeters / 2).toBeCloseTo(1);
+  });
+  it("gives a tiny container at least 30 cm of margin and ignores an area without a size", () => {
+    const frame = areaFocusViewport(area(1, 1, 0, 0.2, 0.2))!;
+    expect(frame.x).toBeCloseTo(0.7);
+    expect(frame.y).toBeCloseTo(0.7);
+    expect(frame.widthMeters).toBeCloseTo(0.8);
+    expect(frame.depthMeters).toBeCloseTo(0.8);
+    expect(areaFocusViewport({ id: "new", name: "New", kind: "container", planPlacement: { x: 0, y: 0, rotationDegrees: 0 } })).toBeUndefined();
   });
 });

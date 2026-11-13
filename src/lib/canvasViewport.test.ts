@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canvasGridTicks, canvasToMetres, fitCanvas, metresToCanvas } from "./canvasViewport";
+import { canvasGridTicks, canvasToMetres, fitCanvas, interpolateViewport, metresToCanvas } from "./canvasViewport";
 import { createRectangularLayout, gardenPlanViewport, type GrowingArea } from "./gardenWorkspace";
 
 describe("canvas transforms", () => {
@@ -38,5 +38,20 @@ describe("canvas transforms", () => {
     expect(full.scale).toBeLessThan(1);
     expect(canvasGridTicks(0, plan.widthMeters, full.scale).length).toBeLessThan(10);
     expect(canvasGridTicks(0, plan.widthMeters, full.scale)).toContain(0);
+  });
+});
+
+describe("viewport zoom animation", () => {
+  const from = { x: 0, y: 0, widthMeters: 10, depthMeters: 8 };
+  const to = { x: 2, y: 3, widthMeters: 2, depthMeters: 1 };
+  it("starts at the current frame, ends at the target, and eases through the middle", () => {
+    expect(interpolateViewport(from, to, 0)).toEqual(from);
+    expect(interpolateViewport(from, to, 1)).toEqual(to);
+    expect(interpolateViewport(from, to, 0.5)).toEqual({ x: 1, y: 1.5, widthMeters: 6, depthMeters: 4.5 });
+    expect(interpolateViewport(from, to, 0.1).x).toBeLessThan(0.2);
+  });
+  it("clamps progress outside 0 to 1", () => {
+    expect(interpolateViewport(from, to, -1)).toEqual(from);
+    expect(interpolateViewport(from, to, 3)).toEqual(to);
   });
 });

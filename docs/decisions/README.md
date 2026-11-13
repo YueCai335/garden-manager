@@ -96,7 +96,7 @@ changes, mark the old record as superseded and add a new record.
 | [ADR-0051](0051-prioritize-daily-garden-work-on-the-dashboard.md) | Prioritize daily garden work on the dashboard | Accepted |
 | [ADR-0052](0052-show-save-actions-only-for-pending-edits.md) | Show Save actions only for pending edits | Accepted |
 | [ADR-0053](0053-keep-plant-layout-in-the-planting-area-inspector.md) | Keep plant layout in the planting-area inspector | Accepted |
-| [ADR-0054](0054-use-fixed-canvas-garden-plan-views.md) | Use fixed-canvas Garden Plan views | Accepted |
+| [ADR-0054](0054-use-fixed-canvas-garden-plan-views.md) | Use fixed-canvas Garden Plan views | Superseded in part by ADR-0072 (G2) |
 | [ADR-0055](0055-use-automatic-sync-with-optimistic-locking.md) | Use automatic workspace sync with optimistic locking | Accepted |
 | [ADR-0056](0056-use-a-budgeted-tool-calling-agent-for-season-allocation.md) | Use a budgeted tool-calling agent for next-season allocation | Accepted; public run limit amended by ADR-0057 |
 | [ADR-0057](0057-keep-live-allocation-runs-closed-after-evaluation.md) | Keep live allocation runs closed in the public demo after evaluation | Accepted; key scope amended by ADR-0060 |
@@ -114,7 +114,7 @@ changes, mark the old record as superseded and add a new record.
 | [ADR-0069](0069-open-garden-notes-in-place-from-overview.md) | Open Garden Notes in place from Overview | Accepted; entry amended to Overview only |
 | [ADR-0070](0070-preview-and-position-planting-areas-on-the-plan.md) | Preview and position planting areas on the plan | Accepted |
 | [ADR-0071](0071-recover-missing-workspaces-from-browser-copies.md) | Recover missing workspaces from browser copies | Accepted |
-| [ADR-0072](0072-use-a-single-plan-canvas-with-guided-setup.md) | Use a single plan canvas with guided setup | Accepted for product direction; implementation pending |
+| [ADR-0072](0072-use-a-single-plan-canvas-with-guided-setup.md) | Use a single plan canvas with guided setup | Accepted; G1–G2 implemented |
 
 ## Interview Use
 

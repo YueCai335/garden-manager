@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GardenPlanOverview } from "./GardenPlanOverview";
 import { GrowingAreaLayoutEditor } from "./GrowingAreaLayoutEditor";
-import { createRectangularLayout, gardenPlanViewport, type GrowingArea } from "@/lib/gardenWorkspace";
+import { areaFocusViewport, areaPlanCorners, createRectangularLayout, gardenPlanViewport, type GrowingArea } from "@/lib/gardenWorkspace";
 import { fitCanvas, metresToCanvas } from "@/lib/canvasViewport";
 import { areaAppearances } from "@/lib/planAppearance";
 
@@ -40,17 +40,17 @@ describe("responsive canvas interactions", () => {
     expect(Math.abs(Number(secondLabel.getAttribute("y")) - Number(firstLabel.getAttribute("y")))).toBeGreaterThanOrEqual(16);
   });
 
-  it("waits for a nonzero size and changing views does not edit stored geometry", async () => {
+  it("waits for a nonzero size and zooming does not edit stored geometry", async () => {
     size.width = 0;
-    const user = userEvent.setup(); const onPlacementChange = vi.fn(); const area = bed();
-    const props = { plan, growingAreas: [area], editable: true, onPlacementChange };
+    const onPlacementChange = vi.fn(); const area = bed();
+    const props = { plan, growingAreas: [area], editable: true, onPlacementChange, onExitArea: vi.fn() };
     const view = render(<GardenPlanOverview {...props} />);
     expect(screen.getByText("Preparing garden view…")).toBeVisible();
     expect(screen.queryByLabelText(/Garden Plan, /)).not.toBeInTheDocument();
     size.width = 358; size.height = 320; view.rerender(<GardenPlanOverview {...props} />);
     expect(screen.getByLabelText(/Garden Plan, /)).toHaveAttribute("width", "358");
-    await user.click(screen.getByRole("button", { name: "Full garden" }));
-    await user.click(screen.getByRole("button", { name: "Focus beds" }));
+    view.rerender(<GardenPlanOverview {...props} selectedAreaId="bed" />);
+    view.rerender(<GardenPlanOverview {...props} />);
     expect(onPlacementChange).not.toHaveBeenCalled();
     expect(area).toEqual(bed());
   });
@@ -135,5 +135,75 @@ describe("responsive canvas interactions", () => {
     expect(onChange).not.toHaveBeenCalled();
     await user.click(screen.getByRole("button", { name: "Add" }));
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ allocations: [expect.objectContaining({ x: 2, y: 1, diameterMeters: 0.4 })] }));
+  });
+});
+
+describe("zooming into one planting area", () => {
+  const near = (): GrowingArea => ({ id: "near", name: "Near bed", kind: "in-ground", planPlacement: { x: 9, y: 3, rotationDegrees: 0 }, layout: createRectangularLayout(2, 1) });
+  const groupPosition = (name: string) => {
+    const node = screen.getByLabelText(`Open ${name} on Garden Plan`);
+    return { x: Number(node.getAttribute("x")), y: Number(node.getAttribute("y")) };
+  };
+  const reducedMotion = (matches: boolean) => vi.stubGlobal("matchMedia", (media: string) => ({ media, matches: matches && media.includes("reduced-motion"), addEventListener: vi.fn(), removeEventListener: vi.fn() }));
+
+  it("frames a rotated area inside the canvas and dims the other areas", () => {
+    const area = { ...bed(), planPlacement: { x: 2, y: 3, rotationDegrees: 30 } };
+    render(<GardenPlanOverview plan={plan} growingAreas={[area, near()]} editable selectedAreaId="bed" onExitArea={vi.fn()} />);
+    const transform = fitCanvas(areaFocusViewport(area)!, size.width, size.height)!;
+    const whole = fitCanvas(gardenPlanViewport(plan, [area, near()], "growing-areas"), size.width, size.height)!;
+    expect(transform.scale).toBeGreaterThan(whole.scale);
+    expect(groupPosition("North bed")).toEqual(metresToCanvas(area.planPlacement, transform));
+    for (const corner of areaPlanCorners(area)) {
+      const pixel = metresToCanvas(corner, transform);
+      expect(pixel.x).toBeGreaterThanOrEqual(transform.padding);
+      expect(pixel.x).toBeLessThanOrEqual(size.width - transform.padding);
+      expect(pixel.y).toBeGreaterThanOrEqual(transform.padding);
+      expect(pixel.y).toBeLessThanOrEqual(size.height - transform.padding);
+    }
+    expect(screen.getByLabelText("Open North bed on Garden Plan")).toHaveAttribute("opacity", "1");
+    expect(screen.getByLabelText("Open Near bed on Garden Plan")).toHaveAttribute("opacity", "0.35");
+    expect(screen.getByTestId("area-label-bed")).toBeInTheDocument();
+    expect(screen.queryByTestId("area-label-near")).not.toBeInTheDocument();
+    expect(screen.getByText("Viewing North bed. Escape returns to the whole garden.")).toBeInTheDocument();
+  });
+
+  it("returns with Whole garden or Escape, but leaves Escape to text fields and drags", async () => {
+    const user = userEvent.setup(); const onExitArea = vi.fn();
+    render(<><input aria-label="Notes" /><GardenPlanOverview plan={plan} growingAreas={[bed(), near()]} editable selectedAreaId="bed" onExitArea={onExitArea} onPlacementChange={vi.fn()} /></>);
+    await user.click(screen.getByRole("button", { name: "Whole garden" }));
+    expect(onExitArea).toHaveBeenCalledTimes(1);
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(onExitArea).toHaveBeenCalledTimes(2);
+    fireEvent.keyDown(screen.getByLabelText("Notes"), { key: "Escape" });
+    expect(onExitArea).toHaveBeenCalledTimes(2);
+    await user.click(screen.getByRole("button", { name: "Move planting areas" }));
+    const node = screen.getByLabelText("Open North bed on Garden Plan");
+    Object.assign(node, { position: vi.fn(), stopDrag: vi.fn() });
+    fireEvent.dragStart(node);
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(onExitArea).toHaveBeenCalledTimes(2);
+  });
+
+  it("animates between the whole garden and the area, and switches at once with reduced motion", async () => {
+    const area = bed(); const areas = [area, near()];
+    const whole = fitCanvas(gardenPlanViewport(plan, areas, "growing-areas"), size.width, size.height)!;
+    const zoomed = fitCanvas(areaFocusViewport(area)!, size.width, size.height)!;
+    reducedMotion(false);
+    const view = render(<GardenPlanOverview plan={plan} growingAreas={areas} editable onExitArea={vi.fn()} />);
+    expect(groupPosition("North bed")).toEqual(metresToCanvas(area.planPlacement, whole));
+    view.rerender(<GardenPlanOverview plan={plan} growingAreas={areas} editable selectedAreaId="bed" onExitArea={vi.fn()} />);
+    // The first frame starts from the whole-garden view rather than jumping.
+    expect(groupPosition("North bed")).toEqual(metresToCanvas(area.planPlacement, whole));
+    await vi.waitFor(() => expect(groupPosition("North bed")).toEqual(metresToCanvas(area.planPlacement, zoomed)), { timeout: 2000 });
+    reducedMotion(true);
+    view.rerender(<GardenPlanOverview plan={plan} growingAreas={areas} editable onExitArea={vi.fn()} />);
+    expect(groupPosition("North bed")).toEqual(metresToCanvas(area.planPlacement, whole));
+  });
+
+  it("keeps a selected area without a size on the whole-garden frame", () => {
+    const unsized: GrowingArea = { id: "unsized", name: "New bed", kind: "raised-bed", planPlacement: { x: 0, y: 0, rotationDegrees: 0 } };
+    render(<GardenPlanOverview plan={plan} growingAreas={[bed(), unsized]} editable selectedAreaId="unsized" onExitArea={vi.fn()} />);
+    expect(screen.queryByRole("button", { name: "Whole garden" })).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Open North bed on Garden Plan")).toHaveAttribute("opacity", "1");
   });
 });

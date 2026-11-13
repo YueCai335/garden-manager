@@ -15,7 +15,7 @@ import homeStyles from "@/components/workspace/WorkspaceHome.module.css";
 import { gardenPath, areaPath, careView, type WorkspaceRoute } from "@/lib/workspaceRoutes";
 
 import { PlantingAreaInspector } from "@/components/PlantingAreaInspector";
-import { applyAreaProperties, areaPropertyErrors, areaDraftKey, emptyPlantEditorDraft, plantDraftIsDirty } from "@/lib/areaEditorDrafts";
+import { applyAreaProperties, areaPropertyErrors, areaDraftKey, emptyPlantEditorDraft, plantDraftIsDirty, sameAreaProperties } from "@/lib/areaEditorDrafts";
 import { CareWorkspace, type CareRecords } from "@/components/CareWorkspace";
 import { areaDeletionMessage, gardenDeletionMessage } from "@/lib/deletionImpact";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -282,6 +282,18 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
   const openAreaInspector = (areaId: string) => {
     setIsAreaFormOpen(false);
     setEditingLayoutId(areaId);
+  };
+  // "Whole garden" and Escape close the open area the same way its Close button does.
+  const closeAreaInspector = () => {
+    if (!garden || !editingArea) return;
+    const key = areaDraftKey(garden.id, editingArea.id);
+    const draft = areaDrafts[key];
+    const dirty = Boolean(draft && !sameAreaProperties(draft.values, draft.baseline)) || plantDraftIsDirty(plantDrafts[key]);
+    confirmDiscard(dirty, () => {
+      if (dirty) discardDrafts(key);
+      setPreviewAreaId(editingArea.id);
+      setEditingLayoutId(undefined);
+    });
   };
 
   const saveArea = (event: FormEvent<HTMLFormElement>) => {
@@ -625,7 +637,7 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
                   selectedAreaId={editingArea?.id ?? (mode === "mobile" ? previewAreaId : undefined)}
                   areaListInSidebar={mode === "wide" && !isAreaFormOpen && !editingArea}
                   showAreaPreview={mode === "mobile"}
-                  onDismissPreview={() => setPreviewAreaId(undefined)}
+                  onExitArea={mode === "mobile" ? () => setPreviewAreaId(undefined) : closeAreaInspector}
                   onAddArea={openAreaForm}
                   onEditLayout={mode === "mobile" ? setPreviewAreaId : openAreaInspector}
                   onGardenNameChange={(name) => updateGarden((current) => ({ ...current, name }))}

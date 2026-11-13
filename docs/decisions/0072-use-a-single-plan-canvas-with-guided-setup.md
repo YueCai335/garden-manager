@@ -1,6 +1,6 @@
 # ADR-0072: Use a Single Plan Canvas with Guided Setup
 
-- Status: Accepted for product direction; implementation pending (phases G1–G7)
+- Status: Accepted; G1 (presentation) and G2 (zoom into an area) implemented, G3–G7 pending
 - Date: 2026-11-12
 - Supersedes in part, as each phase lands: [ADR-0048](0048-place-garden-properties-above-the-plan-canvas.md), [ADR-0053](0053-keep-plant-layout-in-the-planting-area-inspector.md), [ADR-0054](0054-use-fixed-canvas-garden-plan-views.md), [ADR-0066](0066-adapt-area-editing-to-available-space.md), and [ADR-0070](0070-preview-and-position-planting-areas-on-the-plan.md)
 - Amends for Garden Plan edits, in phase G5: [ADR-0052](0052-show-save-actions-only-for-pending-edits.md) and [ADR-0062](0062-preserve-planting-area-editor-drafts.md)

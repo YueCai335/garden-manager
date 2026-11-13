@@ -184,20 +184,7 @@ export function gardenPlanViewport(
     return { x: 0, y: 0, ...plan };
   }
 
-  const points = growingAreas.flatMap((area) => {
-    if (!area.layout) return [];
-    const angle = (area.planPlacement.rotationDegrees * Math.PI) / 180;
-    return area.layout.boundary.map((point) => ({
-      x:
-        area.planPlacement.x +
-        point.x * Math.cos(angle) -
-        point.y * Math.sin(angle),
-      y:
-        area.planPlacement.y +
-        point.x * Math.sin(angle) +
-        point.y * Math.cos(angle),
-    }));
-  });
+  const points = growingAreas.flatMap(areaPlanCorners);
   if (!points.length) return { x: 0, y: 0, ...plan };
 
   const left = Math.min(...points.map((point) => point.x));
@@ -223,6 +210,39 @@ export function gardenPlanViewport(
     y: frameTop,
     widthMeters: frameRight - frameLeft,
     depthMeters: frameBottom - frameTop,
+  };
+}
+
+/** An area's boundary points in garden-plan metres, after its placement and rotation. */
+export function areaPlanCorners(area: GrowingArea): LayoutPoint[] {
+  if (!area.layout) return [];
+  const angle = (area.planPlacement.rotationDegrees * Math.PI) / 180;
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+  return area.layout.boundary.map((point) => ({
+    x: area.planPlacement.x + point.x * cos - point.y * sin,
+    y: area.planPlacement.y + point.x * sin + point.y * cos,
+  }));
+}
+
+/**
+ * Frames one planting area: the bounding box of its rotated corners plus a
+ * margin on every side. The frame may extend past the garden edge so an area
+ * near the boundary stays centred with room for its name above it.
+ */
+export function areaFocusViewport(area: GrowingArea, paddingRatio = 0.2): GardenPlanViewport | undefined {
+  const points = areaPlanCorners(area);
+  if (!points.length) return undefined;
+  const left = Math.min(...points.map((point) => point.x));
+  const right = Math.max(...points.map((point) => point.x));
+  const top = Math.min(...points.map((point) => point.y));
+  const bottom = Math.max(...points.map((point) => point.y));
+  const padding = Math.max(0.3, Math.max(right - left, bottom - top) * paddingRatio);
+  return {
+    x: left - padding,
+    y: top - padding,
+    widthMeters: right - left + padding * 2,
+    depthMeters: bottom - top + padding * 2,
   };
 }
 
