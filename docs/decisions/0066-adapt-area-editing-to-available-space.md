@@ -1,6 +1,6 @@
 # ADR-0066: Adapt Area Editing to Available Space
 
-- Status: Accepted
+- Status: Superseded in part by [ADR-0072](0072-use-a-single-plan-canvas-with-guided-setup.md) (phase G3). Below the wide layout, opening an area zooms the plan and shows planting controls below it; the modal and full-page editors hold the area properties and open from "Edit area" (`&edit=area`). The panel modes, draft handling, and focus rules otherwise remain.
 - Date: 2026-11-11
 - Refines: ADR-0048, ADR-0053, ADR-0062
 - Related: ADR-0063, ADR-0065

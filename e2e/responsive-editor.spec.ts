@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { fitCanvas, metresToCanvas } from "../src/lib/canvasViewport";
 import { createDemoGardenWorkspace, gardenPlanViewport } from "../src/lib/gardenWorkspace";
+import { openAreaProperties } from "./areaHelpers";
 
 for (const width of [390, 900, 1280, 1440]) {
   test(`garden details and area editing preserve context at ${width}px`, async ({ page }, testInfo) => {
@@ -26,12 +27,12 @@ for (const width of [390, 900, 1280, 1440]) {
       const [area] = garden.growingAreas;
       const transform = fitCanvas(gardenPlanViewport(garden.plan, garden.growingAreas, "growing-areas"), box.width, box.height)!;
       await canvas.click({ position: metresToCanvas({ x: area.planPlacement.x + 0.2, y: area.planPlacement.y + 0.2 }, transform) });
-      await expect(page).toHaveURL(/\/plan$/);
-      const selected = page.getByRole("region", { name: "Selected planting area" });
-      await expect(selected).toContainText("Sample raised bed");
+      await expect(page).toHaveURL(/\?area=demo-raised-bed$/);
+      const selected = page.getByRole("region", { name: "Sample raised bed" });
+      await expect(selected).toContainText("Raised bed · 3 × 1.2 m");
       await selected.getByRole("link", { name: "Edit area" }).click();
     } else {
-      await page.getByRole("link", { name: "Edit Sample raised bed" }).click();
+      await openAreaProperties(page, "Sample raised bed");
     }
     const panel = page.locator('dialog[aria-labelledby="edit-planting-area-heading"]');
     await expect(panel).toBeVisible();
@@ -45,7 +46,7 @@ for (const width of [390, 900, 1280, 1440]) {
       const close = panel.getByRole("button", { name: "Close", exact: true });
       await close.focus();
       await page.keyboard.press("Shift+Tab");
-      await expect(panel.getByRole("button", { name: "Edit Tomato", exact: true })).toBeFocused();
+      await expect(panel.getByRole("button", { name: "Delete area", exact: true })).toBeFocused();
       await page.keyboard.press("Tab");
       await expect(close).toBeFocused();
       for (let index = 0; index < 20; index++) {
@@ -73,11 +74,19 @@ for (const width of [390, 900, 1280, 1440]) {
     await expect(page.getByLabel("Area X position (m)")).toHaveValue("2.4");
     await panel.getByRole("button", { name: "Save", exact: true }).click();
     await back.click();
-    await expect(page.getByRole("link", { name: "Edit Sample raised bed" })).toBeFocused();
-    await expect(page).toHaveURL(/\/plan$/);
+    if (width === 390) {
+      // Now wide: closing the side panel returns to the whole garden.
+      await expect(page.getByRole("link", { name: "Edit Sample raised bed" })).toBeFocused();
+      await expect(page).toHaveURL(/\/plan$/);
+    } else {
+      // Now a phone: closing the properties page returns to the zoomed area.
+      await expect(page.getByRole("link", { name: "Edit area", exact: true })).toBeFocused();
+      await expect(page).toHaveURL(/\?area=demo-raised-bed$/);
+      await page.getByRole("button", { name: "Whole garden" }).click();
+    }
     await expect(page.getByText("All changes saved", { exact: true })).toBeVisible();
     await page.reload();
-    await page.getByRole("link", { name: "Edit Sample raised bed" }).click();
+    await openAreaProperties(page, "Sample raised bed");
     await expect(page.getByLabel("Area X position (m)")).toHaveValue("2.4");
     await expect(page.getByLabel("Area Y position (m)")).toHaveValue("1.3");
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
@@ -99,15 +108,15 @@ test.describe("touch editing", () => {
     const transform = fitCanvas(gardenPlanViewport(garden.plan, garden.growingAreas, "growing-areas"), box.width, box.height)!;
     const position = metresToCanvas({ x: area.planPlacement.x + 0.2, y: area.planPlacement.y + 0.2 }, transform);
     await canvas.tap({ position });
-    await expect(page).toHaveURL(/\/plan$/);
-    const selected = page.getByRole("region", { name: "Selected planting area" });
-    await expect(selected).toContainText(area.name);
+    await expect(page).toHaveURL(/\?area=demo-raised-bed$/);
+    const selected = page.getByRole("region", { name: area.name });
+    await expect(selected.getByRole("button", { name: "Edit Tomato" })).toBeVisible();
     await selected.getByRole("link", { name: "Edit area" }).tap();
     const panel = page.getByRole("region", { name: "Edit planting area" });
     await expect(panel).toHaveAttribute("data-mode", "mobile");
     await expect(panel.getByLabel("Planting-area name")).toHaveValue(area.name);
     await panel.getByRole("button", { name: "Back to plan", exact: true }).tap();
-    await expect(page).toHaveURL(/\/plan$/);
-    await expect(selected).toContainText(area.name);
+    await expect(page).toHaveURL(/\?area=demo-raised-bed$/);
+    await expect(selected).toBeVisible();
   });
 });

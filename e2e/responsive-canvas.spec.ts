@@ -32,21 +32,25 @@ for (const width of [390, 900, 1440]) {
     await page.getByRole("button", { name: "Save", exact: true }).click();
     await expectFittedCanvas(plan);
     await page.getByRole("link", { name: "Edit Sample raised bed" }).click();
-    const move = page.getByRole("button", { name: "Move plants", exact: true });
-    const plants = move.locator("..").locator("..").locator(".konvajs-content");
-    await expectFittedCanvas(plants);
-    await expect(move).toHaveAttribute("aria-pressed", "false");
-    await expect(plants.locator("..")).toHaveCSS("touch-action", "pan-y");
-    await move.click();
-    await expect(plants.locator("..")).toHaveCSS("touch-action", "none");
-    await plants.scrollIntoViewIfNeeded();
-    const box = (await plants.boundingBox())!;
-    // Demo bed is 3 × 1.2m; the tomato begins at (0.6, 0.6).
-    const scale = Math.min((box.width - 68) / 3, (box.height - 68) / 1.2);
-    await page.mouse.move(box.x + 34 + 0.6 * scale, box.y + 34 + 0.6 * scale);
+    // Plants move on the same canvas once it has zoomed into the bed.
+    const surface = page.getByRole("button", { name: "Move planting areas" }).locator("..").locator("..").locator("[data-move]");
+    await expect(surface).toHaveAttribute("data-focused-area", "demo-raised-bed");
+    await expect(surface).toHaveCSS("touch-action", "pan-y");
+    await expect(surface).toHaveAttribute("data-zooming", "false");
+    await plan.scrollIntoViewIfNeeded();
+    const box = (await plan.boundingBox())!;
+    const [demo] = createDemoGardenWorkspace().gardens;
+    const bed = demo.growingAreas[0];
+    const zoomed = fitCanvas(areaFocusViewport(bed)!, box.width, box.height)!;
+    // Demo bed is 3 × 1.2 m at (0.8, 1); the tomato begins at (0.6, 0.6) inside it.
+    const from = metresToCanvas({ x: bed.planPlacement.x + 0.6, y: bed.planPlacement.y + 0.6 }, zoomed);
+    const to = metresToCanvas({ x: bed.planPlacement.x + 1.1, y: bed.planPlacement.y + 0.7 }, zoomed);
+    await page.mouse.move(box.x + from.x, box.y + from.y);
     await page.mouse.down();
-    await page.mouse.move(box.x + 34 + 1.1 * scale, box.y + 34 + 0.7 * scale, { steps: 10 });
+    await page.mouse.move(box.x + to.x, box.y + to.y, { steps: 10 });
+    await expect(page.getByText("Tomato · 1.1, 0.7 m", { exact: true })).toBeVisible();
     await page.mouse.up();
+    const plants = plan;
     const workspaceId = await page.evaluate(() => localStorage.getItem("sun-aware-garden-planner:server-workspace-id:v1"));
     await expect.poll(async () => {
       const response = await page.request.get(`http://127.0.0.1:8100/workspaces/${workspaceId}`);
@@ -60,6 +64,7 @@ for (const width of [390, 900, 1440]) {
     await page.setViewportSize({ width: width === 390 ? 1440 : 390, height: 900 });
     await expectFittedCanvas(plants);
     await page.reload();
+    await expect(surface).toHaveAttribute("data-focused-area", "demo-raised-bed");
     await page.getByRole("button", { name: "Edit Tomato", exact: true }).click();
     await expect(page.getByLabel("X position (m)", { exact: true })).toHaveValue("1.1");
     await expect(page.getByLabel("Y position (m)", { exact: true })).toHaveValue("0.7");
@@ -137,12 +142,12 @@ for (const width of [390, 1440]) {
     await expect(surface).toHaveAttribute("data-focused-area", area.id);
     const back = page.getByRole("button", { name: "Whole garden" });
     await expect(back).toBeVisible();
-    if (width === 390) await expect(page.getByRole("region", { name: "Selected planting area" })).toContainText(area.name);
-    else await expect(page).toHaveURL(new RegExp(`area=${area.id}$`));
+    await expect(page).toHaveURL(new RegExp(`area=${area.id}$`));
+    if (width === 390) await expect(page.getByRole("region", { name: area.name })).toContainText("Raised bed · 3 × 1.2 m");
     // After the 0.4 s zoom, the same bed point is drawn where the area frame puts it.
     const zoomed = fitCanvas(areaFocusViewport(area)!, box.width, box.height)!;
     expect(zoomed.scale).toBeGreaterThan(whole.scale * 1.5);
-    await page.waitForTimeout(600);
+    await expect(surface).toHaveAttribute("data-zooming", "false");
     await page.screenshot({ path: testInfo.outputPath(`area-zoom-${width}.png`) });
     await back.click();
     await expect(surface).not.toHaveAttribute("data-focused-area", /.+/);

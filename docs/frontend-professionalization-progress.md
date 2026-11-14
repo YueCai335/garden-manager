@@ -808,3 +808,65 @@ during a drag, the animated and reduced-motion transitions, and the unsaved-
 edit confirmation. Three new Chromium journeys passed: zoom and return at
 1440px and 390px, and a 30° area that stays zoomed after reload and returns
 with Escape.
+
+## G3: Place and move plants on the Garden Plan canvas
+
+Phase G3 of the single-canvas plan ([ADR-0072](decisions/0072-use-a-single-plan-canvas-with-guided-setup.md)).
+Plants are now edited on the main Garden Plan canvas. The planting-area panel
+no longer has its own canvas.
+
+- With an area zoomed, choosing a plant in "Add plant" shows a spacing ring
+  that follows the pointer. A click inside the area places one plant; clicks
+  keep placing until Escape or Done. A click outside the area explains where
+  to click. Placement snaps to the 0.1 m grid and moves the plant inward so its
+  spacing circle stays inside the area. Rotated areas convert the pointer
+  through `src/lib/planGeometry.ts`.
+- Clicking a plant opens its properties; dragging moves it. Plants in other
+  areas stay fixed, and clicking one zooms to its area. Escape cancels a plant
+  drag first, then stops placing, and only then leaves the zoomed area.
+- "Fill area" places the chosen plant on a grid at its spacing, centred in the
+  area and skipping spots next to existing plants, up to 80 plants per Fill.
+  "Undo fill" removes that batch and archives any planting record the batch
+  alone used.
+- Plants closer than 85 % of their average spacing, and plants whose spacing
+  circle reaches past the area's edge, get a dashed orange outline and are
+  listed under "Spacing warnings". Warnings never block saving.
+- The panel lists the area's plant groups (one per plant type and variety),
+  which care records and tasks use.
+- Typing a known plant fills a suggested spacing, with its source: University
+  of Missouri Extension G6201, Table 1, cross-checked against University of
+  Maine Cooperative Extension's planting chart. A spacing the user typed is
+  kept. Basil and the ornamentals have no suggestion because neither table
+  lists them.
+
+Where the controls sit (owner decision): wide layouts keep properties and
+planting controls together in the side column. Narrower layouts show the
+planting controls below the zoomed canvas and open the properties from "Edit
+area" (`&edit=area`) as the existing modal or full page. `?area=` now zooms the
+plan at every width, including phones, and an unsaved properties draft keeps
+its editor open after a resize or navigation.
+
+Two bugs surfaced and were fixed while testing in Chromium. Konva drag events
+bubble, so dragging a plant also started an area move; the area group now
+ignores drags that begin on its children. The drag readout lived in the
+toolbar, and its shorter text shrank the toolbar mid-drag, which moved the
+canvas about 30 px under the pointer; the readout now floats over the canvas.
+The canvas exposes `data-zooming` while the 0.4 s zoom runs so browser tests
+wait for the final frame.
+
+All 342 frontend tests, lint, type checking, the isolated production build,
+and `git diff --check` passed. New unit tests cover coordinate round trips at
+0°, 30°, 90°, 180°, and −45°, crowding and edge rules, placement snapping,
+Fill (grid, existing plants, the 80-plant limit, a full area), plant groups,
+and sourced spacing. Component tests cover placing in a rotated area, clicks
+outside the area, the Escape order, selecting and dragging only the zoomed
+area's plants, warnings, Fill and Undo fill, Done, and the phone and overlay
+panels. A new Chromium journey places, fills, and undoes plants at 1440px and
+390px and checks the saved workspace; the canvas, editor, draft, and
+confirmation journeys were updated for the new layout.
+
+Known limits: the plant panel rebuilds when the editor crosses the 1080px
+layout boundary, which drops a pending "Undo fill" button (placed plants and
+plant drafts stay). Choosing a plant in the add form still shows "Unsaved
+changes" although placed plants save at once; G5 removes Save-based wording
+from Garden Plan.

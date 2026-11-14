@@ -1,5 +1,5 @@
 .frame { min-width: 0; width: 100%; overflow: hidden; border: 1px solid var(--color-line); border-radius: var(--radius-control); background: var(--color-surface); }
-.surface { width: 100%; min-width: 0; height: min(480px, 65dvh); overflow: hidden; touch-action: pan-y; }
+.surface { position: relative; width: 100%; min-width: 0; height: min(480px, 65dvh); overflow: hidden; touch-action: pan-y; }
 .surface[data-move="true"] { cursor: grab; }
 .surface[data-dragging="true"] { cursor: grabbing; }
 .thumbnail, .thumbnail > div, .compact { width: 100%; height: 100%; }
@@ -12,3 +12,6 @@
 .plants button[aria-pressed="true"] { border: 2px solid var(--color-brand); background: var(--color-soft); }
 @media (max-width: 1023px) { .surface:not(.compact) { height: min(420px, 65dvh); } }
 @media (max-width: 767px) { .surface:not(.compact) { height: min(320px, 65dvh); } }
+.surface[data-placing="true"] { cursor: crosshair; }
+/* Live drag coordinates, drawn over the canvas so the layout never shifts mid-drag. */
+.readout { position: absolute; top: 8px; right: 8px; z-index: 1; margin: 0; padding: 4px 8px; border: 1px solid var(--color-line); border-radius: var(--radius-control); background: var(--color-surface); font-size: 14px; pointer-events: none; }

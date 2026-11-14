@@ -35,6 +35,8 @@ export const planColors = {
   label: "#183a2a",
   mutedLabel: "#59665e",
   selection: "#2f6846",
+  /** Crowded plants and plants that reach past their area's edge. */
+  warning: "#b45309",
 } as const;
 
 export function areaAppearance(kind: GrowingAreaKind, compact = false): AreaAppearance {

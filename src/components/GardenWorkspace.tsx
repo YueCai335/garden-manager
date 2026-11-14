@@ -12,14 +12,14 @@ import { useWorkspace, useWorkspaceDraft, useUnsavedDraft } from "@/components/w
 import { WorkspaceHome, WorkspaceHomeLoading } from "@/components/workspace/WorkspaceHome";
 import { ServerWorkspaceUnavailable } from "@/components/workspace/ServerWorkspaceUnavailable";
 import homeStyles from "@/components/workspace/WorkspaceHome.module.css";
-import { gardenPath, areaPath, careView, type WorkspaceRoute } from "@/lib/workspaceRoutes";
+import { gardenPath, areaPath, areaEditPath, careView, type WorkspaceRoute } from "@/lib/workspaceRoutes";
 
 import { PlantingAreaInspector } from "@/components/PlantingAreaInspector";
-import { applyAreaProperties, areaPropertyErrors, areaDraftKey, emptyPlantEditorDraft, plantDraftIsDirty, sameAreaProperties } from "@/lib/areaEditorDrafts";
+import { applyAreaProperties, areaPropertyErrors, areaDraftKey, createAllocationId, emptyPlantEditorDraft, newPlantFromDraft, openPlantDraft, plantDraftIsDirty, sameAreaProperties, type PlantEditorDraft } from "@/lib/areaEditorDrafts";
 import { CareWorkspace, type CareRecords } from "@/components/CareWorkspace";
 import { areaDeletionMessage, gardenDeletionMessage } from "@/lib/deletionImpact";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { GardenAreaList, GardenPlanOverview } from "@/components/GardenPlanOverview";
+import { GardenAreaList, GardenPlanOverview, type CanvasPlanting } from "@/components/GardenPlanOverview";
 import { GrowingAreaLayoutEditor } from "@/components/GrowingAreaLayoutEditor";
 import { SeasonPlanner } from "@/components/SeasonPlanner";
 import { WorkspaceGardenNote } from "@/components/notes/WorkspaceGardenNote";
@@ -33,6 +33,7 @@ import {
   createGardenWorkspace,
   createId,
   defaultPlanPlacement,
+  defaultPlantColor,
   growingAreaKindLabels,
   growingAreaKinds,
   linkCurrentLayoutPlants,
@@ -91,8 +92,10 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
     if (typeof window !== "undefined" && `${window.location.pathname}${window.location.search}` === href) return;
     if (replace) router.replace(href); else router.push(href);
   };
+  // ?area= zooms the plan into that area at every width; &edit=area opens its
+  // properties editor where the editor does not sit beside the plan.
   const editingLayoutId = route.module === "plan" ? search.get("area") ?? undefined : undefined;
-  const [previewAreaId, setPreviewAreaId] = useWorkspaceDraft<string | undefined>(`plan:area-preview:${route.gardenId ?? ""}`, undefined);
+  const editingAreaProperties = route.module === "plan" && search.get("edit") === "area";
   const setEditingLayoutId = (id?: string) => {
     if (route.gardenId) navigate(id ? areaPath(route.gardenId, id) : gardenPath(route.gardenId));
   };
@@ -291,7 +294,6 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
     const dirty = Boolean(draft && !sameAreaProperties(draft.values, draft.baseline)) || plantDraftIsDirty(plantDrafts[key]);
     confirmDiscard(dirty, () => {
       if (dirty) discardDrafts(key);
-      setPreviewAreaId(editingArea.id);
       setEditingLayoutId(undefined);
     });
   };
@@ -427,6 +429,62 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
       }),
     );
   };
+
+  // Canvas edits read the area's latest layout, so quick successive clicks never drop a plant.
+  const updateAreaLayoutWith = (areaId: string, update: (layout: GrowingAreaLayout) => GrowingAreaLayout) => {
+    updateGarden((current) =>
+      linkCurrentLayoutPlants({
+        ...current,
+        growingAreas: current.growingAreas.map((area) =>
+          area.id === areaId && area.layout ? { ...area, layout: update(area.layout) } : area,
+        ),
+      }),
+    );
+  };
+  const updatePlantDraft = (key: string, update: (draft: PlantEditorDraft) => PlantEditorDraft) => setPlantDrafts((current) => {
+    const nextDraft = update(current[key] ?? emptyPlantEditorDraft());
+    const next = { ...current };
+    if (!nextDraft.selectedId && !nextDraft.isAddFormOpen && !nextDraft.isEditOpen && !plantDraftIsDirty(nextDraft)) delete next[key];
+    else next[key] = nextDraft;
+    return next;
+  });
+  const plantDraftKey = garden && editingArea ? areaDraftKey(garden.id, editingArea.id) : undefined;
+  const plantDraft = plantDraftKey ? plantDrafts[plantDraftKey] ?? emptyPlantEditorDraft() : undefined;
+  const placingPlant = newPlantFromDraft(plantDraft);
+  // The zoomed area's plants are edited directly on the Garden Plan canvas (ADR-0072, phase G3).
+  const canvasPlanting: CanvasPlanting | undefined = editingArea?.layout && plantDraftKey && plantDraft ? {
+    areaId: editingArea.id,
+    selectedPlantId: plantDraft.selectedId,
+    placing: placingPlant && {
+      label: placingPlant.label,
+      diameterMeters: placingPlant.diameterMeters,
+      color: placingPlant.color ?? defaultPlantColor(placingPlant.plantType ?? placingPlant.label, placingPlant.variety),
+    },
+    onSelectPlant: (plantId) => {
+      const plant = editingArea.layout?.allocations.find((allocation) => allocation.id === plantId);
+      if (!plant) return;
+      if (plantDraft.selectedId === plantId && plantDraft.editingAllocation) {
+        updatePlantDraft(plantDraftKey, (draft) => ({ ...draft, isEditOpen: true }));
+        return;
+      }
+      confirmDiscard(plantDraftIsDirty(plantDraft), () => updatePlantDraft(plantDraftKey, () => openPlantDraft(plant)));
+    },
+    onMovePlant: (plantId, point) => {
+      updateAreaLayoutWith(editingArea.id, (layout) => ({
+        ...layout,
+        allocations: layout.allocations.map((allocation) => allocation.id === plantId ? { ...allocation, ...point } : allocation),
+      }));
+      if (!plantDraft.editingAllocation) updatePlantDraft(plantDraftKey, (draft) => ({ ...draft, selectedId: plantId }));
+    },
+    onPlacePlant: (point) => {
+      if (!placingPlant) return;
+      updateAreaLayoutWith(editingArea.id, (layout) => ({
+        ...layout,
+        allocations: [...layout.allocations, { ...placingPlant, id: createAllocationId(), ...point }],
+      }));
+    },
+    onStopPlacing: () => updatePlantDraft(plantDraftKey, () => emptyPlantEditorDraft()),
+  } : undefined;
 
   const archivePlantingRecord = (plantingRecordId: string) => {
     updateGarden((current) => archivePlanting(current, plantingRecordId));
@@ -625,21 +683,56 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
           <section className="operations-content management-content">
             <>
               {editingLayoutId && !editingArea && <p role="alert">Planting area not found in this garden. <Link href={gardenPath(garden.id)}>Back to plan</Link></p>}
-              <EditorWorkbench>{(mode) => <>
-                <div className={editorStyles.plan} hidden={mode === "mobile" && (isAreaFormOpen || Boolean(editingArea))}>
+              <EditorWorkbench>{(mode) => {
+                // An unsaved properties draft keeps its editor open when the layout narrows.
+                const areaPropertiesDraft = editingArea ? areaDrafts[areaDraftKey(garden.id, editingArea.id)] : undefined;
+                const hasAreaPropertiesDraft = Boolean(areaPropertiesDraft && !sameAreaProperties(areaPropertiesDraft.values, areaPropertiesDraft.baseline));
+                const showInspector = Boolean(editingArea) && (mode === "wide" || editingAreaProperties || hasAreaPropertiesDraft);
+                const plantEditor = editingArea && plantDraftKey ? (
+                  <GrowingAreaLayoutEditor
+                    area={editingArea}
+                    inInspector
+                    draft={plantDraft}
+                    onDraftChange={(update) => updatePlantDraft(plantDraftKey, update)}
+                    onArchivePlantingRecord={archivePlantingRecord}
+                    onChange={(layout) => updateAreaLayout(editingArea.id, layout)}
+                    onSaveArea={(name, kind, rotationDegrees, layout) =>
+                      saveAreaEditor(editingArea.id, name, kind, rotationDegrees, layout)
+                    }
+                    showAreaProperties={false}
+                  />
+                ) : null;
+                return <>
+                {/* Record a draft-opened editor in the URL so it stays open after Save. */}
+                {mode !== "wide" && editingArea && hasAreaPropertiesDraft && !editingAreaProperties && (
+                  <ReplaceRoute href={areaEditPath(garden.id, editingArea.id)} onReplace={(href) => navigate(href, true)} />
+                )}
+                <div className={editorStyles.plan} hidden={mode === "mobile" && (isAreaFormOpen || showInspector)}>
                 <GardenPlanOverview
                   editable
                   gardenId={garden.id}
                   gardenName={garden.name}
                   growingAreas={garden.growingAreas}
                   headingRef={gardenPlanHeadingRef}
-                  isAreaInspectorOpen={isAreaFormOpen || Boolean(editingArea)}
-                  selectedAreaId={editingArea?.id ?? (mode === "mobile" ? previewAreaId : undefined)}
+                  isAreaInspectorOpen={isAreaFormOpen || showInspector}
+                  selectedAreaId={editingArea?.id}
                   areaListInSidebar={mode === "wide" && !isAreaFormOpen && !editingArea}
-                  showAreaPreview={mode === "mobile"}
-                  onExitArea={mode === "mobile" ? () => setPreviewAreaId(undefined) : closeAreaInspector}
+                  areaPanel={mode !== "wide" && editingArea ? (
+                    <section className={editorStyles.areaPanel} aria-labelledby="area-panel-heading">
+                      <header>
+                        <div>
+                          <h3 id="area-panel-heading">{editingArea.name}</h3>
+                          <p>{growingAreaKindLabels[editingArea.kind]}{editingArea.layout ? ` · ${editingArea.layout.widthMeters} × ${editingArea.layout.depthMeters} m` : ""}</p>
+                        </div>
+                        <Link id="edit-area-properties" className="secondary-button" href={areaEditPath(garden.id, editingArea.id)}>Edit area</Link>
+                      </header>
+                      {plantEditor}
+                    </section>
+                  ) : undefined}
+                  planting={canvasPlanting}
                   onAddArea={openAreaForm}
-                  onEditLayout={mode === "mobile" ? setPreviewAreaId : openAreaInspector}
+                  onEditLayout={openAreaInspector}
+                  onExitArea={closeAreaInspector}
                   onGardenNameChange={(name) => updateGarden((current) => ({ ...current, name }))}
                   onPlacementChange={updateAreaPlacement}
                   onPlanChange={updatePlan}
@@ -666,43 +759,27 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
                   onSetAreaLength={setAreaLength}
                   onSetFormOpen={(open) => open ? setIsAreaFormOpen(true) : confirmDiscard(Boolean(areaName || areaKind !== "raised-bed" || areaWidth !== "2" || areaLength !== "1" || areaRotationDegrees !== "0"), discardNewArea)}
                 />
-                {editingArea ? (
+                {editingArea && showInspector ? (
                   <PlantingAreaInspector
                     key={areaDraftKey(garden.id, editingArea.id)}
                     area={editingArea}
                     plan={garden.plan}
                     mode={mode}
                     gardenName={garden.name}
+                    returnFocusId={mode === "wide" ? undefined : "edit-area-properties"}
                     draft={areaDrafts[areaDraftKey(garden.id, editingArea.id)]}
                     onDraftChange={(draft) => setAreaDraft(areaDraftKey(garden.id, editingArea.id), draft)}
-                    hasPlantChanges={plantDraftIsDirty(plantDrafts[areaDraftKey(garden.id, editingArea.id)])}
+                    hasPlantChanges={mode === "wide" && plantDraftIsDirty(plantDrafts[areaDraftKey(garden.id, editingArea.id)])}
                     onDiscardPlants={() => discardDrafts(areaDraftKey(garden.id, editingArea.id))}
-                    onClose={() => { setPreviewAreaId(editingArea.id); setEditingLayoutId(undefined); }}
+                    onClose={() => mode === "wide" ? setEditingLayoutId(undefined) : navigate(areaPath(garden.id, editingArea.id))}
                     onDelete={() => deleteArea(editingArea)}
                     onSave={saveAreaEditor}
                   >
-                    <GrowingAreaLayoutEditor
-                      area={editingArea}
-                      inInspector
-                      draft={plantDrafts[areaDraftKey(garden.id, editingArea.id)] ?? emptyPlantEditorDraft()}
-                      onDraftChange={(update) => setPlantDrafts((current) => {
-                        const key = areaDraftKey(garden.id, editingArea.id);
-                        const nextDraft = update(current[key] ?? emptyPlantEditorDraft());
-                        const next = { ...current };
-                        if (!nextDraft.selectedId && !nextDraft.isAddFormOpen && !nextDraft.isEditOpen && !plantDraftIsDirty(nextDraft)) delete next[key];
-                        else next[key] = nextDraft;
-                        return next;
-                      })}
-                      onArchivePlantingRecord={archivePlantingRecord}
-                      onChange={(layout) => updateAreaLayout(editingArea.id, layout)}
-                      onSaveArea={(name, kind, rotationDegrees, layout) =>
-                        saveAreaEditor(editingArea.id, name, kind, rotationDegrees, layout)
-                      }
-                      showAreaProperties={false}
-                    />
+                    {mode === "wide" ? plantEditor : null}
                   </PlantingAreaInspector>
                 ) : null}
-              </>}</EditorWorkbench>
+              </>;
+              }}</EditorWorkbench>
               <div hidden={Boolean(editingArea) || isAreaFormOpen}>
               <GardenManagement
                 onDeleteGarden={deleteGarden}
@@ -1049,4 +1126,12 @@ function Status({ message }: { message: string }) {
       {message}
     </p>
   );
+}
+
+/** Replaces the current URL once after render; used to sync a route with state shown on screen. */
+function ReplaceRoute({ href, onReplace }: { href: string; onReplace: (href: string) => void }) {
+  const replace = useRef(onReplace);
+  useEffect(() => { replace.current = onReplace; });
+  useEffect(() => { replace.current(href); }, [href]);
+  return null;
 }

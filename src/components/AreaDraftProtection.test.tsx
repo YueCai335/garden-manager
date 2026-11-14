@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
+import { testLayout } from "@/test/layout";
 import { GardenWorkspace } from "@/test/WorkspaceHarness";
 import { GARDEN_WORKSPACE_STORAGE_KEY } from "@/lib/gardenWorkspace";
 
@@ -12,6 +13,8 @@ async function openBed() {
   await user.click(screen.getByLabelText("Open Sample raised bed on Garden Plan"));
   return user;
 }
+// These journeys use the side-column layout, where area properties and plants share one panel.
+beforeEach(() => { testLayout.width = 1280; });
 const properties = () => within(screen.getByLabelText("Planting-area name").closest("form")!);
 const saved = () => JSON.parse(window.localStorage.getItem(GARDEN_WORKSPACE_STORAGE_KEY)!);
 
@@ -57,7 +60,7 @@ describe("planting-area draft protection", () => {
 
 it("keeps a plant coordinate draft through resizing and navigation, then validates before saving", async () => {
   const user = await openBed();
-  await user.click(screen.getByLabelText("Tomato plant"));
+  await user.click(screen.getByLabelText("Tomato plant on Garden Plan"));
   fireEvent.change(screen.getByLabelText("X position (m)"), { target: { value: "1.8" } });
   fireEvent.change(screen.getByLabelText("Width (m)"), { target: { value: "1" } });
   await user.click(properties().getByRole("button", { name: "Save" }));

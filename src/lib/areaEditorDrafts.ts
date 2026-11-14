@@ -1,5 +1,5 @@
 import {
-  clampAllocationCenter, clampPlanPosition, createRectangularLayout, normalizePlanRotation, snapToGrid,
+  clampAllocationCenter, clampPlanPosition, createRectangularLayout, normalizePlanRotation, plantDisplayName, snapToGrid,
   validateLayoutDimensions, type GardenPlan, type GrowingArea, type GrowingAreaKind, type GrowingAreaLayout, type PlantAllocation,
 } from "@/lib/gardenWorkspace";
 
@@ -64,3 +64,31 @@ export function plantPositionError(draft: PlantEditorDraft, layout: GrowingAreaL
   return "";
 }
 export function areaDraftKey(gardenId: string, areaId: string) { return JSON.stringify([gardenId, areaId]); }
+
+/** The edit draft for one existing plant, as opened from the canvas or the plant list. */
+export function openPlantDraft(plant: PlantAllocation): PlantEditorDraft {
+  return {
+    ...emptyPlantEditorDraft(), selectedId: plant.id, editingAllocation: { ...plant }, baselineAllocation: { ...plant },
+    coordinates: { x: String(plant.x), y: String(plant.y), diameterMeters: String(plant.diameterMeters) }, isEditOpen: true,
+  };
+}
+
+/** The plant the add form describes, without an id or position, once its type and spacing are valid. */
+export function newPlantFromDraft(draft: PlantEditorDraft | undefined): Omit<PlantAllocation, "id" | "x" | "y"> | undefined {
+  if (!draft?.isAddFormOpen) return undefined;
+  const plantType = draft.allocationPlantType.trim();
+  const variety = draft.allocationVariety.trim();
+  const spacing = Number(draft.allocationDiameter);
+  if (!plantType || !Number.isFinite(spacing) || spacing < 0.1) return undefined;
+  return {
+    label: plantDisplayName({ plantType, variety, fallback: plantType }),
+    plantType,
+    ...(variety ? { variety } : {}),
+    ...(draft.allocationColor ? { color: draft.allocationColor } : {}),
+    diameterMeters: snapToGrid(spacing),
+  };
+}
+
+export function createAllocationId() {
+  return globalThis.crypto?.randomUUID?.() ?? `allocation-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}

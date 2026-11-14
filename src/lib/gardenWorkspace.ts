@@ -1,3 +1,4 @@
+import { areaLocalToPlan } from "@/lib/planGeometry";
 export const GARDEN_WORKSPACE_STORAGE_KEY =
   "sun-aware-garden-planner:garden-workspace:v1";
 
@@ -215,14 +216,7 @@ export function gardenPlanViewport(
 
 /** An area's boundary points in garden-plan metres, after its placement and rotation. */
 export function areaPlanCorners(area: GrowingArea): LayoutPoint[] {
-  if (!area.layout) return [];
-  const angle = (area.planPlacement.rotationDegrees * Math.PI) / 180;
-  const cos = Math.cos(angle);
-  const sin = Math.sin(angle);
-  return area.layout.boundary.map((point) => ({
-    x: area.planPlacement.x + point.x * cos - point.y * sin,
-    y: area.planPlacement.y + point.x * sin + point.y * cos,
-  }));
+  return area.layout?.boundary.map((point) => areaLocalToPlan(area, point)) ?? [];
 }
 
 /**

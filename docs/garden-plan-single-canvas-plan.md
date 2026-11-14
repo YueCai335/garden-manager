@@ -1,7 +1,7 @@
 # Garden Plan：单画布与首次引导实施计划
 
 - 日期：2026-11-12（America/Toronto）
-- 状态：方向与分阶段计划已确认（[ADR-0072](decisions/0072-use-a-single-plan-canvas-with-guided-setup.md)）；第 7 节记录确认结果。G1、G2 已完成；下一步 G3。
+- 状态：方向与分阶段计划已确认（[ADR-0072](decisions/0072-use-a-single-plan-canvas-with-guided-setup.md)）；第 7 节记录确认结果。G1、G2、G3 已完成；下一步 G4。
 - 依据：用户确认的可点原型（第 4 版）、Native Garden Planner 与 Sunplot 的对比分析、当前代码核查。
 
 ## 1. 目标
@@ -78,6 +78,8 @@ G2→G3 是核心痛点，优先做。G4 与 G2/G3 改动的文件有重叠（�
 - **测试**：取景计算的单元测试（含旋转、贴边、极小区域）；路由参数组件测试；`responsive-canvas.spec.ts` 增加放大/返回旅程。
 
 ### G3 在主画布上种植物
+
+> 实施说明（2026-11-12 确认）：中等宽度和手机上，弹窗和整页会挡住画布，所以种植控件改放在放大后的画布下方；区域属性点 "Edit area"（`&edit=area`）打开。宽屏侧栏不变。拥挤、出界、铺满等纯函数放在新文件 `src/lib/plantLayout.ts`，推荐间距在 `src/lib/plantSpacing.ts`（来源：Missouri Extension G6201）。
 
 - **范围**：新建 `src/lib/planGeometry.ts`（平面 ↔ 区域局部坐标换算，含旋转）；`GardenPlanOverview.tsx` 植物层；`GrowingAreaLayoutEditor.tsx` 去掉 `MetricLayoutCanvas`，保留植物属性表单；`gardenWorkspace.ts` 的拥挤、出界、铺满等纯函数。
 - **做**：

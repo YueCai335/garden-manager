@@ -3,20 +3,17 @@
 .plan { min-width: 0; }
 .planToolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 12px; }
 .planToolbar :global(.plan-view-controls) { margin: 0; }
-.summary, .areaPreview { border: 1px solid var(--color-line); border-radius: var(--radius-card); background: var(--color-surface); }
+.summary { border: 1px solid var(--color-line); border-radius: var(--radius-card); background: var(--color-surface); }
 .summary { padding: 16px; }
 .summary .areaList { margin: 0; }
 .areaList { min-width: 0; margin-top: 24px; }
-.areaList h3, .areaPreview h3 { margin: 0; font-size: 16px; }
+.areaList h3 { margin: 0; font-size: 16px; }
 .areaList ul { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); gap: 8px; list-style: none; padding: 0; margin: 12px 0 0; }
 .summary ul { grid-template-columns: minmax(0, 1fr); }
 .areaList a { display: grid; min-height: 44px; gap: 3px; padding: 10px 12px; border: 1px solid var(--color-line); border-radius: var(--radius-control); color: var(--color-text); text-decoration: none; overflow-wrap: anywhere; }
 .areaList a:hover, .areaList a[aria-current] { border-color: var(--color-brand); background: var(--color-soft); }
 .areaList a[aria-current] { box-shadow: inset 3px 0 var(--color-brand); }
-.areaList span, .areaPreview p { color: var(--color-muted); font-size: 14px; }
-.areaPreview { position: sticky; bottom: 0; z-index: 1; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 12px; margin-top: 12px; box-shadow: 0 -3px 12px #22312914; }
-.areaPreview > div { flex: 1 1 132px; min-width: 0; overflow-wrap: anywhere; }
-.areaPreview p { margin: 0; }
+.areaList span { color: var(--color-muted); font-size: 14px; }
 .panel { box-sizing: border-box; color: var(--color-text); background: var(--color-surface); border: 1px solid var(--color-line); border-radius: var(--radius-card); padding: 0; min-width: 0; width: 100%; max-width: 100%; margin: 0; }
 .panel[open] { display: flex; flex-direction: column; }
 .panel[data-mode="wide"] { position: sticky; top: 16px; max-height: calc(100dvh - 32px); }
@@ -40,3 +37,9 @@
 .settings { margin-top: 24px; padding: 16px; border: 1px solid var(--color-line); border-radius: var(--radius-card); }
 .settings summary { cursor: pointer; min-height: 44px; display: list-item; align-content: center; font-weight: 600; }
 .danger { border-top: 1px solid var(--color-line); padding-top: 16px; }
+/* The zoomed area's planting controls below the canvas on narrower layouts (ADR-0072, G3). */
+.areaPanel { margin-top: 12px; padding: 12px; border: 1px solid var(--color-line); border-radius: var(--radius-card); background: var(--color-surface); min-width: 0; }
+.areaPanel > header { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 8px; }
+.areaPanel > header > div { flex: 1 1 160px; min-width: 0; overflow-wrap: anywhere; }
+.areaPanel h3 { margin: 0; font-size: 16px; }
+.areaPanel > header p { margin: 0; color: var(--color-muted); font-size: 14px; }

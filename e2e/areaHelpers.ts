@@ -1,0 +1,14 @@
+import { expect, type Page } from "@playwright/test";
+
+/**
+ * Opens a planting area from the area list and shows its properties. Wide
+ * layouts show properties beside the plan; narrower layouts zoom the plan,
+ * show plants below it, and open properties from "Edit area" (ADR-0072, G3).
+ */
+export async function openAreaProperties(page: Page, areaName: string) {
+  await page.getByRole("link", { name: `Edit ${areaName}` }).click();
+  await expect(page.getByRole("button", { name: "Whole garden" })).toBeVisible();
+  const editArea = page.getByRole("link", { name: "Edit area", exact: true });
+  if (await editArea.count()) await editArea.click();
+  await expect(page.getByLabel("Planting-area name")).toBeVisible();
+}

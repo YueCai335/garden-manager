@@ -19,6 +19,7 @@ const positionSteps = [
 export function PlantingAreaInspector({
   plan, mode = "wide", gardenName,
   area,
+  returnFocusId,
   draft,
   onDraftChange,
   hasPlantChanges = false,
@@ -32,11 +33,13 @@ export function PlantingAreaInspector({
   plan: GardenPlan;
   mode?: EditorMode;
   gardenName?: string;
+  /** Where focus returns on close; defaults to the area's link in the area list. */
+  returnFocusId?: string;
   draft?: AreaPropertiesDraft;
   onDraftChange: (draft?: AreaPropertiesDraft) => void;
   hasPlantChanges?: boolean;
   onDiscardPlants: () => void;
-  children: ReactNode;
+  children?: ReactNode;
   onClose: () => void;
   onDelete: () => void;
   onSave: (
@@ -87,7 +90,7 @@ export function PlantingAreaInspector({
   };
 
   return (
-    <EditorPanel mode={mode} title="Edit planting area" context={`${gardenName ?? "Garden"} / ${area.name}`} headingId="edit-planting-area-heading" returnFocusId={`area-link-${area.id}`} onClose={() => hasChanges || hasPlantChanges ? setClosing(true) : onClose()}>
+    <EditorPanel mode={mode} title="Edit planting area" context={`${gardenName ?? "Garden"} / ${area.name}`} headingId="edit-planting-area-heading" returnFocusId={returnFocusId ?? `area-link-${area.id}`} onClose={() => hasChanges || hasPlantChanges ? setClosing(true) : onClose()}>
       <div className={styles.properties}>
       {hasChanges && <p role="status">Unsaved changes</p>}
       {changedElsewhere && <div role="alert">

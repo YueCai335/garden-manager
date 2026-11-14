@@ -2,6 +2,7 @@ import "@testing-library/jest-dom/vitest";
 import { cleanup } from "@testing-library/react";
 import { afterEach, beforeEach, vi } from "vitest";
 import { resetTestRouter } from "./router";
+import { testLayout } from "./layout";
 
 vi.mock("next/navigation", async () => {
   const { testRouter, useTestPathname, useTestSearchParams } = await import("./router");
@@ -76,10 +77,10 @@ Object.defineProperty(HTMLElement.prototype, "getBoundingClientRect", {
         bottom: 640,
         height: 640,
         left: 0,
-        right: 1000,
+        right: testLayout.width,
         toJSON: () => ({}),
         top: 0,
-        width: 1000,
+        width: testLayout.width,
         x: 0,
         y: 0
       }) as DOMRect
@@ -95,6 +96,7 @@ class ResizeObserverMock {
 Object.defineProperty(window, "ResizeObserver", { configurable: true, value: ResizeObserverMock });
 
 beforeEach(() => {
+  testLayout.width = 1000;
   resetTestRouter();
   vi.stubGlobal("matchMedia", (media: string) => ({ media, matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() }));
   // Default every test to "no network reachable" so results never depend on

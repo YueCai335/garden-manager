@@ -1,6 +1,6 @@
 # ADR-0072: Use a Single Plan Canvas with Guided Setup
 
-- Status: Accepted; G1 (presentation) and G2 (zoom into an area) implemented, G3–G7 pending
+- Status: Accepted; G1 (presentation), G2 (zoom into an area), and G3 (plants on the main canvas) implemented, G4–G7 pending
 - Date: 2026-11-12
 - Supersedes in part, as each phase lands: [ADR-0048](0048-place-garden-properties-above-the-plan-canvas.md), [ADR-0053](0053-keep-plant-layout-in-the-planting-area-inspector.md), [ADR-0054](0054-use-fixed-canvas-garden-plan-views.md), [ADR-0066](0066-adapt-area-editing-to-available-space.md), and [ADR-0070](0070-preview-and-position-planting-areas-on-the-plan.md)
 - Amends for Garden Plan edits, in phase G5: [ADR-0052](0052-show-save-actions-only-for-pending-edits.md) and [ADR-0062](0062-preserve-planting-area-editor-drafts.md)
@@ -56,6 +56,29 @@ the area's plant groups.
 Pointer positions convert to area-local coordinates through the inverse of the
 area's plan placement and rotation. The saved model keeps metres and the
 existing allocation format.
+
+### Where the controls sit at each width (phase G3, decided 2026-11-12)
+
+The canvas must stay visible while plants are placed, so the panel follows the
+available width:
+
+- Wide layouts (an editor container of at least 1080px) keep the side column
+  with the area properties and the planting controls together.
+- Narrower layouts show the planting controls directly below the zoomed canvas
+  with the area name, type, and size. "Edit area" opens the area properties in
+  the existing modal (medium widths) or full page (phones).
+- `?area=` means "zoomed into this area" at every width and survives reload.
+  `&edit=area` opens the properties editor on narrower layouts. An unsaved
+  properties draft keeps that editor open and adds `&edit=area`, so resizing
+  or navigating never hides typed values.
+
+The owner chose this over moving every width to a side column, which would
+narrow the canvas at medium widths and remove the modal form entirely.
+
+Suggested plant spacing comes from University of Missouri Extension G6201,
+Table 1 (in-row spacing), cross-checked against University of Maine
+Cooperative Extension's home vegetable planting chart. Plants missing from
+both tables have no suggestion.
 
 ### Direct manipulation
 

@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { openAreaProperties } from "./areaHelpers";
 
 for (const width of [390, 1440]) {
   test(`destructive confirmations contain focus and restore context at ${width}px`, async ({ page }, testInfo) => {
@@ -7,7 +8,7 @@ for (const width of [390, 1440]) {
     await page.goto("/");
     await page.getByRole("button", { name: "Load demo garden" }).click();
     await page.getByRole("link", { name: "Open Demo Garden" }).click();
-    await page.getByRole("link", { name: "Edit Sample raised bed" }).click();
+    await openAreaProperties(page, "Sample raised bed");
     await expect(page.getByText("All changes saved", { exact: true })).toBeVisible();
     let writes = 0;
     page.on("request", (request) => { if (request.method() === "PUT" && request.url().includes("/workspaces/")) writes += 1; });

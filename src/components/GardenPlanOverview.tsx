@@ -2,7 +2,8 @@
 
 import { FeedbackForm, FormField } from "@/components/forms/FormFeedback";
 
-import { FormEvent, type RefObject, useEffect, useRef, useState } from "react";
+import { FormEvent, type ReactNode, type RefObject, useEffect, useRef, useState } from "react";
+import type { KonvaEventObject } from "konva/lib/Node";
 import { useWorkspaceDraft, useUnsavedDraft } from "@/components/workspace/WorkspaceProvider";
 import Link from "next/link";
 import { areaPath } from "@/lib/workspaceRoutes";
@@ -11,6 +12,8 @@ import { useCanvasSize } from "@/hooks/useCanvasSize";
 import { useAnimatedViewport } from "@/hooks/useAnimatedViewport";
 import { canvasToMetres, canvasGridTicks, fitCanvas, metresToCanvas, type CanvasTransform } from "@/lib/canvasViewport";
 import { areaAppearance, areaLabelPosition, areaSizeText, isRectangularLayout, planColors, ridgeLine } from "@/lib/planAppearance";
+import { isInsideArea, planToAreaLocal } from "@/lib/planGeometry";
+import { plantCenterInArea, plantWarnings } from "@/lib/plantLayout";
 import { Button } from "./ui/Button";
 import { useConfirmation } from "./ConfirmDialog";
 import editorStyles from "./editor/Editor.module.css";
@@ -30,6 +33,18 @@ import {
   type PlanPlacement,
 } from "@/lib/gardenWorkspace";
 
+/** Planting on the zoomed area (ADR-0072, phase G3). Points are in the area's own metres. */
+export type CanvasPlanting = {
+  areaId: string;
+  selectedPlantId?: string;
+  /** Set while the add form describes a valid plant: clicks inside the area place it. */
+  placing?: { label: string; diameterMeters: number; color: string };
+  onSelectPlant: (plantId: string) => void;
+  onMovePlant: (plantId: string, point: LayoutPoint) => void;
+  onPlacePlant: (point: LayoutPoint) => void;
+  onStopPlacing: () => void;
+};
+
 type GardenPlanOverviewProps = {
   plan: GardenPlan;
   gardenId?: string;
@@ -41,7 +56,9 @@ type GardenPlanOverviewProps = {
   headingRef?: RefObject<HTMLHeadingElement | null>;
   isAreaInspectorOpen?: boolean;
   areaListInSidebar?: boolean;
-  showAreaPreview?: boolean;
+  /** Shown directly below the canvas while an area is zoomed, on narrower layouts. */
+  areaPanel?: ReactNode;
+  planting?: CanvasPlanting;
   onAddArea?: () => void;
   onGardenNameChange?: (name: string) => void;
   onPlanChange?: (plan: GardenPlan) => void;
@@ -62,7 +79,8 @@ export function GardenPlanOverview({
   headingRef,
   isAreaInspectorOpen = false,
   areaListInSidebar = false,
-  showAreaPreview = false,
+  areaPanel,
+  planting,
   onAddArea,
   onGardenNameChange,
   onPlanChange,
@@ -246,14 +264,12 @@ export function GardenPlanOverview({
               onMove={moveArea}
               plan={plan}
               focusedAreaId={focusedArea?.id}
+              planting={planting}
             />
           </div>
         </div>
       </div>
-      {showAreaPreview && gardenId && selectedArea && <section className={editorStyles.areaPreview} aria-label="Selected planting area">
-        <div><h3>{selectedArea.name}</h3><p>{areaSizeLabel(selectedArea)}</p></div>
-        <Link className="primary-button" href={areaPath(gardenId, selectedArea.id)}>Edit area</Link>
-      </section>}
+      {focusedArea && areaPanel}
       {editable && !areaListInSidebar && growingAreas.length > 0 && <GardenAreaList gardenId={gardenId} areas={growingAreas} selectedAreaId={selectedAreaId} onEditLayout={onEditLayout} />}
       {editable ? (
         <p aria-live="polite" className="workspace-message" role="status">
@@ -293,6 +309,7 @@ type GardenPlanCanvasProps = {
   onEditLayout?: (areaId: string) => void;
   /** The area the canvas zooms to; other areas dim. Undefined frames the whole garden. */
   focusedAreaId?: string;
+  planting?: CanvasPlanting;
 };
 
 function GardenPlanCanvas({
@@ -304,6 +321,7 @@ function GardenPlanCanvas({
   onMove,
   onEditLayout,
   focusedAreaId,
+  planting,
 }: GardenPlanCanvasProps) {
   const size = useCanvasSize();
   const [moveMode, setMoveMode] = useState(false);
@@ -317,19 +335,39 @@ function GardenPlanCanvas({
     session.restore();
     setDrag(undefined);
   };
+  const [plantDrag, setPlantDrag] = useState<{ label: string; point: LayoutPoint }>();
+  const plantDragSession = useRef<{ id: string; scale: number; restore: () => void; stop: () => void } | undefined>(undefined);
+  const [ghost, setGhost] = useState<LayoutPoint>();
+  const [placeHint, setPlaceHint] = useState("");
+  const cancelPlantDrag = () => {
+    const session = plantDragSession.current;
+    if (!session) return;
+    plantDragSession.current = undefined;
+    session.stop();
+    session.restore();
+    setPlantDrag(undefined);
+  };
+  const stopPlacing = useRef<(() => void) | undefined>(undefined);
+  useEffect(() => { stopPlacing.current = planting?.placing ? planting.onStopPlacing : undefined; });
   useEffect(() => {
+    // Capture runs before the zoom's Escape handler: Escape first cancels a
+    // drag, then stops placing, and only then leaves the zoomed area.
     const escape = (event: KeyboardEvent) => {
-      if (event.key !== "Escape" || !dragSession.current) return;
+      if (event.key !== "Escape" || event.defaultPrevented) return;
+      if (dragSession.current) { event.preventDefault(); cancelDrag(); return; }
+      if (plantDragSession.current) { event.preventDefault(); cancelPlantDrag(); return; }
+      if (!stopPlacing.current || document.querySelector('dialog[open][aria-modal="true"]')) return;
+      if (event.target instanceof HTMLElement && event.target.closest("input, textarea, select, [contenteditable='true']")) return;
       event.preventDefault();
-      cancelDrag();
+      setGhost(undefined);
+      stopPlacing.current();
     };
-    // Capture runs before the zoom's Escape handler, so Escape cancels a drag first.
-    if (moveMode) window.addEventListener("keydown", escape, true);
+    window.addEventListener("keydown", escape, true);
     return () => window.removeEventListener("keydown", escape, true);
-  }, [moveMode]);
+  }, []);
   const focusedArea = growingAreas.find((area) => area.id === focusedAreaId && area.layout);
   const target = (focusedArea && areaFocusViewport(focusedArea)) || gardenPlanViewport(plan, growingAreas, "growing-areas", compact ? 0.05 : undefined);
-  const { viewport: bounds } = useAnimatedViewport(target, focusedArea?.id ?? "whole-garden");
+  const { viewport: bounds, animating: zooming } = useAnimatedViewport(target, focusedArea?.id ?? "whole-garden");
   const calculated = fitCanvas(bounds, size.width, size.height, compact ? 12 : 34);
   const transform = drag?.transform ?? calculated;
   const viewport = transform?.bounds ?? bounds;
@@ -344,13 +382,45 @@ function GardenPlanCanvas({
   // While zoomed, only the focused area keeps its name so neighbours' labels never cover its plants.
   const labels = compact ? fitThumbnailLabels(areaLabels, width, height, offsetX, offsetY) : areaLabels.filter(({ area }) => !focusedArea || area.id === focusedArea.id);
   const dimmed = (area: GrowingArea) => Boolean(focusedArea && area.id !== focusedArea.id);
+  const plantingArea = planting && focusedArea?.id === planting.areaId ? focusedArea : undefined;
+  const warnings = plantingArea?.layout ? plantWarnings(plantingArea.layout) : undefined;
+  const placing = plantingArea ? planting?.placing : undefined;
+  // The pointer in the zoomed area's own metres.
+  const pointerInArea = (event: KonvaEventObject<MouseEvent | TouchEvent>) => {
+    const pointer = event.target.getStage?.()?.getPointerPosition();
+    if (!pointer || !transform || !plantingArea) return undefined;
+    return planToAreaLocal(plantingArea, canvasToMetres({ x: pointer.x - offsetX, y: pointer.y - offsetY }, transform));
+  };
+  const followPointer = (event: KonvaEventObject<MouseEvent>) => {
+    const local = pointerInArea(event);
+    setGhost(local && placing && plantingArea && isInsideArea(plantingArea, local) ? plantCenterInArea(local, placing.diameterMeters, plantingArea.layout!) : undefined);
+  };
+  const placeAtPointer = (event: KonvaEventObject<MouseEvent | TouchEvent>) => {
+    const local = pointerInArea(event);
+    if (!local || !placing || !plantingArea || !planting) return;
+    if (!isInsideArea(plantingArea, local)) { setPlaceHint(`Click inside ${plantingArea.name} to place ${placing.label}.`); return; }
+    const point = plantCenterInArea(local, placing.diameterMeters, plantingArea.layout!);
+    planting.onPlacePlant(point);
+    setPlaceHint(`${placing.label} placed at ${point.x.toFixed(1)}, ${point.y.toFixed(1)} m. Click to place another; Escape stops.`);
+  };
+  // The drag readout floats over the canvas: changing the toolbar's height mid-drag
+  // would shift the canvas under the pointer.
+  const readout = drag ? `${draggedArea?.name ?? "Area"} · ${drag.point.x.toFixed(1)}, ${drag.point.y.toFixed(1)} m`
+    : plantDrag ? `${plantDrag.label} · ${plantDrag.point.x.toFixed(1)}, ${plantDrag.point.y.toFixed(1)} m`
+    : undefined;
+  const hint = moveMode ? "Drag an area. Escape cancels a move."
+    : placing && plantingArea ? placeHint || `Click inside ${plantingArea.name} to place ${placing.label}. Escape stops.`
+    : plantingArea ? `Viewing ${plantingArea.name}. Drag a plant to move it, or choose a plant to add. Escape returns to the whole garden.`
+    : focusedArea ? `Viewing ${focusedArea.name}. Escape returns to the whole garden.`
+    : "Select an area, or turn on Move to drag it.";
 
   return <div className={compact ? undefined : canvasStyles.frame}>
     {interactive && !compact && measuredAreas.length > 0 && <div className={canvasStyles.toolbar}>
       <Button aria-pressed={moveMode} onClick={() => { cancelDrag(); setMoveMode((value) => !value); }}>Move planting areas</Button>
-      <p>{drag ? `${draggedArea?.name ?? "Area"} · ${drag.point.x.toFixed(1)}, ${drag.point.y.toFixed(1)} m` : moveMode ? "Drag an area. Escape cancels a move." : focusedArea ? `Viewing ${focusedArea.name}. Escape returns to the whole garden.` : "Select an area, or turn on Move to drag it."}</p>
+      <p>{hint}</p>
     </div>}
-    <div ref={size.ref} className={`${canvasStyles.surface} ${compact ? canvasStyles.compact : ""}`} data-move={moveMode} data-dragging={Boolean(drag)} data-focused-area={focusedArea?.id}>
+    <div ref={size.ref} className={`${canvasStyles.surface} ${compact ? canvasStyles.compact : ""}`} data-move={moveMode} data-dragging={Boolean(drag || plantDrag)} data-focused-area={focusedArea?.id} data-placing={Boolean(placing)} data-zooming={zooming}>
+    {readout && <p className={canvasStyles.readout} role="status">{readout}</p>}
     {transform ? <Stage
       aria-label={`Garden Plan, ${plan.widthMeters} metres wide by ${plan.depthMeters} metres long`}
       height={height}
@@ -437,12 +507,16 @@ function GardenPlanCanvas({
               const frozen = dragSession.current?.transform ?? transform;
               return metresToCanvas(clampPlanPosition(canvasToMetres(position, frozen), plan), frozen);
             }}
-            onDragStart={({ target }) => {
+            onDragStart={(event) => {
+              // Konva drag events bubble: a plant dragged inside this area must not start an area move.
+              if (event.target !== event.currentTarget) return;
+              const { target } = event;
               const origin = area.planPlacement;
               dragSession.current = { id: area.id, transform, restore: () => target.position(metresToCanvas(origin, transform)), stop: () => target.stopDrag() };
               setDrag({ id: area.id, transform, origin, point: origin });
             }}
-            onDragMove={({ target }) => {
+            onDragMove={({ target, currentTarget }) => {
+              if (target !== currentTarget) return;
               const point = clampPlanPosition(canvasToMetres(target.position(), dragSession.current?.transform ?? transform), plan);
               setDrag((current) => current && (current.point.x !== point.x || current.point.y !== point.y) ? { ...current, point } : current);
             }}
@@ -463,25 +537,57 @@ function GardenPlanCanvas({
             y={padding + (area.planPlacement.y - viewport.y) * scale}
           >
             <AreaShape area={area} scale={scale} compact={compact} selected={selectedAreaId === area.id || drag?.id === area.id} preventDefault={moveMode} />
-            {area.layout!.allocations.map((allocation) => (
-              <Group key={allocation.id}>
+            {area.layout!.allocations.map((allocation) => {
+              const editablePlant = plantingArea?.id === area.id;
+              const selectedPlant = editablePlant && planting?.selectedPlantId === allocation.id;
+              const warned = editablePlant && (warnings?.crowdedIds.has(allocation.id) || warnings?.pastEdgeIds.has(allocation.id));
+              return <Group key={allocation.id}>
                 <Circle
                   aria-label={`${allocation.label} plant on Garden Plan`}
+                  data-warning={warned ? "true" : undefined}
+                  draggable={editablePlant && !placing && !moveMode}
+                  dragDistance={4}
                   fill={allocationPlantColor(allocation, area.layout!.allocations)}
                   opacity={0.9}
-                  preventDefault={moveMode}
+                  preventDefault={moveMode || editablePlant}
                   radius={(allocation.diameterMeters * scale) / 2}
-                  stroke="#183a2a"
-                  strokeWidth={1}
+                  stroke={selectedPlant ? planColors.selection : warned ? planColors.warning : "#183a2a"}
+                  strokeWidth={selectedPlant ? 3 : warned ? 2 : 1}
+                  dash={warned && !selectedPlant ? [4, 3] : undefined}
                   x={allocation.x * scale}
                   y={allocation.y * scale}
                   onClick={(event) => {
                     event.cancelBubble = true;
-                    onEditLayout?.(area.id);
+                    if (editablePlant) planting?.onSelectPlant(allocation.id);
+                    else onEditLayout?.(area.id);
                   }}
                   onTap={(event) => {
                     event.cancelBubble = true;
-                    onEditLayout?.(area.id);
+                    if (editablePlant) planting?.onSelectPlant(allocation.id);
+                    else onEditLayout?.(area.id);
+                  }}
+                  onDragStart={({ target }) => {
+                    if (!editablePlant) return;
+                    const origin = { x: allocation.x * scale, y: allocation.y * scale };
+                    plantDragSession.current = { id: allocation.id, scale, restore: () => target.position(origin), stop: () => target.stopDrag() };
+                    setPlantDrag({ label: allocation.label, point: { x: allocation.x, y: allocation.y } });
+                  }}
+                  onDragMove={({ target }) => {
+                    const session = plantDragSession.current;
+                    if (!session) return;
+                    const point = plantCenterInArea({ x: target.x() / session.scale, y: target.y() / session.scale }, allocation.diameterMeters, area.layout!);
+                    setPlantDrag((current) => current && (current.point.x !== point.x || current.point.y !== point.y) ? { ...current, point } : current);
+                  }}
+                  onDragEnd={(event) => {
+                    const session = plantDragSession.current;
+                    if (session?.id !== allocation.id) return;
+                    plantDragSession.current = undefined;
+                    setPlantDrag(undefined);
+                    if (event.evt?.type === "touchcancel" || event.evt?.type === "pointercancel") { session.restore(); return; }
+                    const point = plantCenterInArea({ x: event.target.x() / session.scale, y: event.target.y() / session.scale }, allocation.diameterMeters, area.layout!);
+                    // Snap the node itself: an unchanged position would not re-render it.
+                    event.target.position?.({ x: point.x * session.scale, y: point.y * session.scale });
+                    if (point.x !== allocation.x || point.y !== allocation.y) planting?.onMovePlant(allocation.id, point);
                   }}
                 />
                 {!compact && allocation.diameterMeters * scale >= 36 ? (
@@ -499,8 +605,20 @@ function GardenPlanCanvas({
                     y={allocation.y * scale - allocation.diameterMeters * scale / 2}
                   />
                 ) : null}
-              </Group>
-            ))}
+              </Group>;
+            })}
+            {placing && ghost && plantingArea?.id === area.id && <Circle
+              data-testid="placement-preview"
+              dash={[5, 3]}
+              fill={placing.color}
+              listening={false}
+              opacity={0.45}
+              radius={(placing.diameterMeters * scale) / 2}
+              stroke={planColors.selection}
+              strokeWidth={2}
+              x={ghost.x * scale}
+              y={ghost.y * scale}
+            />}
           </Group>
         ))}
         {labels.map(({ area, width, x, y }) => (
@@ -548,6 +666,19 @@ function GardenPlanCanvas({
             y={padding}
           />
         ) : null}
+        {placing && plantingArea && <Rect
+          aria-label={`Place ${placing.label} on ${plantingArea.name}`}
+          fill="rgba(0,0,0,0)"
+          height={height}
+          preventDefault={false}
+          width={width}
+          x={-offsetX}
+          y={-offsetY}
+          onClick={placeAtPointer}
+          onTap={placeAtPointer}
+          onMouseMove={followPointer}
+          onMouseLeave={() => setGhost(undefined)}
+        />}
       </Layer>
     </Stage> : <p className={canvasStyles.placeholder}>Preparing garden view…</p>}
     </div>

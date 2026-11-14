@@ -1,12 +1,16 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { resetTestRouter } from "@/test/router";
+import { testLayout } from "@/test/layout";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { GrowingAreaLayoutEditor } from "@/components/GrowingAreaLayoutEditor";
 import { GardenWorkspace } from "@/test/WorkspaceHarness";
+import { fitCanvas, metresToCanvas } from "@/lib/canvasViewport";
+import { areaLocalToPlan } from "@/lib/planGeometry";
 import { isCareNoteLiveEntryBuild } from "@/components/AiGardenNote";
 import {
+  areaFocusViewport,
   createDemoGardenWorkspace,
   createGarden,
   createGardenWorkspace,
@@ -61,6 +65,8 @@ async function cancelDialog(user: ReturnType<typeof userEvent.setup>, message?: 
 }
 
 describe("GardenWorkspace", () => {
+  // Area journeys here use the side-column layout; the overlay and phone layouts have their own tests.
+  beforeEach(() => { testLayout.width = 1280; });
   it("opens the Garden Plan directly from a garden thumbnail", async () => {
     const user = userEvent.setup();
 
@@ -945,11 +951,11 @@ describe("GardenWorkspace", () => {
     expect(screen.getAllByText("Kale").length).toBeGreaterThan(0);
   });
 
-  it("keeps one area editor for details and current layout plants", async () => {
+  it("keeps one side panel for area details and current layout plants", async () => {
     const user = userEvent.setup();
     await loadDemo(user);
     await openPlantingArea(user, "Sample raised bed");
-    const inspector = screen.getByRole("dialog", { name: "Edit planting area" });
+    const inspector = screen.getByRole("region", { name: "Edit planting area" });
     expect(within(inspector).getByRole("region", { name: "Plant layout" })).toBeInTheDocument();
     expect(within(inspector).getByRole("button", { name: "Add plant" })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: /Planting records/i })).not.toBeInTheDocument();
@@ -971,7 +977,7 @@ describe("GardenWorkspace", () => {
     const plantForm = screen.getByRole("heading", { name: "Add plant" }).closest("form")!;
     await user.type(within(plantForm).getByLabelText("Plant type"), "Basil");
     await user.click(within(plantForm).getByRole("button", { name: "Add" }));
-    expect(screen.getByLabelText("Basil plant")).toBeInTheDocument();
+    expect(screen.getByLabelText("Basil plant on Garden Plan")).toBeInTheDocument();
   });
 
   it("saves all planting-area properties through one action", async () => {
@@ -1010,7 +1016,7 @@ describe("GardenWorkspace", () => {
     await user.click(within(form).getByRole("button", { name: "Add care event" }));
     await user.click(screen.getByRole("link", { name: "Back to gardens" }));
     await openPlantingArea(user, "Sample raised bed");
-    await user.click(screen.getByLabelText("Tomato plant"));
+    await user.click(screen.getByLabelText("Tomato plant on Garden Plan"));
     await user.click(screen.getByRole("button", { name: "Remove plant" }));
     await confirmDialog(user);
     await user.click(screen.getByRole("button", { name: "Close" }));
@@ -1341,7 +1347,7 @@ describe("GardenWorkspace", () => {
     expect(screen.getByLabelText("Open Sample raised bed on Garden Plan")).toHaveAttribute("opacity", "1");
     expect(screen.getByLabelText("Open Sample in-ground area on Garden Plan")).toHaveAttribute("opacity", "0.35");
     expect(screen.queryByTestId("area-label-demo-in-ground-area")).not.toBeInTheDocument();
-    fireEvent.click(screen.getByLabelText("Tomato plant"));
+    fireEvent.click(screen.getByLabelText("Tomato plant on Garden Plan"));
     fireEvent.change(screen.getByLabelText("Plant color"), { target: { value: "#1f77b4" } });
     await user.click(screen.getByRole("button", { name: "Save plant" }));
     await waitFor(() => expect(JSON.parse(window.localStorage.getItem(GARDEN_WORKSPACE_STORAGE_KEY) ?? "{}").gardens[0].growingAreas[0].layout.allocations[0].color).toBe("#1f77b4"));
@@ -1368,6 +1374,37 @@ describe("GardenWorkspace", () => {
     expect(window.location.search).toBe("");
     await user.click(screen.getByLabelText("Open Sample raised bed on Garden Plan"));
     expect(screen.getByLabelText("Rotation (degrees)")).toHaveValue(0);
+  });
+
+  it("places plants on the main canvas, moves one, and stops placing on Escape", async () => {
+    // Reduced motion puts the zoomed frame in place at once, so pointer maths use the final frame.
+    vi.stubGlobal("matchMedia", (media: string) => ({ media, matches: media.includes("reduced-motion"), addEventListener: vi.fn(), removeEventListener: vi.fn() }));
+    const user = userEvent.setup();
+    await loadDemo(user);
+    await openPlantingArea(user, "Sample raised bed");
+    const area = createDemoGardenWorkspace().gardens[0].growingAreas[0];
+    const transform = fitCanvas(areaFocusViewport(area)!, 1280, 640)!;
+    const pixel = (x: number, y: number) => metresToCanvas(areaLocalToPlan(area, { x, y }), transform);
+    const stored = () => JSON.parse(window.localStorage.getItem(GARDEN_WORKSPACE_STORAGE_KEY) ?? "{}").gardens[0].growingAreas[0].layout.allocations;
+    await user.click(screen.getByRole("button", { name: "Add plant" }));
+    await user.type(screen.getByLabelText("Plant type"), "Pepper");
+    expect(screen.getByLabelText("Plant spacing (m)")).toHaveValue(0.5);
+    const layer = screen.getByLabelText("Place Pepper on Sample raised bed");
+    for (const [x, y] of [[2.02, 0.4], [2.61, 0.83]]) {
+      Object.assign(layer, { getStage: () => ({ getPointerPosition: () => pixel(x, y) }) });
+      fireEvent.click(layer);
+    }
+    await waitFor(() => expect(stored().filter((plant: { plantType?: string }) => plant.plantType === "Pepper").map(({ x, y }: { x: number; y: number }) => [x, y])).toEqual([[2, 0.4], [2.6, 0.8]]));
+    fireEvent.keyDown(document.body, { key: "Escape" });
+    expect(screen.queryByLabelText("Place Pepper on Sample raised bed")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Plant type")).not.toBeInTheDocument();
+    expect(window.location.search).toBe("?area=demo-raised-bed");
+    const tomato = screen.getByLabelText("Tomato plant on Garden Plan");
+    fireEvent.dragStart(tomato);
+    Object.assign(tomato, { x: () => 1.24 * transform.scale, y: () => 0.62 * transform.scale });
+    fireEvent.pointerUp(tomato);
+    await waitFor(() => expect(stored().find((plant: { id: string }) => plant.id === "demo-tomato")).toMatchObject({ x: 1.2, y: 0.6 }));
+    expect(screen.getByRole("region", { name: "Plant groups" })).toHaveTextContent("Pepper × 2");
   });
 
   it("saves planting-area rotation with its other properties", async () => {
@@ -1494,10 +1531,10 @@ describe("GardenWorkspace", () => {
     const onChange = vi.fn();
     render(<GrowingAreaLayoutEditor area={{ id: "area-1", name: "North bed", kind: "raised-bed", planPlacement: { x: 0.5, y: 0.5, rotationDegrees: 0 }, layout: { widthMeters: 2, depthMeters: 1, boundary: [{ x: 0, y: 0 }, { x: 2, y: 0 }, { x: 2, y: 1 }, { x: 0, y: 1 }], allocations: [{ id: "plant-1", label: "Tomato", x: 1, y: 0.5, diameterMeters: 0.6 }] } }} onArchivePlantingRecord={vi.fn()} onChange={onChange} onSaveArea={vi.fn()} />);
 
-    fireEvent.click(screen.getByLabelText("Tomato plant"));
+    await user.click(screen.getByRole("button", { name: "Edit Tomato" }));
     await user.click(screen.getByRole("button", { name: "Duplicate plant" }));
     expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ allocations: expect.arrayContaining([expect.objectContaining({ id: "plant-1" }), expect.objectContaining({ label: "Tomato", x: 1.6, y: 0.5 })]) }));
-    fireEvent.click(screen.getByLabelText("Tomato plant"));
+    await user.click(screen.getByRole("button", { name: "Edit Tomato" }));
     await user.click(screen.getByRole("button", { name: "Remove plant" }));
     await confirmDialog(user);
     expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ allocations: [] }));
