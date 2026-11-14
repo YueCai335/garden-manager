@@ -1003,3 +1003,30 @@ Garden size, Planting areas, Plants, and Ready.
   (`GardenWorkspace.test.tsx`); and `e2e/guided-setup.spec.ts`, which runs the
   whole guide at 1440px (dragging the corner) and 390px (presets and fields)
   against the real API.
+
+## G7: Garden Plan browser acceptance and documentation
+
+Phase G7 closes the single-canvas plan ([ADR-0072](decisions/0072-use-a-single-plan-canvas-with-guided-setup.md)).
+
+- `e2e/garden-plan-acceptance.spec.ts` runs one journey at 1440, 768, and
+  390 px, and at 720 × 450 px with device scale 2, which is what a
+  1440 × 900 window shows at 200% browser zoom. The journey opens the demo
+  garden, zooms into a bed, fills it with plants, undoes the fill, returns to
+  the whole garden, and takes a new garden through the guided setup to Ready.
+  Each step keeps a viewport screenshot in the test output and checks that the
+  page does not scroll sideways.
+- The app has one light theme, so there is no dark-mode run. The phone
+  soft-keyboard check needs a real device and remains an owner check.
+- The README shows refreshed screenshots of Garden Plan, Next Season rotation
+  details, and the Allocation Assistant's recorded run, and describes the
+  single canvas, autosave and undo, and the guided setup.
+  `CAPTURE_README_SCREENSHOTS=1 npx playwright test e2e/readme-screenshots.spec.ts`
+  regenerates the images; the assistant capture answers the runtime-config
+  request as the public demo does, so it never calls an AI provider.
+- The recapture showed the Allocation Assistant's crop checkboxes squeezed
+  into one row with their hint, which broke the crop names over several lines.
+  With the owner's approval, G7 gives the hint its own row, keeps checkboxes at
+  their native size with a 44 px label target, and keeps each name on one
+  line. `season-hierarchy.spec.ts` checks it at 390 and 1440 px.
+- ADR-0048 is marked as superseded in part (garden details apply without
+  Save), and ADR-0052's Garden Plan amendment now covers G6.

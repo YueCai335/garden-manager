@@ -90,11 +90,11 @@ changes, mark the old record as superseded and add a new record.
 | [ADR-0045](0045-use-a-garden-properties-panel-and-module-cards.md) | Use a Garden properties panel and module cards | Superseded by ADR-0051 |
 | [ADR-0046](0046-use-an-in-context-planting-area-creation-panel.md) | Use an in-context planting-area creation panel | Superseded by ADR-0050 |
 | [ADR-0047](0047-use-a-unified-planting-area-properties-form.md) | Use a unified planting-area properties form | Superseded by ADR-0050 |
-| [ADR-0048](0048-place-garden-properties-above-the-plan-canvas.md) | Place Garden properties above the Plan canvas | Accepted |
+| [ADR-0048](0048-place-garden-properties-above-the-plan-canvas.md) | Place Garden properties above the Plan canvas | Superseded in part by ADR-0072 (G6) |
 | [ADR-0049](0049-use-visually-distinct-automatic-plant-colors.md) | Use visually distinct automatic plant colors | Accepted |
 | [ADR-0050](0050-use-a-garden-plan-planting-area-inspector.md) | Use a Garden Plan planting-area inspector | Superseded by ADR-0053 |
 | [ADR-0051](0051-prioritize-daily-garden-work-on-the-dashboard.md) | Prioritize daily garden work on the dashboard | Accepted |
-| [ADR-0052](0052-show-save-actions-only-for-pending-edits.md) | Show Save actions only for pending edits | Accepted; amended for Garden Plan by ADR-0072 (G5) |
+| [ADR-0052](0052-show-save-actions-only-for-pending-edits.md) | Show Save actions only for pending edits | Accepted; amended for Garden Plan by ADR-0072 (G5, G6) |
 | [ADR-0053](0053-keep-plant-layout-in-the-planting-area-inspector.md) | Keep plant layout in the planting-area inspector | Superseded by ADR-0072 (G3) |
 | [ADR-0054](0054-use-fixed-canvas-garden-plan-views.md) | Use fixed-canvas Garden Plan views | Superseded in part by ADR-0072 (G2) |
 | [ADR-0055](0055-use-automatic-sync-with-optimistic-locking.md) | Use automatic workspace sync with optimistic locking | Accepted |
@@ -114,7 +114,7 @@ changes, mark the old record as superseded and add a new record.
 | [ADR-0069](0069-open-garden-notes-in-place-from-overview.md) | Open Garden Notes in place from Overview | Accepted; entry amended to Overview only |
 | [ADR-0070](0070-preview-and-position-planting-areas-on-the-plan.md) | Preview and position planting areas on the plan | Superseded in part by ADR-0072 (G2, G3, G4) |
 | [ADR-0071](0071-recover-missing-workspaces-from-browser-copies.md) | Recover missing workspaces from browser copies | Accepted |
-| [ADR-0072](0072-use-a-single-plan-canvas-with-guided-setup.md) | Use a single plan canvas with guided setup | Accepted; G1–G6 implemented |
+| [ADR-0072](0072-use-a-single-plan-canvas-with-guided-setup.md) | Use a single plan canvas with guided setup | Accepted; implemented (G1–G7) |
 
 ## Interview Use
 

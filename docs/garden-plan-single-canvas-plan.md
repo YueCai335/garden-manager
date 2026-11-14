@@ -1,7 +1,7 @@
 # Garden Plan：单画布与首次引导实施计划
 
 - 日期：2026-11-12（America/Toronto）
-- 状态：方向与分阶段计划已确认（[ADR-0072](decisions/0072-use-a-single-plan-canvas-with-guided-setup.md)）；第 7 节记录确认结果。G1–G6 已完成；下一步 G7。
+- 状态：方向与分阶段计划已确认（[ADR-0072](decisions/0072-use-a-single-plan-canvas-with-guided-setup.md)）；第 7 节记录确认结果。G1–G7 全部完成（2026-11-14）。
 - 依据：用户确认的可点原型（第 4 版）、Native Garden Planner 与 Sunplot 的对比分析、当前代码核查。
 
 ## 1. 目标
@@ -143,6 +143,8 @@ G2→G3 是核心痛点，优先做。G4 与 G2/G3 改动的文件有重叠（�
 - **测试**：进度条状态与可点性组件测试；新建流程组件测试；新增 `e2e/guided-setup.spec.ts`（1440px 与 390px 各一遍完整引导）。
 
 ### G7 验收与文档
+
+> 实施说明（2026-11-14 完成）：新增 `e2e/garden-plan-acceptance.spec.ts`，在 1440、768、390px 和模拟 200% 缩放（720 × 450，设备缩放 2）下各走一遍：整园视图、放大进入种植区并铺满植物、撤销、四步引导到 Ready，每一步留截图并检查没有横向滚动。应用只有浅色主题，所以没有深色截图。手机软键盘需要真机，记为待验收。README 三张截图由 `e2e/readme-screenshots.spec.ts` 重新生成（需设置 `CAPTURE_README_SCREENSHOTS=1`）。重拍时发现 Allocation Assistant 的作物勾选框被提示文字挤成多行，经用户同意在 G7 中用 CSS 修复，并在 `season-hierarchy.spec.ts` 加了检查。ADR-0048 标为部分被替代，ADR-0052 的修订范围补上 G6。
 
 - 全部浏览器旅程在 macOS Chromium 运行并留截图（1440、768、390px，浅色/深色）；手动检查 200% 缩放与手机软键盘。
 - 更新 `frontend-professionalization-progress.md`、README 截图与功能描述、ADR 索引中被替代记录的状态。

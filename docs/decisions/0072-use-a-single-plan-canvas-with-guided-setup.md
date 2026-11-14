@@ -1,6 +1,6 @@
 # ADR-0072: Use a Single Plan Canvas with Guided Setup
 
-- Status: Accepted; G1 (presentation), G2 (zoom into an area), G3 (plants on the main canvas), G4 (direct area placement), G5 (autosave and undo), and G6 (guided setup) implemented, G7 pending
+- Status: Accepted; implemented in phases G1 (presentation), G2 (zoom into an area), G3 (plants on the main canvas), G4 (direct area placement), G5 (autosave and undo), and G6 (guided setup), with G7 browser acceptance completed 2026-11-14
 - Date: 2026-11-12
 - Supersedes in part, as each phase lands: [ADR-0048](0048-place-garden-properties-above-the-plan-canvas.md), [ADR-0053](0053-keep-plant-layout-in-the-planting-area-inspector.md), [ADR-0054](0054-use-fixed-canvas-garden-plan-views.md), [ADR-0066](0066-adapt-area-editing-to-available-space.md), and [ADR-0070](0070-preview-and-position-planting-areas-on-the-plan.md)
 - Amends for Garden Plan edits, in phase G5: [ADR-0052](0052-show-save-actions-only-for-pending-edits.md) and [ADR-0062](0062-preserve-planting-area-editor-drafts.md)
@@ -215,6 +215,17 @@ current setup flag, and adds no stored field.
   everywhere: name, width, and length apply on blur or Enter like the area
   fields, and "Done" closes the fields. Each change is one undo step; a name
   and size changed together undo as one step.
+
+### Browser acceptance (phase G7, completed 2026-11-14)
+
+`e2e/garden-plan-acceptance.spec.ts` runs the whole-garden view, zooming into
+an area and filling it with plants, Undo, and the guided setup to Ready at
+1440, 768, and 390 px, and at 720 × 450 px with device scale 2 (a 1440 × 900
+window at 200% zoom). Each step keeps a screenshot and checks that the page
+does not scroll sideways. The app has a single light theme, so there is no
+dark-mode run. The phone soft-keyboard check needs a real device and remains
+an owner check. `e2e/readme-screenshots.spec.ts` regenerates the README
+images on request.
 
 ### Presentation (phase G1)
 

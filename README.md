@@ -10,12 +10,11 @@ plan the next season, and ask source-grounded plant questions.
 
 ## Screenshots
 
-**Garden plan** — planting areas laid out on a real metric grid, with plants placed inside each area.
+**Garden plan** — one canvas on a real metric grid. Each area type button drops a standard-size bed; areas drag and resize in place, opening an area zooms the same canvas to place plants, and every edit saves at once with Undo and Redo. A new garden walks through four guided steps: garden size, planting areas, plants, and Ready.
 
-<img width="1000" alt="Garden plan showing three measured planting areas on a metric grid" src="docs/screenshots/garden-plan.png" />
+<img width="1000" alt="Garden Plan with three planting areas on a metric grid, area type buttons, Undo and Redo, and the planting-area list" src="docs/screenshots/garden-plan.png" />
 
 **Next Season** — area plans first, with expandable rotation history and companion sources.
-The screenshots below predate the frontend update; refreshed browser captures are pending.
 
 <img width="1000" alt="Rotation cards per growing area: last season's crop, families to avoid, and good rotation fits" src="docs/screenshots/season-rotation.png" />
 
@@ -25,8 +24,9 @@ The screenshots below predate the frontend update; refreshed browser captures ar
 
 ## What It Demonstrates
 
-- **Garden operations:** multiple gardens, raised beds, in-ground areas, and
-  container groups with measured planting layouts.
+- **Garden operations:** multiple gardens, raised beds, in-ground beds,
+  containers, and greenhouses on one metric plan canvas, with direct
+  placement, autosave, undo, and a guided first-run setup.
 - **Current records:** plants, care history, recurring care tasks, and
   reviewable plant-health records.
 - **Seasonal planning:** crop-family rotation guidance by growing area and a
@@ -64,8 +64,9 @@ The API sleeps on the free tier, so the first request can take about a minute.
 1. Start the API and database with `docker compose up --build`.
 2. In another terminal, run `npm install`, then start the web app with `npm run dev`.
 3. Open `http://localhost:3000` and select **Load demo garden**.
-4. Select the **Demo Garden** card to inspect its measured growing areas and
-   plant layout.
+4. Select the **Demo Garden** card. Open an area to zoom the plan into it and
+   place plants, drag an area to move it, and use **Undo** to reverse a change.
+   **Add garden** starts the four-step guided setup on the same canvas.
 5. Return to the dashboard and open **Next Season**. Choose plants for each area. Expand **Rotation details** for history and companion sources,
    or **Allocation Assistant** to review an AI draft or the recorded demo run.
 6. Open **Care** to create a task or record a completed care event.

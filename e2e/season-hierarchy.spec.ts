@@ -41,6 +41,14 @@ for (const width of [390, 1440]) {
     await expect(card.getByText("Kale", { exact: true })).toBeVisible();
     await expect(card.getByRole("button", { name: "Add a plant" })).toBeVisible();
     await page.locator("summary", { hasText: "Plan preview · Demo Garden" }).click();
+    // Each crop choice stays on one line with a native-size checkbox, below its hint.
+    await page.locator("summary", { hasText: "Allocation Assistant · Demo Garden" }).click();
+    const crops = page.getByRole("group", { name: "Crops" });
+    for (const crop of ["Tomato", "Bean", "Lettuce", "Cucumber", "Carrot"]) {
+      const label = crops.locator("label", { hasText: crop });
+      expect((await label.boundingBox())!.height).toBeLessThanOrEqual(48);
+      expect((await label.getByRole("checkbox").boundingBox())!.width).toBeLessThanOrEqual(24);
+    }
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
     expect(aiRequests).toEqual([]);
     await page.screenshot({ path: testInfo.outputPath(`season-${width}.png`), fullPage: true });

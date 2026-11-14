@@ -1,6 +1,6 @@
 # ADR-0052: Show Save Actions Only for Pending Edits
 
-- Status: Accepted; amended for Garden Plan by [ADR-0072](0072-use-a-single-plan-canvas-with-guided-setup.md) (phase G5, 2026-11-14): planting-area properties and selected-plant fields apply on blur or Enter and have no Save button; Undo and Redo replace the explicit commit. Garden details, care, notes, and health keep this record's Save behaviour.
+- Status: Accepted; amended for Garden Plan by [ADR-0072](0072-use-a-single-plan-canvas-with-guided-setup.md) (phase G5, 2026-11-14): planting-area properties and selected-plant fields apply on blur or Enter and have no Save button; Undo and Redo replace the explicit commit. Phase G6 (2026-11-14) extends this to the garden details (name, width, and length). Care, notes, and health keep this record's Save behaviour.
 - Date: 2026-09-03
 - Related: [ADR-0048](0048-place-garden-properties-above-the-plan-canvas.md) and [ADR-0050](0050-use-a-garden-plan-planting-area-inspector.md)
 

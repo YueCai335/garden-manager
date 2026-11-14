@@ -329,8 +329,22 @@
 }
 .allocation-choices label {
   display: inline-flex;
+  flex: 0 0 auto;
   align-items: center;
   gap: 6px;
+  min-height: 44px;
+  white-space: nowrap;
+}
+/* The hint takes its own row, and checkboxes keep their native size; the label keeps the 44px touch target. */
+.allocation-choices > p {
+  flex: 1 0 100%;
+  margin: 0;
+}
+.allocation-choices input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  min-height: 0;
+  margin: 0;
 }
 .allocation-areas,
 .allocation-explanation {
