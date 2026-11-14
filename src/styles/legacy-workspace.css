@@ -883,6 +883,7 @@
 }
 .form-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
 }
 .growing-area-list {
@@ -1234,7 +1235,8 @@ body {
   width: auto;
 }
 .operations-app-shell .layout-editor-in-inspector .layout-editor-grid {
-  grid-template-columns: 1fr;
+  /* minmax(0, …) lets the column shrink to the panel instead of growing to its widest row. */
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
   margin-top: 0;
 }

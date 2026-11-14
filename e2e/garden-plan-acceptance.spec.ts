@@ -50,6 +50,9 @@ for (const viewport of viewports) {
       await surface.scrollIntoViewIfNeeded();
       await shot("02-zoomed-area");
       await expectNoSideScroll(page);
+      // The plant panel's rows fit its width, so wider fonts (Linux CI) never push the page sideways.
+      const plantPanel = page.locator("section.layout-editor");
+      expect(await plantPanel.evaluate((element) => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(0);
       await page.getByRole("button", { name: "Undo", exact: true }).click();
       await expect(page.getByText("Undid fill Sample raised bed with Lettuce.", { exact: true })).toBeVisible();
       await page.keyboard.press("Escape");
