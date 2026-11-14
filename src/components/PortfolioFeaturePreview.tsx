@@ -2,34 +2,48 @@
 
 import { useEffect, useState } from "react";
 
-import { loadRuntimeConfig } from "@/lib/gardenWorkspaceApi";
+import { loadRuntimeConfig, type RuntimeConfig } from "@/lib/gardenWorkspaceApi";
+import { Button } from "@/components/ui/Button";
 
 type Feature = "care-note" | "plant-health" | "plant-knowledge";
 
 const featureNames: Record<Feature, string> = {
   "care-note": "AI Garden Note",
-  "plant-health": "Plant Health",
-  "plant-knowledge": "Plant Knowledge",
+  "plant-health": "Plant Doctor",
+  "plant-knowledge": "Plant Guide",
 };
 
-export function usePortfolioDemoMode() {
-  const [isPortfolioDemo, setIsPortfolioDemo] = useState<boolean>();
+/**
+ * The server's runtime settings. `config` stays undefined while loading and
+ * after a failure, so a caller can refuse to act on settings it never saw.
+ */
+export function useRuntimeConfig() {
+  const [config, setConfig] = useState<RuntimeConfig>();
+  const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let active = true;
+    setFailed(false);
     void loadRuntimeConfig()
-      .then((config) => {
-        if (active) setIsPortfolioDemo(Boolean(config.portfolioDemo));
+      .then((loaded) => {
+        if (active) setConfig({ portfolioDemo: Boolean(loaded.portfolioDemo), careNotePublicAvailable: Boolean(loaded.careNotePublicAvailable), careNoteBatchAvailable: !loaded.portfolioDemo && loaded.careNoteBatchAvailable === true });
       })
       .catch(() => {
-        if (active) setIsPortfolioDemo(false);
+        if (active) setFailed(true);
       });
     return () => {
       active = false;
     };
-  }, []);
+  }, [attempt]);
 
-  return isPortfolioDemo;
+  return { config, failed, retry: () => setAttempt((current) => current + 1) };
+}
+
+/** Demo mode for the preview-only screens; an unreachable server counts as the local app. */
+export function usePortfolioDemoMode() {
+  const { config, failed } = useRuntimeConfig();
+  return failed ? false : config?.portfolioDemo;
 }
 
 export function PortfolioFeaturePreview({ feature }: { feature: Feature }) {
@@ -49,7 +63,7 @@ export function PortfolioFeaturePreview({ feature }: { feature: Feature }) {
         <h3 id={`${feature}-sample-heading`}>{content.sampleTitle}</h3>
         {content.body}
       </section>
-      <p className="feature-preview-future">Future delivery path: a hosted AI API can serve authenticated users after usage limits and server-side credential management are in place.</p>
+      <p className="feature-preview-future">This is a read-only example. Live generation for this feature is available in the local app.</p>
     </section>
   );
 }
@@ -58,11 +72,18 @@ export function PortfolioFeatureLoading({ feature }: { feature: Feature }) {
   const featureName = featureNames[feature];
   return (
     <section className="operations-content season-planner portfolio-feature-preview" aria-labelledby={`${feature}-loading-heading`}>
-      <p className="section-eyebrow">Garden feature</p>
       <h2 id={`${feature}-loading-heading`}>Loading {featureName}</h2>
-      <p className="section-context">Checking the public demo feature settings.</p>
+      <p className="section-context" role="status">Checking feature availability…</p>
     </section>
   );
+}
+
+export function PortfolioFeatureSettingsError({ featureName, onRetry }: { featureName: string; onRetry: () => void }) {
+  return <section className="operations-content">
+    <h2>Feature settings unavailable</h2>
+    <p role="alert">We couldn&apos;t check whether {featureName} is available. Check your connection and try again.</p>
+    <Button onClick={onRetry}>Try again</Button>
+  </section>;
 }
 
 function previewContent(feature: Feature) {
@@ -85,7 +106,7 @@ function previewContent(feature: Feature) {
 
   if (feature === "plant-health") {
     return {
-      heading: "Plant Health runs in the local app",
+      heading: "Plant Doctor runs in the local app",
       description: "The local workflow keeps photos and written observations together, then presents a cautious assessment for review.",
       sampleTitle: "Leaf observation",
       body: <>
@@ -101,7 +122,7 @@ function previewContent(feature: Feature) {
   }
 
   return {
-    heading: "Plant Knowledge runs in the local app",
+    heading: "Plant Guide runs in the local app",
     description: "The local retrieval workflow searches reviewed source cards and shows the evidence used for a bilingual answer.",
     sampleTitle: "Cited garden question",
     body: <>

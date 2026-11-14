@@ -5,11 +5,11 @@ import { describe, expect, it } from "vitest";
 
 import { createDemoGardenWorkspace } from "@/lib/gardenWorkspace";
 
-// The public Allocation Assistant runs on the backend's fixed copy of the demo
-// garden (ADR-0056). If the two drift apart, public drafts would describe a
-// garden the visitor is not looking at.
+// The public Allocation Assistant and AI Garden Note run on the backend's fixed
+// copy of the demo garden (ADR-0056, ADR-0059). If the two drift apart, public
+// drafts would describe a garden the visitor is not looking at.
 const serverDemoGarden = JSON.parse(
-  readFileSync(resolve(process.cwd(), "backend/app/agent/demo_garden.json"), "utf-8"),
+  readFileSync(resolve(process.cwd(), "backend/app/demo_garden.json"), "utf-8"),
 );
 
 describe("server demo garden", () => {

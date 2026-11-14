@@ -1,6 +1,7 @@
 # ADR-0040: Use Vercel, Render, and Supabase for the Portfolio Demo
 
-- Status: Accepted
+- Status: Accepted; amended by [ADR-0060](0060-offer-assisted-care-note-drafting-in-the-portfolio-demo.md)
+  (AI Garden Note drafts may run in the hosted demo behind its switch and quotas)
 - Date: 2026-09-02
 - Related: [ADR-0002](0002-use-fastapi-python-backend.md), [ADR-0024](0024-use-explicit-local-garden-import-for-postgresql.md), and [ADR-0036](0036-use-curated-local-rag-for-plant-knowledge.md)
 

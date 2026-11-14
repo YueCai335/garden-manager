@@ -1,6 +1,7 @@
 # ADR-0055: Use Automatic Workspace Sync With Optimistic Locking
 
 - Status: Accepted
+- Implementation refinement: [ADR-0064](0064-separate-workspace-save-status-and-explicit-retries.md) adds typed global feedback, explicit retry, timeouts, and confirmed conflict resolution while retaining revision checks.
 - Date: 2026-09-11
 - Supersedes: [ADR-0024](0024-use-explicit-local-garden-import-for-postgresql.md)
 - Related: [ADR-0002](0002-use-fastapi-python-backend.md) and
@@ -37,6 +38,11 @@ paths in the save flow:
   choices: reload the newer copy, or save over it with the current revision.
 - An import response is adopted only if nothing changed while the request was
   in flight; otherwise the newer local edits win and are queued as a save.
+- Each workspace read verifies the revision again after loading related rows.
+  If a save committed during those queries, the read retries with fresh rows.
+  File-backed SQLite sessions use separate connections so requests only read
+  committed rows. A successful save acknowledges the revision and snapshot
+  produced by its own transaction.
 
 ## Why This Option
 

@@ -5,7 +5,9 @@ two transactions racing on one row. These tests run only when
 TEST_DATABASE_URL points at PostgreSQL.
 """
 
+import multiprocessing
 import threading
+from datetime import date, timedelta
 
 from sqlalchemy import select, update
 
@@ -14,7 +16,9 @@ from app.agent.budget import PUBLIC_BUDGET_NAME, reserve_public_run
 from app.models import AgentRunBudget, Workspace
 from app.service import import_workspace
 from app.schemas import WorkspaceImport
-from tests.conftest import requires_postgres
+from app.care_note_public import CUMULATIVE_BUDGET_NAME, DAILY_RUN_LIMIT, HARD_RUN_CAP, daily_budget_name
+from tests.care_note_quota_worker import exhaust_in_process, reserve_in_process
+from tests.conftest import TEST_DATABASE_URL, requires_postgres
 from tests.test_api import workspace_payload
 
 
@@ -101,3 +105,88 @@ def test_two_public_runs_racing_for_the_last_run_only_one_wins():
     assert sorted(results) == [False, True]
     with database.SessionLocal() as session:
         assert session.scalar(select(AgentRunBudget.used_runs).where(AgentRunBudget.name == PUBLIC_BUDGET_NAME)) == 5
+
+
+# --- Public AI Garden Note quota (ADR-0059): separate processes, separate connections ---
+
+
+def run_reservations(processes: int, limit: int, quota_date: date) -> list[str]:
+    context = multiprocessing.get_context("spawn")
+    start = context.Barrier(processes)
+    results = context.Queue()
+    workers = [
+        context.Process(target=reserve_in_process, args=(TEST_DATABASE_URL, limit, quota_date.isoformat(), start, results))
+        for _ in range(processes)
+    ]
+    for worker in workers:
+        worker.start()
+    outcomes = [results.get(timeout=60) for _ in workers]
+    for worker in workers:
+        worker.join(timeout=30)
+        assert worker.exitcode == 0
+    return sorted(outcomes)
+
+
+def budget_rows() -> dict[str, int]:
+    with database.SessionLocal() as session:
+        return {row.name: row.used_runs for row in session.scalars(select(AgentRunBudget))}
+
+
+CARE_NOTE_DAY = date(2026, 10, 4)
+
+
+@requires_postgres
+def test_processes_racing_for_the_last_cumulative_request_only_one_wins():
+    with database.SessionLocal() as session:
+        session.add(AgentRunBudget(name=CUMULATIVE_BUDGET_NAME, used_runs=HARD_RUN_CAP - 1))
+        session.commit()
+
+    outcomes = run_reservations(4, HARD_RUN_CAP, CARE_NOTE_DAY)
+
+    assert outcomes == ["reserved", "used_up", "used_up", "used_up"]
+    assert budget_rows()[CUMULATIVE_BUDGET_NAME] == HARD_RUN_CAP
+
+
+@requires_postgres
+def test_processes_racing_for_the_last_daily_request_only_one_wins_and_the_rest_roll_back():
+    with database.SessionLocal() as session:
+        session.add(AgentRunBudget(name=CUMULATIVE_BUDGET_NAME, used_runs=0))
+        session.add(AgentRunBudget(name=daily_budget_name(CARE_NOTE_DAY), used_runs=DAILY_RUN_LIMIT - 1))
+        session.commit()
+
+    outcomes = run_reservations(4, HARD_RUN_CAP, CARE_NOTE_DAY)
+
+    assert outcomes == ["daily_limit", "daily_limit", "daily_limit", "reserved"]
+    rows = budget_rows()
+    # The three losers' cumulative increments rolled back with their daily failure.
+    assert rows[CUMULATIVE_BUDGET_NAME] == 1
+    assert rows[daily_budget_name(CARE_NOTE_DAY)] == DAILY_RUN_LIMIT
+
+
+@requires_postgres
+def test_processes_making_the_first_request_of_a_day_share_one_daily_row():
+    with database.SessionLocal() as session:
+        session.add(AgentRunBudget(name=CUMULATIVE_BUDGET_NAME, used_runs=0))
+        session.commit()
+
+    outcomes = run_reservations(3, HARD_RUN_CAP, CARE_NOTE_DAY)
+
+    assert outcomes == ["reserved"] * 3
+    assert budget_rows() == {CUMULATIVE_BUDGET_NAME: 3, daily_budget_name(CARE_NOTE_DAY): 3}
+
+
+@requires_postgres
+def test_a_stop_written_by_one_process_blocks_reservations_in_a_new_process():
+    with database.SessionLocal() as session:
+        session.add(AgentRunBudget(name=CUMULATIVE_BUDGET_NAME, used_runs=5))
+        session.commit()
+    context = multiprocessing.get_context("spawn")
+    results = context.Queue()
+    stopper = context.Process(target=exhaust_in_process, args=(TEST_DATABASE_URL, results))
+    stopper.start()
+    assert results.get(timeout=60) is True
+    stopper.join(timeout=30)
+
+    # A fresh process, as after a restart, on a later day, with the limit at its maximum.
+    assert run_reservations(1, HARD_RUN_CAP, CARE_NOTE_DAY + timedelta(days=1)) == ["used_up"]
+    assert budget_rows()[CUMULATIVE_BUDGET_NAME] == HARD_RUN_CAP

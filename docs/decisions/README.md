@@ -74,15 +74,15 @@ changes, mark the old record as superseded and add a new record.
 | [ADR-0029](0029-use-a-thumbnail-first-garden-hub.md) | Use a thumbnail-first Garden Hub | Accepted |
 | [ADR-0030](0030-use-context-aware-plant-colors.md) | Use context-aware plant colors | Accepted |
 | [ADR-0031](0031-use-review-first-ai-care-note-extraction.md) | Use review-first AI care note extraction | Superseded by ADR-0032 |
-| [ADR-0032](0032-use-local-first-ai-providers-for-care-notes.md) | Use local-first AI providers for care notes | Accepted |
-| [ADR-0033](0033-use-deterministic-fallbacks-for-clear-ai-care-notes.md) | Use deterministic fallbacks for clear AI care notes | Accepted |
+| [ADR-0032](0032-use-local-first-ai-providers-for-care-notes.md) | Use local-first AI providers for care notes | Accepted; provider configuration amended by ADR-0058 |
+| [ADR-0033](0033-use-deterministic-fallbacks-for-clear-ai-care-notes.md) | Use deterministic fallbacks for clear AI care notes | Accepted; fallback scope amended by ADR-0058 |
 | [ADR-0034](0034-use-workspace-and-garden-care-targets.md) | Use workspace and garden care targets | Accepted |
 | [ADR-0035](0035-use-reviewable-plant-health-records.md) | Use reviewable plant health records | Accepted |
 | [ADR-0036](0036-use-curated-local-rag-for-plant-knowledge.md) | Use curated local RAG for plant knowledge | Accepted |
 | [ADR-0037](0037-use-area-summary-and-pairing-notes-for-season-planning.md) | Use area summaries and pairing notes for season planning | Superseded by ADR-0039 |
 | [ADR-0038](0038-link-current-plantings-to-layout-positions.md) | Link current plantings to layout positions | Accepted |
 | [ADR-0039](0039-use-separate-season-plans-for-future-planting.md) | Use separate season plans for future planting | Accepted |
-| [ADR-0040](0040-use-vercel-render-and-supabase-for-the-portfolio-demo.md) | Use Vercel, Render, and Supabase for the portfolio demo | Accepted |
+| [ADR-0040](0040-use-vercel-render-and-supabase-for-the-portfolio-demo.md) | Use Vercel, Render, and Supabase for the portfolio demo | Accepted; amended by ADR-0060 |
 | [ADR-0041](0041-use-a-garden-operations-ui-shell.md) | Use a Garden Operations UI shell | Superseded |
 | [ADR-0042](0042-use-a-direct-garden-editing-workflow.md) | Use a direct garden editing workflow | Superseded |
 | [ADR-0043](0043-use-a-single-planting-area-editor.md) | Use a single planting-area editor | Superseded |
@@ -90,16 +90,31 @@ changes, mark the old record as superseded and add a new record.
 | [ADR-0045](0045-use-a-garden-properties-panel-and-module-cards.md) | Use a Garden properties panel and module cards | Superseded by ADR-0051 |
 | [ADR-0046](0046-use-an-in-context-planting-area-creation-panel.md) | Use an in-context planting-area creation panel | Superseded by ADR-0050 |
 | [ADR-0047](0047-use-a-unified-planting-area-properties-form.md) | Use a unified planting-area properties form | Superseded by ADR-0050 |
-| [ADR-0048](0048-place-garden-properties-above-the-plan-canvas.md) | Place Garden properties above the Plan canvas | Accepted |
+| [ADR-0048](0048-place-garden-properties-above-the-plan-canvas.md) | Place Garden properties above the Plan canvas | Superseded in part by ADR-0072 (G6) |
 | [ADR-0049](0049-use-visually-distinct-automatic-plant-colors.md) | Use visually distinct automatic plant colors | Accepted |
 | [ADR-0050](0050-use-a-garden-plan-planting-area-inspector.md) | Use a Garden Plan planting-area inspector | Superseded by ADR-0053 |
 | [ADR-0051](0051-prioritize-daily-garden-work-on-the-dashboard.md) | Prioritize daily garden work on the dashboard | Accepted |
-| [ADR-0052](0052-show-save-actions-only-for-pending-edits.md) | Show Save actions only for pending edits | Accepted |
-| [ADR-0053](0053-keep-plant-layout-in-the-planting-area-inspector.md) | Keep plant layout in the planting-area inspector | Accepted |
-| [ADR-0054](0054-use-fixed-canvas-garden-plan-views.md) | Use fixed-canvas Garden Plan views | Accepted |
+| [ADR-0052](0052-show-save-actions-only-for-pending-edits.md) | Show Save actions only for pending edits | Accepted; amended for Garden Plan by ADR-0072 (G5, G6) |
+| [ADR-0053](0053-keep-plant-layout-in-the-planting-area-inspector.md) | Keep plant layout in the planting-area inspector | Superseded by ADR-0072 (G3) |
+| [ADR-0054](0054-use-fixed-canvas-garden-plan-views.md) | Use fixed-canvas Garden Plan views | Superseded in part by ADR-0072 (G2) |
 | [ADR-0055](0055-use-automatic-sync-with-optimistic-locking.md) | Use automatic workspace sync with optimistic locking | Accepted |
 | [ADR-0056](0056-use-a-budgeted-tool-calling-agent-for-season-allocation.md) | Use a budgeted tool-calling agent for next-season allocation | Accepted; public run limit amended by ADR-0057 |
-| [ADR-0057](0057-keep-live-allocation-runs-closed-after-evaluation.md) | Keep live allocation runs closed in the public demo after evaluation | Accepted |
+| [ADR-0057](0057-keep-live-allocation-runs-closed-after-evaluation.md) | Keep live allocation runs closed in the public demo after evaluation | Accepted; key scope amended by ADR-0060 |
+| [ADR-0058](0058-classify-care-notes-before-filling-a-draft.md) | Classify care notes before filling a reviewable draft | Accepted |
+| [ADR-0059](0059-open-budgeted-public-care-note-generation.md) | Open budgeted care note generation in the portfolio demo | Rejected after two evaluations |
+| [ADR-0060](0060-offer-assisted-care-note-drafting-in-the-portfolio-demo.md) | Offer assisted care-note drafting in the portfolio demo | Accepted |
+| [ADR-0061](0061-prioritize-global-garden-notes-and-consistent-workflows.md) | Prioritize global AI garden notes, clear workspace scopes, and consistent feedback | Accepted for product direction; implementation pending |
+| [ADR-0062](0062-preserve-planting-area-editor-drafts.md) | Preserve planting-area property and plant-editor drafts | Accepted; amended for Garden Plan by ADR-0072 (G5) |
+| [ADR-0063](0063-use-workspace-routes-and-shared-session-state.md) | Use workspace routes and shared session state | Accepted |
+| [ADR-0064](0064-separate-workspace-save-status-and-explicit-retries.md) | Separate workspace save status and explicit retries | Accepted |
+| [ADR-0065](0065-fit-metric-canvases-to-their-containers.md) | Fit metric canvases to their containers | Accepted |
+| [ADR-0066](0066-adapt-area-editing-to-available-space.md) | Adapt area editing to available space | Superseded in part by ADR-0072 (G3) |
+| [ADR-0067](0067-project-care-across-locations-with-explicit-ownership.md) | Project Care across locations with explicit ownership | Accepted |
+| [ADR-0068](0068-extract-bounded-workspace-care-note-batches.md) | Extract bounded workspace care-note batches | Accepted; real-model evaluation pending |
+| [ADR-0069](0069-open-garden-notes-in-place-from-overview.md) | Open Garden Notes in place from Overview | Accepted; entry amended to Overview only |
+| [ADR-0070](0070-preview-and-position-planting-areas-on-the-plan.md) | Preview and position planting areas on the plan | Superseded in part by ADR-0072 (G2, G3, G4) |
+| [ADR-0071](0071-recover-missing-workspaces-from-browser-copies.md) | Recover missing workspaces from browser copies | Accepted |
+| [ADR-0072](0072-use-a-single-plan-canvas-with-guided-setup.md) | Use a single plan canvas with guided setup | Accepted; implemented (G1–G7) |
 
 ## Interview Use
 

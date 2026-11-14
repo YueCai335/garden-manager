@@ -57,12 +57,29 @@ in-ground repeat warning, and family-level rotation candidates. The endpoint
 does not change stored planting records.
 
 `POST /workspaces/{workspaceId}/gardens/{gardenId}/ai/care-note-draft` sends
-one Chinese or English care note to the configured AI provider and returns a
-validated draft for user review. The default provider is local Ollama with
-`qwen3:4b`. Install Ollama on the Mac host, run `ollama pull qwen3:4b`, then
-rebuild the API container. Set `AI_PROVIDER=openai` plus `OPENAI_API_KEY` to
-use OpenAI later. The endpoint returns a draft; the frontend saves a reviewed
-draft with the existing workspace update endpoint.
+one Chinese or English care note of up to 500 characters, with the gardener's
+local `today` date, to the configured AI provider (ADR-0058). The server
+accepts `today` only within one day of its UTC date. The model first sets
+`kind` to `completed`, `planned`, `negated`, `multiple`, or `unrelated`; only
+`completed` returns draft fields, and the other kinds return a message in
+`reviewNotes`. A draft whose note names no matching target has a null
+`targetScope`, and the gardener chooses one before saving. A model's `garden`
+or `all-gardens` target stays only when the note uses matching wording. The default
+provider is local Ollama with `qwen3:4b`. Install Ollama on the Mac host, run
+`ollama pull qwen3:4b`, then rebuild the API container. Set
+`CARE_NOTE_AI_PROVIDER=openai` plus `OPENAI_API_KEY` to use OpenAI, with
+`CARE_NOTE_OPENAI_MODEL` (default `gpt-4o-mini-2024-07-18`); `AI_PROVIDER`
+applies to Plant Health. The OpenAI request uses strict structured output, no
+automatic retries, a 30-second timeout, and at most 800 output tokens. In
+`PORTFOLIO_DEMO_MODE` the endpoint drafts only for the fixed `demo-garden`
+snapshot, whatever workspace the path names, and only when
+`CARE_NOTE_PUBLIC_ENABLED`, `CARE_NOTE_PUBLIC_RUN_LIMIT` (0–58),
+`CARE_NOTE_AI_PROVIDER=openai`, the approved model, and `OPENAI_API_KEY` are
+all set (ADR-0059). Each draft reserves one request from a cumulative and a
+daily (30 per UTC day) count in `agent_run_budgets` before calling OpenAI,
+and each client IP may send five per minute. The
+endpoint returns a draft; the frontend saves a reviewed draft with the
+existing workspace update endpoint.
 
 `POST /workspaces/{workspaceId}/gardens/{gardenId}/ai/season-allocation`
 runs the next-season Allocation Assistant (ADR-0056). The body contains

@@ -27,4 +27,21 @@ def test_migrations_seed_the_public_agent_run_budget(tmp_path):
 
     with create_engine(f"sqlite+pysqlite:///{database_path}").connect() as connection:
         rows = connection.execute(text("SELECT name, used_runs FROM agent_run_budgets")).all()
-    assert rows == [("season-allocation-public", 0)]
+    assert sorted(rows) == [("care-note-public", 0), ("season-allocation-public", 0)]
+
+
+def test_downgrading_and_upgrading_keeps_used_care_note_requests(tmp_path):
+    database_path = tmp_path / "garden.db"
+    config = Config(str(Path(__file__).parents[1] / "alembic.ini"))
+    config.set_main_option("sqlalchemy.url", f"sqlite+pysqlite:///{database_path}")
+    engine = create_engine(f"sqlite+pysqlite:///{database_path}")
+    command.upgrade(config, "head")
+    with engine.begin() as connection:
+        connection.execute(text("UPDATE agent_run_budgets SET used_runs = 40 WHERE name = 'care-note-public'"))
+
+    command.downgrade(config, "-1")
+    command.upgrade(config, "head")
+
+    with engine.connect() as connection:
+        used = connection.execute(text("SELECT used_runs FROM agent_run_budgets WHERE name = 'care-note-public'")).scalar_one()
+    assert used == 40

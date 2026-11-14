@@ -1,6 +1,7 @@
 # ADR-0034: Use Workspace and Garden Care Targets
 
 - Status: Accepted
+- Care hub presentation refined by [ADR-0067](0067-project-care-across-locations-with-explicit-ownership.md); stored ownership remains unchanged.
 - Date: 2026-09-01
 - Supersedes: [ADR-0020](0020-support-garden-area-and-plant-group-care-targets.md)
 - Related: [ADR-0023](0023-keep-care-history-as-completed-record.md) and [ADR-0033](0033-use-deterministic-fallbacks-for-clear-ai-care-notes.md)

@@ -1,5 +1,5 @@
 from datetime import date as Date
-from typing import Literal
+from typing import Literal, get_args
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -8,6 +8,8 @@ GardenAreaKind = Literal["raised-bed", "in-ground", "container", "greenhouse"]
 CropFamily = Literal["nightshade", "brassica", "cucurbit", "legume", "allium", "root", "leafy", "other"]
 CareType = Literal["watering", "fertilizing"]
 TargetScope = Literal["all-gardens", "garden", "planting-area", "plant-group"]
+CareNoteKind = Literal["completed", "planned", "negated", "multiple", "unrelated"]
+CARE_NOTE_MAX_LENGTH = 500
 HealthSeverity = Literal["low", "medium", "high"]
 
 
@@ -275,24 +277,64 @@ class RotationGuidanceResponse(ApiModel):
 
 
 class CareNoteDraftRequest(ApiModel):
-    note: str = Field(min_length=1, max_length=2000)
+    # Python counts str length in code points, matching the browser's check.
+    note: str = Field(min_length=1, max_length=CARE_NOTE_MAX_LENGTH)
+    # The gardener's local date; the service rejects one far from the server's (ADR-0058).
+    today: Date
 
 
 class CareNoteExtraction(ApiModel):
-    type: CareType | None = None
-    date: Date | None = None
-    target_scope: TargetScope | None = Field(default=None, serialization_alias="targetScope", validation_alias="targetScope")
-    target_name: str | None = Field(default=None, max_length=200, serialization_alias="targetName", validation_alias="targetName")
-    fertilizer_product: str | None = Field(default=None, max_length=200, serialization_alias="fertilizerProduct", validation_alias="fertilizerProduct")
-    fertilizer_amount: float | None = Field(default=None, gt=0, serialization_alias="fertilizerAmount", validation_alias="fertilizerAmount")
-    fertilizer_unit: str | None = Field(default=None, max_length=40, serialization_alias="fertilizerUnit", validation_alias="fertilizerUnit")
+    """Model output. Every field is required; a note that omits a detail gives null (ADR-0058)."""
+
+    kind: CareNoteKind
+    type: CareType | None
+    date: Date | None
+    target_scope: TargetScope | None = Field(serialization_alias="targetScope", validation_alias="targetScope")
+    target_name: str | None = Field(max_length=200, serialization_alias="targetName", validation_alias="targetName")
+    fertilizer_product: str | None = Field(max_length=200, serialization_alias="fertilizerProduct", validation_alias="fertilizerProduct")
+    fertilizer_amount: float | None = Field(gt=0, serialization_alias="fertilizerAmount", validation_alias="fertilizerAmount")
+    fertilizer_unit: str | None = Field(max_length=40, serialization_alias="fertilizerUnit", validation_alias="fertilizerUnit")
+
+
+def care_note_output_schema() -> dict:
+    """The JSON Schema sent to both providers, written for OpenAI strict mode.
+
+    Strict mode needs every property in `required` and `additionalProperties:
+    false`. It accepts only part of JSON Schema, so length, date, and range
+    rules stay in CareNoteExtraction, which validates every response.
+    """
+
+    def nullable(type_: str) -> dict:
+        return {"type": [type_, "null"]}
+
+    def nullable_enum(values: tuple[str, ...]) -> dict:
+        return {"anyOf": [{"type": "string", "enum": list(values)}, {"type": "null"}]}
+
+    properties = {
+        "kind": {"type": "string", "enum": list(get_args(CareNoteKind))},
+        "type": nullable_enum(get_args(CareType)),
+        "date": {**nullable("string"), "description": "YYYY-MM-DD"},
+        "targetScope": nullable_enum(get_args(TargetScope)),
+        "targetName": nullable("string"),
+        "fertilizerProduct": nullable("string"),
+        "fertilizerAmount": nullable("number"),
+        "fertilizerUnit": nullable("string"),
+    }
+    return {
+        "type": "object",
+        "properties": properties,
+        "required": list(properties),
+        "additionalProperties": False,
+    }
 
 
 class CareNoteDraftResponse(ApiModel):
+    kind: CareNoteKind
     type: CareType | None = None
     date: Date | None = None
     note: str
-    target_scope: TargetScope = Field(serialization_alias="targetScope", validation_alias="targetScope")
+    # None until the gardener chooses a target; nothing defaults to the whole garden.
+    target_scope: TargetScope | None = Field(serialization_alias="targetScope", validation_alias="targetScope")
     growing_area_id: str | None = Field(default=None, serialization_alias="growingAreaId", validation_alias="growingAreaId")
     growing_area_name: str | None = Field(default=None, serialization_alias="growingAreaName", validation_alias="growingAreaName")
     planting_record_id: str | None = Field(default=None, serialization_alias="plantingRecordId", validation_alias="plantingRecordId")
@@ -343,6 +385,10 @@ class HealthResponse(BaseModel):
 
 class RuntimeConfigResponse(BaseModel):
     portfolio_demo: bool = Field(serialization_alias="portfolioDemo")
+    # Whether the configuration allows public AI Garden Note drafts; quotas are checked per request (ADR-0059).
+    care_note_public_available: bool = Field(default=False, serialization_alias="careNotePublicAvailable")
+    # Capability, not a provider health check. Never true in the public demo.
+    care_note_batch_available: bool = Field(default=False, serialization_alias="careNoteBatchAvailable")
 
 
 class SeasonAllocationRequest(ApiModel):

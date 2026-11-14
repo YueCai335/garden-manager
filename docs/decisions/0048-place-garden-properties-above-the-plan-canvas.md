@@ -1,6 +1,7 @@
 # ADR-0048: Place Garden Properties Above the Plan Canvas
 
-- Status: Accepted
+- Status: Superseded in part by [ADR-0072](0072-use-a-single-plan-canvas-with-guided-setup.md) (phase G6, 2026-11-14). The garden name and size still sit above the plan canvas, but they apply on blur or Enter with no Save action, and during the guided setup the Garden size step replaces them.
+- Form presentation refined by [ADR-0066](0066-adapt-area-editing-to-available-space.md): show a summary above the plan and open the form explicitly in the same location.
 - Date: 2026-09-03
 - Related: [ADR-0045](0045-use-a-garden-properties-panel-and-module-cards.md)
 

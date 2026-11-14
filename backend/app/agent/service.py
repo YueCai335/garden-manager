@@ -5,21 +5,18 @@ reads a fixed copy of the demo garden, allows one run at a time, and reserves
 a run from the shared cumulative budget before the first model request.
 """
 
-import json
 import threading
 from datetime import date
-from importlib import resources
 
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
+from ..demo_garden import PUBLIC_DEMO_GARDEN_ID, load_demo_garden_data
 from ..service import load_workspace
 from .allocation import AllocationRequest, AreaSnapshot, GardenSnapshot, PlantingSnapshot, garden_snapshot
 from .budget import public_run_limit, reserve_public_run
 from .loop import AllocationRunResult, ModelClient, run_allocation_agent
 
-
-PUBLIC_DEMO_GARDEN_ID = "demo-garden"
 
 # One public run at a time. This holds only with one API process: the Render
 # start command runs uvicorn with --workers 1.
@@ -27,7 +24,7 @@ public_run_lock = threading.Lock()
 
 
 def load_demo_garden() -> GardenSnapshot:
-    data = json.loads(resources.files("app.agent").joinpath("demo_garden.json").read_text(encoding="utf-8"))
+    data = load_demo_garden_data()
     return GardenSnapshot(
         garden_id=data["gardenId"],
         areas=tuple(AreaSnapshot(area["id"], area["name"], area["kind"]) for area in data["growingAreas"]),

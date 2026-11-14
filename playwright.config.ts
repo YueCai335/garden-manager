@@ -31,6 +31,7 @@ export default defineConfig({
       timeout: 180_000,
       reuseExistingServer: false,
       env: {
+        WATCHPACK_POLLING: "true",
         NEXT_PUBLIC_API_BASE_URL: "http://127.0.0.1:8100",
         NEXT_DIST_DIR: ".next-e2e",
       },

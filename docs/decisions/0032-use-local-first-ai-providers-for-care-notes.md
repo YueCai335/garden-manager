@@ -1,6 +1,7 @@
 # ADR-0032: Use Local-First AI Providers for Care Notes
 
-- Status: Accepted
+- Status: Accepted; provider configuration amended by
+  [ADR-0058](0058-classify-care-notes-before-filling-a-draft.md)
 - Date: 2026-09-01
 - Supersedes: [ADR-0031](0031-use-review-first-ai-care-note-extraction.md)
 

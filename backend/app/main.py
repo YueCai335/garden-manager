@@ -1,11 +1,14 @@
+import json
 import logging
 import os
 from collections.abc import Iterator
-from datetime import date
+from datetime import date, datetime, timezone
 from pathlib import Path
 from uuid import uuid4
 
-from fastapi import Depends, FastAPI, File, HTTPException, UploadFile, status
+from fastapi import Depends, FastAPI, File, HTTPException, Request, Response, UploadFile, status
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
@@ -14,24 +17,27 @@ from .agent.allocation import AllocationRequest
 from .agent.loop import ModelClient
 from .agent.openai_model import DEFAULT_MODEL, OpenAIAllocationModel
 from .agent.service import camel_case_response, season_allocation
-from .ai import CareNoteExtractor, CareNoteProviderError, EmbeddingClient, PlantHealthAssessor, PlantKnowledgeAnswerer, configured_care_note_extractor, configured_embedding_client, configured_plant_health_assessor, configured_plant_knowledge_answerer
+from .ai import DEFAULT_CARE_NOTE_OPENAI_MODEL, CareNoteExtractor, CareNoteProviderError, OpenAICareNoteExtractor, EmbeddingClient, PlantHealthAssessor, PlantKnowledgeAnswerer, configured_care_note_extractor, configured_embedding_client, configured_plant_health_assessor, configured_plant_knowledge_answerer
+from .care_note_public import REQUEST_ID_HEADER, new_request_id, public_care_note_draft, public_generation_available
+from .care_note_batch import CareNoteBatchDraftResponse, CareNoteBatchExtractor, care_note_batch, configured_batch_extractor
 from .database import get_session
 from .schemas import CareNoteDraftRequest, CareNoteDraftResponse, HealthResponse, PlantHealthAssessmentRequest, PlantHealthAssessmentResponse, PlantKnowledgeAnswer, PlantKnowledgeQuestion, RotationGuidanceRequest, RotationGuidanceResponse, RuntimeConfigResponse, SeasonAllocationRequest, WorkspaceImport, WorkspaceSave
 from .service import care_note_draft, import_workspace, load_workspace, plant_health_assessment, plant_knowledge_answer, rotation_guidance, update_workspace, workspace_response
 
 def configure_agent_logging() -> None:
-    """Emit the agent's per-request usage records (ADR-0056 cost check).
+    """Emit the per-request usage records of the paid AI paths (ADR-0056, ADR-0059).
 
     Uvicorn configures only its own loggers and leaves the root at WARNING, so
-    INFO records from app.agent would otherwise be dropped.
+    INFO records from these loggers would otherwise be dropped.
     """
-    agent_logger = logging.getLogger("app.agent")
-    agent_logger.setLevel(logging.INFO)
-    if not any(handler.get_name() == "app.agent" for handler in agent_logger.handlers):
-        handler = logging.StreamHandler()
-        handler.set_name("app.agent")
-        handler.setFormatter(logging.Formatter("%(levelname)s %(name)s %(message)s"))
-        agent_logger.addHandler(handler)
+    for name in ("app.agent", "app.care_note_public"):
+        paid_logger = logging.getLogger(name)
+        paid_logger.setLevel(logging.INFO)
+        if not any(handler.get_name() == name for handler in paid_logger.handlers):
+            handler = logging.StreamHandler()
+            handler.set_name(name)
+            handler.setFormatter(logging.Formatter("%(levelname)s %(name)s %(message)s"))
+            paid_logger.addHandler(handler)
 
 
 configure_agent_logging()
@@ -44,7 +50,24 @@ app.add_middleware(
     allow_origins=os.getenv("FRONTEND_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(","),
     allow_methods=["GET", "POST", "PUT"],
     allow_headers=["Content-Type"],
+    # Lets the browser read the public AI Garden Note request ID (ADR-0059).
+    expose_headers=[REQUEST_ID_HEADER],
 )
+
+
+@app.exception_handler(RequestValidationError)
+async def request_validation_error(request: Request, error: RequestValidationError) -> Response:
+    """FastAPI's 422 body, written as ASCII-escaped JSON.
+
+    The default handler echoes the rejected input. A lone surrogate from a JSON
+    escape such as \\ud800 cannot be encoded as UTF-8, so the default response
+    fails with a 500; the escaped form carries the same JSON for any client.
+    """
+    return Response(
+        json.dumps({"detail": jsonable_encoder(error.errors())}, ensure_ascii=True),
+        status_code=422,
+        media_type="application/json",
+    )
 
 
 @app.get("/health", response_model=HealthResponse, tags=["system"])
@@ -54,7 +77,11 @@ def health() -> HealthResponse:
 
 @app.get("/runtime-config", response_model=RuntimeConfigResponse, tags=["system"])
 def runtime_config() -> RuntimeConfigResponse:
-    return RuntimeConfigResponse(portfolio_demo=is_portfolio_demo())
+    return RuntimeConfigResponse(
+        portfolio_demo=is_portfolio_demo(),
+        care_note_public_available=is_portfolio_demo() and public_generation_available(),
+        care_note_batch_available=not is_portfolio_demo(),
+    )
 
 
 def is_portfolio_demo() -> bool:
@@ -69,11 +96,31 @@ def require_local_feature(feature: str) -> None:
         )
 
 
-def get_care_note_extractor() -> CareNoteExtractor:
+def get_care_note_extractor() -> CareNoteExtractor | None:
+    if is_portfolio_demo():
+        # The public path builds its own OpenAI extractor (ADR-0059).
+        return None
     try:
         return configured_care_note_extractor()
     except CareNoteProviderError as error:
         raise HTTPException(status_code=503, detail=str(error)) from error
+
+
+def get_care_note_batch_extractor() -> CareNoteBatchExtractor:
+    if is_portfolio_demo():
+        raise HTTPException(status_code=403, detail="Cross-garden AI note batches are unavailable in the public demo. Use the single-record or manual workflow.")
+    try:
+        return configured_batch_extractor()
+    except CareNoteProviderError as error:
+        raise HTTPException(status_code=503, detail="AI Garden Note is unavailable. Enter records manually or try again later.") from error
+
+
+def get_public_care_note_extractor() -> OpenAICareNoteExtractor | None:
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not is_portfolio_demo() or not api_key:
+        return None
+    # public_generation_available() refuses any model other than the approved one.
+    return OpenAICareNoteExtractor(api_key, os.getenv("CARE_NOTE_OPENAI_MODEL", DEFAULT_CARE_NOTE_OPENAI_MODEL))
 
 
 def get_plant_health_assessor() -> PlantHealthAssessor:
@@ -144,6 +191,19 @@ def get_rotation_guidance(
     return rotation_guidance(session, workspace_id, garden_id, payload)
 
 
+@app.post("/workspaces/{workspace_id}/ai/care-note-drafts", response_model=CareNoteBatchDraftResponse, tags=["AI"])
+def create_care_note_batch(
+    workspace_id: str,
+    payload: CareNoteDraftRequest,
+    extractor: CareNoteBatchExtractor = Depends(get_care_note_batch_extractor),
+    session: Session = Depends(get_session),
+):
+    # The route also enforces scope when a test/deployment overrides its dependency.
+    if is_portfolio_demo():
+        raise HTTPException(status_code=403, detail="Cross-garden AI note batches are unavailable in the public demo.")
+    return care_note_batch(session, workspace_id, payload, extractor, datetime.now(timezone.utc).date())
+
+
 @app.post(
     "/workspaces/{workspace_id}/gardens/{garden_id}/ai/care-note-draft",
     response_model=CareNoteDraftResponse,
@@ -153,11 +213,32 @@ def create_care_note_draft(
     workspace_id: str,
     garden_id: str,
     payload: CareNoteDraftRequest,
+    request: Request,
+    response: Response,
     session: Session = Depends(get_session),
-    extractor: CareNoteExtractor = Depends(get_care_note_extractor),
+    extractor: CareNoteExtractor | None = Depends(get_care_note_extractor),
+    public_extractor: OpenAICareNoteExtractor | None = Depends(get_public_care_note_extractor),
 ):
-    require_local_feature("AI assistance")
-    return care_note_draft(session, workspace_id, garden_id, payload, extractor)
+    server_today = datetime.now(timezone.utc).date()
+    if is_portfolio_demo():
+        # The fixed demo garden, not the workspace in the path, is the model's context (ADR-0059).
+        request_id = new_request_id()
+        try:
+            draft = public_care_note_draft(
+                garden_id,
+                payload,
+                public_extractor,
+                server_today=server_today,
+                # Uvicorn sets this from forwarding headers only for trusted proxies (FORWARDED_ALLOW_IPS).
+                client_ip=request.client.host if request.client else "unknown",
+                request_id=request_id,
+            )
+        except HTTPException as error:
+            error.headers = {**(error.headers or {}), REQUEST_ID_HEADER: request_id}
+            raise
+        response.headers[REQUEST_ID_HEADER] = request_id
+        return draft
+    return care_note_draft(session, workspace_id, garden_id, payload, extractor, server_today=server_today)
 
 
 @app.post(
@@ -252,4 +333,4 @@ def save_server_workspace(
 ):
     if workspace_id != payload.workspace_id:
         raise HTTPException(status_code=422, detail="workspaceId must match the path parameter")
-    return workspace_response(update_workspace(session, payload))
+    return update_workspace(session, payload)

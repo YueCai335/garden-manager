@@ -1,5 +1,9 @@
 "use client";
 
+import { FeedbackForm, FormField } from "@/components/forms/FormFeedback";
+
+import { useWorkspaceDraft, useUnsavedDraft } from "@/components/workspace/WorkspaceProvider";
+
 import { useEffect, useRef, useState } from "react";
 
 import recordedExampleRun from "@/data/exampleAllocationRun.json";
@@ -76,14 +80,15 @@ function AllocationAssistantPanel({
   onConfirm,
   exampleRun = defaultExampleRun,
 }: AllocationAssistantProps) {
-  const [crops, setCrops] = useState<AllocationCropKey[]>([]);
-  const [preference, setPreference] = useState("");
-  const [chosenAreaIds, setChosenAreaIds] = useState<string[]>([]);
+  const [crops, setCrops] = useWorkspaceDraft<AllocationCropKey[]>(`allocation:${workspaceId ?? "local"}:${garden.id}:crops`, []);
+  const [preference, setPreference] = useWorkspaceDraft(`allocation:${workspaceId ?? "local"}:${garden.id}:preference`, "");
+  const [chosenAreaIds, setChosenAreaIds] = useWorkspaceDraft<string[]>(`allocation:${workspaceId ?? "local"}:${garden.id}:chosenAreaIds`, []);
   const [isPlanning, setIsPlanning] = useState(false);
-  const [result, setResult] = useState<SeasonAllocationResult>();
-  const [requestError, setRequestError] = useState<string>();
-  const [confirmation, setConfirmation] = useState<AllocationConfirmOutcome>();
-  const [showExample, setShowExample] = useState(false);
+  const [result, setResult] = useWorkspaceDraft<SeasonAllocationResult | undefined>(`allocation:${workspaceId ?? "local"}:${garden.id}:result`, undefined);
+  const [requestError, setRequestError] = useWorkspaceDraft<string | undefined>(`allocation:${workspaceId ?? "local"}:${garden.id}:requestError`, undefined);
+  const [confirmation, setConfirmation] = useWorkspaceDraft<AllocationConfirmOutcome | undefined>(`allocation:${workspaceId ?? "local"}:${garden.id}:confirmation`, undefined);
+  const [showExample, setShowExample] = useWorkspaceDraft(`allocation:${workspaceId ?? "local"}:${garden.id}:showExample`, false);
+  useUnsavedDraft(`allocation:${workspaceId ?? "local"}:${garden.id}`, Boolean((crops.length || preference || result) && confirmation?.status !== "added"));
   const requestIdRef = useRef(0);
   const abortRef = useRef<AbortController | undefined>(undefined);
 
@@ -198,18 +203,26 @@ function AllocationAssistantPanel({
       {blocker ? (
         <p className="allocation-notice">{blocker}</p>
       ) : (
-        <form
+        <FeedbackForm
+          error={requestError}
+          notice={isConfirmed ? "" : undefined}
+          validate={() => ({
+            [`${headingId}-crop-${allocationCrops[0].key}`]: !crops.length ? "Choose at least one crop." : undefined,
+            [`${headingId}-area-${eligibleAreas[0]?.id}`]: choosesAreas && (!selectedAreaIds.length || selectedAreaIds.length > MAX_ALLOCATION_AREAS) ? `Choose between 1 and ${MAX_ALLOCATION_AREAS} planting areas.` : undefined,
+          })}
           className="allocation-form"
           onSubmit={(event) => {
             event.preventDefault();
             void plan();
           }}
         >
-          <fieldset className="allocation-choices">
+          <fieldset className="allocation-choices" aria-describedby={`${headingId}-crop-help`} aria-invalid={!crops.length}>
             <legend>Crops</legend>
+            {!crops.length && <p id={`${headingId}-crop-help`}>Choose at least one crop before planning.</p>}
             {allocationCrops.map((crop) => (
               <label key={crop.key}>
                 <input
+                  id={`${headingId}-crop-${crop.key}`}
                   checked={crops.includes(crop.key)}
                   onChange={() => toggleCrop(crop.key)}
                   type="checkbox"
@@ -220,11 +233,13 @@ function AllocationAssistantPanel({
           </fieldset>
 
           {choosesAreas ? (
-            <fieldset className="allocation-choices">
+            <fieldset className="allocation-choices" aria-describedby={`${headingId}-area-help`} aria-invalid={!selectedAreaIds.length}>
               <legend>Planting areas (up to {MAX_ALLOCATION_AREAS})</legend>
+              {!selectedAreaIds.length && <p id={`${headingId}-area-help`}>Choose at least one planting area before planning.</p>}
               {eligibleAreas.map((area) => (
                 <label key={area.id}>
                   <input
+                    id={`${headingId}-area-${area.id}`}
                     checked={chosenAreaIds.includes(area.id)}
                     disabled={!chosenAreaIds.includes(area.id) && chosenAreaIds.length >= MAX_ALLOCATION_AREAS}
                     onChange={() => toggleArea(area.id)}
@@ -241,7 +256,7 @@ function AllocationAssistantPanel({
             </p>
           )}
 
-          <div className="field">
+          <FormField id={`${headingId}-preference`}>
             <label htmlFor={`${headingId}-preference`}>Preference (optional)</label>
             <textarea
               aria-describedby={`${headingId}-preference-count`}
@@ -255,7 +270,7 @@ function AllocationAssistantPanel({
             <span className="allocation-count" id={`${headingId}-preference-count`}>
               {preference.length}/{MAX_ALLOCATION_PREFERENCE} characters
             </span>
-          </div>
+          </FormField>
 
           <div className="form-actions">
             <button className="primary-button" disabled={!canPlan} type="submit">
@@ -270,14 +285,9 @@ function AllocationAssistantPanel({
               Planning can take up to two minutes. The steps appear when the plan is ready.
             </p>
           ) : null}
-        </form>
+        </FeedbackForm>
       )}
 
-      {requestError ? (
-        <p className="allocation-error" role="alert">
-          {requestError}
-        </p>
-      ) : null}
 
       {result && result.status === "needs_input" ? (
         <div className="allocation-error" role="alert">

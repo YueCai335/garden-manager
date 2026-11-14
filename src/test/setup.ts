@@ -1,6 +1,23 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup } from "@testing-library/react";
 import { afterEach, beforeEach, vi } from "vitest";
+import { resetTestRouter } from "./router";
+import { testLayout } from "./layout";
+
+vi.mock("next/navigation", async () => {
+  const { testRouter, useTestPathname, useTestSearchParams } = await import("./router");
+  return { useRouter: () => testRouter, usePathname: useTestPathname, useSearchParams: useTestSearchParams };
+});
+vi.mock("next/link", async () => {
+  const React = await import("react");
+  const { testRouter } = await import("./router");
+  return { default: React.forwardRef<HTMLAnchorElement, React.AnchorHTMLAttributes<HTMLAnchorElement>>(function TestLink({ href = "", onClick, children, ...props }, ref) {
+    return React.createElement("a", { ...props, href, ref, onClick: (event: React.MouseEvent<HTMLAnchorElement>) => {
+      onClick?.(event);
+      if (!event.defaultPrevented && !event.ctrlKey && !event.metaKey && !event.shiftKey && event.button === 0) { event.preventDefault(); testRouter.push(href); }
+    } }, children);
+  }) };
+});
 
 vi.mock("react-konva", async () => {
   const React = await import("react");
@@ -60,10 +77,10 @@ Object.defineProperty(HTMLElement.prototype, "getBoundingClientRect", {
         bottom: 640,
         height: 640,
         left: 0,
-        right: 1000,
+        right: testLayout.width,
         toJSON: () => ({}),
         top: 0,
-        width: 1000,
+        width: testLayout.width,
         x: 0,
         y: 0
       }) as DOMRect
@@ -76,9 +93,12 @@ class ResizeObserverMock {
   unobserve() {}
 }
 
-Object.defineProperty(window, "ResizeObserver", { value: ResizeObserverMock });
+Object.defineProperty(window, "ResizeObserver", { configurable: true, value: ResizeObserverMock });
 
 beforeEach(() => {
+  testLayout.width = 1000;
+  resetTestRouter();
+  vi.stubGlobal("matchMedia", (media: string) => ({ media, matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() }));
   // Default every test to "no network reachable" so results never depend on
   // whether something real happens to be listening on localhost:8000. A test
   // that needs real request/response behavior stubs its own fetch, which
@@ -94,5 +114,10 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   window.localStorage.clear();
+  window.sessionStorage.clear();
   vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
 });
+
+Object.defineProperty(HTMLDialogElement.prototype, "showModal", { configurable: true, value: function (this: HTMLDialogElement) { this.setAttribute("open", ""); } });
+Object.defineProperty(HTMLDialogElement.prototype, "close", { configurable: true, value: function (this: HTMLDialogElement) { this.removeAttribute("open"); } });

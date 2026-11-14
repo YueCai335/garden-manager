@@ -10,11 +10,11 @@ plan the next season, and ask source-grounded plant questions.
 
 ## Screenshots
 
-**Garden plan** — planting areas laid out on a real metric grid, with plants placed inside each area.
+**Garden plan** — one canvas on a real metric grid. Each area type button drops a standard-size bed; areas drag and resize in place, opening an area zooms the same canvas to place plants, and every edit saves at once with Undo and Redo. A new garden walks through four guided steps: garden size, planting areas, plants, and Ready.
 
-<img width="1000" alt="Garden plan showing three measured planting areas on a metric grid" src="docs/screenshots/garden-plan.png" />
+<img width="1000" alt="Garden Plan with three planting areas on a metric grid, area type buttons, Undo and Redo, and the planting-area list" src="docs/screenshots/garden-plan.png" />
 
-**Next season planner** — deterministic crop-family rotation guidance derived from what each area grew last season.
+**Next Season** — area plans first, with expandable rotation history and companion sources.
 
 <img width="1000" alt="Rotation cards per growing area: last season's crop, families to avoid, and good rotation fits" src="docs/screenshots/season-rotation.png" />
 
@@ -24,14 +24,15 @@ plan the next season, and ask source-grounded plant questions.
 
 ## What It Demonstrates
 
-- **Garden operations:** multiple gardens, raised beds, in-ground areas, and
-  container groups with measured planting layouts.
+- **Garden operations:** multiple gardens, raised beds, in-ground beds,
+  containers, and greenhouses on one metric plan canvas, with direct
+  placement, autosave, undo, and a guided first-run setup.
 - **Current records:** plants, care history, recurring care tasks, and
   reviewable plant-health records.
 - **Seasonal planning:** crop-family rotation guidance by growing area and a
   separate next-season plan with companion-planting notes.
 - **Applied AI:** Chinese and English care-note extraction, local RAG-backed
-  Plant Knowledge answers, visible citations, and user review before records
+  Plant Guide answers, visible citations, and user review before records
   are saved.
 - **Tool-calling agent:** an Allocation Assistant that calls two read-only
   tools, revises its plan from rotation feedback, and returns a draft the
@@ -46,13 +47,16 @@ plan the next season, and ask source-grounded plant questions.
 
 ## Five-Minute Demo
 
+The frontend updates described here are local changes and have not been deployed to the hosted demo.
+
 ### Hosted demo (fastest)
 
 Open the [live demo](https://garden-manager-demo.vercel.app), select **Load demo garden**,
-then walk through steps 4-6 below. Garden, Care, and Season Planner are available
+then walk through steps 4-6 below. Garden, Care, and Next Season are available
 online; AI and photo workflows are shown as previews and run in the local app.
-In **Next season plan**, the Allocation Assistant does not run live online; it
-offers a labelled recording of one real evaluation run.
+In **Next Season**, the Allocation Assistant does not run live online; it
+offers a labelled recording of one real evaluation run under the expandable **Allocation Assistant**.
+AI Garden Note stays directly available on the home page; the hosted build keeps its assisted-entry restrictions.
 The API sleeps on the free tier, so the first request can take about a minute.
 
 ### Local (full feature set, including AI)
@@ -60,13 +64,14 @@ The API sleeps on the free tier, so the first request can take about a minute.
 1. Start the API and database with `docker compose up --build`.
 2. In another terminal, run `npm install`, then start the web app with `npm run dev`.
 3. Open `http://localhost:3000` and select **Load demo garden**.
-4. Double-click **Demo Garden** to inspect its measured growing areas and
-   plant layout.
-5. Return to the dashboard and open **Next season plan**. Review crop-family
-   guidance, then add a crop to a growing area's next-season plan.
+4. Select the **Demo Garden** card. Open an area to zoom the plan into it and
+   place plants, drag an area to move it, and use **Undo** to reverse a change.
+   **Add garden** starts the four-step guided setup on the same canvas.
+5. Return to the dashboard and open **Next Season**. Choose plants for each area. Expand **Rotation details** for history and companion sources,
+   or **Allocation Assistant** to review an AI draft or the recorded demo run.
 6. Open **Care** to create a task or record a completed care event.
 7. After completing [Enable local AI features](#enable-local-ai-features), open
-   **Plant guide** to ask a Chinese or English question and inspect the cited source cards.
+   **Plant Guide** to ask a Chinese or English question and inspect the cited source cards.
 
 The demo uses generic data and can be loaded repeatedly. It replaces the
 gardens saved in the current browser workspace.
@@ -131,8 +136,20 @@ ollama pull embeddinggemma
 ```
 
 Keep Ollama running and restart Docker Compose after downloading the models.
-Care events and plant-health observations can also be entered manually. Plant
-Knowledge answers require the configured embedding and answer models to be available.
+Care events and plant-health observations can also be entered manually. Plant Guide answers require the configured embedding and answer models to be available.
+
+AI Garden Note has its own provider setting, `CARE_NOTE_AI_PROVIDER` (default
+`ollama`), so switching it does not change Plant Doctor
+([ADR-0058](docs/decisions/0058-classify-care-notes-before-filling-a-draft.md)).
+
+In the local app, the homepage note can produce up to six review drafts across
+gardens. Review each action, date and target, edit or exclude individual rows,
+and save the selection together. Manual entry remains available. Drafts stay
+in the current tab while navigating; keep the tab open until saving finishes.
+Failed synchronization retries the same records. The public demo retains its
+single-event restrictions. Batch provider compatibility and extraction quality
+still need real-model evaluation; current automated checks use mocks
+([ADR-0068](docs/decisions/0068-extract-bounded-workspace-care-note-batches.md)).
 
 The Allocation Assistant uses the OpenAI API whatever `AI_PROVIDER` is set to.
 Put `OPENAI_API_KEY` in the API's environment to run it live; without a key it
@@ -186,7 +203,7 @@ pull requests and pushes to `main`.
   an OpenAI key. The public demo keeps live runs closed and shows a recorded
   example instead, because the evaluation found misleading explanations
   ([ADR-0057](docs/decisions/0057-keep-live-allocation-runs-closed-after-evaluation.md)).
-- Plant Knowledge uses a small curated source set with visible citations. It
+- Plant Guide uses a small curated source set with visible citations. It
   provides educational guidance and requests more detail when evidence is weak.
 - Map-backed yard initialization and yard-wide sun analysis remain deferred
   research work. The operational garden workflow is the active product.

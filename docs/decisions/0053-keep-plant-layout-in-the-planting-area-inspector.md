@@ -1,6 +1,6 @@
 # ADR-0053: Keep Plant Layout in the Planting-Area Inspector
 
-- Status: Accepted
+- Status: Superseded by [ADR-0072](0072-use-a-single-plan-canvas-with-guided-setup.md) (phase G3). Plants are placed and moved on the Garden Plan canvas; the inspector keeps the plant controls and no longer has its own canvas.
 - Date: 2026-09-03
 - Supersedes: [ADR-0050](0050-use-a-garden-plan-planting-area-inspector.md)
 - Related: [ADR-0015](0015-use-a-metric-garden-plan-overview.md), [ADR-0048](0048-place-garden-properties-above-the-plan-canvas.md), and [ADR-0052](0052-show-save-actions-only-for-pending-edits.md)

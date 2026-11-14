@@ -1,0 +1,51 @@
+/* Shared controls; legacy class aliases are removed as callers migrate. */
+.primary-button,
+.secondary-button,
+.text-button,
+.danger-button,
+.remove-button,
+.duplicate-button,
+.create-button,
+.save-button,
+.complete-button,
+.ghost-button,
+.toolbar-button,
+.back-button { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 8px 16px; border: 1px solid transparent; border-radius: var(--radius-control); font: inherit; font-weight: 600; line-height: 1.5; text-align: center; text-decoration: none; cursor: pointer; transition: background-color 140ms, border-color 140ms; }
+.primary-button,
+.create-button,
+.save-button,
+.complete-button { background: var(--color-brand); color: white; border-color: var(--color-brand); }
+.primary-button:hover:not(:disabled),
+.create-button:hover:not(:disabled),
+.save-button:hover:not(:disabled),
+.complete-button:hover:not(:disabled) { background: var(--color-brand-hover); border-color: var(--color-brand-hover); }
+.secondary-button,
+.duplicate-button,
+.ghost-button,
+.toolbar-button,
+.back-button { background: var(--color-surface); color: var(--color-text); border-color: var(--color-input-border); }
+.secondary-button:hover:not(:disabled),
+.duplicate-button:hover:not(:disabled),
+.ghost-button:hover:not(:disabled),
+.toolbar-button:hover:not(:disabled),
+.back-button:hover:not(:disabled) { background: var(--color-soft); border-color: var(--color-brand); }
+.text-button { background: transparent; color: var(--color-brand-hover); }
+.text-button:hover:not(:disabled) { background: var(--color-soft); }
+.danger-button,
+.remove-button { background: var(--color-surface); border-color: var(--color-error); color: var(--color-error); }
+.danger-button:hover:not(:disabled),
+.remove-button:hover:not(:disabled) { background: var(--color-error-surface); }
+.primary-button:active:not(:disabled) { background: var(--color-brand-pressed); border-color: var(--color-brand-pressed); }
+:is(.secondary-button, .text-button, .danger-button):active:not(:disabled) { box-shadow: inset 0 0 0 1px currentColor; }
+.primary-button:disabled,
+.secondary-button:disabled,
+.text-button:disabled,
+.danger-button:disabled,
+.remove-button:disabled,
+.duplicate-button:disabled,
+.create-button:disabled,
+.save-button:disabled,
+.complete-button:disabled,
+.ghost-button:disabled,
+.toolbar-button:disabled,
+.back-button:disabled { opacity: 0.55; cursor: not-allowed; }

@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { GardenWorkspace, SERVER_WORKSPACE_STORAGE_KEY } from "@/components/GardenWorkspace";
+import { GardenWorkspace, SERVER_WORKSPACE_STORAGE_KEY } from "@/test/WorkspaceHarness";
 import { createDemoGardenWorkspace, type GardenWorkspace as Workspace } from "@/lib/gardenWorkspace";
 import type { SeasonAllocationResult } from "@/lib/seasonAllocation";
 
@@ -88,7 +88,8 @@ function plan2027(workspace: SentWorkspace | undefined) {
 
 async function openPlanner(user: ReturnType<typeof userEvent.setup>) {
   render(<GardenWorkspace />);
-  await user.click(await screen.findByRole("button", { name: "Next season plan" }));
+  await user.click(await screen.findByRole("link", { name: "Next Season" }));
+  await user.click(screen.getByText("Allocation Assistant · Demo Garden", { selector: "summary" }));
   return screen.findByRole("region", { name: "Allocation Assistant" });
 }
 
@@ -202,6 +203,7 @@ describe("Allocation Assistant in the Season Planner", () => {
     // B -> A: remove it again. The content matches the saved copy, but B and A are still unsaved.
     const card = screen.getByRole("heading", { name: "Sample raised bed", level: 3 }).closest("article")!;
     await user.click(within(card).getByRole("button", { name: "Remove" }));
+    await user.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Remove plan item" }));
     expect(planButton()).toBeDisabled();
 
     server.answerOldestSave();

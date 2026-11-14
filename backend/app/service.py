@@ -1,16 +1,18 @@
 import hashlib
 import json
+from datetime import date
 from math import sqrt
+from typing import NamedTuple
 
 from fastapi import HTTPException
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session, selectinload
 
-from .ai import CareNoteExtractor, EmbeddingClient, PlantHealthAssessor, PlantKnowledgeAnswerer, complete_known_care_note_fields
+from .ai import CareNoteExtractor, CareNoteProviderError, EmbeddingClient, PlantHealthAssessor, PlantKnowledgeAnswerer, complete_known_care_note_fields, drop_unsupported_garden_scope, settle_care_note_date
 from .knowledge import SEED_KNOWLEDGE_CARDS
 from .models import CareEvent, CareTask, Garden, GrowingArea, HealthRecord, KnowledgeChunk, KnowledgeSource, PlannedPlanting, Planting, SeasonPlan, Workspace, WorkspaceCareEvent, WorkspaceCareTask
 from .rotation import ROTATION_GROWING_AREA_KINDS, RotationPlanting, evaluate_rotation
-from .schemas import CareNoteDraftRequest, PlantHealthAssessmentRequest, PlantKnowledgeAnswer, PlantKnowledgeQuestion, RotationGuidanceRequest, WorkspaceImport, WorkspaceSave
+from .schemas import CareNoteDraftRequest, CareNoteExtraction, PlantHealthAssessmentRequest, PlantKnowledgeAnswer, PlantKnowledgeQuestion, RotationGuidanceRequest, WorkspaceImport, WorkspaceSave
 
 
 def import_fingerprint(workspace: WorkspaceImport) -> str:
@@ -19,13 +21,14 @@ def import_fingerprint(workspace: WorkspaceImport) -> str:
 
 
 def load_workspace(session: Session, workspace_id: str) -> Workspace | None:
-    return session.scalar(
+    query = (
         select(Workspace)
         .where(Workspace.id == workspace_id)
+        .execution_options(populate_existing=True)
         .options(
             selectinload(Workspace.gardens).selectinload(Garden.growing_areas),
-            selectinload(Workspace.gardens).selectinload(Garden.plantings),
-            selectinload(Workspace.gardens).selectinload(Garden.season_plans).selectinload(SeasonPlan.plantings),
+            selectinload(Workspace.gardens).selectinload(Garden.plantings).joinedload(Planting.growing_area),
+            selectinload(Workspace.gardens).selectinload(Garden.season_plans).selectinload(SeasonPlan.plantings).joinedload(PlannedPlanting.growing_area),
             selectinload(Workspace.gardens).selectinload(Garden.care_events),
             selectinload(Workspace.gardens).selectinload(Garden.care_tasks),
             selectinload(Workspace.gardens).selectinload(Garden.health_records),
@@ -33,6 +36,13 @@ def load_workspace(session: Session, workspace_id: str) -> Workspace | None:
             selectinload(Workspace.care_tasks),
         )
     )
+    revision_query = select(Workspace.revision).where(Workspace.id == workspace_id)
+    # Relationship queries can straddle a concurrent commit under READ COMMITTED.
+    for _ in range(3):
+        workspace = session.scalar(query)
+        if workspace is None or workspace.revision == session.scalar(revision_query):
+            return workspace
+    raise HTTPException(status_code=503, detail="The workspace is being updated. Try again.")
 
 
 def import_workspace(session: Session, payload: WorkspaceImport) -> Workspace:
@@ -58,10 +68,7 @@ def import_workspace(session: Session, payload: WorkspaceImport) -> Workspace:
     return load_workspace(session, payload.workspace_id)  # type: ignore[return-value]
 
 
-def update_workspace(session: Session, payload: WorkspaceSave) -> Workspace:
-    workspace = load_workspace(session, payload.workspace_id)
-    if workspace is None:
-        raise HTTPException(status_code=404, detail="Workspace not found")
+def update_workspace(session: Session, payload: WorkspaceSave) -> dict:
     # Optimistic lock: bump the revision only if it still matches what the
     # client read. The conditional UPDATE is atomic, so two clients racing on
     # the same revision cannot both win.
@@ -72,18 +79,25 @@ def update_workspace(session: Session, payload: WorkspaceSave) -> Workspace:
     )
     if claimed.rowcount != 1:
         session.rollback()
-        current = load_workspace(session, payload.workspace_id)
+        current_revision = session.scalar(select(Workspace.revision).where(Workspace.id == payload.workspace_id))
+        if current_revision is None:
+            raise HTTPException(status_code=404, detail="Workspace not found")
         raise HTTPException(
             status_code=409,
             detail={
                 "message": "This workspace was changed elsewhere since it was loaded. Reload it before saving again.",
-                "currentRevision": current.revision if current else None,
+                "currentRevision": current_revision,
             },
         )
-    session.refresh(workspace)
+    workspace = load_workspace(session, payload.workspace_id)
+    assert workspace is not None
     write_workspace(workspace, payload)
+    session.flush()
+    saved = load_workspace(session, payload.workspace_id)
+    assert saved is not None
+    response = workspace_response(saved)
     session.commit()
-    return load_workspace(session, payload.workspace_id)  # type: ignore[return-value]
+    return response
 
 
 def rotation_guidance(
@@ -152,46 +166,135 @@ def rotation_guidance(
     }
 
 
+NOT_COMPLETED_MESSAGES = {
+    "planned": "This note describes care that has not happened yet. Write a completed action, or fill in the record manually.",
+    "negated": "This note says the care did not happen, so there is nothing to record.",
+    "multiple": "This note describes more than one care action. Write one action per note, or fill in the record manually.",
+    "unrelated": "This note does not describe a watering or fertilizing action. Plant health questions belong in Plant Health.",
+}
+
+
+class CareNoteArea(NamedTuple):
+    id: str
+    name: str
+
+
+class CareNotePlanting(NamedTuple):
+    id: str
+    common_name: str
+    growing_area_id: str | None
+
+
+class CareNoteGarden(NamedTuple):
+    """What a care note needs from a garden: names for the model, IDs for the draft.
+
+    Built from a stored garden locally, and from the fixed demo garden in the
+    public demo (ADR-0059), so both paths share the same draft rules.
+    """
+
+    name: str
+    areas: tuple[CareNoteArea, ...]
+    plantings: tuple[CareNotePlanting, ...]
+
+    def model_context(self) -> dict[str, object]:
+        return {
+            "name": self.name,
+            "plantingAreas": [area.name for area in self.areas],
+            "plantGroups": [planting.common_name for planting in self.plantings],
+        }
+
+
+def stored_care_note_garden(garden: Garden) -> CareNoteGarden:
+    area_ids = {area.id: area.external_id for area in garden.growing_areas}
+    return CareNoteGarden(
+        name=garden.name,
+        areas=tuple(CareNoteArea(area.external_id, area.name) for area in garden.growing_areas),
+        plantings=tuple(
+            CareNotePlanting(planting.external_id, planting.common_name, area_ids.get(planting.growing_area_id))
+            for planting in garden.plantings
+        ),
+    )
+
+
+def check_client_today(today: date, server_today: date) -> None:
+    # One day each way covers UTC-12 to UTC+14 around the server's UTC date.
+    # It rejects an implausible clock; it cannot prove the browser's date (ADR-0058).
+    if abs((today - server_today).days) > 1:
+        raise HTTPException(
+            status_code=422,
+            detail="Your device date is more than a day away from today. Check your device clock and try again.",
+        )
+
+
 def care_note_draft(
     session: Session,
     workspace_id: str,
     garden_id: str,
     payload: CareNoteDraftRequest,
     extractor: CareNoteExtractor,
+    server_today: date,
 ) -> dict:
+    check_client_today(payload.today, server_today)
     workspace = load_workspace(session, workspace_id)
     if workspace is None:
         raise HTTPException(status_code=404, detail="Workspace not found")
-    garden = next((garden for garden in workspace.gardens if garden.external_id == garden_id), None)
-    if garden is None:
+    stored_garden = next((garden for garden in workspace.gardens if garden.external_id == garden_id), None)
+    if stored_garden is None:
         raise HTTPException(status_code=404, detail="Garden not found in this workspace")
 
-    garden_context = {
-        "name": garden.name,
-        "plantingAreas": [area.name for area in garden.growing_areas],
-        "plantGroups": [planting.common_name for planting in garden.plantings],
-    }
-    extraction = complete_known_care_note_fields(
-        extractor.extract(payload.note, garden_context),
-        payload.note,
-        garden_context,
-    )
-    target = resolve_care_note_target(garden, extraction.target_scope, extraction.target_name)
+    garden = stored_care_note_garden(stored_garden)
+    try:
+        extraction = extractor.extract(payload.note, garden.model_context(), payload.today)
+    except CareNoteProviderError as error:
+        raise HTTPException(status_code=503, detail=str(error)) from error
+    return draft_from_extraction(garden, payload.note, extraction, payload.today)
+
+
+ALL_GARDENS_NOT_PUBLIC = "The demo records care for the example garden only. Choose a target in it before saving."
+
+
+def draft_from_extraction(
+    garden: CareNoteGarden,
+    note: str,
+    extraction: CareNoteExtraction,
+    today: date,
+    *,
+    allow_all_gardens: bool = True,
+) -> dict:
+    """Apply ADR-0058's draft rules to one model extraction."""
+    if extraction.kind != "completed":
+        # Only a completed event becomes a draft; the gardener can still enter one by hand.
+        return {"kind": extraction.kind, "note": note, "targetScope": None, "reviewNotes": [NOT_COMPLETED_MESSAGES[extraction.kind]]}
+
+    # Check the wording behind a garden-wide target before any filling or matching.
+    # The date first, in one step, so a cleared date is never filled back in.
+    extraction = settle_care_note_date(extraction, note, today)
+    extraction = drop_unsupported_garden_scope(extraction, note)
+    extraction = complete_known_care_note_fields(extraction, note, garden.model_context(), today)
     review_notes: list[str] = []
     if extraction.type is None:
         review_notes.append("Choose a care type before saving.")
     if extraction.date is None:
         review_notes.append("Choose the care date before saving.")
-    if target is None:
-        target = {"targetScope": "garden"}
-        if extraction.target_name:
-            review_notes.append("Choose a target because the note did not match one garden item.")
+    if extraction.target_scope == "all-gardens" and not allow_all_gardens:
+        # The public demo works on one example garden (ADR-0059).
+        target = None
+        review_notes.append(ALL_GARDENS_NOT_PUBLIC)
+    else:
+        target = resolve_care_note_target(garden, extraction.target_scope, extraction.target_name)
+        if target is None:
+            review_notes.append(
+                "Choose a target because the note did not match one garden item."
+                if extraction.target_name
+                else "Choose a target before saving."
+            )
 
     return {
+        "kind": extraction.kind,
         "type": extraction.type,
         "date": extraction.date,
-        "note": payload.note,
-        **target,
+        "note": note,
+        **(target or {"targetScope": None}),
         **(
             {
                 "fertilizerProduct": extraction.fertilizer_product,
@@ -351,36 +454,33 @@ def cosine_similarity(left: list[float], right) -> float:
     return sum(left_value * right_value for left_value, right_value in zip(left, right_values, strict=True)) / denominator
 
 
-def resolve_care_note_target(garden: Garden, target_scope: str | None, target_name: str | None) -> dict | None:
+def resolve_care_note_target(garden: CareNoteGarden, target_scope: str | None, target_name: str | None) -> dict | None:
+    """The unique garden item a draft names, or None so the gardener chooses."""
     if target_scope == "all-gardens":
         return {"targetScope": "all-gardens"}
-    if target_scope in (None, "garden"):
+    if target_scope == "garden":
         return {"targetScope": "garden"}
-    if not target_name:
+    if target_scope is None or not target_name:
         return None
     normalized_name = target_name.casefold()
     if target_scope == "planting-area":
-        matches = [area for area in garden.growing_areas if area.name.casefold() == normalized_name]
+        matches = [area for area in garden.areas if area.name.casefold() == normalized_name]
         if len(matches) == 1:
             return {
                 "targetScope": "planting-area",
-                "growingAreaId": matches[0].external_id,
+                "growingAreaId": matches[0].id,
                 "growingAreaName": matches[0].name,
             }
     if target_scope == "plant-group":
         matches = [planting for planting in garden.plantings if planting.common_name.casefold() == normalized_name]
         if len(matches) == 1:
+            area = next((area for area in garden.areas if area.id == matches[0].growing_area_id), None)
             return {
                 "targetScope": "plant-group",
-                "plantingRecordId": matches[0].external_id,
-                "plantingRecordName": planting_target_name(matches[0], garden),
+                "plantingRecordId": matches[0].id,
+                "plantingRecordName": f"{matches[0].common_name} · {area.name if area else 'Planting area'}",
             }
     return None
-
-
-def planting_target_name(planting: Planting, garden: Garden) -> str:
-    area = next((area for area in garden.growing_areas if area.id == planting.growing_area_id), None)
-    return f"{planting.common_name} · {area.name if area else 'Planting area'}"
 
 
 def write_workspace(workspace: Workspace, payload: WorkspaceImport) -> None:

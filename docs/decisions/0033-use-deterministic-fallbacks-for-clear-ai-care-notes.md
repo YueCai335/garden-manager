@@ -1,6 +1,7 @@
 # ADR-0033: Use Deterministic Fallbacks for Clear AI Care Notes
 
-- Status: Accepted
+- Status: Accepted; fallback scope amended by
+  [ADR-0058](0058-classify-care-notes-before-filling-a-draft.md)
 - Date: 2026-09-01
 
 ## Context

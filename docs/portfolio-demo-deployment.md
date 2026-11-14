@@ -29,8 +29,9 @@ that begin with either `postgresql://` or `postgres://`.
 2. Render reads `render.yaml` and proposes the FastAPI web service.
 3. Enter the Supabase connection string as `DATABASE_URL`.
 4. Set `FRONTEND_ORIGINS` after the Vercel project has its `vercel.app` URL.
-5. Leave `OPENAI_API_KEY` empty and `AGENT_PUBLIC_RUN_LIMIT` at `0`. Live
-   Allocation Assistant runs stay closed in the public demo (ADR-0057).
+5. Keep `AGENT_PUBLIC_RUN_LIMIT` at `0`: live Allocation Assistant runs stay
+   closed in the public demo (ADR-0057). Leave `OPENAI_API_KEY` empty until the
+   AI Garden Note steps below call for it (ADR-0060).
 6. Create the service and open `https://your-render-service.onrender.com/health`.
 
 The API runs Alembic migrations during startup. A successful health response
@@ -82,6 +83,108 @@ are in [docs/agent.md](agent.md). Reopening requires:
 
 Every public run would increment one database row, `agent_run_budgets`. Check
 it with `SELECT used_runs FROM agent_run_budgets;` in Supabase.
+
+## AI Garden Note Status
+
+Live AI Garden Note drafts in the public demo were evaluated under ADR-0059
+and rejected on 2026-10-06: two paid evaluations missed the quality gates. They stay
+closed: `CARE_NOTE_PUBLIC_ENABLED=false` and `CARE_NOTE_PUBLIC_RUN_LIMIT=0` in
+Render, and the panel shows its preview. The checks and results are in
+[docs/care-note-public-delivery.md](care-note-public-delivery.md). ADR-0060 (accepted)
+offers the feature again as assisted drafting: the model fills what a note
+states clearly, leaves the rest empty, and the visitor confirms every record.
+The staged opening steps below apply under ADR-0060, each with the owner's
+separate approval.
+
+Check usage in Supabase with
+`SELECT name, used_runs FROM agent_run_budgets WHERE name LIKE 'care-note-public%';`.
+The `care-note-public` row is the cumulative count; one
+`care-note-public-day-YYYY-MM-DD` row per UTC day holds the daily count. A
+cumulative value of 58 after an API log line `care_note_public_request` with
+`"outcome": "usage_stop"` means the automatic stop ran.
+
+### Before C3: deploy closed, then check Render
+
+Each step below needs the owner's approval when it publishes code, enters a
+key, or spends money.
+
+1. **Publish the code.** Render and Vercel build from GitHub, so the approved
+   branch is pushed and merged into `main` through a reviewed pull request.
+   Render then deploys with AI Garden Note closed: `render.yaml` sets
+   `CARE_NOTE_PUBLIC_ENABLED=false` and `CARE_NOTE_PUBLIC_RUN_LIMIT=0`.
+2. **Confirm the closed deploy.** `/health` answers `ok`; `/runtime-config`
+   reports `"careNotePublicAvailable": false`; in Supabase,
+   `SELECT name, used_runs FROM agent_run_budgets;` shows a
+   `care-note-public` row at 0 (created by the startup migration).
+3. **Enter the key.** The owner sets `OPENAI_API_KEY` in the Render
+   dashboard only; it never goes into Git or chat. With the switch off,
+   nothing calls OpenAI.
+4. **Client-IP source.** Read one request's access-log line in Render and
+   record which address Uvicorn sees. With the default
+   `FORWARDED_ALLOW_IPS`, it is Render's proxy, so the five-per-minute limit
+   applies to all visitors together rather than per visitor. Keep that safe
+   default unless a measured, stable proxy range justifies trusting
+   forwarding headers; never trust every forwarding header.
+5. **Switch-off drill.** Set `CARE_NOTE_PUBLIC_RUN_LIMIT=3` and
+   `CARE_NOTE_PUBLIC_ENABLED=true`; after the redeploy `/runtime-config`
+   reports `true`. Set `CARE_NOTE_PUBLIC_ENABLED=false`; after the redeploy
+   it reports `false`. No frontend has the live entry yet, and no OpenAI
+   request is made.
+
+A Blueprint sync rewrites the values set in `render.yaml`, which closes the
+feature again (`false`, `0`); after any sync, check `/runtime-config`.
+
+### Open in stages: C3 check, then C4
+
+Two switches must agree before a visitor sees the live form: the API's
+`CARE_NOTE_PUBLIC_ENABLED` (with a non-zero `CARE_NOTE_PUBLIC_RUN_LIMIT`) and
+the frontend build variable `NEXT_PUBLIC_CARE_NOTE_LIVE_ENTRY`. The frontend
+variable accepts only `true`, and Next.js inlines it when the frontend is
+built: changing it in Vercel takes effect only after a new deployment. Record
+the commit of every deployment used below.
+
+C3 check, after ADR-0059 is accepted and the deployment is approved:
+
+1. Confirm the production site shows the AI Garden Note preview.
+2. In Vercel, set `NEXT_PUBLIC_CARE_NOTE_LIVE_ENTRY=true` for the **Preview**
+   environment only, and deploy the approved commit as a preview. Record the
+   commit and the exact preview URL.
+3. Add that exact preview URL to `FRONTEND_ORIGINS` in Render. Do not add a
+   wildcard.
+4. Set `CARE_NOTE_PUBLIC_RUN_LIMIT=3`, then `CARE_NOTE_PUBLIC_ENABLED=true`,
+   and wait for the Render deploy.
+5. Run the check from the preview URL. Note each request ID the page shows
+   and match it to its `care_note_public_request` log line; a used-up count
+   alone does not show a passed check.
+6. Set `CARE_NOTE_PUBLIC_ENABLED=false` and wait for the deploy, then remove
+   the preview URL from `FRONTEND_ORIGINS`. Leave the budget rows untouched.
+
+Removing the origin stops browsers on that site, not direct API calls; the
+closed API switch is what stops those.
+
+C4, after the owner approves opening:
+
+1. Set `NEXT_PUBLIC_CARE_NOTE_LIVE_ENTRY=true` for **Production** in Vercel
+   and deploy the approved commit. Record the commit.
+2. Set `CARE_NOTE_PUBLIC_RUN_LIMIT=58`, then `CARE_NOTE_PUBLIC_ENABLED=true`.
+   The used count carries over from C3.
+
+### Stop public drafts by hand
+
+Use this when the API log shows `care_note_public_stop_unconfirmed`, or
+whenever drafts must stop:
+
+1. In the Render dashboard, open the API service's **Environment** page, set
+   `CARE_NOTE_PUBLIC_ENABLED` to `false`, and save. Render redeploys the
+   service with the new value.
+2. Wait until the new deploy is live, then open the public demo: AI Garden
+   Note shows its preview again, and `/runtime-config` reports
+   `"careNotePublicAvailable": false`.
+3. Manual care records keep working. Requests already sent to OpenAI before
+   the change can still finish and cost money.
+
+Reopening needs a check of the cost assumptions and the owner's decision on
+the remaining allocation; never lower or delete the budget rows.
 
 ## Local AI Demonstration
 

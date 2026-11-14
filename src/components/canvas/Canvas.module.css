@@ -1,0 +1,28 @@
+.frame { min-width: 0; width: 100%; overflow: hidden; border: 1px solid var(--color-line); border-radius: var(--radius-control); background: var(--color-surface); }
+.surface { position: relative; width: 100%; min-width: 0; height: min(480px, 65dvh); overflow: hidden; touch-action: pan-y; }
+.surface[data-move="true"] { cursor: grab; }
+.surface[data-dragging="true"] { cursor: grabbing; }
+.thumbnail, .thumbnail > div, .compact { width: 100%; height: 100%; }
+.toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 16px; padding: 8px 12px; }
+.toolbar p { margin: 0; color: var(--color-muted); font-size: 14px; }
+.preview { margin: 0; padding: 6px 12px; background: var(--color-soft); color: var(--color-brand-hover); font-size: 14px; overflow-wrap: anywhere; }
+.placeholder { padding: 16px; margin: 0; color: var(--color-muted); }
+.plants { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(140px, 100%), 1fr)); gap: 8px; padding: 12px; margin: 0; list-style: none; border-top: 1px solid var(--color-line); }
+.plants button { width: 100%; overflow-wrap: anywhere; }
+.plants button[aria-pressed="true"] { border: 2px solid var(--color-brand); background: var(--color-soft); }
+@media (max-width: 1023px) { .surface:not(.compact) { height: min(420px, 65dvh); } }
+@media (max-width: 767px) { .surface:not(.compact) { height: min(320px, 65dvh); } }
+.surface[data-placing="true"] { cursor: crosshair; }
+/* Live drag coordinates, drawn over the canvas so the layout never shifts mid-drag. */
+.readout { position: absolute; top: 8px; right: 8px; z-index: 1; margin: 0; padding: 4px 8px; border: 1px solid var(--color-line); border-radius: var(--radius-control); background: var(--color-surface); font-size: 14px; pointer-events: none; }
+/* "Add a planting area": one button per type, each showing its standard size. */
+.kinds { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
+.kindsLabel { color: var(--color-muted); font-size: 14px; }
+.kind { padding-block: 6px; }
+.kindBody { display: flex; align-items: center; gap: 8px; text-align: left; }
+.kindText { display: grid; line-height: 1.2; }
+.kindText small { color: var(--color-muted); font-size: 12px; font-weight: 400; font-variant-numeric: tabular-nums; }
+.swatch { flex: none; width: 18px; height: 18px; border: 2px solid; border-radius: 3px; }
+.swatch[data-kind="container"] { border-radius: 50%; }
+.warning { margin: 0; padding: 8px 12px; border-top: 1px solid var(--color-line); background: var(--color-warning-surface); color: var(--color-warning); font-size: 14px; }
+.warning p { margin: 0; }

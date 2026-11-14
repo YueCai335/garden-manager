@@ -15,11 +15,23 @@ services:
         sync: false
       - key: PORTFOLIO_DEMO_MODE
         value: "true"
-      # Season-allocation agent (ADR-0056). The run limit stays 0 until the
-      # pre-release cost verification passes.
+      # Set only after ADR-0059 is accepted and deployment is approved.
       - key: OPENAI_API_KEY
         sync: false
+      # Season-allocation agent (ADR-0056). The cost check passed, but the
+      # limit stays 0 because the evaluation found misleading explanations
+      # (ADR-0057).
       - key: AGENT_OPENAI_MODEL
         value: gpt-4o-mini-2024-07-18
       - key: AGENT_PUBLIC_RUN_LIMIT
         value: "0"
+      # Public AI Garden Note (ADR-0059). Closed until the release gates pass:
+      # the limit is 3 for the C3 check and at most 58 afterwards.
+      - key: CARE_NOTE_PUBLIC_ENABLED
+        value: "false"
+      - key: CARE_NOTE_PUBLIC_RUN_LIMIT
+        value: "0"
+      - key: CARE_NOTE_AI_PROVIDER
+        value: openai
+      - key: CARE_NOTE_OPENAI_MODEL
+        value: gpt-4o-mini-2024-07-18

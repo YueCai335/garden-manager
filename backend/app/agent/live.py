@@ -26,7 +26,6 @@ import os
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass, field
 from datetime import date, datetime, timezone
-from importlib import resources
 from pathlib import Path
 from typing import Iterator
 
@@ -57,6 +56,7 @@ from .loop import (
     turn_outcome,
 )
 from .openai_model import DEFAULT_MODEL
+from ..demo_garden import load_demo_garden_data
 from .service import camel_case_response, load_demo_garden
 from .tools import tool_definitions
 
@@ -91,7 +91,7 @@ def digest(value) -> str:
 
 def batch_fingerprint(cases_doc: dict, model_name: str) -> dict:
     """Everything a paid result depends on. Inline gardens live in the cases document."""
-    demo = json.loads(resources.files("app.agent").joinpath("demo_garden.json").read_text(encoding="utf-8"))
+    demo = load_demo_garden_data()
     return {
         "model": model_name,
         "cases": digest(cases_doc),
@@ -118,7 +118,16 @@ def archived_units(evaluation_dir: Path) -> int:
 
 
 class Ledger:
-    """The shared record of paid units. Writable only while locked()."""
+    """The shared record of paid units. Writable only while locked().
+
+    The limits are class attributes so AI Garden Note's evaluation can reuse
+    this ledger with its own allowance (ADR-0059); the values here are the
+    allocation agent's.
+    """
+
+    default_unit_limit = BATCH_UNIT_LIMIT
+    total_unit_limit = TOTAL_UNIT_LIMIT
+    approved_model = APPROVED_MODEL
 
     def __init__(self, path: Path, data: dict, fingerprint: dict | None = None):
         self.path = path
@@ -133,13 +142,13 @@ class Ledger:
         return {"unit_limit": unit_limit, "batch": None, "halted": None, "entries": []}
 
     @classmethod
-    def read(cls, path: Path, unit_limit: int = BATCH_UNIT_LIMIT) -> "Ledger":
+    def read(cls, path: Path, unit_limit: int | None = None) -> "Ledger":
         """A read-only snapshot, for status."""
-        return cls(path, cls._load(path, unit_limit))
+        return cls(path, cls._load(path, unit_limit or cls.default_unit_limit))
 
     @classmethod
     @contextmanager
-    def locked(cls, path: Path, fingerprint: dict, unit_limit: int = BATCH_UNIT_LIMIT) -> Iterator["Ledger"]:
+    def locked(cls, path: Path, fingerprint: dict, unit_limit: int | None = None) -> Iterator["Ledger"]:
         """Hold the ledger exclusively for one whole command; a second command is refused."""
         path.parent.mkdir(parents=True, exist_ok=True)
         lock_file = open(path.with_name(path.name + ".lock"), "w")
@@ -150,7 +159,7 @@ class Ledger:
             raise LedgerRefused("Another paid command is using the ledger. Wait for it to finish.") from None
         try:
             # Read only after the lock is held, so no other command's writes are missed.
-            yield cls(path, cls._load(path, unit_limit), fingerprint)
+            yield cls(path, cls._load(path, unit_limit or cls.default_unit_limit), fingerprint)
         finally:
             fcntl.flock(lock_file, fcntl.LOCK_UN)
             lock_file.close()
@@ -183,17 +192,17 @@ class Ledger:
         if batch is not None and batch != self.fingerprint:
             changed = sorted(key for key in {*batch, *self.fingerprint} if batch.get(key) != self.fingerprint.get(key))
             raise LedgerRefused(f"This batch was fixed with different {', '.join(changed)}; paid runs are refused.")
-        if self.fingerprint and self.fingerprint["model"] != APPROVED_MODEL:
-            raise LedgerRefused(f"Only {APPROVED_MODEL} is approved for this batch.")
+        if self.fingerprint and self.fingerprint["model"] != self.approved_model:
+            raise LedgerRefused(f"Only {self.approved_model} is approved for this batch.")
 
     def reserve(self, kind: str, label: str) -> dict:
         """Write the unit down before any paid request, so a crash still counts it."""
         self.check_ready()
         if self.used >= self.data["unit_limit"]:
             raise LedgerRefused(f"All {self.data['unit_limit']} paid units are used.")
-        if self.archived_used + self.used >= TOTAL_UNIT_LIMIT:
+        if self.archived_used + self.used >= self.total_unit_limit:
             raise LedgerRefused(
-                f"All {TOTAL_UNIT_LIMIT} paid units across batches are used "
+                f"All {self.total_unit_limit} paid units across batches are used "
                 f"({self.archived_used} in archived batches)."
             )
         if self.data.get("batch") is None:

@@ -1,0 +1,66 @@
+.dialog {
+  position: fixed;
+  inset: 0;
+  width: min(920px, calc(100% - 48px));
+  max-height: 90dvh;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--color-line);
+  border-radius: 16px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: 0 16px 48px rgb(28 36 30 / 22%);
+}
+.dialog[open] { display: flex; flex-direction: column; }
+.dialog::backdrop { background: rgb(28 36 30 / 50%); }
+.header {
+  display: flex;
+  flex: none;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 24px;
+  border-bottom: 1px solid var(--color-line);
+}
+.header h2 { margin: 0; font-size: 22px; line-height: 1.25; }
+.header h2:focus { outline: none; }
+.body {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+  padding: 20px 24px 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  overflow-wrap: anywhere;
+  scroll-padding: 16px 0 136px;
+}
+.body > * { flex-shrink: 0; }
+.body > :global(.operations-content) { width: 100%; padding: 0; }
+.body > :global(.operations-content), .body > :global(.operations-content) > section[aria-label="Batch result"] {
+  display: flex;
+  flex: 1 0 auto;
+  flex-direction: column;
+}
+.body form :is(input, select, textarea) { max-width: 100%; }
+.footer {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: auto;
+  padding: 12px 0;
+  border-top: 1px solid var(--color-line);
+  background: var(--color-surface);
+  z-index: 1;
+}
+.footer > * { max-width: 100%; }
+@media (max-width: 600px) {
+  .dialog { top: var(--note-viewport-top, 0px); bottom: auto; width: 100%; height: min(100dvh, var(--note-viewport-height, 100dvh)); max-width: none; max-height: none; margin: 0; border: 0; border-radius: 0; }
+  .header { padding: max(8px, env(safe-area-inset-top)) 16px 8px; }
+  .body { padding: 16px 16px 0; }
+  .footer { padding-bottom: max(12px, env(safe-area-inset-bottom)); }
+}

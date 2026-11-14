@@ -1,0 +1,32 @@
+:root {
+  --color-page: #f6f7f4;
+  --color-surface: #ffffff;
+  --color-soft: #eef3ee;
+  --color-text: #223129;
+  --color-muted: #59665e;
+  --color-brand: #2f6846;
+  --color-brand-hover: #245236;
+  --color-line: #d9e1d8;
+  --color-input-border: #7b897e;
+  --color-error: #b42318;
+  --color-error-surface: #fff1f0;
+  --color-warning: #8a4b08;
+  --color-warning-surface: #fff7e8;
+  --color-map: #edf2e8;
+  --color-map-grid: #cdd9c9;
+  --color-brand-pressed: #1d432c;
+  --radius-control: 6px;
+  --radius-card: 10px;
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
+  --space-6: 24px; --space-8: 32px; --space-12: 48px;
+  --content-width: 1440px;
+  --workspace-gutters: 32px;
+  /* Compatibility for modules migrated in T05–T07. */
+  --ops-ink: var(--color-text); --ops-ink-soft: var(--color-muted);
+  --ops-green: var(--color-brand); --ops-green-dark: var(--color-brand-hover);
+  --ops-soil: #a27b5c; --ops-canvas: var(--color-page);
+  --ops-surface: var(--color-surface); --ops-line: var(--color-line);
+  --ops-muted: var(--color-muted); --ops-danger: var(--color-error);
+}
+@media (min-width: 768px) { :root { --workspace-gutters: 48px; } }
+@media (min-width: 1024px) { :root { --workspace-gutters: 64px; } }

@@ -198,10 +198,10 @@ describe("AllocationAssistant", () => {
   });
 
   it.each([
-    [429, { detail: "Another example run is in progress. Try again in a moment." }, "Another example run is in progress. Try again in a moment."],
-    [404, { detail: "The portfolio demo plans the demo garden only." }, "The portfolio demo plans the demo garden only."],
-    [422, { detail: [{ msg: "too long" }] }, "The Allocation Assistant could not handle this request. Nothing was changed."],
-    [500, {}, "The Allocation Assistant could not handle this request. Nothing was changed."],
+    [429, { detail: "Another example run is in progress. Try again in a moment." }, "Allocation Assistant is busy or has reached its usage limit. Wait a while before trying again."],
+    [404, { detail: "The portfolio demo plans the demo garden only." }, "This workspace or garden is unavailable. Check your selected garden and try again."],
+    [422, { detail: [{ msg: "too long" }] }, "Check the fields in this form, then try again."],
+    [500, {}, "Allocation Assistant could not complete this request. Your input is kept. Try again later."],
   ])("shows an error and no draft for HTTP %s", async (status, body, message) => {
     const user = userEvent.setup();
     respondWith(body, status);
