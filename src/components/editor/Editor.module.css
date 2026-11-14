@@ -1,5 +1,6 @@
 .workbench { min-width: 0; }
 .workbench[data-mode="wide"] { display: grid; grid-template-columns: minmax(640px, 1fr) 360px; gap: 24px; align-items: start; }
+.workbench[data-mode="wide"][data-single] { grid-template-columns: minmax(0, 1fr); }
 .plan { min-width: 0; }
 .planToolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 12px; }
 .planToolbar :global(.plan-view-controls) { margin: 0; }
@@ -51,3 +52,4 @@
 .applyHint { margin: 0; color: var(--color-muted); font-size: 14px; }
 .history { display: flex; gap: 8px; }
 .historyNotice { margin: 0 0 12px; padding: 8px 12px; border-radius: var(--radius-control); background: var(--color-warning-surface); color: var(--color-warning); font-size: 14px; }
+.fieldError { margin: 4px 0 0; color: var(--color-error); font-size: 14px; }

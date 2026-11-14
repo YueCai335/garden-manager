@@ -1,10 +1,8 @@
 "use client";
 
-import { FeedbackForm, FormField } from "@/components/forms/FormFeedback";
-
-import { FormEvent, type ReactNode, type RefObject, useEffect, useRef, useState } from "react";
+import { type ReactNode, type RefObject, useEffect, useRef, useState } from "react";
 import type { KonvaEventObject } from "konva/lib/Node";
-import { useWorkspaceDraft, useUnsavedDraft } from "@/components/workspace/WorkspaceProvider";
+import { useWorkspaceDraft } from "@/components/workspace/WorkspaceProvider";
 import Link from "next/link";
 import { areaPath } from "@/lib/workspaceRoutes";
 import { Circle, Group, Layer, Line, Rect, Stage, Text } from "react-konva";
@@ -16,10 +14,13 @@ import { canvasToMetres, canvasGridTicks, fitCanvas, metresToCanvas, type Canvas
 import { areaAppearance, areaLabelPosition, areaSizeText, isRectangularLayout, planColors, ridgeLine } from "@/lib/planAppearance";
 import { isInsideArea, planToAreaLocal } from "@/lib/planGeometry";
 import { plantCenterInArea, plantWarnings } from "@/lib/plantLayout";
+import { minimumGardenSize, resizedGardenSize, type SetupStep } from "@/lib/guidedSetup";
+import { GardenDetailsFields, type GardenDetailsChange } from "./editor/GardenDetailsFields";
 import { Button } from "./ui/Button";
 import { useConfirmation } from "./ConfirmDialog";
 import editorStyles from "./editor/Editor.module.css";
 import canvasStyles from "./canvas/Canvas.module.css";
+import setupStyles from "./editor/Setup.module.css";
 
 import {
   allocationPlantColor,
@@ -28,8 +29,6 @@ import {
   gardenPlanViewport,
   growingAreaKindLabels,
   growingAreaKinds,
-  snapToGrid,
-  validateGardenPlanDimensions,
   type LayoutPoint,
   type GardenPlan,
   type GrowingArea,
@@ -89,6 +88,17 @@ type GardenPlanOverviewProps = {
   onEditLayout?: (areaId: string) => void;
   /** Leaves the zoomed area and returns the canvas to the whole garden. */
   onExitArea?: () => void;
+  /**
+   * The guided setup step on screen (ADR-0072, phase G6). Each step shows only
+   * its own controls: Garden size shows a draggable boundary corner, Planting
+   * areas shows the type buttons, Plants shows planting, and Garden size and
+   * Ready keep the canvas for viewing.
+   */
+  setupStep?: SetupStep;
+  /** The setup track and the current step's panel, shown above the canvas. */
+  setupPanel?: ReactNode;
+  /** Shown for a garden with no planting areas outside the guide. */
+  onStartSetup?: () => void;
 };
 
 export function GardenPlanOverview({
@@ -113,26 +123,29 @@ export function GardenPlanOverview({
   onPlacementChange,
   onEditLayout,
   onExitArea,
+  setupStep,
+  setupPanel,
+  onStartSetup,
 }: GardenPlanOverviewProps) {
-  type Details = { name: string; width: string; depth: string };
-  const current = { name: gardenNameFromProps, width: String(plan.widthMeters), depth: String(plan.depthMeters) };
-  const [draft, setDraft] = useWorkspaceDraft<{ baseline: Details; values: Details } | undefined>(`garden-details:${gardenId ?? "standalone"}`, undefined);
-  const values = draft?.values ?? current;
-  const { name: gardenName, width, depth } = values;
-  const change = (field: keyof Details, value: string) => setDraft({ baseline: draft?.baseline ?? current, values: { ...values, [field]: value } });
-  const setGardenName = (value: string) => change("name", value);
-  const setWidth = (value: string) => change("width", value);
-  const setDepth = (value: string) => change("depth", value);
   const [message, setMessage] = useState("");
+  const detailsKey = `garden-details:${gardenId ?? "standalone"}`;
   const [editingDetails, setEditingDetails] = useWorkspaceDraft(`garden-details-open:${gardenId ?? "standalone"}`, false);
+  // A value typed but not applied yet (it failed validation) keeps the fields open.
+  const [detailsDraft, setDetailsDraft] = useWorkspaceDraft<unknown>(detailsKey, undefined);
   const detailsButton = useRef<HTMLButtonElement>(null);
   const { confirmation, confirmDiscard } = useConfirmation();
   const closeDetails = () => {
-    setDraft(undefined); setEditingDetails(false);
+    setDetailsDraft(undefined); setEditingDetails(false);
     requestAnimationFrame(() => detailsButton.current?.focus());
   };
-  const hasPropertyChanges = gardenName.trim() !== gardenNameFromProps || !width.trim() || !depth.trim() || Number(width) !== plan.widthMeters || Number(depth) !== plan.depthMeters;
-  useUnsavedDraft(`garden-details:${gardenId ?? "standalone"}`, Boolean(editable && hasPropertyChanges));
+  const gardenMinimum = minimumGardenSize(growingAreas);
+  const applyDetails = ({ name, plan: nextPlan }: GardenDetailsChange) => {
+    if (name) onGardenNameChange?.(name);
+    if (nextPlan) onPlanChange?.(nextPlan);
+    setMessage(nextPlan ? `Garden size set to ${nextPlan.widthMeters} × ${nextPlan.depthMeters} m.` : `Garden renamed to ${name}.`);
+  };
+  // Viewing steps keep the canvas still; the size step only drags the garden's corner.
+  const viewOnly = setupStep === "size" || setupStep === "ready";
   const selectedArea = growingAreas.find((area) => area.id === selectedAreaId);
   // A selected area with a size zooms the canvas; one without a size has nothing to frame.
   const focusedArea = !compact && selectedArea?.layout ? selectedArea : undefined;
@@ -196,28 +209,6 @@ export function GardenPlanOverview({
       </div>
     );
 
-  const savePlanDimensions = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const widthMeters = Number(width);
-    const depthMeters = Number(depth);
-    if (!validateGardenPlanDimensions(widthMeters, depthMeters)) {
-      setMessage("Enter plan dimensions of at least 0.1 metres.");
-      return;
-    }
-    const nextGardenName = gardenName.trim();
-    if (!nextGardenName) {
-      setMessage("Enter a garden name to continue.");
-      return;
-    }
-    onGardenNameChange?.(nextGardenName);
-    onPlanChange?.({
-      widthMeters: snapToGrid(widthMeters),
-      depthMeters: snapToGrid(depthMeters),
-    });
-    closeDetails();
-    setMessage("Garden properties updated.");
-  };
-
   const moveArea = (areaId: string, position: LayoutPoint) => {
     if (!editable || !onPlacementChange) return;
     const point = clampPlanPosition(position, plan);
@@ -235,6 +226,11 @@ export function GardenPlanOverview({
     setMessage(`${area.name} resized to ${size.widthMeters} × ${size.depthMeters} m.`);
   };
   const overlaps = overlappingAreas(growingAreas);
+  const resizeGarden = (size: GardenPlan) => {
+    if (size.widthMeters === plan.widthMeters && size.depthMeters === plan.depthMeters) return;
+    onPlanChange?.(size);
+    setMessage(`Garden size set to ${size.widthMeters} × ${size.depthMeters} m.`);
+  };
 
   return (
     <section className="garden-plan" aria-labelledby="garden-plan-heading">
@@ -261,77 +257,47 @@ export function GardenPlanOverview({
         </div>
       </div>
       {editable && history?.notice && <p className={editorStyles.historyNotice} role="status">{history.notice}</p>}
-      {editable ? (
+      {setupPanel}
+      {editable && !setupStep ? (
         <section
           aria-label="Garden properties"
           className={`plan-boundary-settings${isAreaInspectorOpen ? " is-compact" : ""}`}
         >
-          {editingDetails || hasPropertyChanges ? <FeedbackForm className="plan-dimensions" onSubmit={savePlanDimensions} notice={hasPropertyChanges ? "Unsaved changes" : ""}>
-            <FormField id="plan-garden-name" className="field plan-name-field">
-              <label htmlFor="plan-garden-name">Garden name</label>
-              <input
-                autoFocus
-                id="plan-garden-name"
-                onChange={(event) => setGardenName(event.target.value)}
-                required
-                value={gardenName}
-              />
-            </FormField>
-            <FormField id="plan-width" className="field">
-              <label htmlFor="plan-width">
-                Garden width (m)
-              </label>
-              <input
-                id="plan-width" required
-                min="0.1"
-                onChange={(event) => setWidth(event.target.value)}
-                step="0.1"
-                type="number"
-                value={width}
-              />
-            </FormField>
-            <FormField id="plan-depth" className="field">
-              <label htmlFor="plan-depth">
-                Garden length (m)
-              </label>
-              <input
-                id="plan-depth" required
-                min="0.1"
-                onChange={(event) => setDepth(event.target.value)}
-                step="0.1"
-                type="number"
-                value={depth}
-              />
-            </FormField>
+          {editingDetails || detailsDraft !== undefined ? <GardenDetailsFields gardenId={gardenId} name={gardenNameFromProps} plan={plan} minimum={gardenMinimum} autoFocus onApply={applyDetails}>
+            <p className={`${editorStyles.applyHint} plan-apply-hint`}>Changes apply when you leave a field or press Enter. Undo reverses them.</p>
             <div className="form-actions">
-              {hasPropertyChanges ? <button className="save-button" type="submit">Save</button> : null}
-              <Button onClick={() => confirmDiscard(Boolean(hasPropertyChanges), closeDetails, "edit-garden-details")}>Cancel</Button>
+              <Button onClick={() => confirmDiscard(detailsDraft !== undefined, closeDetails, "edit-garden-details")}>Done</Button>
             </div>
-          </FeedbackForm> : <div className={editorStyles.detailsSummary}>
+          </GardenDetailsFields> : <div className={editorStyles.detailsSummary}>
             <p><strong>{gardenNameFromProps}</strong> · {plan.widthMeters} × {plan.depthMeters} m</p>
             <Button id="edit-garden-details" ref={detailsButton} onClick={() => setEditingDetails(true)}>Edit garden details</Button>
           </div>}
         </section>
       ) : null}
+      {editable && !setupStep && onStartSetup && growingAreas.length === 0 && <div className={setupStyles.start}>
+        <p>New here? The guided setup walks through the garden size, planting areas, and plants.</p>
+        <Button variant="primary" onClick={onStartSetup}>Start guided setup</Button>
+      </div>}
       <div>
         <div className="plan-view">
           <div className={editorStyles.planToolbar}>
           {canExitArea && <Button id="plan-whole-garden" onClick={exitArea}><span aria-hidden="true">← </span>Whole garden</Button>}
-          {editable && onAddArea && <AddAreaButtons onAdd={onAddArea} />}
+          {editable && onAddArea && (!setupStep || setupStep === "areas") && <AddAreaButtons onAdd={onAddArea} />}
           </div>
           <div>
             <GardenPlanCanvas
               compact={false}
               selectedAreaId={selectedAreaId}
               growingAreas={growingAreas}
-              interactive={editable}
-              onEditLayout={onEditLayout}
+              interactive={editable && !viewOnly}
+              onEditLayout={viewOnly ? undefined : onEditLayout}
               onMove={moveArea}
               plan={plan}
               focusedAreaId={focusedArea?.id}
               planting={planting}
               overlapIds={overlaps.ids}
               onResize={onResizeArea ? resizeArea : undefined}
+              boundary={editable && setupStep === "size" && onPlanChange ? { minimum: gardenMinimum, onResize: resizeGarden } : undefined}
             />
           </div>
           {editable && overlaps.pairs.length > 0 && <div className={canvasStyles.warning} role="note" aria-label="Overlapping planting areas">
@@ -340,7 +306,7 @@ export function GardenPlanOverview({
         </div>
       </div>
       {focusedArea && areaPanel}
-      {editable && !areaListInSidebar && growingAreas.length > 0 && <GardenAreaList gardenId={gardenId} areas={growingAreas} selectedAreaId={selectedAreaId} onEditLayout={onEditLayout} onPlaceArea={onPlaceArea} />}
+      {editable && !viewOnly && !areaListInSidebar && growingAreas.length > 0 && <GardenAreaList gardenId={gardenId} areas={growingAreas} selectedAreaId={selectedAreaId} onEditLayout={onEditLayout} onPlaceArea={onPlaceArea} />}
       {editable ? (
         <p aria-live="polite" className="workspace-message" role="status">
           {message}
@@ -414,6 +380,8 @@ type GardenPlanCanvasProps = {
   /** Areas whose outlines overlap another area: drawn with a warning outline. */
   overlapIds?: Set<string>;
   onResize?: (areaId: string, size: AreaSize) => void;
+  /** The guided setup's Garden size step: a draggable boundary corner that never cuts into the areas. */
+  boundary?: { minimum: GardenPlan; onResize: (size: GardenPlan) => void };
 };
 
 function GardenPlanCanvas({
@@ -428,6 +396,7 @@ function GardenPlanCanvas({
   planting,
   overlapIds,
   onResize,
+  boundary,
 }: GardenPlanCanvasProps) {
   const size = useCanvasSize();
   // Touch keeps the explicit Move mode so swipes scroll the page; mouse and pen drag directly.
@@ -454,6 +423,16 @@ function GardenPlanCanvas({
     session.restore();
     setResize(undefined);
   };
+  const [gardenResize, setGardenResize] = useState<{ transform: CanvasTransform; size: GardenPlan }>();
+  const gardenResizeSession = useRef<{ transform: CanvasTransform; restore: () => void; stop: () => void } | undefined>(undefined);
+  const cancelGardenResize = () => {
+    const session = gardenResizeSession.current;
+    if (!session) return;
+    gardenResizeSession.current = undefined;
+    session.stop();
+    session.restore();
+    setGardenResize(undefined);
+  };
   const [plantDrag, setPlantDrag] = useState<{ label: string; point: LayoutPoint }>();
   const plantDragSession = useRef<{ id: string; scale: number; restore: () => void; stop: () => void } | undefined>(undefined);
   const [ghost, setGhost] = useState<LayoutPoint>();
@@ -475,6 +454,7 @@ function GardenPlanCanvas({
       if (event.key !== "Escape" || event.defaultPrevented) return;
       if (dragSession.current) { event.preventDefault(); cancelDrag(); return; }
       if (resizeSession.current) { event.preventDefault(); cancelResize(); return; }
+      if (gardenResizeSession.current) { event.preventDefault(); cancelGardenResize(); return; }
       if (plantDragSession.current) { event.preventDefault(); cancelPlantDrag(); return; }
       if (!stopPlacing.current || document.querySelector('dialog[open][aria-modal="true"]')) return;
       if (event.target instanceof HTMLElement && event.target.closest("input, textarea, select, [contenteditable='true']")) return;
@@ -486,16 +466,21 @@ function GardenPlanCanvas({
     return () => window.removeEventListener("keydown", escape, true);
   }, []);
   const focusedArea = growingAreas.find((area) => area.id === focusedAreaId && area.layout);
-  const target = (focusedArea && areaFocusViewport(focusedArea)) || gardenPlanViewport(plan, growingAreas, "growing-areas", compact ? 0.05 : undefined);
-  const { viewport: bounds, animating: zooming } = useAnimatedViewport(target, focusedArea?.id ?? "whole-garden");
+  // The size step frames the whole garden with room past its far edges, so the corner can be dragged outwards.
+  const room = Math.max(1, Math.max(plan.widthMeters, plan.depthMeters) * 0.4);
+  const target = (focusedArea && areaFocusViewport(focusedArea))
+    || (boundary ? { x: 0, y: 0, widthMeters: plan.widthMeters + room, depthMeters: plan.depthMeters + room } : gardenPlanViewport(plan, growingAreas, "growing-areas", compact ? 0.05 : undefined));
+  const { viewport: bounds, animating: zooming } = useAnimatedViewport(target, focusedArea?.id ?? (boundary ? "garden-size" : "whole-garden"));
   const calculated = fitCanvas(bounds, size.width, size.height, compact ? 12 : 34);
-  const transform = drag?.transform ?? resize?.transform ?? calculated;
+  const transform = drag?.transform ?? resize?.transform ?? gardenResize?.transform ?? calculated;
+  // While the corner is dragged, the boundary and grid follow the previewed size.
+  const drawnPlan = gardenResize?.size ?? plan;
   const viewport = transform?.bounds ?? bounds;
   const { padding = 34, scale = 0, width = 0, height = 0 } = transform ?? {};
   const offsetX = compact ? (width - viewport.widthMeters * scale) / 2 - padding : 0;
   const offsetY = compact ? (height - viewport.depthMeters * scale) / 2 - padding : 0;
-  const verticalGrid = compact ? [] : canvasGridTicks(Math.max(0, viewport.x), Math.min(plan.widthMeters, viewport.x + viewport.widthMeters), scale);
-  const horizontalGrid = compact ? [] : canvasGridTicks(Math.max(0, viewport.y), Math.min(plan.depthMeters, viewport.y + viewport.depthMeters), scale);
+  const verticalGrid = compact ? [] : canvasGridTicks(Math.max(0, viewport.x), Math.min(drawnPlan.widthMeters, viewport.x + viewport.widthMeters), scale);
+  const horizontalGrid = compact ? [] : canvasGridTicks(Math.max(0, viewport.y), Math.min(drawnPlan.depthMeters, viewport.y + viewport.depthMeters), scale);
   const measuredAreas = growingAreas.filter((area) => area.layout);
   const draggedArea = measuredAreas.find((area) => area.id === drag?.id);
   const areaLabels = measuredAreas.map((area) => ({ area, ...areaLabelPosition(area, scale, padding, viewport) }));
@@ -531,6 +516,7 @@ function GardenPlanCanvas({
   const readout = drag ? `${draggedArea?.name ?? "Area"} · ${drag.point.x.toFixed(1)}, ${drag.point.y.toFixed(1)} m`
     : resize ? `${resizedArea?.name ?? "Area"} · ${resize.size.widthMeters} × ${resize.size.depthMeters} m`
     : plantDrag ? `${plantDrag.label} · ${plantDrag.point.x.toFixed(1)}, ${plantDrag.point.y.toFixed(1)} m`
+    : gardenResize ? `Garden · ${gardenResize.size.widthMeters} × ${gardenResize.size.depthMeters} m`
     : undefined;
   const hint = moveMode ? "Drag an area. Escape cancels a move."
     : placing && plantingArea ? placeHint || `Click inside ${plantingArea.name} to place ${placing.label}. Escape stops.`
@@ -546,7 +532,7 @@ function GardenPlanCanvas({
       {coarse && <Button aria-pressed={moveMode} onClick={() => { cancelDrag(); cancelResize(); setMoveMode((value) => !value); }}>Move planting areas</Button>}
       <p>{hint}</p>
     </div>}
-    <div ref={size.ref} className={`${canvasStyles.surface} ${compact ? canvasStyles.compact : ""}`} data-testid={compact ? undefined : "garden-plan-canvas"} data-move={moveMode} data-dragging={Boolean(drag || resize || plantDrag)} data-focused-area={focusedArea?.id} data-placing={Boolean(placing)} data-zooming={zooming}>
+    <div ref={size.ref} className={`${canvasStyles.surface} ${compact ? canvasStyles.compact : ""}`} data-testid={compact ? undefined : "garden-plan-canvas"} data-move={moveMode} data-dragging={Boolean(drag || resize || plantDrag || gardenResize)} data-focused-area={focusedArea?.id} data-placing={Boolean(placing)} data-zooming={zooming}>
     {readout && <p className={canvasStyles.readout} role="status">{readout}</p>}
     {transform ? <Stage
       aria-label={`Garden Plan, ${plan.widthMeters} metres wide by ${plan.depthMeters} metres long`}
@@ -558,10 +544,10 @@ function GardenPlanCanvas({
         {!compact && <Rect
           preventDefault={false}
           fill={planColors.ground}
-          height={plan.depthMeters * scale}
+          height={drawnPlan.depthMeters * scale}
           stroke={planColors.boundary}
           strokeWidth={2}
-          width={plan.widthMeters * scale}
+          width={drawnPlan.widthMeters * scale}
           x={padding - viewport.x * scale}
           y={padding - viewport.y * scale}
         />}
@@ -573,7 +559,7 @@ function GardenPlanCanvas({
               padding + (metre - viewport.x) * scale,
               padding - viewport.y * scale,
               padding + (metre - viewport.x) * scale,
-              padding + (plan.depthMeters - viewport.y) * scale,
+              padding + (drawnPlan.depthMeters - viewport.y) * scale,
             ]}
             stroke={planColors.grid}
             strokeWidth={1}
@@ -586,7 +572,7 @@ function GardenPlanCanvas({
             points={[
               padding - viewport.x * scale,
               padding + (metre - viewport.y) * scale,
-              padding + (plan.widthMeters - viewport.x) * scale,
+              padding + (drawnPlan.widthMeters - viewport.x) * scale,
               padding + (metre - viewport.y) * scale,
             ]}
             stroke={planColors.grid}
@@ -851,12 +837,53 @@ function GardenPlanCanvas({
           <Text
             fill={planColors.mutedLabel}
             fontSize={14}
-            text="Choose an area type above to add it to the plan."
+            text={boundary ? "Drag the corner to change the garden size." : "Choose an area type above to add it to the plan."}
             width={Math.max(0, width - padding * 2)}
             x={padding}
             y={padding}
           />
         ) : null}
+        {boundary && transform && <Rect
+          aria-label="Resize the garden"
+          data-testid="garden-resize-handle"
+          draggable
+          dragDistance={2}
+          fill="#ffffff"
+          height={18}
+          hitStrokeWidth={24}
+          offsetX={9}
+          offsetY={9}
+          stroke={planColors.selection}
+          strokeWidth={2}
+          width={18}
+          x={padding + (plan.widthMeters - viewport.x) * scale}
+          y={padding + (plan.depthMeters - viewport.y) * scale}
+          onMouseEnter={(event) => setCursor(event, "nwse-resize")}
+          onMouseLeave={(event) => setCursor(event, "")}
+          onDragStart={({ target }) => {
+            const corner = metresToCanvas({ x: plan.widthMeters, y: plan.depthMeters }, transform);
+            gardenResizeSession.current = { transform, restore: () => target.position(corner), stop: () => target.stopDrag() };
+            setGardenResize({ transform, size: plan });
+          }}
+          onDragMove={({ target }) => {
+            const session = gardenResizeSession.current;
+            if (!session) return;
+            const next = resizedGardenSize(canvasToMetres(target.position(), session.transform), boundary.minimum);
+            target.position(metresToCanvas({ x: next.widthMeters, y: next.depthMeters }, session.transform));
+            setGardenResize((current) => current && (current.size.widthMeters !== next.widthMeters || current.size.depthMeters !== next.depthMeters) ? { ...current, size: next } : current);
+          }}
+          onDragEnd={(event) => {
+            const session = gardenResizeSession.current;
+            if (!session) return;
+            gardenResizeSession.current = undefined;
+            setGardenResize(undefined);
+            const next = resizedGardenSize(canvasToMetres({ x: event.target.x(), y: event.target.y() }, session.transform), boundary.minimum);
+            // The handle redraws at the saved corner; an unchanged size would not re-render it.
+            session.restore();
+            if (event.evt?.type === "touchcancel" || event.evt?.type === "pointercancel") return;
+            boundary.onResize(next);
+          }}
+        />}
         {placing && plantingArea && <Rect
           aria-label={`Place ${placing.label} on ${plantingArea.name}`}
           fill="rgba(0,0,0,0)"

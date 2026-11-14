@@ -43,7 +43,7 @@ describe("local form validation", () => {
     await user.click(await screen.findByRole("button", { name: "Edit garden details" }));
     fireEvent.change(await screen.findByLabelText("Garden name"), { target: { value: "   " } });
     fireEvent.change(screen.getByLabelText("Garden width (m)"), { target: { value: "-1" } });
-    await user.click(screen.getByRole("button", { name: "Save" }));
+    fireEvent.keyDown(screen.getByLabelText("Garden width (m)"), { key: "Enter" });
     expect(screen.getByLabelText("Garden name")).toHaveFocus();
     expect(screen.getByLabelText("Garden width (m)")).toHaveAttribute("aria-invalid", "true");
     expect(screen.getByLabelText("Garden name")).toHaveValue("   ");

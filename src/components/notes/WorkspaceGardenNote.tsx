@@ -10,7 +10,7 @@ import type { AiCareNoteDraft } from "@/lib/gardenWorkspaceApi";
 import { gardenPath } from "@/lib/workspaceRoutes";
 import styles from "./GardenNoteDialog.module.css";
 
-export function WorkspaceGardenNote({ onClose, batchAvailable = false }: { onClose?: () => void; batchAvailable?: boolean }) {
+export function WorkspaceGardenNote({ onClose, batchAvailable = false, initialGardenId = "" }: { onClose?: () => void; batchAvailable?: boolean; initialGardenId?: string }) {
   const router = useRouter();
   const sync = useWorkspace();
   const receipt = sync.singleNoteReceipt;
@@ -44,6 +44,6 @@ export function WorkspaceGardenNote({ onClose, batchAvailable = false }: { onClo
   </section>;
 
   if (batchAvailable) return <BatchGardenNote onClose={onClose} />;
-  return <AiGardenNote gardens={sync.workspace?.gardens ?? []} initialGardenId="" isServerBacked={sync.storageSource === "server"}
+  return <AiGardenNote gardens={sync.workspace?.gardens ?? []} initialGardenId={initialGardenId} isServerBacked={sync.storageSource === "server"}
     onSave={save} workspaceId={sync.serverWorkspaceId} onClose={onClose} />;
 }

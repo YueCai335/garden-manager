@@ -29,12 +29,11 @@ describe("workspace routes and persistent provider", () => {
     const workspace = seedLocal();
     const target = workspace.gardens[1];
     resetTestRouter(gardenPath(target.id));
-    const user = userEvent.setup();
     render(<GardenWorkspace />);
     fireEvent.click(await screen.findByRole("button", { name: "Edit garden details" }));
     expect(await screen.findByLabelText("Garden name")).toHaveValue("Back garden");
     fireEvent.change(screen.getByLabelText("Garden name"), { target: { value: "URL garden updated" } });
-    await user.click(screen.getByRole("button", { name: "Save" }));
+    fireEvent.keyDown(screen.getByLabelText("Garden name"), { key: "Enter" });
     const saved = JSON.parse(window.localStorage.getItem(GARDEN_WORKSPACE_STORAGE_KEY)!);
     expect(saved.gardens[0].name).toBe("Demo Garden");
     expect(saved.gardens[1].name).toBe("URL garden updated");

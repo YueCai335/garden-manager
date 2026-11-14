@@ -966,3 +966,40 @@ Undo and Redo reverse it.
   was removed; the area inspector is the only area form.
 - Garden details (name and size) keep their Save button until G6's guided
   setup revisits them; their saves are undo steps too.
+
+## G6: Guided first-run setup on the Garden Plan
+
+Phase G6 of the single-canvas plan ([ADR-0072](decisions/0072-use-a-single-plan-canvas-with-guided-setup.md)).
+A new garden walks through four steps on the normal Garden Plan canvas:
+Garden size, Planting areas, Plants, and Ready.
+
+- Add garden asks for the name and opens Garden Plan with a progress track:
+  "Step N of 4", checks on passed steps, an enlarged current marker with a
+  pulse (a still ring with reduced motion), and a line that fills to the
+  current step. Reached steps are buttons; later steps are plain text.
+- Each step shows only its own controls above the same canvas. Garden size has
+  Width and Length fields, the presets 3 × 2, 6 × 4, and 12 × 8 m, and a
+  draggable boundary corner with a live "Garden · 8 × 5 m" readout. Planting
+  areas has the type buttons and needs one area to continue. Plants has the
+  plant panel without the area properties, and offers "Skip plants for now".
+- The garden is never smaller than its areas' outer extent, rotated outlines
+  included: the corner stops there, small presets are disabled, and a typed
+  smaller value stays in the field with its error.
+- Ready counts areas, placed plants, and plant groups, and links to this
+  garden's Care history ("Log the first watering"), the Overview Garden Note
+  dialog and session ("Write a Garden Note"), and this garden's Next Season
+  ("Plan next season"). Finish setup or leaving Ready ends the guide. A garden
+  with no areas offers "Start guided setup".
+- The guide is the session draft `setup:garden`, mirrored to the tab's session
+  storage, so a reload returns to the same step. It adds no workspace field,
+  API, or database change (`src/lib/guidedSetup.ts`,
+  `src/hooks/useGuidedSetup.ts`).
+- At the owner's choice, garden details have no Save button anywhere: the name,
+  width, and length apply on blur or Enter, "Done" closes the fields, and each
+  change is one undo step (`src/components/editor/GardenDetailsFields.tsx`).
+- Tests: step rules, track state, size limits, and summary counts
+  (`guidedSetup.test.ts`, `SetupProgress.test.tsx`); the full guide, reload
+  mid-guide, Start guided setup, the care link, and the note dialog
+  (`GardenWorkspace.test.tsx`); and `e2e/guided-setup.spec.ts`, which runs the
+  whole guide at 1440px (dragging the corner) and 390px (presets and fields)
+  against the real API.

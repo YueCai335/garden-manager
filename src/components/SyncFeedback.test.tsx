@@ -135,7 +135,7 @@ describe("shared save feedback", () => {
     render(<GardenWorkspace />);
     await user.click(await screen.findByRole("button", { name: "Edit garden details" }));
     fireEvent.change(await screen.findByLabelText("Garden name"), { target: { value: "My local name" } });
-    await user.click(screen.getByRole("button", { name: "Save" }));
+    fireEvent.keyDown(screen.getByLabelText("Garden name"), { key: "Enter" });
     await screen.findByText("A newer version is available");
     const calls = fetch.mock.calls.length;
     for (const label of ["Reload latest", "Keep my changes"]) {
@@ -144,7 +144,7 @@ describe("shared save feedback", () => {
       expect(dialog).toHaveTextContent(label === "Reload latest" ? "discards this tab's unsynced" : "replaces the newer server workspace");
       expect(fetch).toHaveBeenCalledTimes(calls);
       await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
-      expect(screen.getByRole("region", { name: "Garden properties" })).toHaveTextContent("My local name");
+      expect(screen.getByLabelText("Garden name")).toHaveValue("My local name");
       expect(fetch).toHaveBeenCalledTimes(calls);
     }
   });

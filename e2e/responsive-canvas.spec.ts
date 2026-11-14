@@ -30,7 +30,8 @@ for (const width of [390, 900, 1440]) {
     await page.getByRole("button", { name: "Edit garden details" }).click();
     await page.getByLabel("Garden width (m)").fill("10000");
     await page.getByLabel("Garden length (m)").fill("10000");
-    await page.getByRole("button", { name: "Save", exact: true }).click();
+    await page.getByLabel("Garden length (m)").press("Enter");
+    await page.getByRole("button", { name: "Done", exact: true }).click();
     await expectFittedCanvas(plan);
     await page.getByRole("link", { name: "Edit Sample raised bed" }).click();
     // Plants move on the same canvas once it has zoomed into the bed.

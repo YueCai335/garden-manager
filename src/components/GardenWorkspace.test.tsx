@@ -25,6 +25,11 @@ function openGardenDetails() {
   if (edit) fireEvent.click(edit);
 }
 
+/** Garden details apply on Enter or when a field loses focus; there is no Save button (ADR-0072, G6). */
+function applyGardenDetails() {
+  fireEvent.keyDown(screen.getByLabelText("Garden width (m)"), { key: "Enter" });
+}
+
 async function loadDemo(user: ReturnType<typeof userEvent.setup>) {
   render(<GardenWorkspace />);
   await user.click(await screen.findByRole("button", { name: "Load demo garden" }));
@@ -160,7 +165,6 @@ describe("GardenWorkspace", () => {
   });
 
   it("keeps an edit made while the first PostgreSQL import is still in flight", async () => {
-    const user = userEvent.setup();
     const workspace = createDemoGardenWorkspace();
     let finishImport: (() => void) | undefined;
     const importFinished = new Promise<void>((resolve) => {
@@ -183,7 +187,7 @@ describe("GardenWorkspace", () => {
     // The import is still pending; the gardener renames the garden meanwhile.
     openGardenDetails();
     fireEvent.change(screen.getByLabelText("Garden name"), { target: { value: "Renamed while syncing" } });
-    await user.click(screen.getByRole("button", { name: "Save" }));
+    applyGardenDetails();
     await waitFor(() => expect(JSON.parse(window.localStorage.getItem(GARDEN_WORKSPACE_STORAGE_KEY) ?? "{}").gardens[0].name).toBe("Renamed while syncing"));
 
     finishImport?.();
@@ -220,7 +224,7 @@ describe("GardenWorkspace", () => {
     await openSelectedGarden();
     openGardenDetails();
     fireEvent.change(screen.getByLabelText("Garden name"), { target: { value: "Renamed here" } });
-    await user.click(screen.getByRole("button", { name: "Save" }));
+    applyGardenDetails();
 
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("changed in another tab");
@@ -258,7 +262,7 @@ describe("GardenWorkspace", () => {
     currentRevision = 1;
     openGardenDetails();
     fireEvent.change(screen.getByLabelText("Garden name"), { target: { value: "Renamed here" } });
-    await user.click(screen.getByRole("button", { name: "Save" }));
+    applyGardenDetails();
 
     await screen.findByRole("alert");
     await user.click(screen.getByRole("button", { name: "Keep my changes" }));
@@ -317,7 +321,7 @@ describe("GardenWorkspace", () => {
   async function saveGardenField(user: ReturnType<typeof userEvent.setup>, label: string, value: string) {
     openGardenDetails();
     fireEvent.change(screen.getByLabelText(label), { target: { value } });
-    await user.click(screen.getByRole("button", { name: "Save" }));
+    applyGardenDetails();
   }
 
   it("drops queued and in-flight saves once the gardener reloads the server copy after a conflict", async () => {
@@ -900,52 +904,146 @@ describe("GardenWorkspace", () => {
     expect(screen.getByRole("link", { name: "Open Community plot" })).toBeInTheDocument();
   });
 
-  it("adds a standard planting area beside Garden Plan in one click, then restores it", async () => {
+  it("guides a new garden from Add garden to Ready on the same canvas, then restores it", async () => {
     const user = userEvent.setup();
     const firstRender = render(<GardenWorkspace />);
     await user.click(await screen.findByRole("button", { name: "Load demo garden" }));
     await user.click(screen.getByRole("link", { name: "Add garden" }));
     expect(screen.getByRole("heading", { name: "Add garden", level: 1 })).toBeInTheDocument();
-    openGardenDetails();
     await user.type(screen.getByLabelText("Garden name"), "Community plot");
     await user.click(screen.getByRole("button", { name: "Continue setup" }));
-    expect(screen.getByRole("heading", { name: "Garden setup" })).toBeInTheDocument();
 
-    openGardenDetails();
+    // Step 1: Garden size. Only the size controls show; the canvas is the Garden Plan canvas.
+    const track = () => within(screen.getByRole("navigation", { name: "Guided setup" }));
+    expect(track().getByText("Step 1 of 4 · Garden size")).toBeInTheDocument();
+    expect(screen.getByTestId("garden-plan-canvas")).toBeInTheDocument();
+    expect(screen.queryByRole("group", { name: "Add a planting area" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Garden properties" })).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Resize the garden")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "6 × 4 m" }));
+    expect(screen.getByRole("button", { name: "6 × 4 m" })).toHaveAttribute("aria-pressed", "true");
     fireEvent.change(screen.getByLabelText("Garden width (m)"), { target: { value: "4" } });
-    openGardenDetails();
     fireEvent.change(screen.getByLabelText("Garden length (m)"), { target: { value: "2" } });
-    await user.click(screen.getByRole("button", { name: "Save" }));
-    // One click drops a standard raised bed; this 2 m long garden shrinks it to fit (ADR-0072, G4).
-    expect(screen.queryByRole("button", { name: "Add planting area" })).not.toBeInTheDocument();
+    applyGardenDetails();
+    expect(screen.getByText("Garden size set to 4 × 2 m.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Undo" })).toHaveAttribute("title", "Undo change the garden size");
+    await user.click(screen.getByRole("button", { name: "Continue to planting areas" }));
+
+    // Step 2: Planting areas. Continue waits for one area; the 2 m long garden shrinks the bed to fit.
+    expect(track().getByText("Step 2 of 4 · Planting areas")).toBeInTheDocument();
+    expect(track().getByRole("button", { name: "Garden size, completed" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Continue to plants" })).toBeDisabled();
     await user.click(within(screen.getByRole("group", { name: "Add a planting area" })).getByRole("button", { name: "Add Raised bed, 1.2 × 2.4 m" }));
     expect(screen.getByText("Raised bed 1 added at 0.5, 0.0 m (shrunk to 1.2 × 2 m to fit the garden). Drag it to move it, or drag its corner to resize it.")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Whole garden" })).toBeInTheDocument();
     expect(await screen.findByRole("heading", { name: "Edit planting area" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Add plant" })).not.toBeInTheDocument();
     const name = screen.getByLabelText("Planting-area name");
     await user.clear(name);
-    await user.type(name, "North bed");
-    await user.clear(screen.getByLabelText("Rotation (degrees)"));
-    await user.type(screen.getByLabelText("Rotation (degrees)"), "90{Enter}");
+    await user.type(name, "North bed{Enter}");
+    await user.click(screen.getByRole("button", { name: "Continue to plants" }));
+
+    // Step 3: Plants. The planting controls replace the area properties; Continue waits for a plant.
+    expect(track().getByText("Step 3 of 4 · Plants")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Planting-area name")).not.toBeVisible();
+    expect(screen.getByRole("button", { name: "Continue to Ready" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Skip plants for now" })).toBeEnabled();
     await user.click(screen.getByRole("button", { name: "Add plant" }));
     const plantForm = screen.getByRole("heading", { name: "Add plant" }).closest("form")!;
     await user.type(within(plantForm).getByLabelText("Plant type"), "Kale");
     await user.click(within(plantForm).getByRole("button", { name: "Add" }));
     expect(screen.getAllByText("Kale").length).toBeGreaterThan(0);
+    await user.click(screen.getByRole("button", { name: "Continue to Ready" }));
 
-    await user.click(screen.getByRole("button", { name: "Close" }));
+    // Step 4: Ready. The canvas returns to the whole garden and the summary counts what was drawn.
+    expect(track().getByText("Step 4 of 4 · Ready")).toBeInTheDocument();
+    expect(location.search).toBe("");
+    expect(screen.getByRole("list", { name: "Garden summary" })).toHaveTextContent("1 planting area1 plant1 plant group");
+    const gardenBase = location.pathname.replace(/\/plan$/, "");
+    expect(screen.getByRole("link", { name: "Log the first watering" })).toHaveAttribute("href", `${gardenBase}/care?view=history`);
+    expect(screen.getByRole("link", { name: "Plan next season" })).toHaveAttribute("href", `${gardenBase}/season`);
+    // Completed steps stay reachable; going back keeps the furthest step.
+    await user.click(track().getByRole("button", { name: "Garden size, completed" }));
+    expect(track().getByText("Step 1 of 4 · Garden size")).toBeInTheDocument();
+    await user.click(track().getByRole("button", { name: "Ready, reached" }));
     await user.click(screen.getByRole("button", { name: "Finish setup" }));
-    expect(screen.getByRole("link", { name: "Open Community plot" })).toBeInTheDocument();
+    expect(screen.queryByRole("navigation", { name: "Guided setup" })).not.toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Garden properties" })).toHaveTextContent("Community plot · 4 × 2 m");
+    expect(screen.queryByRole("button", { name: "Start guided setup" })).not.toBeInTheDocument();
     await waitFor(() => expect(JSON.parse(window.localStorage.getItem(GARDEN_WORKSPACE_STORAGE_KEY) ?? "{}"))
-      .toMatchObject({ gardens: expect.arrayContaining([expect.objectContaining({ name: "Community plot", plan: { widthMeters: 4, depthMeters: 2 }, growingAreas: expect.arrayContaining([expect.objectContaining({ name: "North bed", kind: "raised-bed", layout: expect.objectContaining({ widthMeters: 1.2, depthMeters: 2 }), planPlacement: { x: 0.5, y: 0, rotationDegrees: 90 } })]), plantings: expect.arrayContaining([expect.objectContaining({ commonName: "Kale" })]) })]) }));
+      .toMatchObject({ gardens: expect.arrayContaining([expect.objectContaining({ name: "Community plot", plan: { widthMeters: 4, depthMeters: 2 }, growingAreas: expect.arrayContaining([expect.objectContaining({ name: "North bed", kind: "raised-bed", layout: expect.objectContaining({ widthMeters: 1.2, depthMeters: 2 }), planPlacement: { x: 0.5, y: 0, rotationDegrees: 0 } })]), plantings: expect.arrayContaining([expect.objectContaining({ commonName: "Kale" })]) })]) }));
 
     firstRender.unmount();
     resetTestRouter();
     render(<GardenWorkspace />);
-    await screen.findByRole("link", { name: "Open Community plot" });
-    await user.click(screen.getByRole("link", { name: "Open Community plot" }));
+    await user.click(await screen.findByRole("link", { name: "Open Community plot" }));
+    expect(screen.queryByRole("navigation", { name: "Guided setup" })).not.toBeInTheDocument();
     await user.click(screen.getByLabelText("Open North bed on Garden Plan"));
     expect(screen.getAllByText("Kale").length).toBeGreaterThan(0);
+  });
+
+  it("returns to the same guide step after a reload, and offers the guide again for a garden with no areas", async () => {
+    const user = userEvent.setup();
+    const firstRender = render(<GardenWorkspace />);
+    await user.click(await screen.findByRole("button", { name: "Load demo garden" }));
+    await user.click(screen.getByRole("link", { name: "Add garden" }));
+    await user.type(screen.getByLabelText("Garden name"), "Balcony");
+    await user.click(screen.getByRole("button", { name: "Continue setup" }));
+    await user.click(screen.getByRole("button", { name: "Continue to planting areas" }));
+    const path = location.pathname;
+
+    // A reload starts a new page with an empty in-memory session; the tab's session storage keeps the step.
+    firstRender.unmount();
+    resetTestRouter(path);
+    const secondRender = render(<GardenWorkspace />);
+    expect(await screen.findByText("Step 2 of 4 · Planting areas")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Garden size, completed" })).toBeInTheDocument();
+    expect(screen.getByText("Plants").closest("li")).toHaveAttribute("data-status", "locked");
+    expect(screen.queryByRole("button", { name: /^Plants/ })).not.toBeInTheDocument();
+
+    // Leaving the guide before Ready keeps it for later; Ready ends it once left.
+    await user.click(within(screen.getByRole("navigation", { name: "Garden sections" })).getByRole("link", { name: "Care" }));
+    await user.click(within(screen.getByRole("navigation", { name: "Garden sections" })).getByRole("link", { name: "Garden Plan" }));
+    expect(screen.getByText("Step 2 of 4 · Planting areas")).toBeInTheDocument();
+
+    // Another tab (or a closed one) has no guide; a garden with no areas offers to start it.
+    secondRender.unmount();
+    window.sessionStorage.clear();
+    resetTestRouter(path);
+    render(<GardenWorkspace />);
+    await user.click(await screen.findByRole("button", { name: "Start guided setup" }));
+    expect(screen.getByText("Step 1 of 4 · Garden size")).toBeInTheDocument();
+  });
+
+  it("ends the guide when a Ready link opens care for this garden", async () => {
+    const user = userEvent.setup();
+    const workspace = createGardenWorkspace("Allotment");
+    window.localStorage.setItem(GARDEN_WORKSPACE_STORAGE_KEY, JSON.stringify(workspace));
+    window.sessionStorage.setItem("garden-manager:guided-setup", JSON.stringify({ gardenId: workspace.selectedGardenId, step: "ready", reached: "ready" }));
+    resetTestRouter(`/gardens/${workspace.selectedGardenId}/plan`);
+    render(<GardenWorkspace />);
+    expect(await screen.findByRole("heading", { name: "Allotment is ready" })).toBeInTheDocument();
+    expect(screen.getByRole("list", { name: "Garden summary" })).toHaveTextContent("0 planting areas0 plants0 plant groups");
+    await user.click(screen.getByRole("link", { name: "Log the first watering" }));
+    expect(location.pathname).toBe(`/gardens/${workspace.selectedGardenId}/care`);
+    expect(location.search).toBe("?view=history");
+    expect(window.sessionStorage.getItem("garden-manager:guided-setup")).toBeNull();
+    await user.click(within(screen.getByRole("navigation", { name: "Garden sections" })).getByRole("link", { name: "Garden Plan" }));
+    expect(screen.queryByRole("navigation", { name: "Guided setup" })).not.toBeInTheDocument();
+  });
+
+  it("opens the Overview Garden Note dialog from Ready and stays on Ready after it closes", async () => {
+    const user = userEvent.setup();
+    const workspace = createGardenWorkspace("Allotment");
+    window.localStorage.setItem(GARDEN_WORKSPACE_STORAGE_KEY, JSON.stringify(workspace));
+    window.sessionStorage.setItem("garden-manager:guided-setup", JSON.stringify({ gardenId: workspace.selectedGardenId, step: "ready", reached: "ready" }));
+    resetTestRouter(`/gardens/${workspace.selectedGardenId}/plan`);
+    render(<GardenWorkspace />);
+    await user.click(await screen.findByRole("button", { name: "Write a Garden Note" }));
+    const dialog = await screen.findByRole("dialog", { name: "Garden Note" });
+    expect(within(dialog).getByRole("region", { name: "Start a garden note" })).toBeInTheDocument();
+    await user.click(within(dialog).getByRole("button", { name: "Close" }));
+    // The guide stays on Ready until the gardener leaves it.
+    expect(screen.getByRole("heading", { name: "Allotment is ready" })).toBeInTheDocument();
   });
 
   it("adds numbered areas in the next free spots, and the type buttons replace the add form", async () => {
@@ -1321,27 +1419,34 @@ describe("GardenWorkspace", () => {
 
     openGardenDetails();
     fireEvent.change(screen.getByLabelText("Garden name"), { target: { value: "Kitchen garden" } });
-    await user.click(screen.getByRole("button", { name: "Save" }));
+    applyGardenDetails();
 
     await waitFor(() => expect(JSON.parse(window.localStorage.getItem(GARDEN_WORKSPACE_STORAGE_KEY) ?? "{}").gardens[0].name).toBe("Kitchen garden"));
   });
 
-  it("shows Save for garden details only after a change, and never for area properties", async () => {
+  it("applies garden details when a field loses focus, with no Save button, like area properties", async () => {
     const user = userEvent.setup();
     await loadDemo(user);
     await openSelectedGarden();
 
+    openGardenDetails();
     expect(screen.queryByRole("button", { name: "Save" })).not.toBeInTheDocument();
-    openGardenDetails();
     await user.clear(screen.getByLabelText("Garden name"));
-    openGardenDetails();
     await user.type(screen.getByLabelText("Garden name"), "Kitchen garden");
-    expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();
+    await user.tab();
+    await waitFor(() => expect(JSON.parse(window.localStorage.getItem(GARDEN_WORKSPACE_STORAGE_KEY) ?? "{}").gardens[0].name).toBe("Kitchen garden"));
+    expect(screen.getByRole("button", { name: "Undo" })).toHaveAttribute("title", "Undo rename the garden");
+    // A garden smaller than its planting areas is rejected in the field and changes nothing.
+    fireEvent.change(screen.getByLabelText("Garden width (m)"), { target: { value: "2" } });
+    applyGardenDetails();
+    expect(screen.getByLabelText("Garden width (m)")).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByText(/Make the garden at least .* m wide to hold its planting areas\./)).toBeInTheDocument();
+    expect(JSON.parse(window.localStorage.getItem(GARDEN_WORKSPACE_STORAGE_KEY) ?? "{}").gardens[0].plan.widthMeters).toBe(10);
+    await user.click(screen.getByRole("button", { name: "Done" }));
+    await user.click(screen.getByRole("button", { name: "Discard changes" }));
+    expect(screen.getByRole("region", { name: "Garden properties" })).toHaveTextContent("Kitchen garden · 10 × 6 m");
 
     await user.click(screen.getByLabelText("Open Sample raised bed on Garden Plan"));
-    expect(areaInspectorForm().queryByRole("button", { name: "Save" })).not.toBeInTheDocument();
-    await user.clear(screen.getByLabelText("Rotation (degrees)"));
-    await user.type(screen.getByLabelText("Rotation (degrees)"), "45");
     expect(areaInspectorForm().queryByRole("button", { name: "Save" })).not.toBeInTheDocument();
   });
 

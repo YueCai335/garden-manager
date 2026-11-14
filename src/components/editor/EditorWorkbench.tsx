@@ -7,7 +7,8 @@ export type EditorMode = "wide" | "overlay" | "mobile";
 export function editorMode(containerWidth: number, mobileViewport: boolean): EditorMode {
   return mobileViewport ? "mobile" : containerWidth >= 1080 ? "wide" : "overlay";
 }
-export function EditorWorkbench({ children }: { children: (mode: EditorMode) => ReactNode }) {
+/** `single` drops the side column when nothing sits beside the plan (the guided setup's viewing steps). */
+export function EditorWorkbench({ children, single = false }: { children: (mode: EditorMode) => ReactNode; single?: boolean }) {
   const { ref, width } = useCanvasSize();
   const [mobileViewport, setMobileViewport] = useState(false);
   useEffect(() => {
@@ -19,5 +20,5 @@ export function EditorWorkbench({ children }: { children: (mode: EditorMode) => 
     return () => viewport.removeEventListener("change", update);
   }, []);
   const mode = editorMode(width, mobileViewport);
-  return <div ref={ref} className={styles.workbench} data-mode={mode}>{children(mode)}</div>;
+  return <div ref={ref} className={styles.workbench} data-mode={mode} data-single={single || undefined}>{children(mode)}</div>;
 }

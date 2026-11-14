@@ -14,9 +14,16 @@ import styles from "./AppShell.module.css";
 
 const links = [["/", "Overview"], ["/care", "Care"], ["/season", "Next Season"], ["/doctor", "Plant Doctor"], ["/guide", "Plant Guide"]];
 const OverviewNoteEntryContext = createContext<ReactNode>(null);
+type OpenGardenNote = (opener: HTMLButtonElement | null, options: { batchAvailable: boolean; gardenId?: string }) => void;
+const OpenGardenNoteContext = createContext<OpenGardenNote | null>(null);
 
 export function OverviewNoteEntry() {
   return useContext(OverviewNoteEntryContext);
+}
+
+/** Opens the Garden Note dialog, the same session as Overview's, from any page (the guided setup's Ready step). */
+export function useOpenGardenNote() {
+  return useContext(OpenGardenNoteContext);
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -28,6 +35,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const garden = workspace?.gardens.find((item) => item.id === route.gardenId);
   const [menuOpen, setMenuOpen] = useState(false);
   const [noteMode, setNoteMode] = useState<"batch" | "default" | null>(null);
+  const [noteGardenId, setNoteGardenId] = useState<string>();
   const noteButton = useRef<HTMLButtonElement>(null);
   const noteOpener = useRef<HTMLButtonElement>(null);
   const menuButton = useRef<HTMLButtonElement>(null);
@@ -41,9 +49,17 @@ export function AppShell({ children }: { children: ReactNode }) {
     : route.module === "guide" ? "Ask a gardening question and see the reviewed sources behind the answer." : undefined;
   useEffect(() => { if (isLoaded) heading.current?.focus(); }, [pathname, isLoaded]);
   useEffect(() => { if (menuOpen) navigation.current?.querySelector("a")?.focus(); }, [menuOpen]);
-  useEffect(() => { if (pathname !== "/") setNoteMode(null); }, [pathname]);
+  // Moving to another page closes the dialog; the note session itself stays in the provider.
+  const notePath = useRef(pathname);
+  useEffect(() => { if (notePath.current !== pathname) { notePath.current = pathname; setNoteMode(null); } }, [pathname]);
   const closeMenu = () => { setMenuOpen(false); if (menuOpen) menuButton.current?.focus(); };
-  const showNote = noteMode !== null && pathname === "/";
+  const showNote = noteMode !== null;
+  const openNote: OpenGardenNote = (opener, { batchAvailable, gardenId }) => {
+    noteOpener.current = opener;
+    setMenuOpen(false);
+    setNoteGardenId(gardenId);
+    setNoteMode(batchAvailable ? "batch" : "default");
+  };
   return <>
     <div className="operations-shell operations-app-shell" inert={showNote} aria-hidden={showNote || undefined}>
     <a className={styles.skip} href="#workspace-content">Skip to content</a>
@@ -72,15 +88,13 @@ export function AppShell({ children }: { children: ReactNode }) {
           </nav>
         </>}
       </div>
+      <OpenGardenNoteContext.Provider value={openNote}>
       {route.module === "home" ? <OverviewNoteEntryContext.Provider value={
-        <OverviewGardenNote primaryButton={noteButton} expanded={showNote} onOpen={(opener, batchAvailable) => {
-          noteOpener.current = opener;
-          setMenuOpen(false);
-          setNoteMode(batchAvailable ? "batch" : "default");
-        }} />
+        <OverviewGardenNote primaryButton={noteButton} expanded={showNote} onOpen={(opener, batchAvailable) => openNote(opener, { batchAvailable })} />
       }>{children}</OverviewNoteEntryContext.Provider> : children}
+      </OpenGardenNoteContext.Provider>
     </main>
     </div>
-    {showNote && <GardenNoteDialog opener={noteOpener} fallbackOpener={noteButton} batchAvailable={noteMode === "batch"} onClose={() => setNoteMode(null)} />}
+    {showNote && <GardenNoteDialog opener={noteOpener} fallbackOpener={noteButton} batchAvailable={noteMode === "batch"} initialGardenId={noteGardenId} onClose={() => setNoteMode(null)} />}
   </>;
 }

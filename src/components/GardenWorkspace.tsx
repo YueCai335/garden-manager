@@ -63,6 +63,11 @@ import {
 import type { AllocationConfirmOutcome } from "@/components/AllocationAssistant";
 
 import { EditorWorkbench } from "./editor/EditorWorkbench";
+import { GardenDetailsFields } from "./editor/GardenDetailsFields";
+import { SetupProgress, SetupReady, SetupStepPanel } from "./editor/SetupProgress";
+import setupStyles from "./editor/Setup.module.css";
+import { useGuidedSetup } from "@/hooks/useGuidedSetup";
+import { advanceSetup, gardenSizePresets, goToStep, minimumGardenSize, setupSummary, startSetup, type SetupStep } from "@/lib/guidedSetup";
 import { updateCareOwner, type CareOwner } from "@/lib/careViews";
 import editorStyles from "./editor/Editor.module.css";
 
@@ -76,10 +81,10 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
     serverWorkspaceId, serverLoadFailed, clearBrowserWorkspace,
     areaDrafts, plantDrafts, setPlantDrafts, setAreaDraft, discardDrafts, planHistory,
   } = useWorkspace();
-  const [setupGardenId, setSetupGardenId] = useWorkspaceDraft<string | undefined>("setup:garden", undefined);
+  // The guided first-run setup in progress, if any (ADR-0072, phase G6).
+  const [setup, setSetup] = useGuidedSetup();
   const page = {
     name: ({ home: "home", new: "gardenSetup", plan: "management", care: "careLog", season: "seasonPlanner", notes: "aiGardenNote", guide: "plantKnowledge", doctor: "plantHealth" } as const)[route.module],
-    isSetup: route.gardenId === setupGardenId,
     view: careView(search.get("view")),
   };
   const careGardenId = route.module === "care" ? route.gardenId ?? "all-gardens" : undefined;
@@ -132,6 +137,13 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
   const editingArea = garden?.growingAreas.find(
     (area) => area.id === editingLayoutId,
   );
+  const guide = route.module === "plan" && garden && setup?.gardenId === garden.id ? setup : undefined;
+  // Leaving Ready ends the guide; so does deleting the garden it belongs to.
+  useEffect(() => {
+    if (!setup || !isLoaded) return;
+    const leftReady = setup.step === "ready" && !(route.module === "plan" && route.gardenId === setup.gardenId);
+    if (leftReady || (workspace && !workspace.gardens.some((item) => item.id === setup.gardenId))) setSetup(undefined);
+  }, [setup, isLoaded, workspace, route.module, route.gardenId, setSetup]);
 
   /** Every Garden Plan edit is one undo step, named for the Undo button (ADR-0072, phase G5). */
   const updateGarden = (label: string, update: (current: Garden) => Garden) => {
@@ -141,7 +153,7 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
 
   useUnsavedDraft("setup:name", Boolean(newGardenName));
   const openManagement = (gardenId?: string) => { if (gardenId) navigate(gardenPath(gardenId)); };
-  const returnToDashboard = () => { setSetupGardenId(undefined); navigate("/"); };
+  const returnToDashboard = () => navigate("/");
 
   const createFirstGarden = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -149,11 +161,10 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
     if (!name) return setMessage("Enter a garden name to continue.");
     const created = createGardenWorkspace(name);
     setWorkspace(created);
-    setSetupGardenId(created.selectedGardenId);
+    setSetup(startSetup(created.selectedGardenId));
     navigate(gardenPath(created.selectedGardenId));
     setNewGardenName("");
-
-    setMessage("Garden created. Continue with its plan and planting areas.");
+    setMessage(`${name} created. Start with the garden size.`);
   };
 
   const addGarden = (event: FormEvent<HTMLFormElement>) => {
@@ -171,9 +182,9 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
         : current,
     );
     setNewGardenName("");
-    setSetupGardenId(newGarden.id);
+    setSetup(startSetup(newGarden.id));
     navigate(gardenPath(newGarden.id));
-    setMessage(`${name} created. Continue with its plan and planting areas.`);
+    setMessage(`${name} created. Start with the garden size.`);
   };
 
   const openDemoGarden = () => {
@@ -479,6 +490,62 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
     onRedo: () => stepHistory("redo"),
   } : undefined;
 
+  /**
+   * The guided setup's track and the panel for the step on screen (ADR-0072,
+   * phase G6). The canvas below stays the normal Garden Plan canvas.
+   */
+  const changeSetupStep = (step: SetupStep, continuing = false) => {
+    if (!guide) return;
+    setSetup(continuing ? advanceSetup(guide) : goToStep(guide, step));
+    // Garden size and Ready frame the whole garden.
+    if ((step === "size" || step === "ready") && editingLayoutId) setEditingLayoutId(undefined);
+  };
+  const continueSetup = () => { if (guide) changeSetupStep(guide.step === "size" ? "areas" : guide.step === "areas" ? "plants" : "ready", true); };
+  const finishSetup = () => {
+    setSetup(undefined);
+    setMessage("Setup finished. Garden Plan now shows every editing tool.");
+    requestAnimationFrame(() => gardenPlanHeadingRef.current?.focus());
+  };
+  const setupPanel = guide && garden ? (() => {
+    const sized = garden.growingAreas.filter((area) => area.layout).length;
+    const summary = setupSummary(garden);
+    const minimum = minimumGardenSize(garden.growingAreas);
+    const panel = guide.step === "size" ? <SetupStepPanel title="How big is the garden?"
+      actions={<Button variant="primary" onClick={continueSetup}>Continue to planting areas</Button>}>
+      <p>Type the width (left to right) and length (top to bottom), pick a common size, or drag the corner of the garden on the plan.</p>
+      <GardenDetailsFields gardenId={garden.id} name={garden.name} plan={garden.plan} minimum={minimum} showName={false}
+        onApply={({ plan }) => { if (plan) { updatePlan(plan); setMessage(`Garden size set to ${plan.widthMeters} × ${plan.depthMeters} m.`); } }} />
+      <div className={setupStyles.presets} role="group" aria-label="Common garden sizes">
+        <span>Common sizes</span>
+        {gardenSizePresets.map((preset) => {
+          const fits = preset.widthMeters >= minimum.widthMeters && preset.depthMeters >= minimum.depthMeters;
+          const selected = preset.widthMeters === garden.plan.widthMeters && preset.depthMeters === garden.plan.depthMeters;
+          return <Button key={`${preset.widthMeters}x${preset.depthMeters}`} aria-pressed={selected} disabled={!fits}
+            title={fits ? undefined : "Too small for the planting areas"}
+            onClick={() => { updatePlan(preset); setMessage(`Garden size set to ${preset.widthMeters} × ${preset.depthMeters} m.`); }}>
+            {preset.widthMeters} × {preset.depthMeters} m
+          </Button>;
+        })}
+      </div>
+    </SetupStepPanel>
+      : guide.step === "areas" ? <SetupStepPanel title="Add planting areas"
+        actions={<><Button variant="primary" disabled={!sized} aria-describedby={sized ? undefined : "setup-areas-hint"} onClick={continueSetup}>Continue to plants</Button>
+          {!sized && <p id="setup-areas-hint">Add at least one planting area to continue.</p>}</>}>
+        <p>Choose an area type below. It appears at its standard size in a free spot; then move it, or resize it from its corner.</p>
+      </SetupStepPanel>
+      : guide.step === "plants" ? <SetupStepPanel title="Add plants"
+        actions={<><Button variant="primary" disabled={!summary.plants} aria-describedby={summary.plants ? undefined : "setup-plants-hint"} onClick={continueSetup}>Continue to Ready</Button>
+          <Button onClick={continueSetup}>Skip plants for now</Button>
+          {!summary.plants && <p id="setup-plants-hint">Place at least one plant to continue, or skip this step.</p>}</>}>
+        <p>Open a planting area on the plan, choose a plant, then click inside the area to place it. Fill places a whole row at the plant&apos;s spacing.</p>
+      </SetupStepPanel>
+      : <SetupReady gardenId={garden.id} gardenName={garden.name} summary={summary}
+        careHref={`${gardenPath(garden.id, "care")}?view=history`} seasonHref={gardenPath(garden.id, "season")}
+        onLeave={() => setSetup(undefined)} onFinish={finishSetup} />;
+    return <><SetupProgress setup={guide} onStep={(step) => changeSetupStep(step)} />{panel}</>;
+  })() : undefined;
+  const setupStep = guide?.step;
+
   const archivePlantingRecord = (plantingRecordId: string) => {
     updateGarden("archive a planting record", (current) => archivePlanting(current, plantingRecordId));
   };
@@ -676,12 +743,13 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
           <section className="operations-content management-content">
             <>
               {editingLayoutId && !editingArea && <p role="alert">Planting area not found in this garden. <Link href={gardenPath(garden.id)}>Back to plan</Link></p>}
-              <EditorWorkbench>{(mode) => {
+              <EditorWorkbench single={setupStep === "size" || setupStep === "ready"}>{(mode) => {
                 // An unsaved properties draft keeps its editor open when the layout narrows.
                 const areaPropertiesDraft = editingArea ? areaDrafts[areaDraftKey(garden.id, editingArea.id)] : undefined;
                 const hasAreaPropertiesDraft = Boolean(areaPropertiesDraft && !sameAreaProperties(areaPropertiesDraft.values, areaPropertiesDraft.baseline));
                 const showInspector = Boolean(editingArea) && (mode === "wide" || editingAreaProperties || hasAreaPropertiesDraft);
-                const plantEditor = editingArea && plantDraftKey ? (
+                // The Planting areas step leaves plants for the next step.
+                const plantEditor = editingArea && plantDraftKey && setupStep !== "areas" ? (
                   <GrowingAreaLayoutEditor
                     area={editingArea}
                     inInspector
@@ -713,13 +781,16 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
                           <h3 id="area-panel-heading">{editingArea.name}</h3>
                           <p>{growingAreaKindLabels[editingArea.kind]}{editingArea.layout ? ` · ${editingArea.layout.widthMeters} × ${editingArea.layout.depthMeters} m` : ""}</p>
                         </div>
-                        <Link id="edit-area-properties" className="secondary-button" href={areaEditPath(garden.id, editingArea.id)}>Edit area</Link>
+                        {setupStep !== "plants" && <Link id="edit-area-properties" className="secondary-button" href={areaEditPath(garden.id, editingArea.id)}>Edit area</Link>}
                       </header>
                       {plantEditor}
                     </section>
                   ) : undefined}
-                  planting={canvasPlanting}
+                  planting={setupStep === "areas" ? undefined : canvasPlanting}
                   history={historyControls}
+                  setupStep={setupStep}
+                  setupPanel={setupPanel}
+                  onStartSetup={() => { setSetup(startSetup(garden.id)); setMessage("Guided setup started. Start with the garden size."); }}
                   onAddArea={addArea}
                   onPlaceArea={placeUnsizedArea}
                   onResizeArea={resizeArea}
@@ -731,7 +802,7 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
                   plan={garden.plan}
                 />
                 </div>
-                {mode === "wide" && !editingArea && <aside className={editorStyles.summary} aria-label="Garden area summary">
+                {mode === "wide" && !editingArea && setupStep !== "size" && setupStep !== "ready" && <aside className={editorStyles.summary} aria-label="Garden area summary">
                   <GardenAreaList gardenId={garden.id} areas={garden.growingAreas} onPlaceArea={placeUnsizedArea} />
                 </aside>}
                 {editingArea && showInspector ? (
@@ -749,6 +820,7 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
                     onClose={() => mode === "wide" ? setEditingLayoutId(undefined) : navigate(areaPath(garden.id, editingArea.id))}
                     onDelete={() => deleteArea(editingArea)}
                     onSave={saveAreaEditor}
+                    showProperties={setupStep !== "plants"}
                   >
                     {mode === "wide" ? plantEditor : null}
                   </PlantingAreaInspector>
@@ -758,8 +830,6 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
               <div hidden={Boolean(editingArea)}>
               <GardenManagement
                 onDeleteGarden={deleteGarden}
-                isSetup={page.name === "management" && page.isSetup}
-                onFinishSetup={returnToDashboard}
                 storageSource={storageSource}
               />
               </div>
@@ -919,57 +989,25 @@ function CareHub({
 
 function GardenManagement({
   onDeleteGarden,
-  isSetup,
-  onFinishSetup,
   storageSource,
 }: {
   onDeleteGarden: () => void;
-  isSetup: boolean;
-  onFinishSetup: () => void;
   storageSource: "browser" | "server";
 }) {
-  if (!isSetup) {
-    return (
-      <details className={editorStyles.settings}>
-        <summary>Garden settings</summary>
-        <div className={editorStyles.danger}><h3>Delete this garden</h3>
-        {storageSource === "browser" ? (
-          <div className="data-settings">
-            <p>You can work on this device. Check the saving status above before closing this page.</p>
-          </div>
-        ) : null}
-        <button className="remove-button" onClick={onDeleteGarden} type="button">
-          Delete garden
-        </button>
-        </div>
-      </details>
-    );
-  }
-
   return (
-    <section
-      className="management-section"
-      aria-labelledby="garden-management-heading"
-    >
-      <div className="section-header">
-        <div>
-          <p className="section-eyebrow">Garden workspace</p>
-          <h2 id="garden-management-heading">Garden setup</h2>
-        </div>
-        {isSetup ? <button className="primary-button" onClick={onFinishSetup} type="button">Finish setup</button> : null}
-      </div>
-      <details className={editorStyles.settings}><summary>Garden settings</summary>
+    <details className={editorStyles.settings}>
+      <summary>Garden settings</summary>
       <div className={editorStyles.danger}><h3>Delete this garden</h3>
-        <button className="remove-button" onClick={onDeleteGarden} type="button">
-          Delete garden
-        </button>
-      </div></details>
       {storageSource === "browser" ? (
         <div className="data-settings">
           <p>You can work on this device. Check the saving status above before closing this page.</p>
         </div>
       ) : null}
-    </section>
+      <button className="remove-button" onClick={onDeleteGarden} type="button">
+        Delete garden
+      </button>
+      </div>
+    </details>
   );
 }
 

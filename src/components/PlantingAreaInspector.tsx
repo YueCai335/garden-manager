@@ -24,6 +24,7 @@ export function PlantingAreaInspector({
   onDraftChange,
   hasPlantChanges = false,
   onDiscardPlants,
+  showProperties = true,
   children,
   onClose,
   onDelete,
@@ -39,6 +40,8 @@ export function PlantingAreaInspector({
   onDraftChange: (draft?: AreaPropertiesDraft) => void;
   hasPlantChanges?: boolean;
   onDiscardPlants: () => void;
+  /** The guided setup's Plants step shows only the planting controls (ADR-0072, G6). */
+  showProperties?: boolean;
   children?: ReactNode;
   onClose: () => void;
   onDelete: () => void;
@@ -115,7 +118,7 @@ export function PlantingAreaInspector({
         <button className="secondary-button" type="button" onClick={() => { onDraftChange(undefined); setErrors({}); }}>Reload properties</button>
       </div>}
       {closing && <ConfirmDialog message="Discard unsaved changes in this planting area?" confirmLabel="Discard changes" cancelLabel="Keep editing" onCancel={() => setClosing(false)} onConfirm={() => { onDraftChange(undefined); onDiscardPlants(); onClose(); }} />}
-      <form className="planting-area-creation-form" noValidate onSubmit={submit} onKeyDown={applyOnEnter} onBlur={(event) => { if (event.target instanceof HTMLInputElement) apply(); }} ref={formRef}>
+      <form hidden={!showProperties} className="planting-area-creation-form" noValidate onSubmit={submit} onKeyDown={applyOnEnter} onBlur={(event) => { if (event.target instanceof HTMLInputElement) apply(); }} ref={formRef}>
         <h3 className={styles.inspectorSectionHeading}>Dimensions and position</h3>
         <div className="field">
           <label htmlFor="editing-planting-area-name">Planting-area name</label>

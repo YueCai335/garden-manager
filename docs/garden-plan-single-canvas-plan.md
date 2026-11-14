@@ -1,7 +1,7 @@
 # Garden Plan：单画布与首次引导实施计划
 
 - 日期：2026-11-12（America/Toronto）
-- 状态：方向与分阶段计划已确认（[ADR-0072](decisions/0072-use-a-single-plan-canvas-with-guided-setup.md)）；第 7 节记录确认结果。G1–G5 已完成；下一步 G6。
+- 状态：方向与分阶段计划已确认（[ADR-0072](decisions/0072-use-a-single-plan-canvas-with-guided-setup.md)）；第 7 节记录确认结果。G1–G6 已完成；下一步 G7。
 - 依据：用户确认的可点原型（第 4 版）、Native Garden Planner 与 Sunplot 的对比分析、当前代码核查。
 
 ## 1. 目标
@@ -125,6 +125,8 @@ G2→G3 是核心痛点，优先做。G4 与 G2/G3 改动的文件有重叠（�
 - **测试**：`usePlanHistory` 单元测试（上限、清空条件、重做在新修改后失效）；与同步串行写入的集成测试（快速连续撤销只产生有序写入）；`sync-recovery.spec.ts` 增加冲突后历史清空。
 
 ### G6 首次引导
+
+> 实施说明（2026-11-14 完成）：引导状态是会话草稿 `setup:garden`（花园、当前步骤、走到的最远步骤），同时写入本标签页的 sessionStorage，所以刷新后回到同一步；关掉标签页即结束。纯函数在 `src/lib/guidedSetup.ts`，进度条和 Ready 面板在 `src/components/editor/SetupProgress.tsx`。用户确认花园名称和尺寸也去掉 Save，改为失焦或回车即保存（`GardenDetailsFields`），引导第一步复用同一组输入框。花园尺寸不能小于已有区域的外沿（含旋转）。Planting areas 步骤新增区域后仍按 G4 放大到该区域；Plants 步骤隐藏区域属性，只显示植物控件。Garden Note 在当前页面打开首页同一个弹窗和会话，关掉后回到 Ready。
 
 - **范围**：`GardenWorkspace.tsx` 新建与 setup 流程；新增 `src/components/editor/SetupProgress.tsx`；Ready 摘要面板；花园尺寸步骤（预设和可拖的边界角）。
 - **做**：

@@ -25,7 +25,9 @@ test("create a garden, save an edit, add and arrange an area, plan next season, 
   await expect(page.getByRole("heading", { name: "Garden Plan" })).toBeVisible();
   await page.getByRole("button", { name: "Edit garden details" }).click();
   await page.getByLabel("Garden name").fill("E2E Kitchen Garden");
-  await page.getByRole("button", { name: "Save" }).click();
+  // Garden details apply on Enter or when a field loses focus; there is no Save button (ADR-0072, G6).
+  await page.getByLabel("Garden name").press("Enter");
+  await page.getByRole("button", { name: "Done", exact: true }).click();
   await expect(page.getByText("All changes saved")).toBeVisible();
 
   // One click adds a standard raised bed in the first free spot and zooms into it (ADR-0072, G4).

@@ -1,6 +1,6 @@
 # ADR-0072: Use a Single Plan Canvas with Guided Setup
 
-- Status: Accepted; G1 (presentation), G2 (zoom into an area), G3 (plants on the main canvas), G4 (direct area placement), and G5 (autosave and undo) implemented, G6–G7 pending
+- Status: Accepted; G1 (presentation), G2 (zoom into an area), G3 (plants on the main canvas), G4 (direct area placement), G5 (autosave and undo), and G6 (guided setup) implemented, G7 pending
 - Date: 2026-11-12
 - Supersedes in part, as each phase lands: [ADR-0048](0048-place-garden-properties-above-the-plan-canvas.md), [ADR-0053](0053-keep-plant-layout-in-the-planting-area-inspector.md), [ADR-0054](0054-use-fixed-canvas-garden-plan-views.md), [ADR-0066](0066-adapt-area-editing-to-available-space.md), and [ADR-0070](0070-preview-and-position-planting-areas-on-the-plan.md)
 - Amends for Garden Plan edits, in phase G5: [ADR-0052](0052-show-save-actions-only-for-pending-edits.md) and [ADR-0062](0062-preserve-planting-area-editor-drafts.md)
@@ -176,6 +176,45 @@ writing a Garden Note, and planning the next season. After Ready, the track
 disappears and the page is the normal Garden Plan editor. A garden with no
 areas offers "Start guided setup". Guide progress uses session state, like the
 current setup flag, and adds no stored field.
+
+### How guided setup works (phase G6, implemented 2026-11-14)
+
+- Add garden asks only for the name, then opens Garden Plan with the track
+  and the Garden size step. The track reads "Step N of 4", checks the steps
+  passed, enlarges the current marker with a pulse (a still ring with reduced
+  motion), and fills its line up to the current step. Steps already reached
+  are buttons; steps not reached are plain text. Going back keeps the
+  furthest step, so the user can return to it from the track.
+- Each step shows only its own controls above the same canvas. Garden size
+  shows the Width and Length fields, the presets 3 × 2, 6 × 4, and 12 × 8 m,
+  and a draggable corner on the garden boundary. The canvas frames the garden
+  with room past its far edges, so the corner can be dragged outwards; area
+  clicks and drags are off. Planting areas shows the type buttons and the
+  usual area editing without the plant panel; adding an area still zooms
+  into it, as in G4. Plants shows the plant panel without the area
+  properties. Ready shows the canvas for viewing.
+- The garden is never smaller than its areas' outer extent (rotated outlines
+  included, rounded up to 0.1 m). The corner stops there, presets that are
+  too small are disabled, and a typed smaller value stays in the field with
+  its error.
+- Continue on Planting areas needs one sized area. Continue on Plants needs
+  one plant, and "Skip plants for now" moves on without one.
+- Ready counts the areas, placed plants, and active plant groups, and offers
+  three next steps: "Log the first watering" opens this garden's Care history,
+  "Write a Garden Note" opens the Overview Garden Note dialog and session over
+  the plan, and "Plan next season" opens Next Season for this garden. Finish
+  setup, or following a link off Ready, ends the guide; the note dialog
+  returns to Ready.
+- A garden with no planting areas shows "Start guided setup" outside the
+  guide.
+- The guide is the session draft `setup:garden` (garden, current step,
+  furthest step), mirrored to the tab's session storage so a reload returns
+  to the same step. Closing the tab ends it. It adds no workspace field, API,
+  or database change.
+- The owner chose on 2026-11-14 to drop the garden details' Save button
+  everywhere: name, width, and length apply on blur or Enter like the area
+  fields, and "Done" closes the fields. Each change is one undo step; a name
+  and size changed together undo as one step.
 
 ### Presentation (phase G1)
 

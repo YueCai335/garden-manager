@@ -17,7 +17,8 @@ for (const width of [390, 900, 1280, 1440]) {
     await page.getByText("Garden settings", { exact: true }).click();
     await page.getByRole("button", { name: "Edit garden details" }).click();
     await page.getByLabel("Garden name", { exact: true }).fill("Kitchen garden");
-    await page.getByRole("button", { name: "Save", exact: true }).click();
+    await page.getByLabel("Garden name", { exact: true }).press("Enter");
+    await page.getByRole("button", { name: "Done", exact: true }).click();
     await expect(page.getByRole("region", { name: "Garden properties" })).toContainText("Kitchen garden");
     if (width === 390) {
       const canvas = planCanvas(page);
@@ -91,6 +92,13 @@ for (const width of [390, 900, 1280, 1440]) {
       await page.getByRole("button", { name: "Whole garden" }).click();
     }
     await expect(page.getByText("All changes saved", { exact: true })).toBeVisible();
+    // "All changes saved" can still show from an earlier save; wait for the server copy before reloading.
+    const id = await page.evaluate(() => localStorage.getItem("sun-aware-garden-planner:server-workspace-id:v1"));
+    await expect.poll(async () => {
+      const response = await page.request.get(`http://127.0.0.1:8100/workspaces/${id}`);
+      const { x, y } = (await response.json()).gardens[0].growingAreas.find((area: { id: string }) => area.id === "demo-raised-bed").planPlacement;
+      return `${x}, ${y}`;
+    }).toBe("2.4, 1.3");
     await page.reload();
     await openAreaProperties(page, "Sample raised bed");
     await expect(page.getByLabel("Area X position (m)")).toHaveValue("2.4");

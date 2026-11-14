@@ -8,8 +8,10 @@ import { lockBodyScroll } from "@/lib/modalScrollLock";
 import { WorkspaceGardenNote } from "./WorkspaceGardenNote";
 import styles from "./GardenNoteDialog.module.css";
 
-export function GardenNoteDialog({ onClose, opener, fallbackOpener, batchAvailable }: {
+export function GardenNoteDialog({ onClose, opener, fallbackOpener, batchAvailable, initialGardenId }: {
   onClose: () => void;
+  /** Preselects this garden in the single-note form. */
+  initialGardenId?: string;
   opener: RefObject<HTMLButtonElement | null>;
   fallbackOpener: RefObject<HTMLButtonElement | null>;
   batchAvailable: boolean;
@@ -56,7 +58,7 @@ export function GardenNoteDialog({ onClose, opener, fallbackOpener, batchAvailab
       </header>
       <div className={styles.body}>
         <SyncStatus recoveryOnly />
-        <WorkspaceGardenNote onClose={onClose} batchAvailable={batchAvailable} />
+        <WorkspaceGardenNote onClose={onClose} batchAvailable={batchAvailable} initialGardenId={initialGardenId} />
       </div>
     </dialog>, document.body,
   );
