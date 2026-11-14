@@ -1,6 +1,6 @@
 # ADR-0072: Use a Single Plan Canvas with Guided Setup
 
-- Status: Accepted; G1 (presentation), G2 (zoom into an area), and G3 (plants on the main canvas) implemented, G4–G7 pending
+- Status: Accepted; G1 (presentation), G2 (zoom into an area), G3 (plants on the main canvas), and G4 (direct area placement) implemented, G5–G7 pending
 - Date: 2026-11-12
 - Supersedes in part, as each phase lands: [ADR-0048](0048-place-garden-properties-above-the-plan-canvas.md), [ADR-0053](0053-keep-plant-layout-in-the-planting-area-inspector.md), [ADR-0054](0054-use-fixed-canvas-garden-plan-views.md), [ADR-0066](0066-adapt-area-editing-to-available-space.md), and [ADR-0070](0070-preview-and-position-planting-areas-on-the-plan.md)
 - Amends for Garden Plan edits, in phase G5: [ADR-0052](0052-show-save-actions-only-for-pending-edits.md) and [ADR-0062](0062-preserve-planting-area-editor-drafts.md)
@@ -98,6 +98,35 @@ both tables have no suggestion.
   warnings. They never block an edit.
 - Existing areas without a layout appear in a "Needs a size" list with a
   "Place on plan" action. The product does not invent sizes for existing data.
+
+### How direct placement works (phase G4, implemented 2026-11-14)
+
+- The four type buttons sit in the plan toolbar and read "Raised bed 1.2 ×
+  2.4 m", "In-ground bed 2 × 3 m", "Container 0.6 × 0.6 m", and "Greenhouse
+  2.5 × 3 m" (width × length). The type labels across the product use the same
+  words; the earlier "In-ground area", "Container group", and "Greenhouse
+  shelf" labels described the same stored kinds.
+- A new area gets the next unused name, such as "Raised bed 2", and the plan
+  zooms into it (`?area=`). The free-spot search (`src/lib/areaPlacement.ts`)
+  tries positions on a half-metre grid in reading order, keeps 0.3 m from every
+  sized area (using its rotated outline's bounding box), then accepts
+  positions that only touch. A full garden centres the area and the message
+  says it overlaps; a garden smaller than the standard size shrinks the area
+  to the garden and says so.
+- Mouse and pen drag areas directly in the whole-garden view and the zoomed
+  area in the zoomed view; dimmed neighbours stay fixed. A press that moves
+  less than six pixels is still a click that zooms. The corner handle appears
+  on the zoomed rectangular area, snaps to 0.1 m, keeps at least 0.1 m, and
+  stops an unrotated area at the garden edge. Plant centres stay inside a
+  smaller area, as with the properties form.
+- The Move button appears only when the primary pointer is coarse
+  (`(pointer: coarse)`). On a hybrid device, a touch drag outside Move mode is
+  stopped so the page scrolls.
+- "Place on plan" gives an unsized area its type's standard size at a free
+  spot with no rotation, because an area without a size has never been drawn
+  rotated.
+- Overlap uses the areas' rotated outlines (a separating-axis test); outlines
+  that only touch do not count.
 
 ### Saving and undo (phase G5)
 

@@ -40,7 +40,7 @@ for (const [width, height, columns] of [[320, 844, 1], [390, 844, 2], [768, 1024
       return !!card && Math.abs(canvas.getBoundingClientRect().width - card.clientWidth) <= 1 && canvas.getBoundingClientRect().height <= 148;
     })).toBe(true);
     await expect(frontCard).toHaveAccessibleDescription(/Growing now:/);
-    await expect(gallery.getByText(/1 needs layout setup/)).toBeVisible();
+    await expect(gallery.getByText(/1 needs a size/)).toBeVisible();
     await expect(note).toBeInViewport();
     const tasks = page.getByRole("complementary", { name: "Care tasks" });
     const noteBox = (await note.boundingBox())!;

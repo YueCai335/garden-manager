@@ -1,6 +1,6 @@
 # ADR-0070: Preview and Position Planting Areas on the Plan
 
-- Status: Superseded in part by [ADR-0072](0072-use-a-single-plan-canvas-with-guided-setup.md). G2 removed Focus beds and Full garden; G3 replaced the phone summary card with planting controls below the zoomed plan, and the area URL now zooms the plan at every width. Area dragging with the six-pixel threshold, frozen transform, and Escape cancel remains until G4.
+- Status: Superseded in part by [ADR-0072](0072-use-a-single-plan-canvas-with-guided-setup.md). G2 removed Focus beds and Full garden; G3 replaced the phone summary card with planting controls below the zoomed plan, and the area URL now zooms the plan at every width. G4 removed the Move mode for mouse and pen, which drag areas directly and resize them from a corner handle; the Move mode remains on touch screens only. The six-pixel threshold, frozen transform, original-position outline, snapped preview, and Escape cancel remain and also apply to the corner handle.
 - Date: 2026-11-12
 - Refines: ADR-0054, ADR-0065, ADR-0066
 - Implementation plan: [Frontend UI and UX redesign](../frontend-ui-ux-redesign-plan.md)

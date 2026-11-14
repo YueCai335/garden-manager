@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { fitCanvas, metresToCanvas } from "../src/lib/canvasViewport";
-import { createDemoGardenWorkspace, gardenPlanViewport } from "../src/lib/gardenWorkspace";
-import { openAreaProperties } from "./areaHelpers";
+import { createDemoGardenWorkspace, gardenPlanViewport, type GardenWorkspace } from "../src/lib/gardenWorkspace";
+import { openAreaProperties, planCanvas, planSurface } from "./areaHelpers";
 
 for (const width of [390, 900, 1280, 1440]) {
   test(`garden details and area editing preserve context at ${width}px`, async ({ page }, testInfo) => {
@@ -20,7 +20,7 @@ for (const width of [390, 900, 1280, 1440]) {
     await page.getByRole("button", { name: "Save", exact: true }).click();
     await expect(page.getByRole("region", { name: "Garden properties" })).toContainText("Kitchen garden");
     if (width === 390) {
-      const canvas = page.getByRole("button", { name: "Move planting areas" }).locator("..").locator("..").locator(".konvajs-content");
+      const canvas = planCanvas(page);
       await expect(canvas).toBeVisible();
       const box = (await canvas.boundingBox())!;
       const [garden] = createDemoGardenWorkspace().gardens;
@@ -55,7 +55,7 @@ for (const width of [390, 900, 1280, 1440]) {
       }
     } else {
       await expect(panel).toHaveAttribute("data-mode", "wide");
-      const plan = page.getByRole("button", { name: "Move planting areas" }).locator("..").locator("..");
+      const plan = planSurface(page);
       const canvasBox = (await plan.boundingBox())!;
       const panelBox = (await panel.boundingBox())!;
       expect(canvasBox.width).toBeGreaterThanOrEqual(640);
@@ -102,7 +102,7 @@ test.describe("touch editing", () => {
     await page.goto("/");
     await page.getByRole("button", { name: "Load demo garden" }).tap();
     await page.getByRole("link", { name: "Open Demo Garden" }).tap();
-    const canvas = page.getByRole("button", { name: "Move planting areas" }).locator("..").locator("..").locator(".konvajs-content");
+    const canvas = planCanvas(page);
     await canvas.scrollIntoViewIfNeeded();
     const box = (await canvas.boundingBox())!;
     const transform = fitCanvas(gardenPlanViewport(garden.plan, garden.growingAreas, "growing-areas"), box.width, box.height)!;
@@ -118,5 +118,68 @@ test.describe("touch editing", () => {
     await panel.getByRole("button", { name: "Back to plan", exact: true }).tap();
     await expect(page).toHaveURL(/\?area=demo-raised-bed$/);
     await expect(selected).toBeVisible();
+  });
+
+  test("a swipe over the canvas scrolls the page, and Move still moves an area", async ({ page }, testInfo) => {
+    const [garden] = createDemoGardenWorkspace().gardens;
+    const [area] = garden.growingAreas;
+    await page.goto("/");
+    await page.getByRole("button", { name: "Load demo garden" }).tap();
+    await page.getByRole("link", { name: "Open Demo Garden" }).tap();
+    await expect(page.getByText("All changes saved", { exact: true })).toBeVisible();
+    // Touch screens keep the explicit Move mode (ADR-0072, phase G4).
+    const move = page.getByRole("button", { name: "Move planting areas" });
+    await expect(move).toBeVisible();
+    await expect(move).toHaveAttribute("aria-pressed", "false");
+    const canvas = planCanvas(page);
+    await canvas.evaluate((node) => node.scrollIntoView({ block: "start" }));
+    const workspaceId = await page.evaluate(() => localStorage.getItem("sun-aware-garden-planner:server-workspace-id:v1"));
+    const placement = async () => {
+      const response = await page.request.get(`http://127.0.0.1:8100/workspaces/${workspaceId}`);
+      expect(response.ok()).toBeTruthy();
+      return ((await response.json()) as GardenWorkspace).gardens[0].growingAreas[0].planPlacement;
+    };
+    const original = await placement();
+    const client = await page.context().newCDPSession(page);
+    const swipe = async (from: { x: number; y: number }, to: { x: number; y: number }) => {
+      await client.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: from.x, y: from.y }] });
+      for (let step = 1; step <= 10; step++)
+        await client.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: from.x + (to.x - from.x) * step / 10, y: from.y + (to.y - from.y) * step / 10 }] });
+      await client.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+    };
+    // Waits until the page stops scrolling (a fling, or a tap that scrolled its button into view).
+    const settle = () => expect.poll(async () => {
+      const before = await page.evaluate(() => scrollY);
+      await page.waitForTimeout(200);
+      return (await page.evaluate(() => scrollY)) === before;
+    }).toBe(true);
+    const bedPoint = async () => {
+      const box = (await canvas.boundingBox())!;
+      const transform = fitCanvas(gardenPlanViewport(garden.plan, garden.growingAreas, "growing-areas"), box.width, box.height)!;
+      const point = metresToCanvas({ x: area.planPlacement.x + 2, y: area.planPlacement.y + 0.6 }, transform);
+      return { x: box.x + point.x, y: box.y + point.y, scale: transform.scale };
+    };
+
+    // Move is off: a vertical swipe that starts on the bed scrolls the page and leaves the bed alone.
+    const start = await bedPoint();
+    const scrollBefore = await page.evaluate(() => scrollY);
+    await swipe(start, { x: start.x, y: start.y - 160 });
+    await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(scrollBefore + 40);
+    await expect(page).toHaveURL(/\/plan$/);
+    expect(await placement()).toEqual(original);
+
+    // Move is on: the same gesture drags the bed and saves one position.
+    await move.tap();
+    await expect(planSurface(page)).toHaveAttribute("data-move", "true");
+    await expect(canvas.locator("..")).toHaveCSS("touch-action", "none");
+    await settle();
+    await canvas.evaluate((node) => node.scrollIntoView({ block: "center" }));
+    await settle();
+    const from = await bedPoint();
+    const scrollDuringMove = await page.evaluate(() => scrollY);
+    await swipe(from, { x: from.x + 0.5 * from.scale, y: from.y + 0.3 * from.scale });
+    await expect.poll(placement).toEqual({ x: original.x + 0.5, y: original.y + 0.3, rotationDegrees: original.rotationDegrees });
+    expect(await page.evaluate(() => scrollY)).toBe(scrollDuringMove);
+    await page.screenshot({ path: testInfo.outputPath("touch-move.png") });
   });
 });

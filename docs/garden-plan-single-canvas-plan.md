@@ -1,7 +1,7 @@
 # Garden Plan：单画布与首次引导实施计划
 
 - 日期：2026-11-12（America/Toronto）
-- 状态：方向与分阶段计划已确认（[ADR-0072](decisions/0072-use-a-single-plan-canvas-with-guided-setup.md)）；第 7 节记录确认结果。G1、G2、G3 已完成；下一步 G4。
+- 状态：方向与分阶段计划已确认（[ADR-0072](decisions/0072-use-a-single-plan-canvas-with-guided-setup.md)）；第 7 节记录确认结果。G1、G2、G3、G4 已完成；下一步 G5。
 - 依据：用户确认的可点原型（第 4 版）、Native Garden Planner 与 Sunplot 的对比分析、当前代码核查。
 
 ## 1. 目标
@@ -93,6 +93,8 @@ G2→G3 是核心痛点，优先做。G4 与 G2/G3 改动的文件有重叠（�
 - **测试**：`planGeometry` 的往返换算测试（0°、30°、90°、180°）；拥挤/出界/铺满的单元测试；重写 `PlantingAreaInspector.test.tsx` 与 `AreaDraftProtection.test.tsx` 中依赖第二张画布的部分；`draft-protection.spec.ts`、`responsive-editor.spec.ts` 的植物拖动旅程改到主画布上。
 
 ### G4 直接摆放种植区
+
+> 实施说明（2026-11-14 完成）：空位查找、默认名称、角把手尺寸计算和重叠判断在新文件 `src/lib/areaPlacement.ts`。鼠标在整园视图里可以直接拖任何区域，在放大视图里拖当前区域；变暗的邻居不动。花园比标准尺寸小时，新区域缩小到花园大小并在提示里说明；花园放满时居中放下并提示重叠。类型名统一为 Raised bed、In-ground bed、Container、Greenhouse。
 
 - **范围**：`GardenPlanOverview.tsx` 拖动与缩放把手；新增区域流程（替换 `Add planting area` 表单）；`gardenWorkspace.ts` 的空位查找纯函数；`WorkspaceHome.tsx` 的 "Layout needs setup" 文案。
 - **做**：

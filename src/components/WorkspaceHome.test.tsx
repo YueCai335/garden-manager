@@ -37,7 +37,7 @@ describe("overview garden gallery and note entry", () => {
     render(<GardenWorkspace />);
     const gallery = await screen.findByRole("region", { name: /Your gardens/ });
     const front = within(gallery).getByRole("link", { name: "Open Front garden" });
-    expect(front).toHaveAccessibleDescription(expect.stringContaining("1 needs layout setup"));
+    expect(front).toHaveAccessibleDescription(expect.stringContaining("1 needs a size"));
     expect(front).toHaveAccessibleDescription(expect.stringContaining("Growing now: Kale"));
     expect(front).not.toHaveTextContent(/Peas|Beans/);
     expect(within(gallery).getByRole("link", { name: "Open Back garden" })).toHaveAccessibleDescription(expect.stringContaining("No current plantings"));

@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { fitCanvas, metresToCanvas } from "../src/lib/canvasViewport";
 import { areaFocusViewport, createDemoGardenWorkspace, type GardenWorkspace, type PlantAllocation } from "../src/lib/gardenWorkspace";
+import { planCanvas, planSurface } from "./areaHelpers";
 
 // ADR-0072, phase G3: plants are placed, filled, and moved on the Garden Plan canvas itself.
 async function savedPlants(page: Page) {
@@ -27,9 +28,9 @@ for (const width of [390, 1440]) {
     await expect(page.getByLabel("Plant spacing (m)", { exact: true })).toHaveValue("0.5");
     await expect(page.getByText(/Suggested for Pepper: 0.5 m/)).toContainText("Missouri Extension G6201");
 
-    const canvas = page.getByRole("button", { name: "Move planting areas" }).locator("..").locator("..").locator(".konvajs-content");
-    await expect(canvas.locator("..").locator("..")).toHaveAttribute("data-placing", "true");
-    await expect(canvas.locator("..").locator("..")).toHaveAttribute("data-zooming", "false");
+    const canvas = planCanvas(page);
+    await expect(planSurface(page)).toHaveAttribute("data-placing", "true");
+    await expect(planSurface(page)).toHaveAttribute("data-zooming", "false");
     await canvas.scrollIntoViewIfNeeded();
     const box = (await canvas.boundingBox())!;
     const bed = createDemoGardenWorkspace().gardens[0].growingAreas[0];
@@ -57,7 +58,7 @@ for (const width of [390, 1440]) {
     // Escape outside a text field stops placing but keeps the area zoomed.
     await page.keyboard.press("Escape");
     await expect(page.getByLabel("Plant type", { exact: true })).toHaveCount(0);
-    await expect(canvas.locator("..").locator("..")).toHaveAttribute("data-placing", "false");
+    await expect(planSurface(page)).toHaveAttribute("data-placing", "false");
     await expect(page).toHaveURL(/\?area=demo-raised-bed$/);
     await expect(page.getByRole("region", { name: "Plant groups" })).toContainText("Pepper × 1");
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);

@@ -427,9 +427,9 @@ export const DEFAULT_GARDEN_PLAN: GardenPlan = {
 
 export const growingAreaKindLabels: Record<GrowingAreaKind, string> = {
   "raised-bed": "Raised bed",
-  "in-ground": "In-ground area",
-  container: "Container group",
-  greenhouse: "Greenhouse shelf",
+  "in-ground": "In-ground bed",
+  container: "Container",
+  greenhouse: "Greenhouse",
 };
 
 export const plantingCropFamilyLabels: Record<PlantingCropFamily, string> = {

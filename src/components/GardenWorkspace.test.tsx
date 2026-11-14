@@ -902,7 +902,7 @@ describe("GardenWorkspace", () => {
     expect(screen.getByRole("link", { name: "Open Community plot" })).toBeInTheDocument();
   });
 
-  it("creates a measured planting area beside Garden Plan, then restores it", async () => {
+  it("adds a standard planting area beside Garden Plan in one click, then restores it", async () => {
     const user = userEvent.setup();
     const firstRender = render(<GardenWorkspace />);
     await user.click(await screen.findByRole("button", { name: "Load demo garden" }));
@@ -918,18 +918,18 @@ describe("GardenWorkspace", () => {
     openGardenDetails();
     fireEvent.change(screen.getByLabelText("Garden length (m)"), { target: { value: "2" } });
     await user.click(screen.getByRole("button", { name: "Save" }));
-    await user.click(screen.getByRole("button", { name: "Add planting area" }));
-    await user.type(screen.getByLabelText("Planting-area name"), "North bed");
-    await user.clear(screen.getByLabelText("Width (m)"));
-    await user.type(screen.getByLabelText("Width (m)"), "2");
-    await user.clear(screen.getByLabelText("Length (m)"));
-    await user.type(screen.getByLabelText("Length (m)"), "1");
+    // One click drops a standard raised bed; this 2 m long garden shrinks it to fit (ADR-0072, G4).
+    expect(screen.queryByRole("button", { name: "Add planting area" })).not.toBeInTheDocument();
+    await user.click(within(screen.getByRole("group", { name: "Add a planting area" })).getByRole("button", { name: "Add Raised bed, 1.2 × 2.4 m" }));
+    expect(screen.getByText("Raised bed 1 added at 0.5, 0.0 m (shrunk to 1.2 × 2 m to fit the garden). Drag it to move it, or drag its corner to resize it.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Whole garden" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Edit planting area" })).toBeInTheDocument();
+    const name = screen.getByLabelText("Planting-area name");
+    await user.clear(name);
+    await user.type(name, "North bed");
     await user.clear(screen.getByLabelText("Rotation (degrees)"));
     await user.type(screen.getByLabelText("Rotation (degrees)"), "90");
-    await user.click(screen.getByRole("button", { name: "Add area" }));
-    expect(screen.queryByRole("heading", { name: "Edit planting area" })).not.toBeInTheDocument();
-    await user.click(screen.getByLabelText("Open North bed on Garden Plan"));
-    expect(await screen.findByRole("heading", { name: "Edit planting area" })).toBeInTheDocument();
+    await user.click(areaInspectorForm().getByRole("button", { name: "Save" }));
     await user.click(screen.getByRole("button", { name: "Add plant" }));
     const plantForm = screen.getByRole("heading", { name: "Add plant" }).closest("form")!;
     await user.type(within(plantForm).getByLabelText("Plant type"), "Kale");
@@ -940,7 +940,7 @@ describe("GardenWorkspace", () => {
     await user.click(screen.getByRole("button", { name: "Finish setup" }));
     expect(screen.getByRole("link", { name: "Open Community plot" })).toBeInTheDocument();
     await waitFor(() => expect(JSON.parse(window.localStorage.getItem(GARDEN_WORKSPACE_STORAGE_KEY) ?? "{}"))
-      .toMatchObject({ gardens: expect.arrayContaining([expect.objectContaining({ name: "Community plot", plan: { widthMeters: 4, depthMeters: 2 }, growingAreas: expect.arrayContaining([expect.objectContaining({ name: "North bed", layout: expect.objectContaining({ widthMeters: 2, depthMeters: 1 }), planPlacement: expect.objectContaining({ rotationDegrees: 90 }) })]), plantings: expect.arrayContaining([expect.objectContaining({ commonName: "Kale" })]) })]) }));
+      .toMatchObject({ gardens: expect.arrayContaining([expect.objectContaining({ name: "Community plot", plan: { widthMeters: 4, depthMeters: 2 }, growingAreas: expect.arrayContaining([expect.objectContaining({ name: "North bed", kind: "raised-bed", layout: expect.objectContaining({ widthMeters: 1.2, depthMeters: 2 }), planPlacement: { x: 0.5, y: 0, rotationDegrees: 90 } })]), plantings: expect.arrayContaining([expect.objectContaining({ commonName: "Kale" })]) })]) }));
 
     firstRender.unmount();
     resetTestRouter();
@@ -949,6 +949,47 @@ describe("GardenWorkspace", () => {
     await user.click(screen.getByRole("link", { name: "Open Community plot" }));
     await user.click(screen.getByLabelText("Open North bed on Garden Plan"));
     expect(screen.getAllByText("Kale").length).toBeGreaterThan(0);
+  });
+
+  it("adds numbered areas in the next free spots, and the type buttons replace the add form", async () => {
+    const user = userEvent.setup();
+    await loadDemo(user);
+    await openSelectedGarden();
+    const add = within(screen.getByRole("group", { name: "Add a planting area" }));
+    expect(add.getAllByRole("button").map((button) => button.getAttribute("aria-label"))).toEqual([
+      "Add Raised bed, 1.2 × 2.4 m", "Add In-ground bed, 2 × 3 m", "Add Container, 0.6 × 0.6 m", "Add Greenhouse, 2.5 × 3 m",
+    ]);
+    await user.click(add.getByRole("button", { name: "Add Container, 0.6 × 0.6 m" }));
+    expect(screen.getByText("Container 1 added at 7.0, 0.5 m. Drag it to move it, or drag its corner to resize it.")).toBeInTheDocument();
+    await user.click(within(screen.getByRole("group", { name: "Add a planting area" })).getByRole("button", { name: "Add Container, 0.6 × 0.6 m" }));
+    const stored = () => JSON.parse(window.localStorage.getItem(GARDEN_WORKSPACE_STORAGE_KEY) ?? "{}").gardens?.[0]?.growingAreas ?? [];
+    await waitFor(() => expect(stored().filter((area: { kind: string }) => area.kind === "container").slice(1)).toEqual([
+      expect.objectContaining({ name: "Container 1", layout: expect.objectContaining({ widthMeters: 0.6, depthMeters: 0.6 }), planPlacement: { x: 7, y: 0.5, rotationDegrees: 0 } }),
+      expect.objectContaining({ name: "Container 2", planPlacement: { x: 8, y: 0.5, rotationDegrees: 0 } }),
+    ]));
+    // The newest area is zoomed: the URL names it and the side panel edits it.
+    const newest = stored().at(-1);
+    expect(location.search).toBe(`?area=${newest.id}`);
+    expect(screen.getByLabelText("Planting-area name")).toHaveValue("Container 2");
+  });
+
+  it("puts an old area without a size on the plan only when the user asks", async () => {
+    const workspace = createDemoGardenWorkspace();
+    workspace.gardens[0].growingAreas.push({ id: "old-greenhouse", name: "Old greenhouse", kind: "greenhouse", planPlacement: { x: 0, y: 0, rotationDegrees: 0 } });
+    window.localStorage.setItem(GARDEN_WORKSPACE_STORAGE_KEY, JSON.stringify(workspace));
+    resetTestRouter("/gardens/demo-garden/plan");
+    const user = userEvent.setup();
+    render(<GardenWorkspace />);
+    const needsSize = await screen.findByRole("region", { name: "Needs a size" });
+    expect(screen.queryByLabelText("Open Old greenhouse on Garden Plan")).not.toBeInTheDocument();
+    expect(JSON.parse(window.localStorage.getItem(GARDEN_WORKSPACE_STORAGE_KEY)!).gardens[0].growingAreas.at(-1).layout).toBeUndefined();
+    await user.click(within(needsSize).getByRole("button", { name: "Place Old greenhouse on plan" }));
+    expect(screen.getByText(/^Old greenhouse placed at \d+\.\d, \d+\.\d m as 2\.5 × 3 m/)).toBeInTheDocument();
+    expect(screen.getByLabelText("Open Old greenhouse on Garden Plan")).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Needs a size" })).not.toBeInTheDocument();
+    expect(location.search).toBe("?area=old-greenhouse");
+    await waitFor(() => expect(JSON.parse(window.localStorage.getItem(GARDEN_WORKSPACE_STORAGE_KEY)!).gardens[0].growingAreas.at(-1).layout)
+      .toMatchObject({ widthMeters: 2.5, depthMeters: 3 }));
   });
 
   it("keeps one side panel for area details and current layout plants", async () => {

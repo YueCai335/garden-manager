@@ -12,3 +12,13 @@ export async function openAreaProperties(page: Page, areaName: string) {
   if (await editArea.count()) await editArea.click();
   await expect(page.getByLabel("Planting-area name")).toBeVisible();
 }
+
+/** The Garden Plan canvas surface: carries data-focused-area, data-zooming, and data-placing. */
+export function planSurface(page: Page) {
+  return page.getByTestId("garden-plan-canvas");
+}
+
+/** The Konva content element inside the Garden Plan canvas; its box is the drawing area. */
+export function planCanvas(page: Page) {
+  return planSurface(page).locator(".konvajs-content");
+}

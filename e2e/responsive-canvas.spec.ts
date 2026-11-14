@@ -1,6 +1,7 @@
 import { expect, test, type Locator } from "@playwright/test";
 import { fitCanvas, metresToCanvas } from "../src/lib/canvasViewport";
 import { areaFocusViewport, createDemoGardenWorkspace, gardenPlanViewport, type GardenWorkspace } from "../src/lib/gardenWorkspace";
+import { planCanvas, planSurface } from "./areaHelpers";
 
 // Native canvas, pointer and touch behavior require a real browser run.
 // These scenarios are prepared; test discovery alone is not acceptance.
@@ -24,7 +25,7 @@ for (const width of [390, 900, 1440]) {
     await page.getByRole("button", { name: "Load demo garden" }).click();
     await page.getByRole("link", { name: "Open Demo Garden" }).click();
     await expect(page.getByText("All changes saved", { exact: true })).toBeVisible();
-    const plan = page.getByRole("button", { name: "Move planting areas" }).locator("..").locator("..").locator(".konvajs-content");
+    const plan = planCanvas(page);
     await expectFittedCanvas(plan);
     await page.getByRole("button", { name: "Edit garden details" }).click();
     await page.getByLabel("Garden width (m)").fill("10000");
@@ -33,7 +34,7 @@ for (const width of [390, 900, 1440]) {
     await expectFittedCanvas(plan);
     await page.getByRole("link", { name: "Edit Sample raised bed" }).click();
     // Plants move on the same canvas once it has zoomed into the bed.
-    const surface = page.getByRole("button", { name: "Move planting areas" }).locator("..").locator("..").locator("[data-move]");
+    const surface = planSurface(page);
     await expect(surface).toHaveAttribute("data-focused-area", "demo-raised-bed");
     await expect(surface).toHaveCSS("touch-action", "pan-y");
     await expect(surface).toHaveAttribute("data-zooming", "false");
@@ -73,17 +74,17 @@ for (const width of [390, 900, 1440]) {
   });
 }
 
-test("map movement previews a snapped area, cancels on Escape, and saves one completed drag", async ({ page }, testInfo) => {
+test("a mouse drags an area without a mode: snapped preview, Escape cancel, and one saved drag", async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/");
   await page.getByRole("button", { name: "Load demo garden" }).click();
   await page.getByRole("link", { name: "Open Demo Garden" }).click();
   await expect(page.getByText("All changes saved", { exact: true })).toBeVisible();
   await expect(page.getByRole("complementary", { name: "Garden area summary" })).toContainText("Sample raised bed");
-  const move = page.getByRole("button", { name: "Move planting areas" });
-  const canvas = move.locator("..").locator("..").locator(".konvajs-content");
+  // A mouse drags an area directly; only touch screens show the Move mode (ADR-0072, G4).
+  await expect(page.getByRole("button", { name: "Move planting areas" })).toHaveCount(0);
+  const canvas = planCanvas(page);
   await expectFittedCanvas(canvas);
-  await move.click();
   await canvas.scrollIntoViewIfNeeded();
   const box = (await canvas.boundingBox())!;
   const [garden] = createDemoGardenWorkspace().gardens;
@@ -127,7 +128,7 @@ for (const width of [390, 1440]) {
     await page.getByRole("button", { name: "Load demo garden" }).click();
     await page.getByRole("link", { name: "Open Demo Garden" }).click();
     await expect(page.getByText("All changes saved", { exact: true })).toBeVisible();
-    const surface = page.getByRole("button", { name: "Move planting areas" }).locator("..").locator("..").locator("[data-move]");
+    const surface = planSurface(page);
     const canvas = surface.locator(".konvajs-content");
     await expectFittedCanvas(canvas);
     await canvas.scrollIntoViewIfNeeded();
@@ -170,7 +171,7 @@ test("a rotated area stays zoomed after reload and Escape returns to the whole g
   await page.getByRole("button", { name: "Save", exact: true }).click();
   await expect(page.getByText("All changes saved", { exact: true })).toBeVisible();
   await page.reload();
-  const surface = page.getByRole("button", { name: "Move planting areas" }).locator("..").locator("..").locator("[data-move]");
+  const surface = planSurface(page);
   await expect(surface).toHaveAttribute("data-focused-area", "demo-raised-bed");
   await expect(page.getByRole("heading", { name: "Edit planting area" })).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath("area-zoom-rotated.png") });

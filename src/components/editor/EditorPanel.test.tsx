@@ -12,7 +12,8 @@ import { createDemoGardenWorkspace, GARDEN_WORKSPACE_STORAGE_KEY } from "@/lib/g
 function mockNarrowViewport() {
   vi.stubGlobal("innerWidth", 1024);
   vi.stubGlobal("matchMedia", (query: string) => ({
-    matches: query === "(width < 768px)", addEventListener: vi.fn(), removeEventListener: vi.fn(),
+    // A phone: a narrow viewport with a touch screen as its primary pointer.
+    matches: query === "(width < 768px)" || query === "(pointer: coarse)", addEventListener: vi.fn(), removeEventListener: vi.fn(),
   }));
 }
 

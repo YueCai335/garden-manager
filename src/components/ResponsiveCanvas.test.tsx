@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GardenPlanOverview } from "./GardenPlanOverview";
@@ -58,30 +58,32 @@ describe("responsive canvas interactions", () => {
   });
 
   it("pins the rendered transform during a drag and uses it for metre conversion after resize", async () => {
-    const user = userEvent.setup(); const onPlacementChange = vi.fn(); const area = bed();
+    const onPlacementChange = vi.fn(); const area = bed();
     const props = { plan, growingAreas: [area], editable: true, onPlacementChange };
     const view = render(<GardenPlanOverview {...props} />);
     const node = screen.getByLabelText("Open North bed on Garden Plan");
-    expect(node).toHaveAttribute("draggable", "false");
-    await user.click(screen.getByRole("button", { name: "Move planting areas" }));
+    // A mouse drags areas directly: no Move mode (ADR-0072, phase G4).
+    expect(node).toHaveAttribute("draggable", "true");
+    expect(screen.queryByRole("button", { name: "Move planting areas" })).not.toBeInTheDocument();
     const transform = fitCanvas(gardenPlanViewport(plan, [area], "growing-areas"), size.width, size.height)!;
     fireEvent.dragStart(node);
     size.width = 358; size.height = 320;
     view.rerender(<GardenPlanOverview {...props} />);
     expect(screen.getByLabelText(/Garden Plan, /)).toHaveAttribute("width", "700");
     const target = metresToCanvas({ x: 5.24, y: 6.27 }, transform);
-    Object.assign(node, { x: () => target.x, y: () => target.y });
+    const position = vi.fn();
+    Object.assign(node, { x: () => target.x, y: () => target.y, position });
     fireEvent.pointerUp(node);
+    // The node returns to its rendered position; the saved placement redraws it.
+    expect(position).toHaveBeenCalledWith(metresToCanvas(area.planPlacement, transform));
     expect(onPlacementChange).toHaveBeenCalledExactlyOnceWith("bed", { x: 5.2, y: 6.3, rotationDegrees: 45 });
     expect(screen.getByLabelText(/Garden Plan, /)).toHaveAttribute("width", "358");
   });
 
   it("restores the original map position on Escape without submitting a move", async () => {
-    const user = userEvent.setup();
     const area = bed();
     const onPlacementChange = vi.fn();
     render(<GardenPlanOverview plan={plan} growingAreas={[area]} editable onPlacementChange={onPlacementChange} />);
-    await user.click(screen.getByRole("button", { name: "Move planting areas" }));
     const node = screen.getByLabelText("Open North bed on Garden Plan");
     const position = vi.fn();
     const stopDrag = vi.fn();
@@ -133,7 +135,10 @@ describe("zooming into one planting area", () => {
     expect(screen.getByLabelText("Open Near bed on Garden Plan")).toHaveAttribute("opacity", "0.35");
     expect(screen.getByTestId("area-label-bed")).toBeInTheDocument();
     expect(screen.queryByTestId("area-label-near")).not.toBeInTheDocument();
-    expect(screen.getByText("Viewing North bed. Escape returns to the whole garden.")).toBeInTheDocument();
+    expect(screen.getByText("Viewing North bed. Drag it to move it, or drag its corner to resize it. Escape returns to the whole garden.")).toBeInTheDocument();
+    // Only the zoomed area moves; the dimmed neighbour is not draggable.
+    expect(screen.getByLabelText("Open North bed on Garden Plan")).toHaveAttribute("draggable", "true");
+    expect(screen.getByLabelText("Open Near bed on Garden Plan")).toHaveAttribute("draggable", "false");
   });
 
   it("returns with Whole garden or Escape, but leaves Escape to text fields and drags", async () => {
@@ -145,7 +150,6 @@ describe("zooming into one planting area", () => {
     expect(onExitArea).toHaveBeenCalledTimes(2);
     fireEvent.keyDown(screen.getByLabelText("Notes"), { key: "Escape" });
     expect(onExitArea).toHaveBeenCalledTimes(2);
-    await user.click(screen.getByRole("button", { name: "Move planting areas" }));
     const node = screen.getByLabelText("Open North bed on Garden Plan");
     Object.assign(node, { position: vi.fn(), stopDrag: vi.fn() });
     fireEvent.dragStart(node);
@@ -327,5 +331,93 @@ describe("plant panel", () => {
     await user.click(screen.getByRole("button", { name: "Done" }));
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Plant type")).not.toBeInTheDocument();
+  });
+});
+
+describe("placing and sizing planting areas directly (ADR-0072, phase G4)", () => {
+  const coarsePointer = () => vi.stubGlobal("matchMedia", (media: string) => ({ media, matches: media === "(pointer: coarse)", addEventListener: vi.fn(), removeEventListener: vi.fn() }));
+  const square = (): GrowingArea => ({ id: "bed", name: "North bed", kind: "raised-bed", planPlacement: { x: 2, y: 3, rotationDegrees: 0 }, layout: createRectangularLayout(4, 2) });
+
+  it("resizes the zoomed area from its corner handle, snapped, without moving it", () => {
+    const onResizeArea = vi.fn(); const onPlacementChange = vi.fn(); const area = square();
+    render(<GardenPlanOverview plan={plan} growingAreas={[area]} editable selectedAreaId="bed" onExitArea={vi.fn()} onPlacementChange={onPlacementChange} onResizeArea={onResizeArea} />);
+    const transform = fitCanvas(areaFocusViewport(area)!, size.width, size.height)!;
+    const handle = screen.getByLabelText("Resize North bed");
+    expect(handle).toHaveAttribute("x", String(4 * transform.scale));
+    expect(handle).toHaveAttribute("y", String(2 * transform.scale));
+    Object.assign(handle, { position: vi.fn(), stopDrag: vi.fn(), x: () => 5.04 * transform.scale, y: () => 1.47 * transform.scale });
+    fireEvent.dragStart(handle);
+    expect(screen.getByTestId("resize-preview")).toHaveAttribute("width", String(4 * transform.scale));
+    fireEvent.pointerUp(handle);
+    expect(onResizeArea).toHaveBeenCalledExactlyOnceWith("bed", { widthMeters: 5, depthMeters: 1.5 });
+    expect(onPlacementChange).not.toHaveBeenCalled();
+    expect(screen.getByText("North bed resized to 5 × 1.5 m.")).toBeInTheDocument();
+    expect(screen.queryByTestId("resize-preview")).not.toBeInTheDocument();
+  });
+
+  it("cancels a resize on Escape before leaving the zoomed area", () => {
+    const onResizeArea = vi.fn(); const onExitArea = vi.fn();
+    render(<GardenPlanOverview plan={plan} growingAreas={[square()]} editable selectedAreaId="bed" onExitArea={onExitArea} onPlacementChange={vi.fn()} onResizeArea={onResizeArea} />);
+    const handle = screen.getByLabelText("Resize North bed");
+    const position = vi.fn(); const stopDrag = vi.fn();
+    Object.assign(handle, { position, stopDrag });
+    fireEvent.dragStart(handle);
+    fireEvent.keyDown(window, { key: "Escape" });
+    fireEvent.pointerUp(handle);
+    expect(stopDrag).toHaveBeenCalledOnce();
+    expect(position).toHaveBeenCalled();
+    expect(onResizeArea).not.toHaveBeenCalled();
+    expect(onExitArea).not.toHaveBeenCalled();
+  });
+
+  it("shows no resize handle in the whole-garden view, for rotated outlines it cannot keep, or while placing plants", () => {
+    const view = render(<GardenPlanOverview plan={plan} growingAreas={[square()]} editable onPlacementChange={vi.fn()} onResizeArea={vi.fn()} />);
+    expect(screen.queryByLabelText("Resize North bed")).not.toBeInTheDocument();
+    expect(screen.getByText("Click an area to open it, or drag it to move it. Escape cancels a move.")).toBeInTheDocument();
+    const placing: CanvasPlanting = { areaId: "bed", placing: { label: "Basil", diameterMeters: 0.4, color: "#519a55" }, onSelectPlant: vi.fn(), onMovePlant: vi.fn(), onPlacePlant: vi.fn(), onStopPlacing: vi.fn() };
+    view.rerender(<GardenPlanOverview plan={plan} growingAreas={[square()]} editable selectedAreaId="bed" onExitArea={vi.fn()} onPlacementChange={vi.fn()} onResizeArea={vi.fn()} planting={placing} />);
+    expect(screen.queryByLabelText("Resize North bed")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Open North bed on Garden Plan")).toHaveAttribute("draggable", "false");
+  });
+
+  it("keeps the Move mode on touch screens so the canvas scrolls the page until Move is on", async () => {
+    coarsePointer();
+    const user = userEvent.setup();
+    render(<GardenPlanOverview plan={plan} growingAreas={[square()]} editable selectedAreaId="bed" onExitArea={vi.fn()} onPlacementChange={vi.fn()} onResizeArea={vi.fn()} />);
+    const node = screen.getByLabelText("Open North bed on Garden Plan");
+    expect(node).toHaveAttribute("draggable", "false");
+    expect(screen.queryByLabelText("Resize North bed")).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/Garden Plan, /)).toHaveStyle({ touchAction: "pan-y" });
+    await user.click(screen.getByRole("button", { name: "Move planting areas" }));
+    expect(node).toHaveAttribute("draggable", "true");
+    expect(screen.getByLabelText("Resize North bed")).toBeInTheDocument();
+    expect(screen.getByLabelText(/Garden Plan, /)).toHaveStyle({ touchAction: "none" });
+    expect(screen.getByText("Drag an area. Escape cancels a move.")).toBeInTheDocument();
+  });
+
+  it("outlines both overlapping areas and explains the overlap without blocking a move", () => {
+    const first = square();
+    const second: GrowingArea = { ...square(), id: "east", name: "East bed", planPlacement: { x: 5, y: 4, rotationDegrees: 0 } };
+    const apart: GrowingArea = { ...square(), id: "far", name: "Far bed", planPlacement: { x: 40, y: 40, rotationDegrees: 0 } };
+    render(<GardenPlanOverview plan={plan} growingAreas={[first, second, apart]} editable onPlacementChange={vi.fn()} />);
+    expect(screen.getByLabelText("Open North bed on Garden Plan")).toHaveAttribute("data-overlap", "true");
+    expect(screen.getByLabelText("Open East bed on Garden Plan")).toHaveAttribute("data-overlap", "true");
+    expect(screen.getByLabelText("Open Far bed on Garden Plan")).not.toHaveAttribute("data-overlap");
+    expect(screen.getByTestId("overlap-bed")).toBeInTheDocument();
+    expect(screen.getByRole("note", { name: "Overlapping planting areas" })).toHaveTextContent("North bed and East bed overlap. Move one if they are separate spaces on the ground.");
+    expect(screen.getByLabelText("Open East bed on Garden Plan")).toHaveAttribute("draggable", "true");
+  });
+
+  it("lists areas without a size under Needs a size and places one only when asked", async () => {
+    const user = userEvent.setup(); const onPlaceArea = vi.fn();
+    const unsized: GrowingArea = { id: "old", name: "Old greenhouse", kind: "greenhouse", planPlacement: { x: 0, y: 0, rotationDegrees: 0 } };
+    render(<GardenPlanOverview plan={plan} growingAreas={[square(), unsized]} editable onPlacementChange={vi.fn()} onPlaceArea={onPlaceArea} />);
+    const needsSize = screen.getByRole("region", { name: "Needs a size" });
+    expect(needsSize).toHaveTextContent("Old greenhouse");
+    expect(needsSize).toHaveTextContent("Uses the standard greenhouse size, 2.5 × 3 m.");
+    expect(screen.queryByLabelText("Open Old greenhouse on Garden Plan")).not.toBeInTheDocument();
+    expect(onPlaceArea).not.toHaveBeenCalled();
+    await user.click(within(needsSize).getByRole("button", { name: "Place Old greenhouse on plan" }));
+    expect(onPlaceArea).toHaveBeenCalledExactlyOnceWith("old");
   });
 });

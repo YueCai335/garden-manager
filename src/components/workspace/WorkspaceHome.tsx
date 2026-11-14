@@ -28,12 +28,12 @@ function GardenCard({ garden }: { garden: Garden }) {
     <div className={styles.map} aria-hidden="true">
       {areaCount > unmeasured
         ? <GardenPlanOverview compact growingAreas={garden.growingAreas} plan={garden.plan} />
-        : <span>{areaCount ? "Layout needs setup" : "No planting areas yet"}</span>}
+        : <span>{areaCount ? "Planting areas need a size" : "No planting areas yet"}</span>}
     </div>
     <div className={styles.cardDetails}>
       <h3><span>{garden.name}</span><span className={styles.cardArrow} aria-hidden="true">→</span></h3>
       <div className={styles.metadata} id={detailsId}>
-        <span>{areaCount} planting {areaCount === 1 ? "area" : "areas"}{unmeasured > 0 && ` · ${unmeasured} need${unmeasured === 1 ? "s" : ""} layout setup`}</span>
+        <span>{areaCount} planting {areaCount === 1 ? "area" : "areas"}{unmeasured > 0 && ` · ${unmeasured} need${unmeasured === 1 ? "s" : ""} a size`}</span>
         <span>{crops.length ? `Growing now: ${crops.slice(0, 3).join(", ")}${crops.length > 3 ? ` + ${crops.length - 3} more` : ""}` : "No current plantings"}</span>
       </div>
     </div>

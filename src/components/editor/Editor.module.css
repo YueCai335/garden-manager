@@ -43,3 +43,8 @@
 .areaPanel > header > div { flex: 1 1 160px; min-width: 0; overflow-wrap: anywhere; }
 .areaPanel h3 { margin: 0; font-size: 16px; }
 .areaPanel > header p { margin: 0; color: var(--color-muted); font-size: 14px; }
+.needsSize { margin-top: 16px; }
+.needsSize h4 { margin: 0; font-size: 15px; }
+.needsSize > p { margin: 4px 0 0; color: var(--color-muted); font-size: 14px; }
+.needsSize li { display: grid; gap: 6px; align-content: start; }
+.needsSize small { color: var(--color-muted); font-size: 13px; }

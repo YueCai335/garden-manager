@@ -870,3 +870,65 @@ layout boundary, which drops a pending "Undo fill" button (placed plants and
 plant drafts stay). Choosing a plant in the add form still shows "Unsaved
 changes" although placed plants save at once; G5 removes Save-based wording
 from Garden Plan.
+
+## G4: Place planting areas directly on the Garden Plan
+
+Phase G4 of the single-canvas plan ([ADR-0072](decisions/0072-use-a-single-plan-canvas-with-guided-setup.md)).
+Areas are added, moved, and resized on the canvas. The "Add planting area"
+form is gone.
+
+- Four type buttons in the plan toolbar add a Raised bed (1.2 × 2.4 m), an
+  In-ground bed (2 × 3 m), a Container (0.6 × 0.6 m), or a Greenhouse
+  (2.5 × 3 m). One click places the area in the first free spot with the next
+  unused name, such as "Raised bed 2", and zooms the plan into it. The type
+  labels across the product now use these words.
+- The free-spot search, default names, corner-handle sizing, and overlap test
+  live in `src/lib/areaPlacement.ts`. The search walks a half-metre grid in
+  reading order, keeps 0.3 m from sized areas (using rotated outlines), then
+  accepts touching positions. A full garden centres the area and says it
+  overlaps; a garden smaller than the standard size shrinks the area and says
+  so.
+- Mouse and pen drag areas directly: any area in the whole-garden view, and
+  the zoomed area in the zoomed view. A press that moves less than six pixels
+  still zooms. The zoomed rectangular area shows a bottom-right corner handle
+  that resizes it in 0.1 m steps, at least 0.1 m, and no further than the
+  garden edge for an unrotated area. The drag readout shows the size, the
+  preview outline is dashed, and Escape cancels a move or a resize.
+- Touch screens (`(pointer: coarse)`) keep the Move button, so swiping over the
+  canvas scrolls the page until Move is on. On a hybrid device, a touch drag
+  outside Move mode stops so the page scrolls.
+- Overlapping areas both get a dashed amber outline, and a note below the
+  canvas names each pair. Overlap never blocks a move.
+- Areas saved without a size are listed under "Needs a size" with "Place on
+  plan", which uses that type's standard size in a free spot. Nothing is sized
+  without that click. The Overview card reads "1 needs a size" instead of
+  "1 needs layout setup".
+
+One bug surfaced in Chromium. After a drag in the zoomed view, the view
+re-centres by the same distance the area moved, so the area's x and y props
+did not change and react-konva left the node where the drag dropped it: the
+area was drawn half a metre off and its corner handle missed the pointer. The
+drag end now returns the node to its rendered position before saving, and the
+saved placement redraws it.
+
+All 363 frontend tests, lint (one existing warning in `GardenNoteDialog.tsx`),
+type checking, the isolated production build, `git diff --check`, and all 43
+Chromium cases passed. New unit tests cover the free-spot search (empty
+garden, reading order and clearance, unsized and rotated neighbours, the far
+edge, touching positions, a full garden, a garden smaller than the standard
+size), default names, corner-handle sizing, plant clamping, and overlap with
+rotated outlines. Component tests cover the corner handle, Escape during a
+resize, no handle while placing plants, the touch-only Move mode, overlap
+outlines and the note, "Needs a size" with "Place on plan", one-click areas
+in free spots, and the shrunk area in a small garden. `garden-flow.spec.ts`
+now adds a raised bed, drags it, resizes it from the corner, and checks the
+saved workspace. A new touch journey sends real touch events through the
+Chrome DevTools Protocol: with Move off, a swipe that starts on a bed scrolls
+the page and leaves the bed in place; with Move on, the same swipe moves the
+bed and the page does not scroll.
+
+Known limits: the zoomed view keeps G2's framing, which aligns a tall area to
+the left of a wide canvas rather than centring it. Resizing works from the
+bottom-right corner only, and rotated areas resize without the garden-edge
+stop. Touch users resize with the handle only in Move mode, or with the size
+fields.

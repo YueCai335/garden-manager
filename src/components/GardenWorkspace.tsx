@@ -15,6 +15,7 @@ import homeStyles from "@/components/workspace/WorkspaceHome.module.css";
 import { gardenPath, areaPath, areaEditPath, careView, type WorkspaceRoute } from "@/lib/workspaceRoutes";
 
 import { PlantingAreaInspector } from "@/components/PlantingAreaInspector";
+import { areaKindDefaults, defaultAreaName, findFreeAreaSpot, resizeLayout, type AreaSpot } from "@/lib/areaPlacement";
 import { applyAreaProperties, areaPropertyErrors, areaDraftKey, createAllocationId, emptyPlantEditorDraft, newPlantFromDraft, openPlantDraft, plantDraftIsDirty, sameAreaProperties, type PlantEditorDraft } from "@/lib/areaEditorDrafts";
 import { CareWorkspace, type CareRecords } from "@/components/CareWorkspace";
 import { areaDeletionMessage, gardenDeletionMessage } from "@/lib/deletionImpact";
@@ -32,14 +33,9 @@ import {
   createGarden,
   createGardenWorkspace,
   createId,
-  defaultPlanPlacement,
   defaultPlantColor,
   growingAreaKindLabels,
-  growingAreaKinds,
   linkCurrentLayoutPlants,
-  normalizePlanRotation,
-  snapToGrid,
-  validateLayoutDimensions,
   type Garden,
   type HealthRecord,
   type GardenPlan,
@@ -66,8 +62,7 @@ import {
 } from "@/lib/seasonAllocation";
 import type { AllocationConfirmOutcome } from "@/components/AllocationAssistant";
 
-import { EditorWorkbench, type EditorMode } from "./editor/EditorWorkbench";
-import { EditorPanel } from "./editor/EditorPanel";
+import { EditorWorkbench } from "./editor/EditorWorkbench";
 import { updateCareOwner, type CareOwner } from "@/lib/careViews";
 import editorStyles from "./editor/Editor.module.css";
 
@@ -105,13 +100,6 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
     router.replace(`${route.gardenId ? gardenPath(route.gardenId, "care") : "/care"}?${query}`);
   }, [route.module, route.gardenId, router, search]);
   const [newGardenName, setNewGardenName] = useWorkspaceDraft("setup:name", "");
-  const [areaName, setAreaName] = useWorkspaceDraft(`area-create:${route.gardenId ?? ""}:areaName`, "");
-  const [areaKind, setAreaKind] = useWorkspaceDraft<GrowingAreaKind>(`area-create:${route.gardenId ?? ""}:areaKind`, "raised-bed");
-  // Width runs left to right (widthMeters); length runs top to bottom (depthMeters).
-  const [areaWidth, setAreaWidth] = useWorkspaceDraft(`area-create:${route.gardenId ?? ""}:width`, "2");
-  const [areaLength, setAreaLength] = useWorkspaceDraft(`area-create:${route.gardenId ?? ""}:length`, "1");
-  const [areaRotationDegrees, setAreaRotationDegrees] = useWorkspaceDraft(`area-create:${route.gardenId ?? ""}:areaRotationDegrees`, "0");
-  const [isAreaFormOpen, setIsAreaFormOpen] = useWorkspaceDraft(`area-create:${route.gardenId ?? ""}:isAreaFormOpen`, false);
   const [pendingConfirmation, setPendingConfirmation] = useState<{
     message: string;
     confirmLabel: string;
@@ -160,7 +148,6 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
     );
   };
 
-  useUnsavedDraft(`area-create:${route.gardenId ?? ""}`, Boolean(areaName));
   useUnsavedDraft("setup:name", Boolean(newGardenName));
   const openManagement = (gardenId?: string) => { if (gardenId) navigate(gardenPath(gardenId)); };
   const returnToDashboard = () => { setSetupGardenId(undefined); navigate("/"); };
@@ -257,9 +244,6 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
     if (!dirty) { onConfirm(); return; }
     setPendingConfirmation({ message: "Your changes have not been submitted. Discard them or keep editing.", confirmLabel: "Discard changes", cancelLabel: "Keep editing", onConfirm });
   };
-  const discardNewArea = () => {
-    setIsAreaFormOpen(false); setAreaName(""); setAreaKind("raised-bed"); setAreaWidth("2"); setAreaLength("1"); setAreaRotationDegrees("0");
-  };
   const loadDemo = () => {
     const applyDemo = () => {
       const demo = createDemoGardenWorkspace();
@@ -277,15 +261,7 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
     applyDemo();
   };
 
-  const openAreaForm = () => {
-    setEditingLayoutId(undefined);
-    setIsAreaFormOpen(true);
-  };
-
-  const openAreaInspector = (areaId: string) => {
-    setIsAreaFormOpen(false);
-    setEditingLayoutId(areaId);
-  };
+  const openAreaInspector = (areaId: string) => setEditingLayoutId(areaId);
   // "Whole garden" and Escape close the open area the same way its Close button does.
   const closeAreaInspector = () => {
     if (!garden || !editingArea) return;
@@ -298,47 +274,51 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
     });
   };
 
-  const saveArea = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const name = areaName.trim();
-    const width = Number(areaWidth);
-    const length = Number(areaLength);
-    const rotationDegrees = Number(areaRotationDegrees);
-    if (!garden || !name)
-      return setMessage("Enter a planting-area name to continue.");
-    if (!validateLayoutDimensions(width, length))
-      return setMessage("Enter planting-area dimensions of at least 0.1 metres.");
-    if (!Number.isFinite(rotationDegrees))
-      return setMessage("Enter a valid rotation angle.");
-    const areaId = createId("area");
+  /**
+   * One click adds an area of the type's standard size at the first free spot
+   * and zooms the plan into it (ADR-0072, phase G4).
+   */
+  const addArea = (kind: GrowingAreaKind) => {
+    const latest = latestWorkspaceRef.current?.gardens.find((item) => item.id === garden?.id);
+    if (!latest) return;
+    const spot = findFreeAreaSpot(latest.plan, latest.growingAreas, areaKindDefaults[kind]);
+    const area: GrowingArea = {
+      id: createId("area"),
+      name: defaultAreaName(growingAreaKindLabels[kind], latest.growingAreas),
+      kind,
+      layout: createRectangularLayout(spot.widthMeters, spot.depthMeters),
+      planPlacement: { x: spot.x, y: spot.y, rotationDegrees: 0 },
+    };
+    updateGarden((current) => ({ ...current, growingAreas: [...current.growingAreas, area] }));
+    setEditingLayoutId(area.id);
+    setMessage(`${area.name} added at ${spot.x.toFixed(1)}, ${spot.y.toFixed(1)} m${placementNote(spot)}. Drag it to move it, or drag its corner to resize it.`);
+  };
 
-    updateGarden((current) => {
-      const placement = defaultPlanPlacement(current.growingAreas.length);
-      return {
+  /** An area saved without a size gets its type's standard size in a free spot, only when the user asks. */
+  const placeUnsizedArea = (areaId: string) => {
+    const latest = latestWorkspaceRef.current?.gardens.find((item) => item.id === garden?.id);
+    const area = latest?.growingAreas.find((item) => item.id === areaId);
+    if (!latest || !area || area.layout) return;
+    const spot = findFreeAreaSpot(latest.plan, latest.growingAreas, areaKindDefaults[area.kind]);
+    updateGarden((current) => ({
+      ...current,
+      growingAreas: current.growingAreas.map((item) => item.id === areaId && !item.layout
+        ? { ...item, layout: createRectangularLayout(spot.widthMeters, spot.depthMeters), planPlacement: { x: spot.x, y: spot.y, rotationDegrees: 0 } }
+        : item),
+    }));
+    setEditingLayoutId(areaId);
+    setMessage(`${area.name} placed at ${spot.x.toFixed(1)}, ${spot.y.toFixed(1)} m as ${spot.widthMeters} × ${spot.depthMeters} m${placementNote(spot)}. Drag its corner to change the size.`);
+  };
+
+  const resizeArea = (areaId: string, size: { widthMeters: number; depthMeters: number }) => {
+    updateGarden((current) =>
+      linkCurrentLayoutPlants({
         ...current,
-        growingAreas: [
-          ...current.growingAreas,
-          {
-            id: areaId,
-            name,
-            kind: areaKind,
-            layout: createRectangularLayout(snapToGrid(width), snapToGrid(length)),
-            planPlacement: {
-              ...placement,
-              ...clampPlanPosition(placement, current.plan),
-              rotationDegrees: normalizePlanRotation(rotationDegrees),
-            },
-          },
-        ],
-      };
-    });
-    setAreaName("");
-    setAreaKind("raised-bed");
-    setAreaWidth("2");
-    setAreaLength("1");
-    setAreaRotationDegrees("0");
-    setIsAreaFormOpen(false);
-    setMessage(`${name} added. Drag it on the plan to position it.`);
+        growingAreas: current.growingAreas.map((area) =>
+          area.id === areaId && area.layout ? { ...area, layout: resizeLayout(area.layout, size) } : area,
+        ),
+      }),
+    );
   };
 
   const saveAreaEditor = (
@@ -707,16 +687,16 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
                 {mode !== "wide" && editingArea && hasAreaPropertiesDraft && !editingAreaProperties && (
                   <ReplaceRoute href={areaEditPath(garden.id, editingArea.id)} onReplace={(href) => navigate(href, true)} />
                 )}
-                <div className={editorStyles.plan} hidden={mode === "mobile" && (isAreaFormOpen || showInspector)}>
+                <div className={editorStyles.plan} hidden={mode === "mobile" && showInspector}>
                 <GardenPlanOverview
                   editable
                   gardenId={garden.id}
                   gardenName={garden.name}
                   growingAreas={garden.growingAreas}
                   headingRef={gardenPlanHeadingRef}
-                  isAreaInspectorOpen={isAreaFormOpen || showInspector}
+                  isAreaInspectorOpen={showInspector}
                   selectedAreaId={editingArea?.id}
-                  areaListInSidebar={mode === "wide" && !isAreaFormOpen && !editingArea}
+                  areaListInSidebar={mode === "wide" && !editingArea}
                   areaPanel={mode !== "wide" && editingArea ? (
                     <section className={editorStyles.areaPanel} aria-labelledby="area-panel-heading">
                       <header>
@@ -730,7 +710,9 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
                     </section>
                   ) : undefined}
                   planting={canvasPlanting}
-                  onAddArea={openAreaForm}
+                  onAddArea={addArea}
+                  onPlaceArea={placeUnsizedArea}
+                  onResizeArea={resizeArea}
                   onEditLayout={openAreaInspector}
                   onExitArea={closeAreaInspector}
                   onGardenNameChange={(name) => updateGarden((current) => ({ ...current, name }))}
@@ -739,26 +721,9 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
                   plan={garden.plan}
                 />
                 </div>
-                {mode === "wide" && !isAreaFormOpen && !editingArea && <aside className={editorStyles.summary} aria-label="Garden area summary">
-                  <GardenAreaList gardenId={garden.id} areas={garden.growingAreas} />
+                {mode === "wide" && !editingArea && <aside className={editorStyles.summary} aria-label="Garden area summary">
+                  <GardenAreaList gardenId={garden.id} areas={garden.growingAreas} onPlaceArea={placeUnsizedArea} />
                 </aside>}
-                <PlantingAreaCreation
-                  mode={mode}
-                  gardenName={garden.name}
-                  areaKind={areaKind}
-                  areaWidth={areaWidth}
-                  areaName={areaName}
-                  areaRotationDegrees={areaRotationDegrees}
-                  areaLength={areaLength}
-                  isAreaFormOpen={isAreaFormOpen}
-                  onSave={saveArea}
-                  onSetAreaKind={setAreaKind}
-                  onSetAreaWidth={setAreaWidth}
-                  onSetAreaName={setAreaName}
-                  onSetAreaRotationDegrees={setAreaRotationDegrees}
-                  onSetAreaLength={setAreaLength}
-                  onSetFormOpen={(open) => open ? setIsAreaFormOpen(true) : confirmDiscard(Boolean(areaName || areaKind !== "raised-bed" || areaWidth !== "2" || areaLength !== "1" || areaRotationDegrees !== "0"), discardNewArea)}
-                />
                 {editingArea && showInspector ? (
                   <PlantingAreaInspector
                     key={areaDraftKey(garden.id, editingArea.id)}
@@ -780,7 +745,7 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
                 ) : null}
               </>;
               }}</EditorWorkbench>
-              <div hidden={Boolean(editingArea) || isAreaFormOpen}>
+              <div hidden={Boolean(editingArea)}>
               <GardenManagement
                 onDeleteGarden={deleteGarden}
                 isSetup={page.name === "management" && page.isSetup}
@@ -998,127 +963,12 @@ function GardenManagement({
   );
 }
 
-function PlantingAreaCreation({
-  mode, gardenName,
-  areaKind,
-  areaWidth,
-  areaName,
-  areaRotationDegrees,
-  areaLength,
-  isAreaFormOpen,
-  onSave,
-  onSetAreaKind,
-  onSetAreaWidth,
-  onSetAreaName,
-  onSetAreaRotationDegrees,
-  onSetAreaLength,
-  onSetFormOpen,
-}: {
-  mode: EditorMode;
-  gardenName: string;
-  areaKind: GrowingAreaKind;
-  areaWidth: string;
-  areaName: string;
-  areaRotationDegrees: string;
-  areaLength: string;
-  isAreaFormOpen: boolean;
-  onSave: (event: FormEvent<HTMLFormElement>) => void;
-  onSetAreaKind: (kind: GrowingAreaKind) => void;
-  onSetAreaWidth: (width: string) => void;
-  onSetAreaName: (name: string) => void;
-  onSetAreaRotationDegrees: (rotationDegrees: string) => void;
-  onSetAreaLength: (length: string) => void;
-  onSetFormOpen: (open: boolean) => void;
-}) {
-  if (!isAreaFormOpen) return null;
-
-  return (
-    <EditorPanel mode={mode} title="Add planting area" context={gardenName} headingId="add-planting-area-heading" returnFocusId="add-planting-area" onClose={() => onSetFormOpen(false)}>
-      <p className="planting-area-creation-intro">
-        Define the bed, then place it directly on the plan.
-      </p>
-      <FeedbackForm className="planting-area-creation-form" onSubmit={onSave}>
-        <FormField id="planting-area-name" className="field">
-          <label htmlFor="planting-area-name">Planting-area name</label>
-          <input
-            autoFocus
-            id="planting-area-name"
-            onChange={(event) => onSetAreaName(event.target.value)}
-            required
-            value={areaName}
-          />
-        </FormField>
-        <div className="field">
-          <label htmlFor="planting-area-kind">Planting-area type</label>
-          <select
-            id="planting-area-kind"
-            onChange={(event) =>
-              onSetAreaKind(event.target.value as GrowingAreaKind)
-            }
-            value={areaKind}
-          >
-            {growingAreaKinds.map((kind) => (
-              <option key={kind} value={kind}>
-                {growingAreaKindLabels[kind]}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="planting-area-creation-measurements">
-          <FormField id="planting-area-width" className="field">
-            <label htmlFor="planting-area-width">Width (m)</label>
-            <input
-              id="planting-area-width"
-              min="0.1"
-              onChange={(event) => onSetAreaWidth(event.target.value)}
-              required
-              step="0.1"
-              type="number"
-              value={areaWidth}
-            />
-          </FormField>
-          <FormField id="planting-area-length" className="field">
-            <label htmlFor="planting-area-length">Length (m)</label>
-            <input
-              id="planting-area-length"
-              min="0.1"
-              onChange={(event) => onSetAreaLength(event.target.value)}
-              required
-              step="0.1"
-              type="number"
-              value={areaLength}
-            />
-          </FormField>
-        </div>
-        <FormField id="planting-area-rotation" className="field">
-          <label htmlFor="planting-area-rotation">Rotation (degrees)</label>
-          <input
-            id="planting-area-rotation" required
-            onChange={(event) => onSetAreaRotationDegrees(event.target.value)}
-            step="1"
-            type="number"
-            value={areaRotationDegrees}
-          />
-        </FormField>
-        <div className="form-actions">
-          <button className="primary-button" type="submit">
-            Add area
-          </button>
-          <button
-            className="secondary-button"
-            onClick={() => {
-              onSetFormOpen(false);
-            }}
-            type="button"
-          >
-            Cancel
-          </button>
-        </div>
-      </FeedbackForm>
-    </EditorPanel>
-  );
+/** Explains a new area that was shrunk to the garden or could not avoid other areas. */
+function placementNote(spot: AreaSpot) {
+  if (spot.resized) return ` (shrunk to ${spot.widthMeters} × ${spot.depthMeters} m to fit the garden)`;
+  if (spot.overlaps) return " (the garden is full, so it overlaps another area)";
+  return "";
 }
-
 
 function Status({ message }: { message: string }) {
   return (

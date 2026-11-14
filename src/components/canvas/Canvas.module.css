@@ -15,3 +15,14 @@
 .surface[data-placing="true"] { cursor: crosshair; }
 /* Live drag coordinates, drawn over the canvas so the layout never shifts mid-drag. */
 .readout { position: absolute; top: 8px; right: 8px; z-index: 1; margin: 0; padding: 4px 8px; border: 1px solid var(--color-line); border-radius: var(--radius-control); background: var(--color-surface); font-size: 14px; pointer-events: none; }
+/* "Add a planting area": one button per type, each showing its standard size. */
+.kinds { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
+.kindsLabel { color: var(--color-muted); font-size: 14px; }
+.kind { padding-block: 6px; }
+.kindBody { display: flex; align-items: center; gap: 8px; text-align: left; }
+.kindText { display: grid; line-height: 1.2; }
+.kindText small { color: var(--color-muted); font-size: 12px; font-weight: 400; font-variant-numeric: tabular-nums; }
+.swatch { flex: none; width: 18px; height: 18px; border: 2px solid; border-radius: 3px; }
+.swatch[data-kind="container"] { border-radius: 50%; }
+.warning { margin: 0; padding: 8px 12px; border-top: 1px solid var(--color-line); background: var(--color-warning-surface); color: var(--color-warning); font-size: 14px; }
+.warning p { margin: 0; }
