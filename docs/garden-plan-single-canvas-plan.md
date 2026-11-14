@@ -1,7 +1,7 @@
 # Garden Plan：单画布与首次引导实施计划
 
 - 日期：2026-11-12（America/Toronto）
-- 状态：方向与分阶段计划已确认（[ADR-0072](decisions/0072-use-a-single-plan-canvas-with-guided-setup.md)）；第 7 节记录确认结果。G1、G2、G3、G4 已完成；下一步 G5。
+- 状态：方向与分阶段计划已确认（[ADR-0072](decisions/0072-use-a-single-plan-canvas-with-guided-setup.md)）；第 7 节记录确认结果。G1–G5 已完成；下一步 G6。
 - 依据：用户确认的可点原型（第 4 版）、Native Garden Planner 与 Sunplot 的对比分析、当前代码核查。
 
 ## 1. 目标
@@ -108,6 +108,8 @@ G2→G3 是核心痛点，优先做。G4 与 G2/G3 改动的文件有重叠（�
 - **测试**：空位查找单元测试（满、贴边、花园小于默认尺寸）；指针类型分支的组件测试；`garden-flow.spec.ts` 改用新增按钮；手机触摸旅程沿用 R5 的 touch 测试并补 Move 场景。
 
 ### G5 自动保存与撤销
+
+> 实施说明（2026-11-14 完成）：快照是整个花园对象（不只 plan、growingAreas、plantings），撤销前先核对当前花园是否等于这一步留下的样子；不相等（别处改过）就清空历史并提示，而不是覆盖别处的修改。同一次操作里的多次更新（删植物 + 归档记录）合成一步。纯函数在 `src/lib/planHistory.ts`，钩子 `src/hooks/usePlanHistory.ts` 挂在 WorkspaceProvider 上。花园详情（名称、尺寸）表单暂时保留 Save，留给 G6 的尺寸步骤处理，但保存同样记入撤销历史。G3 的 "Undo fill" 按钮由通用撤销取代。
 
 - **范围**：新增 `src/hooks/usePlanHistory.ts`；`useWorkspaceSync.ts` 冲突事件通知；区域属性表单（去掉 Save）；`areaEditorDrafts.ts`；页头撤销/重做按钮与快捷键。
 - **做**：

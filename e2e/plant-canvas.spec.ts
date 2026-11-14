@@ -44,15 +44,16 @@ for (const width of [390, 1440]) {
     await expect.poll(async () => (await savedPlants(page)).filter((plant) => plant.plantType === "Pepper").map(({ x, y }) => [x, y])).toEqual([[2, 0.4]]);
 
     await page.getByRole("button", { name: "Fill area", exact: true }).click();
-    const placed = page.getByText(/^Placed \d+ Pepper\.$/);
+    const placed = page.getByText(/^Placed \d+ Pepper\. Undo removes them\.$/);
     await expect(placed).toBeVisible();
     const filled = Number((await placed.textContent())!.match(/\d+/)![0]);
     expect(filled).toBeGreaterThan(0);
     await expect.poll(async () => (await savedPlants(page)).filter((plant) => plant.plantType === "Pepper").length).toBe(filled + 1);
     // A viewport-sized screenshot: a full-page capture resizes the page and can switch the editor layout.
     await page.screenshot({ path: testInfo.outputPath(`filled-${width}.png`) });
-    await page.getByRole("button", { name: "Undo fill", exact: true }).click();
-    await expect(page.getByText(`Removed ${filled} Pepper from the last Fill.`)).toBeVisible();
+    // The plan's Undo removes the whole Fill as one step (ADR-0072, phase G5).
+    await page.getByRole("button", { name: "Undo", exact: true }).click();
+    await expect(page.getByText("Undid fill Sample raised bed with Pepper.", { exact: true })).toBeVisible();
     await expect.poll(async () => (await savedPlants(page)).filter((plant) => plant.plantType === "Pepper").length).toBe(1);
 
     // Escape outside a text field stops placing but keeps the area zoomed.

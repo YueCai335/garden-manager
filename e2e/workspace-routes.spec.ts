@@ -6,11 +6,12 @@ test("deep links, browser history, and missing entities keep explicit garden con
   await page.getByRole("link", { name: "Open Demo Garden" }).click();
   await expect(page).toHaveURL(/\/gardens\/demo-garden\/plan$/);
   await page.getByRole("link", { name: "Edit Sample raised bed" }).click();
-  await page.getByLabel("Planting-area name").fill("Unsaved route draft");
+  // A blank name cannot apply, so it stays as a draft across history navigation.
+  await page.getByLabel("Planting-area name").fill("");
   await page.getByRole("link", { name: "Plant Guide", exact: true }).click();
   await expect(page).toHaveURL(/\/guide$/);
   await page.goBack();
-  await expect(page.getByLabel("Planting-area name")).toHaveValue("Unsaved route draft");
+  await expect(page.getByLabel("Planting-area name")).toHaveValue("");
   await page.goForward();
   await expect(page).toHaveURL(/\/guide$/);
   await page.goBack();

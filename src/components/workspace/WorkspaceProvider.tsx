@@ -2,6 +2,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import { useWorkspaceSync } from "@/hooks/useWorkspaceSync";
 import { useCareNoteBatchSession } from "@/hooks/useCareNoteBatchSession";
+import { usePlanHistory } from "@/hooks/usePlanHistory";
 import { sameAreaProperties, plantDraftIsDirty, type AreaPropertiesDraft, type PlantEditorDraft } from "@/lib/areaEditorDrafts";
 import { batchRowsPresent, type CareDraftRow } from "@/lib/careNoteBatch";
 import type { AiCareNoteDraft } from "@/lib/gardenWorkspaceApi";
@@ -11,6 +12,7 @@ type SingleNoteReceipt = { row: CareDraftRow; draft: AiCareNoteDraft; note: stri
 function useWorkspaceState() {
   const [message, setMessage] = useState("");
   const sync = useWorkspaceSync();
+  const planHistory = usePlanHistory(sync);
   const [areaDrafts, setAreaDrafts] = useState<Record<string, AreaPropertiesDraft>>({});
   const [plantDrafts, setPlantDrafts] = useState<Record<string, PlantEditorDraft>>({});
   const [drafts, setDrafts] = useState<Record<string, unknown>>({});
@@ -52,7 +54,7 @@ function useWorkspaceState() {
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
   }, [shouldWarnBeforeLeaving]);
-  return { ...sync, careNoteBatch, singleNoteReceipt, setSingleNoteReceipt, message, setMessage, areaDrafts, plantDrafts, setPlantDrafts, setAreaDraft, discardDrafts, drafts, setDrafts, setDirty, requestRefs };
+  return { ...sync, planHistory, careNoteBatch, singleNoteReceipt, setSingleNoteReceipt, message, setMessage, areaDrafts, plantDrafts, setPlantDrafts, setAreaDraft, discardDrafts, drafts, setDrafts, setDirty, requestRefs };
 }
 const WorkspaceContext = createContext<ReturnType<typeof useWorkspaceState> | null>(null);
 export function WorkspaceProvider({ children }: { children: ReactNode }) {

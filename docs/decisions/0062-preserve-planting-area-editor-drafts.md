@@ -1,6 +1,6 @@
 # ADR-0062: Preserve Planting-Area Editor Drafts
 
-- Status: Accepted
+- Status: Accepted; amended for Garden Plan by [ADR-0072](0072-use-a-single-plan-canvas-with-guided-setup.md) (phase G5, 2026-11-14): valid area and plant values apply when their field loses focus, so drafts, the discard confirmation, and the unload warning now cover only values that are still being typed or could not apply.
 - Date: 2026-11-10
 - Related: ADR-0052, ADR-0053, ADR-0055, ADR-0061
 - Authorization: owner approved T00–T08 and requested delivery in small batches.

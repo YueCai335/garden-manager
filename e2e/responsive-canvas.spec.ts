@@ -115,6 +115,15 @@ test("a mouse drags an area without a mode: snapped preview, Escape cancel, and 
   await page.mouse.up();
   await expect.poll(read).toEqual({ revision: original.revision + 1, position: { x: 1.5, y: 1.3, rotationDegrees: area.planPlacement.rotationDegrees } });
   await expect(page).toHaveURL(/\/plan$/);
+  // Undo puts a mistaken drag back with a new forward revision (ADR-0072, phase G5).
+  await page.keyboard.press("ControlOrMeta+z");
+  await expect(page.getByText("Undid move Sample raised bed.", { exact: true })).toBeVisible();
+  await expect.poll(read).toEqual({ revision: original.revision + 2, position: original.position });
+  await page.getByRole("button", { name: "Redo", exact: true }).click();
+  await expect.poll(read).toEqual({ revision: original.revision + 3, position: { x: 1.5, y: 1.3, rotationDegrees: area.planPlacement.rotationDegrees } });
+  await expect(page.getByText("All changes saved", { exact: true })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole("button", { name: "Undo", exact: true })).toBeDisabled();
   await page.getByRole("link", { name: "Edit Sample raised bed" }).click();
   await expect(page.getByLabel("Area X position (m)")).toHaveValue("1.5");
   await expect(page.getByLabel("Area Y position (m)")).toHaveValue("1.3");
@@ -168,7 +177,7 @@ test("a rotated area stays zoomed after reload and Escape returns to the whole g
   await expect(page.getByText("All changes saved", { exact: true })).toBeVisible();
   await page.getByRole("link", { name: "Edit Sample raised bed" }).click();
   await page.getByLabel("Rotation (degrees)").fill("30");
-  await page.getByRole("button", { name: "Save", exact: true }).click();
+  await page.getByLabel("Rotation (degrees)").press("Enter");
   await expect(page.getByText("All changes saved", { exact: true })).toBeVisible();
   await page.reload();
   const surface = planSurface(page);

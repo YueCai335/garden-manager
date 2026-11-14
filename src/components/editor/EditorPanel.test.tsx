@@ -86,11 +86,13 @@ describe("responsive editor", () => {
     render(<GardenWorkspace />);
     expect(await screen.findByRole("button", { name: "Back to plan" })).toBeVisible();
     expect(screen.queryByRole("button", { name: "Move planting areas" })).not.toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText("Area X position (m)"), { target: { value: "2.34" } });
+    // A blank value cannot apply, so Back asks before discarding it.
+    fireEvent.change(screen.getByLabelText("Area X position (m)"), { target: { value: "" } });
     await user.click(screen.getByRole("button", { name: "Back to plan" }));
     await user.click(screen.getByRole("button", { name: "Keep editing" }));
-    expect(screen.getByLabelText("Area X position (m)")).toHaveValue(2.34);
-    await user.click(screen.getByRole("button", { name: "Save" }));
+    expect(screen.getByLabelText("Area X position (m)")).toHaveValue(null);
+    fireEvent.change(screen.getByLabelText("Area X position (m)"), { target: { value: "2.34" } });
+    fireEvent.keyDown(screen.getByLabelText("Area X position (m)"), { key: "Enter" });
     expect(JSON.parse(localStorage.getItem(GARDEN_WORKSPACE_STORAGE_KEY)!).gardens[0].growingAreas[0].planPlacement.x).toBe(2.3);
     await user.click(screen.getByRole("button", { name: "Back to plan" }));
     expect(location.search).toBe("?area=demo-raised-bed");

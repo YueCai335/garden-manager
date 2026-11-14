@@ -932,3 +932,37 @@ the left of a wide canvas rather than centring it. Resizing works from the
 bottom-right corner only, and rotated areas resize without the garden-edge
 stop. Touch users resize with the handle only in Move mode, or with the size
 fields.
+
+## G5: Autosave and undo on the Garden Plan
+
+Phase G5 of the single-canvas plan ([ADR-0072](decisions/0072-use-a-single-plan-canvas-with-guided-setup.md)).
+Garden Plan has no area or plant Save button. Every edit saves at once, and
+Undo and Redo reverse it.
+
+- Undo and Redo sit in the Garden Plan header; their tooltip names the step,
+  such as "Undo move Sample raised bed". Ctrl/⌘ Z undoes and Shift+Ctrl/⌘ Z or
+  Ctrl+Y redoes, except in text fields and while a dialog is open. A message
+  confirms each step ("Undid fill Sample raised bed with Pepper.").
+- Each step keeps the whole garden before and after one action
+  (`src/lib/planHistory.ts`). Updates made in the same task merge, so a removed
+  plant and its archived planting record undo together. The history keeps 100
+  steps, drops Redo after a new change, and starts over in another garden.
+- Undo writes the stored garden as a new change through the revision-checked
+  sync; it never rewinds server revisions. A step applies only when the garden
+  still equals what the step left behind. Any other change to the garden makes
+  the history stale: Undo clears it and explains why instead of overwriting
+  that change. A sync conflict clears it at once with its own message.
+- The history lives in the workspace provider (`src/hooks/usePlanHistory.ts`),
+  so it survives moving between pages in the tab and clears on reload.
+- Area properties and the selected plant's fields apply on blur or Enter; the
+  area type and 0.1 m step buttons apply at once. A value that fails
+  validation stays with its error ("Not applied yet: fix the highlighted
+  values.") and changes nothing; ADR-0062's draft protection now covers only
+  such values and text still being typed.
+- The plan's Undo replaces G3's "Undo fill" button. Undoing the step that added
+  the zoomed area returns to the whole garden, and a plant panel that only
+  showed a plant that no longer exists closes.
+- The unused area-properties form inside the plant panel, with its own Save,
+  was removed; the area inspector is the only area form.
+- Garden details (name and size) keep their Save button until G6's guided
+  setup revisits them; their saves are undo steps too.

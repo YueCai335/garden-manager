@@ -74,7 +74,7 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
   const {
     workspace, setWorkspace, message, setMessage, isSynced, isLoaded, storageSource,
     serverWorkspaceId, serverLoadFailed, clearBrowserWorkspace,
-    areaDrafts, plantDrafts, setPlantDrafts, setAreaDraft, discardDrafts,
+    areaDrafts, plantDrafts, setPlantDrafts, setAreaDraft, discardDrafts, planHistory,
   } = useWorkspace();
   const [setupGardenId, setSetupGardenId] = useWorkspaceDraft<string | undefined>("setup:garden", undefined);
   const page = {
@@ -133,20 +133,11 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
     (area) => area.id === editingLayoutId,
   );
 
-  const updateGarden = (update: (current: Garden) => Garden) => {
-    setWorkspace((current) =>
-      current
-        ? {
-            ...current,
-            gardens: current.gardens.map((candidate) =>
-              candidate.id === garden?.id
-                ? update(candidate)
-                : candidate,
-            ),
-          }
-        : current,
-    );
+  /** Every Garden Plan edit is one undo step, named for the Undo button (ADR-0072, phase G5). */
+  const updateGarden = (label: string, update: (current: Garden) => Garden) => {
+    if (garden) planHistory.record(garden.id, label, update);
   };
+  const areaName = (areaId: string) => latestWorkspaceRef.current?.gardens.find((item) => item.id === garden?.id)?.growingAreas.find((area) => area.id === areaId)?.name ?? "planting area";
 
   useUnsavedDraft("setup:name", Boolean(newGardenName));
   const openManagement = (gardenId?: string) => { if (gardenId) navigate(gardenPath(gardenId)); };
@@ -289,7 +280,7 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
       layout: createRectangularLayout(spot.widthMeters, spot.depthMeters),
       planPlacement: { x: spot.x, y: spot.y, rotationDegrees: 0 },
     };
-    updateGarden((current) => ({ ...current, growingAreas: [...current.growingAreas, area] }));
+    updateGarden(`add ${area.name}`, (current) => ({ ...current, growingAreas: [...current.growingAreas, area] }));
     setEditingLayoutId(area.id);
     setMessage(`${area.name} added at ${spot.x.toFixed(1)}, ${spot.y.toFixed(1)} m${placementNote(spot)}. Drag it to move it, or drag its corner to resize it.`);
   };
@@ -300,7 +291,7 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
     const area = latest?.growingAreas.find((item) => item.id === areaId);
     if (!latest || !area || area.layout) return;
     const spot = findFreeAreaSpot(latest.plan, latest.growingAreas, areaKindDefaults[area.kind]);
-    updateGarden((current) => ({
+    updateGarden(`place ${area.name}`, (current) => ({
       ...current,
       growingAreas: current.growingAreas.map((item) => item.id === areaId && !item.layout
         ? { ...item, layout: createRectangularLayout(spot.widthMeters, spot.depthMeters), planPlacement: { x: spot.x, y: spot.y, rotationDegrees: 0 } }
@@ -311,7 +302,7 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
   };
 
   const resizeArea = (areaId: string, size: { widthMeters: number; depthMeters: number }) => {
-    updateGarden((current) =>
+    updateGarden(`resize ${areaName(areaId)}`, (current) =>
       linkCurrentLayoutPlants({
         ...current,
         growingAreas: current.growingAreas.map((area) =>
@@ -340,7 +331,7 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
       setMessage("This planting area no longer exists. Your draft has been kept.");
       return false;
     }
-    updateGarden((current) =>
+    updateGarden(`change ${trimmedName}`, (current) =>
       linkCurrentLayoutPlants({
         ...current,
         growingAreas: current.growingAreas.map((area) =>
@@ -365,7 +356,7 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
         const current = latestWorkspaceRef.current?.gardens.find((item) => item.id === garden.id);
         if (!current?.growingAreas.some((item) => item.id === area.id)) throw new Error("This planting area no longer exists. Cancel to return to your garden.");
         if (JSON.stringify(current) !== JSON.stringify(garden)) throw new Error("This garden changed while the confirmation was open. Cancel and review the deletion again.");
-        updateGarden((latest) => removeGrowingArea(latest, area.id));
+        updateGarden(`delete ${area.name}`, (latest) => removeGrowingArea(latest, area.id));
         discardDrafts(areaDraftKey(garden.id, area.id));
         if (editingLayoutId === area.id) setEditingLayoutId(undefined);
         setMessage(`${area.name} deleted.`);
@@ -374,7 +365,7 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
   };
 
   const updatePlan = (plan: GardenPlan) => {
-    updateGarden((current) => ({
+    updateGarden("change the garden size", (current) => ({
       ...current,
       plan,
       growingAreas: current.growingAreas.map((area) => ({
@@ -391,7 +382,7 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
     areaId: string,
     planPlacement: PlanPlacement,
   ) => {
-    updateGarden((current) => ({
+    updateGarden(`move ${areaName(areaId)}`, (current) => ({
       ...current,
       growingAreas: current.growingAreas.map((area) =>
         area.id === areaId ? { ...area, planPlacement: { ...area.planPlacement, ...clampPlanPosition(planPlacement, current.plan) } } : area,
@@ -399,8 +390,8 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
     }));
   };
 
-  const updateAreaLayout = (areaId: string, layout: GrowingAreaLayout) => {
-    updateGarden((current) =>
+  const updateAreaLayout = (areaId: string, layout: GrowingAreaLayout, label = "change plants") => {
+    updateGarden(label, (current) =>
       linkCurrentLayoutPlants({
         ...current,
         growingAreas: current.growingAreas.map((area) =>
@@ -411,8 +402,8 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
   };
 
   // Canvas edits read the area's latest layout, so quick successive clicks never drop a plant.
-  const updateAreaLayoutWith = (areaId: string, update: (layout: GrowingAreaLayout) => GrowingAreaLayout) => {
-    updateGarden((current) =>
+  const updateAreaLayoutWith = (areaId: string, label: string, update: (layout: GrowingAreaLayout) => GrowingAreaLayout) => {
+    updateGarden(label, (current) =>
       linkCurrentLayoutPlants({
         ...current,
         growingAreas: current.growingAreas.map((area) =>
@@ -450,7 +441,8 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
       confirmDiscard(plantDraftIsDirty(plantDraft), () => updatePlantDraft(plantDraftKey, () => openPlantDraft(plant)));
     },
     onMovePlant: (plantId, point) => {
-      updateAreaLayoutWith(editingArea.id, (layout) => ({
+      const label = editingArea.layout?.allocations.find((allocation) => allocation.id === plantId)?.label ?? "plant";
+      updateAreaLayoutWith(editingArea.id, `move ${label}`, (layout) => ({
         ...layout,
         allocations: layout.allocations.map((allocation) => allocation.id === plantId ? { ...allocation, ...point } : allocation),
       }));
@@ -458,7 +450,7 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
     },
     onPlacePlant: (point) => {
       if (!placingPlant) return;
-      updateAreaLayoutWith(editingArea.id, (layout) => ({
+      updateAreaLayoutWith(editingArea.id, `place ${placingPlant.label}`, (layout) => ({
         ...layout,
         allocations: [...layout.allocations, { ...placingPlant, id: createAllocationId(), ...point }],
       }));
@@ -466,8 +458,29 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
     onStopPlacing: () => updatePlantDraft(plantDraftKey, () => emptyPlantEditorDraft()),
   } : undefined;
 
+  /**
+   * Undo and Redo write the stored garden as a new change. Afterwards the plan
+   * leaves an area that no longer exists, and a plant panel that was only
+   * showing a plant that no longer exists closes.
+   */
+  const stepHistory = (direction: "undo" | "redo") => {
+    if (!garden) return;
+    const result = direction === "undo" ? planHistory.undo(garden.id) : planHistory.redo(garden.id);
+    if (result.status !== "applied") return;
+    setMessage(`${direction === "undo" ? "Undid" : "Redid"} ${result.label}.`);
+    const area = result.garden.growingAreas.find((item) => item.id === editingLayoutId);
+    if (editingLayoutId && !area) { setEditingLayoutId(undefined); return; }
+    if (area && plantDraftKey && plantDraft?.selectedId && !plantDraftIsDirty(plantDraft) && !area.layout?.allocations.some((plant) => plant.id === plantDraft.selectedId))
+      updatePlantDraft(plantDraftKey, () => emptyPlantEditorDraft());
+  };
+  const historyControls = garden ? {
+    ...planHistory.forGarden(garden.id),
+    onUndo: () => stepHistory("undo"),
+    onRedo: () => stepHistory("redo"),
+  } : undefined;
+
   const archivePlantingRecord = (plantingRecordId: string) => {
-    updateGarden((current) => archivePlanting(current, plantingRecordId));
+    updateGarden("archive a planting record", (current) => archivePlanting(current, plantingRecordId));
   };
 
   const saveSeasonPlanPlant = (
@@ -675,11 +688,7 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
                     draft={plantDraft}
                     onDraftChange={(update) => updatePlantDraft(plantDraftKey, update)}
                     onArchivePlantingRecord={archivePlantingRecord}
-                    onChange={(layout) => updateAreaLayout(editingArea.id, layout)}
-                    onSaveArea={(name, kind, rotationDegrees, layout) =>
-                      saveAreaEditor(editingArea.id, name, kind, rotationDegrees, layout)
-                    }
-                    showAreaProperties={false}
+                    onChange={(layout, label) => updateAreaLayout(editingArea.id, layout, label)}
                   />
                 ) : null;
                 return <>
@@ -710,12 +719,13 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
                     </section>
                   ) : undefined}
                   planting={canvasPlanting}
+                  history={historyControls}
                   onAddArea={addArea}
                   onPlaceArea={placeUnsizedArea}
                   onResizeArea={resizeArea}
                   onEditLayout={openAreaInspector}
                   onExitArea={closeAreaInspector}
-                  onGardenNameChange={(name) => updateGarden((current) => ({ ...current, name }))}
+                  onGardenNameChange={(name) => updateGarden("rename the garden", (current) => ({ ...current, name }))}
                   onPlacementChange={updateAreaPlacement}
                   onPlanChange={updatePlan}
                   plan={garden.plan}

@@ -19,15 +19,17 @@ const properties = () => within(screen.getByLabelText("Planting-area name").clos
 const saved = () => JSON.parse(window.localStorage.getItem(GARDEN_WORKSPACE_STORAGE_KEY)!);
 
 describe("planting-area draft protection", () => {
-  it("keeps an unsaved name while adding a plant, then saves both", async () => {
+  it("applies a typed name when focus leaves it, and keeps it while adding a plant", async () => {
     const user = await openBed();
     await user.clear(screen.getByLabelText("Planting-area name"));
     await user.type(screen.getByLabelText("Planting-area name"), "Kitchen bed");
+    expect(saved().gardens[0].growingAreas[0].name).toBe("Sample raised bed");
     await user.click(screen.getByRole("button", { name: "Add plant" }));
+    expect(saved().gardens[0].growingAreas[0].name).toBe("Kitchen bed");
     await user.type(screen.getByLabelText("Plant type"), "Kale");
     await user.click(screen.getByRole("button", { name: "Add" }));
     expect(screen.getByLabelText("Planting-area name")).toHaveValue("Kitchen bed");
-    await user.click(properties().getByRole("button", { name: "Save" }));
+    expect(properties().queryByRole("button", { name: "Save" })).not.toBeInTheDocument();
     const area = saved().gardens[0].growingAreas[0];
     expect(area.name).toBe("Kitchen bed");
     expect(area.layout.allocations.some((plant: { plantType: string }) => plant.plantType === "Kale")).toBe(true);
@@ -41,8 +43,9 @@ describe("planting-area draft protection", () => {
     await user.click(screen.getByRole("link", { name: "Back to gardens" }));
     await user.click(screen.getByRole("link", { name: "Open Demo Garden" }));
     await user.click(screen.getByLabelText("Open Sample raised bed on Garden Plan"));
+    // A value still being typed (never blurred) is a draft that survives navigation.
     expect(screen.getByLabelText("Planting-area name")).toHaveValue("Unsaved bed");
-    expect(screen.getByText("Unsaved changes")).toBeInTheDocument();
+    expect(saved().gardens[0].growingAreas[0].name).toBe("Sample raised bed");
   });
 
   it("asks before discarding a dirty area on close", async () => {
@@ -58,26 +61,29 @@ describe("planting-area draft protection", () => {
   });
 });
 
-it("keeps a plant coordinate draft through resizing and navigation, then validates before saving", async () => {
+it("keeps a plant coordinate draft through resizing and navigation, then validates before applying", async () => {
   const user = await openBed();
   await user.click(screen.getByLabelText("Tomato plant on Garden Plan"));
   fireEvent.change(screen.getByLabelText("X position (m)"), { target: { value: "1.8" } });
   fireEvent.change(screen.getByLabelText("Width (m)"), { target: { value: "1" } });
-  await user.click(properties().getByRole("button", { name: "Save" }));
+  fireEvent.keyDown(screen.getByLabelText("Width (m)"), { key: "Enter" });
+  expect(saved().gardens[0].growingAreas[0].layout.widthMeters).toBe(1);
   expect(screen.getByLabelText("X position (m)")).toHaveValue(1.8);
   expect(screen.getByText(/outside this area's current dimensions/)).toBeInTheDocument();
   const before = saved();
-  await user.click(screen.getByRole("button", { name: "Save plant" }));
+  fireEvent.keyDown(screen.getByLabelText("X position (m)"), { key: "Enter" });
   expect(saved()).toEqual(before);
+  expect(screen.queryByRole("button", { name: "Save plant" })).not.toBeInTheDocument();
   await user.click(screen.getByRole("link", { name: "Back to gardens" }));
   await user.click(screen.getByRole("link", { name: "Open Demo Garden" }));
   await user.click(screen.getByLabelText("Open Sample raised bed on Garden Plan"));
   expect(screen.getByLabelText("X position (m)")).toHaveValue(1.8);
   await user.clear(screen.getByLabelText("X position (m)"));
   expect(screen.getByLabelText("X position (m)")).toHaveValue(null);
-  await user.type(screen.getByLabelText("X position (m)"), "0.7");
-  await user.click(screen.getByRole("button", { name: "Save plant" }));
+  await user.type(screen.getByLabelText("X position (m)"), "0.7{Enter}");
   expect(saved().gardens[0].growingAreas[0].layout.allocations[0].x).toBe(0.7);
+  // The form stays open on the applied value.
+  expect(screen.getByLabelText("X position (m)")).toHaveValue(0.7);
 });
 
 it("keeps a new plant draft through area property changes and asks before closing", async () => {
@@ -85,7 +91,8 @@ it("keeps a new plant draft through area property changes and asks before closin
   await user.click(screen.getByRole("button", { name: "Add plant" }));
   fireEvent.change(screen.getByLabelText("Plant type"), { target: { value: "Kale" } });
   fireEvent.change(screen.getByLabelText("Planting-area name"), { target: { value: "Renamed bed" } });
-  await user.click(properties().getByRole("button", { name: "Save" }));
+  fireEvent.keyDown(screen.getByLabelText("Planting-area name"), { key: "Enter" });
+  expect(saved().gardens[0].growingAreas[0].name).toBe("Renamed bed");
   expect(screen.getByLabelText("Plant type")).toHaveValue("Kale");
   await user.click(screen.getByRole("button", { name: "Close" }));
   await user.click(screen.getByRole("button", { name: "Keep editing" }));
@@ -102,18 +109,19 @@ it("shows the selected area's width and length below it on the plan, matching th
 });
 
 it("validates blank and negative dimensions locally without discarding the name", async () => {
-  const user = await openBed();
+  await openBed();
   fireEvent.change(screen.getByLabelText("Planting-area name"), { target: { value: "Changed" } });
   expect(screen.getByLabelText("Planting-area name")).toHaveValue("Changed");
   for (const value of ["", "0", "-1"]) {
     fireEvent.change(screen.getByLabelText("Width (m)"), { target: { value } });
-    await user.click(properties().getByRole("button", { name: "Save" }));
+    fireEvent.keyDown(screen.getByLabelText("Width (m)"), { key: "Enter" });
     expect(screen.getByLabelText("Width (m)")).toHaveAttribute("aria-invalid", "true");
     expect(screen.getByLabelText("Width (m)")).toHaveFocus();
   }
+  expect(saved().gardens[0].growingAreas[0].name).toBe("Sample raised bed");
   fireEvent.change(screen.getByLabelText("Width (m)"), { target: { value: "2.5" } });
-  await user.click(properties().getByRole("button", { name: "Save" }));
-  expect(saved().gardens[0].growingAreas[0].layout.widthMeters).toBe(2.5);
+  fireEvent.blur(screen.getByLabelText("Width (m)"));
+  expect(saved().gardens[0].growingAreas[0]).toMatchObject({ name: "Changed", layout: expect.objectContaining({ widthMeters: 2.5 }) });
 });
 
 it("warns before unloading dirty drafts, and stops after explicit discard", async () => {

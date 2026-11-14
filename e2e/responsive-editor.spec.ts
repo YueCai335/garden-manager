@@ -61,18 +61,24 @@ for (const width of [390, 900, 1280, 1440]) {
       expect(canvasBox.width).toBeGreaterThanOrEqual(640);
       expect(canvasBox.x + canvasBox.width).toBeLessThanOrEqual(panelBox.x);
     }
+    // A valid value applies when focus leaves its field (ADR-0072, phase G5).
     await page.getByLabel("Area X position (m)").fill("2.34");
-    await page.getByLabel("Area Y position (m)").fill("1.27");
+    await page.getByLabel("Area Y position (m)").fill("");
+    await page.getByLabel("Planting-area name").focus();
+    await expect(page.getByLabel("Area X position (m)")).toHaveValue("2.3");
+    // A blank value cannot apply: it stays as a draft with its error, across a layout change.
+    await expect(page.getByText("Not applied yet: fix the highlighted values.", { exact: true })).toBeVisible();
     await page.screenshot({ path: testInfo.outputPath(`editor-${width}.png`), fullPage: true });
     await page.setViewportSize({ width: width === 390 ? 1440 : 390, height: 900 });
-    await expect(page.getByLabel("Area X position (m)")).toHaveValue("2.34");
+    await expect(page.getByLabel("Area Y position (m)")).toHaveValue("");
     const back = panel.getByRole("button", { name: /^(Close|Back to plan)$/ });
     await back.click();
     await page.getByRole("button", { name: "Keep editing" }).click();
-    await expect(page.getByLabel("Area Y position (m)")).toHaveValue("1.27");
+    await page.getByLabel("Area Y position (m)").fill("1.27");
+    await page.getByLabel("Area Y position (m)").press("Enter");
     await page.getByRole("button", { name: "Move right 0.1 m" }).click();
     await expect(page.getByLabel("Area X position (m)")).toHaveValue("2.4");
-    await panel.getByRole("button", { name: "Save", exact: true }).click();
+    await expect(panel.getByRole("button", { name: "Save", exact: true })).toHaveCount(0);
     await back.click();
     if (width === 390) {
       // Now wide: closing the side panel returns to the whole garden.

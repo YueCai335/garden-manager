@@ -34,26 +34,30 @@ describe("area baseline conflicts", () => {
     rerender(<Inspector area={{ ...area, name: "Remote name" }} save={save} />);
     expect(screen.getByLabelText("Planting-area name")).toHaveValue("Remote name");
     fireEvent.change(screen.getByLabelText("Planting-area name"), { target: { value: "Draft" } });
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    fireEvent.blur(screen.getByLabelText("Planting-area name"));
     expect(save).toHaveBeenCalledOnce();
-    expect(screen.getByText("Unsaved changes")).toBeInTheDocument();
+    expect(screen.getByLabelText("Planting-area name")).toHaveValue("Draft");
   });
 });
 
-it("rejects blank and out-of-bound area coordinates and saves a complete position without losing plants", () => {
+it("rejects blank and out-of-bound area coordinates on Enter or blur and applies a complete position", () => {
   const area = createDemoGardenWorkspace().gardens[0].growingAreas[0];
   const save = vi.fn(() => true);
   render(<Inspector area={area} save={save} />);
+  const x = screen.getByLabelText("Area X position (m)");
   for (const value of ["", "-1", "11"]) {
-    fireEvent.change(screen.getByLabelText("Area X position (m)"), { target: { value } });
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
-    expect(screen.getByLabelText("Area X position (m)")).toHaveFocus();
-    expect(screen.getByLabelText("Area X position (m)")).toHaveAttribute("aria-invalid", "true");
+    fireEvent.change(x, { target: { value } });
+    fireEvent.keyDown(screen.getByLabelText("Planting-area name"), { key: "Enter" });
+    expect(x).toHaveFocus();
+    expect(x).toHaveAttribute("aria-invalid", "true");
   }
+  fireEvent.blur(x);
+  expect(screen.getByText("Not applied yet: fix the highlighted values.")).toBeInTheDocument();
+  expect(x).toHaveValue(11);
   expect(save).not.toHaveBeenCalled();
-  fireEvent.change(screen.getByLabelText("Area X position (m)"), { target: { value: "2.34" } });
+  fireEvent.change(x, { target: { value: "2.34" } });
   fireEvent.change(screen.getByLabelText("Area Y position (m)"), { target: { value: "1.27" } });
-  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  fireEvent.keyDown(screen.getByLabelText("Area Y position (m)"), { key: "Enter" });
   expect(save).toHaveBeenCalledWith(area.id, area.name, area.kind, 0, expect.any(Object), { x: 2.34, y: 1.27 });
 });
 
@@ -66,7 +70,7 @@ it("follows a drag for untouched positions but preserves an explicitly typed pos
   view.rerender(<Inspector area={moved} save={save} />);
   expect(screen.getByLabelText("Area X position (m)")).toHaveValue(5);
   expect(screen.queryByText(/These properties changed elsewhere/)).not.toBeInTheDocument();
-  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  fireEvent.keyDown(screen.getByLabelText("Planting-area name"), { key: "Enter" });
   expect(save).toHaveBeenLastCalledWith(area.id, "Draft bed", area.kind, 0, expect.any(Object), { x: 5, y: 1 });
   fireEvent.change(screen.getByLabelText("Area X position (m)"), { target: { value: "2.5" } });
   view.rerender(<Inspector area={{ ...moved, planPlacement: { ...moved.planPlacement, x: 7 } }} save={save} />);
@@ -74,15 +78,23 @@ it("follows a drag for untouched positions but preserves an explicitly typed pos
   expect(screen.getByText(/These properties changed elsewhere/)).toBeInTheDocument();
 });
 
-it("nudges only the selected coordinate and waits for Save before applying it", () => {
+it("applies a 0.1 m nudge to only the selected coordinate at once", () => {
   const area = createDemoGardenWorkspace().gardens[0].growingAreas[0];
   const save = vi.fn(() => true);
   render(<Inspector area={{ ...area, planPlacement: { ...area.planPlacement, x: 0 } }} save={save} />);
   expect(screen.getByRole("button", { name: "Move left 0.1 m" })).toBeDisabled();
   fireEvent.click(screen.getByRole("button", { name: "Move right 0.1 m" }));
-  expect(screen.getByLabelText("Area X position (m)")).toHaveValue(0.1);
-  expect(screen.getByLabelText("Area Y position (m)")).toHaveValue(area.planPlacement.y);
+  expect(save).toHaveBeenCalledExactlyOnceWith(area.id, area.name, area.kind, 0, expect.any(Object), { x: 0.1, y: area.planPlacement.y });
+});
+
+it("has no Save button, ignores a blur that changes nothing, and applies the type at once", () => {
+  const area = createDemoGardenWorkspace().gardens[0].growingAreas[0];
+  const save = vi.fn(() => true);
+  render(<Inspector area={area} save={save} />);
+  expect(screen.queryByRole("button", { name: "Save" })).not.toBeInTheDocument();
+  expect(screen.getByText("Changes apply when you leave a field or press Enter. Undo reverses them.")).toBeInTheDocument();
+  fireEvent.blur(screen.getByLabelText("Width (m)"));
   expect(save).not.toHaveBeenCalled();
-  fireEvent.click(screen.getByRole("button", { name: "Save" }));
-  expect(save).toHaveBeenCalledWith(area.id, area.name, area.kind, 0, expect.any(Object), { x: 0.1, y: area.planPlacement.y });
+  fireEvent.change(screen.getByLabelText("Planting-area type"), { target: { value: "greenhouse" } });
+  expect(save).toHaveBeenCalledExactlyOnceWith(area.id, area.name, "greenhouse", 0, expect.any(Object), area.planPlacement && { x: area.planPlacement.x, y: area.planPlacement.y });
 });

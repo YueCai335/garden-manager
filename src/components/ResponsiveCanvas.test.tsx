@@ -100,7 +100,7 @@ describe("responsive canvas interactions", () => {
   it("lists tiny plants as keyboard buttons that open the same spacing", async () => {
     const user = userEvent.setup(); const area = bed();
     area.layout!.allocations = [{ id: "tiny", label: "Tiny basil", diameterMeters: 0.1, x: 1, y: 1 }];
-    render(<GrowingAreaLayoutEditor area={area} onChange={vi.fn()} onArchivePlantingRecord={vi.fn()} onSaveArea={vi.fn()} />);
+    render(<GrowingAreaLayoutEditor area={area} onChange={vi.fn()} onArchivePlantingRecord={vi.fn()} />);
     expect(screen.queryByLabelText(/Metric layout/)).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Edit Tiny basil" }));
     expect(screen.getByLabelText("Plant type")).toHaveValue("Tiny basil");
@@ -276,7 +276,7 @@ describe("plant panel", () => {
   const panel = (allocations: GrowingArea["layout"] extends infer L ? L extends { allocations: infer A } ? A : never : never = []) => {
     const onChange = vi.fn(); const onArchivePlantingRecord = vi.fn();
     const area: GrowingArea = { ...bed(), planPlacement: { x: 0, y: 0, rotationDegrees: 0 }, layout: { ...createRectangularLayout(2, 1), allocations } };
-    const view = render(<GrowingAreaLayoutEditor area={area} onChange={onChange} onArchivePlantingRecord={onArchivePlantingRecord} onSaveArea={vi.fn()} />);
+    const view = render(<GrowingAreaLayoutEditor area={area} onChange={onChange} onArchivePlantingRecord={onArchivePlantingRecord} />);
     return { area, onChange, onArchivePlantingRecord, view };
   };
 
@@ -294,20 +294,19 @@ describe("plant panel", () => {
     expect(screen.getByLabelText("Plant spacing (m)")).toHaveValue(0.7);
   });
 
-  it("fills the area at the plant's spacing and undoes that fill", async () => {
+  it("fills the area at the plant's spacing as one named change", async () => {
     const user = userEvent.setup();
-    const { area, onChange, view } = panel();
+    const { onChange } = panel();
     await user.click(screen.getByRole("button", { name: "Add plant" }));
     await user.type(screen.getByLabelText("Plant type"), "Basil");
     fireEvent.change(screen.getByLabelText("Plant spacing (m)"), { target: { value: "0.5" } });
     await user.click(screen.getByRole("button", { name: "Fill area" }));
-    const filled = onChange.mock.lastCall![0];
+    const [filled, label] = onChange.mock.lastCall!;
     expect(filled.allocations).toHaveLength(8);
-    expect(screen.getByText("Placed 8 Basil.")).toBeInTheDocument();
-    view.rerender(<GrowingAreaLayoutEditor area={{ ...area, layout: filled }} onChange={onChange} onArchivePlantingRecord={vi.fn()} onSaveArea={vi.fn()} />);
-    await user.click(screen.getByRole("button", { name: "Undo fill" }));
-    expect(onChange.mock.lastCall![0].allocations).toEqual([]);
-    expect(screen.getByText("Removed 8 Basil from the last Fill.")).toBeInTheDocument();
+    expect(label).toBe("fill North bed with Basil");
+    // The plan's Undo replaces G3's "Undo fill" button (ADR-0072, phase G5).
+    expect(screen.getByText("Placed 8 Basil. Undo removes them.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Undo fill" })).not.toBeInTheDocument();
   });
 
   it("lists spacing warnings and plant groups without blocking edits", () => {

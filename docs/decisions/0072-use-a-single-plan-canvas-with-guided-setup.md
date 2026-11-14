@@ -1,6 +1,6 @@
 # ADR-0072: Use a Single Plan Canvas with Guided Setup
 
-- Status: Accepted; G1 (presentation), G2 (zoom into an area), G3 (plants on the main canvas), and G4 (direct area placement) implemented, G5–G7 pending
+- Status: Accepted; G1 (presentation), G2 (zoom into an area), G3 (plants on the main canvas), G4 (direct area placement), and G5 (autosave and undo) implemented, G6–G7 pending
 - Date: 2026-11-12
 - Supersedes in part, as each phase lands: [ADR-0048](0048-place-garden-properties-above-the-plan-canvas.md), [ADR-0053](0053-keep-plant-layout-in-the-planting-area-inspector.md), [ADR-0054](0054-use-fixed-canvas-garden-plan-views.md), [ADR-0066](0066-adapt-area-editing-to-available-space.md), and [ADR-0070](0070-preview-and-position-planting-areas-on-the-plan.md)
 - Amends for Garden Plan edits, in phase G5: [ADR-0052](0052-show-save-actions-only-for-pending-edits.md) and [ADR-0062](0062-preserve-planting-area-editor-drafts.md)
@@ -136,6 +136,33 @@ fields apply on blur or Enter after validation, and the area form drops its
 Save button. Undo and Redo cover Garden Plan changes in the current tab. Undo
 writes a new forward revision; it never rewinds server revisions. History
 clears on a garden change, a reload, or a sync conflict.
+
+### How autosave and undo work (phase G5, implemented 2026-11-14)
+
+- Every Garden Plan edit (add, place, move, resize, delete, or change an
+  area; place, move, fill, add, edit, duplicate, or remove a plant; change
+  the garden's size or name) goes through one recording function. It keeps
+  the whole garden before and after the action. Updates made in the same task
+  merge into one step, so a removed plant and its archived planting record
+  undo together. The history keeps 100 steps.
+- Undo and Redo write the stored garden as a new change through the normal
+  revision-checked sync. A step applies only when the garden still equals what
+  that step left behind. Any other change to the garden (a next-season choice,
+  a care record, another tab) makes the history stale; Undo then clears it and
+  says so instead of overwriting that change. A sync conflict clears it at once
+  with its own message. The history lives in the workspace provider, so moving
+  between pages in the same tab keeps it; another garden starts a new one.
+- The Undo and Redo buttons sit in the Garden Plan header with the name of the
+  step in their tooltip. Ctrl/⌘ Z undoes and Shift+Ctrl/⌘ Z or Ctrl+Y redoes,
+  except in text fields, which keep the browser's own undo, and while a dialog
+  is open.
+- Area properties and the selected plant's fields apply when a field loses
+  focus or on Enter; the area type and the 0.1 m step buttons apply at once.
+  A value that fails validation stays in the field with its error and changes
+  nothing. Undo replaces G3's "Undo fill" button. Undoing the step that added
+  the zoomed area returns the plan to the whole garden.
+- Garden details (name and size) keep their Save button until the guided
+  setup in G6 revisits them; their saves are still undo steps.
 
 ### Guided first-run setup (phase G6)
 

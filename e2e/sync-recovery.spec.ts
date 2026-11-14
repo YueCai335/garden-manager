@@ -128,3 +128,22 @@ test("a committed save with a lost response reloads the original record after a 
   expect(await readWorkspace()).toEqual(committed);
   expect(writes).toBe(2);
 });
+
+test("a sync conflict clears Garden Plan undo history and says why", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Load demo garden" }).click();
+  await page.getByRole("link", { name: "Open Demo Garden" }).click();
+  await expect(page.getByText("All changes saved", { exact: true })).toBeVisible();
+  const undo = page.getByRole("button", { name: "Undo", exact: true });
+  await expect(undo).toBeDisabled();
+  // Another tab has moved the server on: the next write is rejected as stale.
+  await page.route("**/workspaces/*", async (route) => {
+    if (route.request().method() !== "PUT") return route.continue();
+    const current = (route.request().postDataJSON() as { revision: number }).revision + 5;
+    await route.fulfill({ status: 409, contentType: "application/json", body: JSON.stringify({ detail: { message: "stale", currentRevision: current } }) });
+  });
+  await page.getByRole("button", { name: "Add Container, 0.6 × 0.6 m" }).click();
+  await expect(page.getByText("A newer version is available", { exact: true })).toBeVisible();
+  await expect(page.getByText("Undo history was cleared because this workspace changed in another tab.", { exact: true })).toBeVisible();
+  await expect(undo).toBeDisabled();
+});

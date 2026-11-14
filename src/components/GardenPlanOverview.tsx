@@ -39,6 +39,18 @@ import {
 
 type AreaSize = { widthMeters: number; depthMeters: number };
 
+/** Undo and Redo for Garden Plan edits in this tab (ADR-0072, phase G5). */
+export type PlanHistoryControls = {
+  canUndo: boolean;
+  canRedo: boolean;
+  undoLabel?: string;
+  redoLabel?: string;
+  /** Explains why the history was cleared, such as a sync conflict. */
+  notice?: string;
+  onUndo: () => void;
+  onRedo: () => void;
+};
+
 /** Planting on the zoomed area (ADR-0072, phase G3). Points are in the area's own metres. */
 export type CanvasPlanting = {
   areaId: string;
@@ -65,6 +77,7 @@ type GardenPlanOverviewProps = {
   /** Shown directly below the canvas while an area is zoomed, on narrower layouts. */
   areaPanel?: ReactNode;
   planting?: CanvasPlanting;
+  history?: PlanHistoryControls;
   /** Adds an area of this type at its standard size in the first free spot. */
   onAddArea?: (kind: GrowingAreaKind) => void;
   /** Gives an area saved without a size its type's standard size on the plan. */
@@ -91,6 +104,7 @@ export function GardenPlanOverview({
   areaListInSidebar = false,
   areaPanel,
   planting,
+  history,
   onAddArea,
   onPlaceArea,
   onResizeArea,
@@ -147,6 +161,27 @@ export function GardenPlanOverview({
     window.addEventListener("keydown", escape);
     return () => window.removeEventListener("keydown", escape);
   }, [canExitArea]);
+
+  // Ctrl/⌘ Z undoes and Shift+Ctrl/⌘ Z or Ctrl+Y redoes; text fields keep their own undo.
+  const historyRef = useRef(history);
+  useEffect(() => { historyRef.current = history; });
+  const hasHistory = Boolean(history);
+  useEffect(() => {
+    if (!hasHistory) return;
+    const shortcut = (event: KeyboardEvent) => {
+      const key = event.key.toLowerCase();
+      if (!(event.metaKey || event.ctrlKey) || event.altKey || (key !== "z" && key !== "y") || event.defaultPrevented) return;
+      if (event.target instanceof HTMLElement && event.target.closest("input, textarea, select, [contenteditable='true']")) return;
+      if (document.querySelector('dialog[open][aria-modal="true"], [role="alertdialog"]')) return;
+      const controls = historyRef.current;
+      const redo = key === "y" || event.shiftKey;
+      if (redo ? !controls?.canRedo : !controls?.canUndo) return;
+      event.preventDefault();
+      if (redo) controls!.onRedo(); else controls!.onUndo();
+    };
+    window.addEventListener("keydown", shortcut);
+    return () => window.removeEventListener("keydown", shortcut);
+  }, [hasHistory]);
 
   if (compact)
     return (
@@ -211,12 +246,21 @@ export function GardenPlanOverview({
           </h2>
         </div>
         <div className="plan-header-actions">
+          {editable && history && <div className={editorStyles.history} role="group" aria-label="Plan history">
+            <Button aria-keyshortcuts="Control+Z Meta+Z" disabled={!history.canUndo} title={history.undoLabel ? `Undo ${history.undoLabel}` : "Nothing to undo"} onClick={history.onUndo}>
+              <span aria-hidden="true">↶ </span>Undo
+            </Button>
+            <Button aria-keyshortcuts="Control+Shift+Z Meta+Shift+Z Control+Y" disabled={!history.canRedo} title={history.redoLabel ? `Redo ${history.redoLabel}` : "Nothing to redo"} onClick={history.onRedo}>
+              <span aria-hidden="true">↷ </span>Redo
+            </Button>
+          </div>}
           <p className="plan-count">
             {growingAreas.length} planting{" "}
             {growingAreas.length === 1 ? "area" : "areas"}
           </p>
         </div>
       </div>
+      {editable && history?.notice && <p className={editorStyles.historyNotice} role="status">{history.notice}</p>}
       {editable ? (
         <section
           aria-label="Garden properties"

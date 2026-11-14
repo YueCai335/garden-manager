@@ -1,5 +1,5 @@
 "use client";
-import { type FormEvent, type ReactNode, useRef, useState } from "react";
+import { type FormEvent, type KeyboardEvent, type ReactNode, useRef, useState } from "react";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { areaProperties, areaPropertyErrors, sameAreaProperties, type AreaProperties, type AreaPropertiesDraft } from "@/lib/areaEditorDrafts";
 import { createRectangularLayout, growingAreaKinds, growingAreaKindLabels, snapToGrid, type GardenPlan, type LayoutPoint, type GrowingArea, type GrowingAreaKind, type GrowingAreaLayout } from "@/lib/gardenWorkspace";
@@ -71,35 +71,51 @@ export function PlantingAreaInspector({
     setErrors((old) => ({ ...old, [key]: undefined }));
   };
   const setName = (value: string) => change("name", value);
-  const setKind = (value: GrowingAreaKind) => change("kind", value);
   const setLength = (value: string) => change("length", value);
   const setWidth = (value: string) => change("width", value);
   const setRotationDegrees = (value: string) => change("rotation", value);
 
-  const save = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const nextErrors = areaPropertyErrors(values, plan);
+  /**
+   * Applies the fields when one loses focus, on Enter, and at once for the
+   * type and the step buttons (ADR-0072, phase G5). Invalid values stay in
+   * the form with their errors and change nothing; the draft protection from
+   * ADR-0062 covers them until they are fixed or discarded.
+   */
+  const apply = (next: AreaProperties = values, focusError = false) => {
+    if (sameAreaProperties(next, current)) { if (draft) onDraftChange(undefined); setErrors({}); return; }
+    const nextErrors = areaPropertyErrors(next, plan);
     setErrors(nextErrors);
     const first = Object.keys(nextErrors)[0];
     if (first) {
-      formRef.current?.querySelector<HTMLElement>(`[name="${first}"]`)?.focus();
+      if (focusError) formRef.current?.querySelector<HTMLElement>(`[name="${first}"]`)?.focus();
       return;
     }
-    const layout = createRectangularLayout(snapToGrid(Number(width)), snapToGrid(Number(length)));
-    if (onSave(area.id, name.trim(), kind, Number(rotationDegrees), layout, { x: Number(values.x), y: Number(values.y) })) onDraftChange(undefined);
+    const layout = createRectangularLayout(snapToGrid(Number(next.width)), snapToGrid(Number(next.length)));
+    if (onSave(area.id, next.name.trim(), next.kind, Number(next.rotation), layout, { x: Number(next.x), y: Number(next.y) })) onDraftChange(undefined);
+  };
+  const changeAndApply = (key: keyof AreaProperties, value: string) => {
+    change(key, value);
+    apply({ ...values, [key]: value });
+  };
+  const submit = (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); apply(values, true); };
+  // Without a submit button, Enter in a field does not submit the form on its own.
+  const applyOnEnter = (event: KeyboardEvent<HTMLFormElement>) => {
+    if (event.key !== "Enter" || !(event.target instanceof HTMLInputElement)) return;
+    event.preventDefault();
+    apply(values, true);
   };
 
   return (
     <EditorPanel mode={mode} title="Edit planting area" context={`${gardenName ?? "Garden"} / ${area.name}`} headingId="edit-planting-area-heading" returnFocusId={returnFocusId ?? `area-link-${area.id}`} onClose={() => hasChanges || hasPlantChanges ? setClosing(true) : onClose()}>
       <div className={styles.properties}>
-      {hasChanges && <p role="status">Unsaved changes</p>}
+      {hasChanges && Object.values(errors).some(Boolean) && <p role="status">Not applied yet: fix the highlighted values.</p>}
       {changedElsewhere && <div role="alert">
-        <p>These properties changed elsewhere. Your edits are kept. Saving applies your values.</p>
+        <p>These properties changed elsewhere. Your edits are kept. Press Enter to apply your values.</p>
         <p>Current values: {current.name}, {growingAreaKindLabels[current.kind]}, {current.width} × {current.length} m, {current.rotation}°, position {current.x}, {current.y} m.</p>
         <button className="secondary-button" type="button" onClick={() => { onDraftChange(undefined); setErrors({}); }}>Reload properties</button>
       </div>}
       {closing && <ConfirmDialog message="Discard unsaved changes in this planting area?" confirmLabel="Discard changes" cancelLabel="Keep editing" onCancel={() => setClosing(false)} onConfirm={() => { onDraftChange(undefined); onDiscardPlants(); onClose(); }} />}
-      <form className="planting-area-creation-form" noValidate onSubmit={save} ref={formRef}>
+      <form className="planting-area-creation-form" noValidate onSubmit={submit} onKeyDown={applyOnEnter} onBlur={(event) => { if (event.target instanceof HTMLInputElement) apply(); }} ref={formRef}>
         <h3 className={styles.inspectorSectionHeading}>Dimensions and position</h3>
         <div className="field">
           <label htmlFor="editing-planting-area-name">Planting-area name</label>
@@ -115,7 +131,7 @@ export function PlantingAreaInspector({
           <label htmlFor="editing-planting-area-kind">Planting-area type</label>
           <select
             id="editing-planting-area-kind"
-            onChange={(event) => setKind(event.target.value as GrowingAreaKind)}
+            onChange={(event) => changeAndApply("kind", event.target.value as GrowingAreaKind)}
             value={kind}
           >
             {growingAreaKinds.map((candidate) => (
@@ -178,12 +194,12 @@ export function PlantingAreaInspector({
             const limit = axis === "x" ? plan.widthMeters : plan.depthMeters;
             const next = Math.min(limit, Math.max(0, snapToGrid(coordinate + delta)));
             return <Button key={label} aria-label={`${label} 0.1 m`} disabled={!values[axis].trim() || !Number.isFinite(coordinate) || coordinate < 0 || coordinate > limit || next === coordinate}
-              onClick={() => change(axis, String(next))}>{arrow}</Button>;
+              onClick={() => changeAndApply(axis, String(next))}>{arrow}</Button>;
           })}
-          <span>0.1 m steps · Save to apply</span>
+          <span>0.1 m steps</span>
         </div>
+        <p className={styles.applyHint}>Changes apply when you leave a field or press Enter. Undo reverses them.</p>
         <div className="form-actions">
-          {hasChanges ? <button className="save-button" type="submit">Save</button> : null}
           <button className="remove-button" onClick={onDelete} type="button">Delete area</button>
         </div>
       </form>
