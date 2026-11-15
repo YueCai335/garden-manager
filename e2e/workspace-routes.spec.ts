@@ -18,20 +18,60 @@ test("deep links, browser history, and missing entities keep explicit garden con
   await page.goBack();
   await page.getByRole("button", { name: "Close", exact: true }).click();
   await page.getByRole("button", { name: "Discard changes" }).click();
-  await page.goto("/gardens/demo-garden/care?view=history");
+  await page.goto("/care?view=history&location=demo-garden");
   await expect(page.getByRole("heading", { name: "History", exact: true })).toBeVisible();
   await page.reload();
   await expect(page.getByRole("heading", { name: "History", exact: true })).toBeVisible();
-  await page.goto("/gardens/demo-garden/season");
+  await page.goto("/season?garden=demo-garden");
   await expect(page.getByRole("heading", { name: /Next Season ·/ })).toBeVisible();
   await page.reload();
-  await expect(page).toHaveURL(/\/gardens\/demo-garden\/season$/);
+  await expect(page).toHaveURL(/\/season\?garden=demo-garden$/);
   await page.goto("/gardens/demo-garden/plan?area=missing");
   await expect(page.getByRole("alert").filter({ hasText: "Planting area not found" })).toBeVisible();
   await page.getByRole("link", { name: "Back to plan" }).click();
   await expect(page).toHaveURL(/\/gardens\/demo-garden\/plan$/);
   await page.goto("/gardens/missing/plan");
   await expect(page.getByRole("heading", { name: "Garden not found in this workspace" })).toBeVisible();
+});
+
+test("old garden Care and Next Season links land on the filtered modules, and Back skips them", async ({ page }) => {
+  await openWorkspace(page);
+  await page.getByRole("button", { name: "Load demo garden" }).click();
+  await expect(page.getByText("All changes saved", { exact: true })).toBeVisible();
+  const location = page.getByRole("combobox", { name: "Location", exact: true });
+
+  // The server answers the old URL with a 307 before any page renders, so it never becomes a history entry.
+  const response = await page.goto("/gardens/demo-garden/care?view=history");
+  const redirected = response?.request().redirectedFrom();
+  expect(redirected?.url()).toMatch(/\/gardens\/demo-garden\/care\?view=history$/);
+  expect((await redirected?.response())?.status()).toBe(307);
+  await expect(page).toHaveURL(/\/care\?view=history&location=demo-garden$/);
+  await expect(page.getByRole("heading", { name: "History", exact: true })).toBeVisible();
+  await expect(location).toHaveValue("demo-garden");
+  // Care is an L1 module: the header marks it, and there is no garden breadcrumb.
+  await expect(page.getByRole("navigation", { name: "Workspace sections" }).getByRole("link", { name: "Care", exact: true })).toHaveAttribute("aria-current", "page");
+  await expect(page.getByRole("navigation", { name: "Breadcrumb" })).toHaveCount(0);
+  await page.goBack();
+  await expect(page).toHaveURL(new RegExp(`${workspaceHome}$`));
+
+  await page.goto("/gardens/demo-garden/care");
+  await expect(page).toHaveURL(/\/care\?location=demo-garden$/);
+  await expect(page.getByRole("heading", { name: "Tasks", exact: true })).toBeVisible();
+  await expect(location).toHaveValue("demo-garden");
+
+  await page.goto("/gardens/demo-garden/season");
+  await expect(page).toHaveURL(/\/season\?garden=demo-garden$/);
+  const plans = page.getByRole("region", { name: "Planting plans" });
+  await expect(plans.getByRole("combobox", { name: "Garden", exact: true })).toHaveValue("demo-garden");
+  await expect(plans.getByText("Only Demo Garden ·")).toBeVisible();
+  await page.goBack();
+  await expect(page).toHaveURL(/\/care\?location=demo-garden$/);
+  await page.goForward();
+  await expect(page).toHaveURL(/\/season\?garden=demo-garden$/);
+  await plans.getByRole("link", { name: "Show all", exact: true }).click();
+  await expect(page).toHaveURL(/\/season$/);
+  await expect(plans.getByRole("combobox", { name: "Garden", exact: true })).toHaveValue("all");
+  await expect(plans.getByText("Only Demo Garden ·")).toHaveCount(0);
 });
 
 test("mobile navigation preserves a note across routes without a model request", async ({ page }) => {

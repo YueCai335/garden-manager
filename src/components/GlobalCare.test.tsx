@@ -90,13 +90,13 @@ it("completes a repeating task once in its garden and leaves matching tasks else
   expect(saved().careEvents).toHaveLength(1);
 });
 
-it("shows root history separately on a garden page and links back to its global ownership", async () => {
-  open("/gardens/front/care?view=history");
-  const shared = await screen.findByRole("region", { name: "Applies to all gardens" });
-  expect(within(shared).getByText("Every garden")).toBeVisible();
-  expect(within(shared).queryByRole("button", { name: "Correct record" })).not.toBeInTheDocument();
-  expect(within(shared).getByRole("link")).toHaveAttribute("href", "/care?view=history&location=all-gardens");
+it("shows only a garden's own records when Care is filtered to it, the view old garden links now land on", async () => {
+  open("/care?view=history&location=front");
+  expect(await screen.findByText("Front one")).toBeVisible();
+  expect(screen.getByLabelText("Location")).toHaveValue("front");
   expect(screen.queryByText("Back one")).not.toBeInTheDocument();
+  expect(screen.queryByText("Every garden")).not.toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Tasks" })).toHaveAttribute("href", "/care?view=tasks&location=front");
 });
 
 it("edits and removes a task in the selected owner without changing an equal ID elsewhere", async () => {

@@ -7,7 +7,7 @@ import { Button, ButtonLink } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { plantDisplayName, type Garden } from "@/lib/gardenWorkspace";
 import { homeTasks } from "@/lib/homeTasks";
-import { gardenPath } from "@/lib/workspaceRoutes";
+import { careLocationPath, gardenPath } from "@/lib/workspaceRoutes";
 import { OverviewNoteEntry } from "./AppShell";
 import { useWorkspace } from "./WorkspaceProvider";
 import styles from "./WorkspaceHome.module.css";
@@ -69,7 +69,7 @@ export function WorkspaceHome({ onOpenDemoGarden, onboarding }: { onOpenDemoGard
             </div>)}
           </dl>
           {recent.length > 0 ? <ul className={styles.taskList}>{recent.map(({ key, task, location, gardenId, status }) => <li key={key}>
-            <Link href={gardenId ? `${gardenPath(gardenId, "care")}?view=tasks` : "/care?view=tasks&location=all-gardens"}>
+            <Link href={careLocationPath(gardenId ?? "all-gardens", "tasks")}>
               <strong>{task.type === "watering" ? "Watering" : "Fertilizing"}</strong>
               <span>{location}</span>
               <span className={status === "overdue" ? styles.overdue : undefined}>{taskGroups.find((group) => group.status === status)?.label} · <time dateTime={task.dueDate}>{task.dueDate}</time></span>

@@ -38,7 +38,7 @@ test("Garden Plan", async ({ page }) => {
 });
 
 test("Next Season rotation details", async ({ page }) => {
-  await page.goto("/gardens/demo-garden/season");
+  await page.goto("/season?garden=demo-garden");
   const plans = page.getByRole("region", { name: "Planting plans" });
   await expect(plans.getByRole("article")).toHaveCount(3);
   for (const summary of await plans.locator("summary", { hasText: "Rotation details" }).all()) await summary.click();
@@ -48,7 +48,7 @@ test("Next Season rotation details", async ({ page }) => {
 
 test("Allocation Assistant recorded run", async ({ page }) => {
   await page.route("**/runtime-config", (route) => route.fulfill({ json: { portfolioDemo: true, careNotePublicAvailable: false, careNoteBatchAvailable: false } }));
-  await page.goto("/gardens/demo-garden/season");
+  await page.goto("/season?garden=demo-garden");
   await page.locator("summary", { hasText: "Allocation Assistant · Demo Garden" }).click();
   await page.getByRole("button", { name: "View example run" }).click();
   const assistant = page.locator("section.allocation-assistant");

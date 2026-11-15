@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { GardenWorkspace, SERVER_WORKSPACE_STORAGE_KEY } from "@/test/WorkspaceHarness";
 import { resetTestRouter, testRouter } from "@/test/router";
-import { areaPath, gardenPath } from "@/lib/workspaceRoutes";
+import { areaPath, gardenPath, seasonGardenPath } from "@/lib/workspaceRoutes";
 import { createDemoGardenWorkspace, createGarden, GARDEN_WORKSPACE_STORAGE_KEY, todayDate } from "@/lib/gardenWorkspace";
 
 function seedLocal() {
@@ -119,6 +119,33 @@ describe("workspace routes and persistent provider", () => {
     expect(location.pathname).toBe("/gardens");
   });
 
+  it("filters Next Season by the URL garden, offers Show all, and keeps a garden's links on the L1 modules", async () => {
+    const workspace = seedLocal();
+    const back = workspace.gardens[1];
+    resetTestRouter(seasonGardenPath(back.id));
+    const user = userEvent.setup();
+    render(<GardenWorkspace />);
+    expect(await screen.findByRole("heading", { name: "Back garden", level: 2 })).toBeVisible();
+    expect(screen.queryByRole("heading", { name: "Demo Garden", level: 2 })).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Garden")).toHaveValue(back.id);
+    expect(screen.getByText(/Only Back garden/)).toBeVisible();
+    // An L1 page: no breadcrumb, and the header marks Next Season as the page.
+    expect(screen.queryByRole("navigation", { name: "Breadcrumb" })).not.toBeInTheDocument();
+    expect(within(screen.getByRole("navigation", { name: "Workspace sections" })).getByRole("link", { name: "Next Season" })).toHaveAttribute("aria-current", "page");
+
+    await user.click(screen.getByRole("link", { name: "Show all" }));
+    expect(location.search).toBe("");
+    expect(await screen.findByRole("heading", { name: "Demo Garden", level: 2 })).toBeVisible();
+    expect(screen.queryByText(/Only Back garden/)).not.toBeInTheDocument();
+
+    await user.selectOptions(screen.getByLabelText("Garden"), workspace.selectedGardenId);
+    expect(location.search).toBe(`?garden=${workspace.selectedGardenId}`);
+    expect(screen.getByText(/Only Demo Garden/)).toBeVisible();
+    act(() => testRouter.back());
+    await waitFor(() => expect(location.search).toBe(""));
+    expect(screen.getByLabelText("Garden")).toHaveValue("all");
+  });
+
   it("opens the Garden Note from the header on any page and returns focus on Escape", async () => {
     seedLocal();
     resetTestRouter("/care");
@@ -136,17 +163,17 @@ describe("workspace routes and persistent provider", () => {
 
   it("uses care view query parameters and retains a care form across route unmounts", async () => {
     seedLocal();
-    resetTestRouter(`${gardenPath("demo-garden", "care")}?view=invalid`);
+    resetTestRouter("/care?view=invalid&location=demo-garden");
     const user = userEvent.setup();
     render(<GardenWorkspace />);
     await screen.findByRole("heading", { name: "Tasks" });
-    expect(location.search).toBe("?view=tasks");
+    expect(location.search).toBe("?view=tasks&location=demo-garden");
     await user.click(screen.getByRole("link", { name: "History" }));
     await user.click(screen.getByRole("button", { name: "Add care event" }));
     fireEvent.change(screen.getByLabelText("Note (optional)"), { target: { value: "Keep this care draft" } });
     await user.click(screen.getByRole("link", { name: "Plant Guide" }));
     act(() => testRouter.back());
-    await waitFor(() => expect(location.pathname).toBe(gardenPath("demo-garden", "care")));
+    await waitFor(() => expect(location.pathname).toBe("/care"));
     expect(screen.getByLabelText("Note (optional)")).toHaveValue("Keep this care draft");
     act(() => testRouter.forward());
     await waitFor(() => expect(location.pathname).toBe("/guide"));

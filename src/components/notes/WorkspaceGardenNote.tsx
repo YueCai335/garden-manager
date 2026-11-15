@@ -7,7 +7,7 @@ import { Button, ButtonLink } from "@/components/ui/Button";
 import { useWorkspace, useWorkspaceRequestRef } from "@/components/workspace/WorkspaceProvider";
 import { applyCareDraftBatch, newCareDraft } from "@/lib/careNoteBatch";
 import type { AiCareNoteDraft } from "@/lib/gardenWorkspaceApi";
-import { gardenPath } from "@/lib/workspaceRoutes";
+import { careLocationPath } from "@/lib/workspaceRoutes";
 import styles from "./GardenNoteDialog.module.css";
 
 export function WorkspaceGardenNote({ onClose, batchAvailable = false, initialGardenId = "" }: { onClose?: () => void; batchAvailable?: boolean; initialGardenId?: string }) {
@@ -22,7 +22,7 @@ export function WorkspaceGardenNote({ onClose, batchAvailable = false, initialGa
     const row = { ...newCareDraft({ ...draft, gardenId, sourceText: sync.careNoteBatch.note }), note: draft.note };
     const result = applyCareDraftBatch(workspace, [row]);
     if (!result.added) return false;
-    const href = `${draft.targetScope === "all-gardens" ? "/care" : gardenPath(gardenId, "care")}?view=history`;
+    const href = draft.targetScope === "all-gardens" ? "/care?view=history" : careLocationPath(gardenId, "history");
     submittedDraft.current = draft;
     if (onClose) sync.setSingleNoteReceipt({ row, draft, note: sync.careNoteBatch.note, href, saved: false });
     sync.setWorkspace({ ...result.workspace, selectedGardenId: gardenId });

@@ -63,11 +63,11 @@ export function AppShell({ children }: { children: ReactNode }) {
   const description = route.module === "doctor" ? "Record what you observe and review an assessment before saving it to health history."
     : route.module === "guide" ? "Ask a gardening question and see the reviewed sources behind the answer." : undefined;
   // L2 and L3 pages sit below the header modules: one garden, one area, or a new garden.
+  // A garden's care and season plan are filtered L1 modules, so they have no crumbs (ADR-0073, phase S3).
   const crumbs: { label: string; href?: string }[] | null = route.module === "new" ? [{ label: "Add garden" }]
     : route.gardenId === undefined ? null : [
-      ...(garden ? [{ label: garden.name, href: route.module === "plan" && !area ? undefined : gardenPath(garden.id) }] : []),
+      ...(garden ? [{ label: garden.name, href: area ? gardenPath(garden.id) : undefined }] : []),
       ...(area ? [{ label: area.name }] : []),
-      ...(route.module === "care" ? [{ label: "Care" }] : route.module === "season" ? [{ label: "Next Season" }] : []),
     ];
   useEffect(() => { if (isLoaded) heading.current?.focus(); }, [pathname, isLoaded]);
   useEffect(() => { if (menuOpen) navigation.current?.querySelector("a")?.focus(); }, [menuOpen]);
@@ -124,10 +124,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </nav>
           {garden && <div className={styles.switcher}>
             <label htmlFor="workspace-garden">Garden</label>
-            <select id="workspace-garden" value={garden.id} onChange={(event) => {
-              const next = gardenPath(event.target.value, route.module as "plan" | "care" | "season");
-              router.push(route.module === "care" && search.has("view") ? `${next}?view=${search.get("view") === "history" ? "history" : "tasks"}` : next);
-            }}>{workspace?.gardens.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select>
+            <select id="workspace-garden" value={garden.id} onChange={(event) => router.push(gardenPath(event.target.value))}>{workspace?.gardens.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select>
           </div>}
         </div>}
         <PageHeader title={title} description={description} headingRef={heading} />

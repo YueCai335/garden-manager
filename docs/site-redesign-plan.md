@@ -179,6 +179,34 @@
   - 重定向的路由测试。
   - `global-care.spec.ts` 和 `season-hierarchy.spec.ts` 更新。
 
+> 实施说明（2026-11-15 完成）：
+> - 重定向：
+>   - 规则写在 `workspaceRoutes.ts` 的 `legacyGardenRedirects`，由 `next.config.ts` 的 `redirects()` 读取。两个旧页面文件已删除。
+>   - `/gardens/<id>/care` → `/care?location=<id>`，Next.js 会把原来的查询参数带过去，所以 `view` 保留（无效值由 Care 页归为 `tasks`）。`/gardens/<id>/season` → `/season?garden=<id>`。
+>   - 服务器在渲染前直接回 307，旧地址不进浏览器历史，所以后退不会卡住。用 307 而不是 308，浏览器不会永久缓存，以后还能改。
+>   - 先试过在页面里调用 `redirect()`。因为 `(app)` 布局外层有 Suspense，页面已经开始流式输出，生产构建里它变成 200 加页面内跳转，会先闪一下 App 外壳，所以改用配置里的重定向。生产构建里用 curl 检查过：两个旧地址都回 307，带中文和 `?` 的花园 ID 编码正确，Plan 地址仍是 200。
+> - 路由工具：
+>   - `gardenPath(id)` 只生成 Plan 地址，L2 只剩这一种花园页。新增 `careLocationPath(location, view?)` 和 `seasonGardenPath(id)`。
+>   - `routeFromPath` 不再把 `/gardens/<id>/care|season` 解析成花园级模块。
+> - Next Season 的花园筛选：
+>   - 原来就有页内的下拉框，但状态存在草稿里，地址里没有。现在 `?garden=` 是唯一来源：下拉框改地址（push），刷新和后退都保留筛选。
+>   - 筛选时下拉框下方显示 “Only Backyard · Show all”，“Show all” 链接回 `/season`。不认识的花园显示 “Only an unavailable garden”，下面是原有的 “Garden unavailable” 空状态。
+>   - 去掉了花园级专用的 `gardenId` 属性。季节草稿键统一为 `season:all:*`。
+> - 改成带筛选地址的入口：
+>   - 引导设置 Ready 的 “Log the first watering” 和 “Plan next season”。
+>   - Gardens 页任务列表里的单条任务。
+>   - 单条 AI 笔记保存后的 “View records”（全花园的笔记仍去 `/care?view=history`）。
+>   - Care 页底部 “Care by location” 里每个花园的 “Open care”（原标题 “Open a garden Care page” 已不准确）。
+> - 页头：Care 和 Next Season 都是 L1，不再有 “Gardens › 花园 › Care” 面包屑。花园下拉框只在 Plan 上出现，切换花园始终进入 Plan。
+> - 随旧页面一起删除的：花园 Care 页的 “Applies to all gardens” 区块（`SharedCare`）及其样式。按花园筛选的 Care 只显示这个花园自己的记录，全花园记录在 “All gardens” 位置里看。ADR-0067 的状态已注明。
+> - 测试：
+>   - `workspaceRoutes.test.ts` 检查 `next.config.ts` 实际返回的重定向规则（来源、目标、307），目标和 App 内链接用的筛选地址一致，并覆盖新路径函数和编码。
+>   - `WorkspaceRouting.test.tsx` 新增 Season 筛选旅程（地址筛选、Show all、下拉框、后退）。`GardenWorkspace.test.tsx` 的 Ready → Care 断言改为 `/care?location=`，并检查后退回到 Plan。
+>   - e2e：`workspace-routes.spec.ts` 新增旧地址旅程（检查响应是 307、后退、前进、Show all）；`global-care.spec.ts`、`season-hierarchy.spec.ts`、`guided-setup.spec.ts`、`confirmation.spec.ts` 改用新地址；`readme-screenshots.spec.ts` 的地址也已更新。
+> - 已知限制：
+>   - `CareWorkspace` 仍保留单个花园模式（`garden` 不是 “all-gardens” 时），App 里已不再使用，只在组件测试里出现。删掉它属于 Care 的重构，不在 S3 范围内。
+>   - Care 位置筛选没有加 “Only … · Show all” 这一行，它已有 “Location” 下拉框，计划只要求 Season 加。
+
 ### S4 画布换装
 
 - **范围**：`planAppearance.ts`、`GardenPlanOverview.tsx` 的绘制部分、`canvas/Canvas.module.css`、Garden Plan 页的工具栏、缩放、侧栏布局、首页缩略图。

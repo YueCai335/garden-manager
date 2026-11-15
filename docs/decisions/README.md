@@ -105,17 +105,17 @@ changes, mark the old record as superseded and add a new record.
 | [ADR-0060](0060-offer-assisted-care-note-drafting-in-the-portfolio-demo.md) | Offer assisted care-note drafting in the portfolio demo | Accepted |
 | [ADR-0061](0061-prioritize-global-garden-notes-and-consistent-workflows.md) | Prioritize global AI garden notes, clear workspace scopes, and consistent feedback | Accepted for product direction; implementation pending |
 | [ADR-0062](0062-preserve-planting-area-editor-drafts.md) | Preserve planting-area property and plant-editor drafts | Accepted; amended for Garden Plan by ADR-0072 (G5) |
-| [ADR-0063](0063-use-workspace-routes-and-shared-session-state.md) | Use workspace routes and shared session state | Accepted; home route moved to `/gardens` by ADR-0073 (S1); garden subnavigation and "Back to gardens" superseded by ADR-0073 (S2) |
+| [ADR-0063](0063-use-workspace-routes-and-shared-session-state.md) | Use workspace routes and shared session state | Accepted; home route moved to `/gardens` by ADR-0073 (S1); garden subnavigation and "Back to gardens" superseded by ADR-0073 (S2); `/gardens/[gardenId]/care` and `/gardens/[gardenId]/season` redirect to the filtered `/care` and `/season` by ADR-0073 (S3) |
 | [ADR-0064](0064-separate-workspace-save-status-and-explicit-retries.md) | Separate workspace save status and explicit retries | Accepted |
 | [ADR-0065](0065-fit-metric-canvases-to-their-containers.md) | Fit metric canvases to their containers | Accepted |
 | [ADR-0066](0066-adapt-area-editing-to-available-space.md) | Adapt area editing to available space | Superseded in part by ADR-0072 (G3) |
-| [ADR-0067](0067-project-care-across-locations-with-explicit-ownership.md) | Project Care across locations with explicit ownership | Accepted |
+| [ADR-0067](0067-project-care-across-locations-with-explicit-ownership.md) | Project Care across locations with explicit ownership | Accepted; the garden Care page and its "Applies to all gardens" section superseded by ADR-0073 (S3): a garden's care is global Care filtered to that location |
 | [ADR-0068](0068-extract-bounded-workspace-care-note-batches.md) | Extract bounded workspace care-note batches | Accepted; real-model evaluation pending |
 | [ADR-0069](0069-open-garden-notes-in-place-from-overview.md) | Open Garden Notes in place from Overview | Accepted; entry superseded in part by ADR-0073 (S2): the header "+ Note" opens the dialog from any app page |
 | [ADR-0070](0070-preview-and-position-planting-areas-on-the-plan.md) | Preview and position planting areas on the plan | Superseded in part by ADR-0072 (G2, G3, G4) |
 | [ADR-0071](0071-recover-missing-workspaces-from-browser-copies.md) | Recover missing workspaces from browser copies | Accepted |
 | [ADR-0072](0072-use-a-single-plan-canvas-with-guided-setup.md) | Use a single plan canvas with guided setup | Accepted; implemented (G1–G7) |
-| [ADR-0073](0073-separate-the-landing-page-and-use-a-textured-deep-green-look.md) | Separate the landing page from the app and use a textured deep-green look | Accepted; S1–S2 implemented, S3–S7 pending |
+| [ADR-0073](0073-separate-the-landing-page-and-use-a-textured-deep-green-look.md) | Separate the landing page from the app and use a textured deep-green look | Accepted; S1–S3 implemented, S4–S7 pending |
 
 ## Interview Use
 

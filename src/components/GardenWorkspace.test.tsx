@@ -1,5 +1,6 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { resetTestRouter } from "@/test/router";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { resetTestRouter, testRouter } from "@/test/router";
+import { careLocationPath, seasonGardenPath } from "@/lib/workspaceRoutes";
 import { testLayout } from "@/test/layout";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -51,6 +52,9 @@ async function openSelectedGarden() {
   fireEvent.click(await screen.findByRole("link", { name: "Open Demo Garden" }));
   await screen.findByRole("heading", { name: "Garden Plan" });
 }
+
+/** The header's Gardens module; Care is an L1 page, so it has no "All gardens" button. */
+const gardensModule = () => within(screen.getByRole("navigation", { name: "Workspace sections" })).getByRole("link", { name: "Gardens" });
 
 async function openCare(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole("link", { name: "Care" }));
@@ -958,9 +962,9 @@ describe("GardenWorkspace", () => {
     expect(track().getByText("Step 4 of 4 · Ready")).toBeInTheDocument();
     expect(location.search).toBe("");
     expect(screen.getByRole("list", { name: "Garden summary" })).toHaveTextContent("1 planting area1 plant1 plant group");
-    const gardenBase = location.pathname.replace(/\/plan$/, "");
-    expect(screen.getByRole("link", { name: "Log the first watering" })).toHaveAttribute("href", `${gardenBase}/care?view=history`);
-    expect(screen.getByRole("link", { name: "Plan next season" })).toHaveAttribute("href", `${gardenBase}/season`);
+    const gardenId = decodeURIComponent(location.pathname.split("/")[2]);
+    expect(screen.getByRole("link", { name: "Log the first watering" })).toHaveAttribute("href", careLocationPath(gardenId, "history"));
+    expect(screen.getByRole("link", { name: "Plan next season" })).toHaveAttribute("href", seasonGardenPath(gardenId));
     // Completed steps stay reachable; going back keeps the furthest step.
     await user.click(track().getByRole("button", { name: "Garden size, completed" }));
     expect(track().getByText("Step 1 of 4 · Garden size")).toBeInTheDocument();
@@ -1025,11 +1029,16 @@ describe("GardenWorkspace", () => {
     expect(await screen.findByRole("heading", { name: "Allotment is ready" })).toBeInTheDocument();
     expect(screen.getByRole("list", { name: "Garden summary" })).toHaveTextContent("0 planting areas0 plants0 plant groups");
     await user.click(screen.getByRole("link", { name: "Log the first watering" }));
-    expect(location.pathname).toBe(`/gardens/${workspace.selectedGardenId}/care`);
-    expect(location.search).toBe("?view=history");
+    // Care is the L1 module filtered to this garden (ADR-0073, phase S3).
+    expect(location.pathname).toBe("/care");
+    expect(new URLSearchParams(location.search).get("location")).toBe(workspace.selectedGardenId);
+    expect(new URLSearchParams(location.search).get("view")).toBe("history");
+    expect(await screen.findByLabelText("Location")).toHaveValue(workspace.selectedGardenId);
+    expect(screen.queryByRole("navigation", { name: "Breadcrumb" })).not.toBeInTheDocument();
     expect(window.sessionStorage.getItem("garden-manager:guided-setup")).toBeNull();
-    // The breadcrumb's garden link returns from the garden's care to its plan.
-    await user.click(within(screen.getByRole("navigation", { name: "Breadcrumb" })).getByRole("link", { name: "Allotment" }));
+    // Coming back to the plan does not restart the finished guide.
+    act(() => testRouter.back());
+    await waitFor(() => expect(location.pathname).toBe(`/gardens/${workspace.selectedGardenId}/plan`));
     expect(screen.queryByRole("navigation", { name: "Guided setup" })).not.toBeInTheDocument();
   });
 
@@ -1127,7 +1136,7 @@ describe("GardenWorkspace", () => {
     fireEvent.change(within(form).getByLabelText("Date"), { target: { value: "2026-06-05" } });
     await user.selectOptions(within(form).getByLabelText("Target"), "plant-group:demo-planting-tomatoes");
     await user.click(within(form).getByRole("button", { name: "Add care event" }));
-    await user.click(screen.getByRole("link", { name: "All gardens" }));
+    await user.click(gardensModule());
     await openPlantingArea(user, "Sample raised bed");
     await user.click(screen.getByLabelText("Tomato plant on Garden Plan"));
     await user.click(screen.getByRole("button", { name: "Remove plant" }));
@@ -1313,7 +1322,7 @@ describe("GardenWorkspace", () => {
     fireEvent.change(within(form).getByLabelText("Due date"), { target: { value: "2026-09-02" } });
     await user.selectOptions(within(form).getByLabelText("Target"), "planting-area:demo-raised-bed");
     await user.click(within(form).getByRole("button", { name: "Add care task" }));
-    await user.click(screen.getByRole("link", { name: "All gardens" }));
+    await user.click(gardensModule());
     await openPlantingArea(user, "Sample raised bed");
     await user.click(screen.getByRole("button", { name: "Delete area" }));
     await confirmDialog(user);
@@ -1364,7 +1373,7 @@ describe("GardenWorkspace", () => {
     const editForm = screen.getByRole("heading", { name: "Edit care event" }).closest("form")!;
     await user.type(within(editForm).getByLabelText("Fertilizer product (optional)"), "Kelp meal");
     await user.click(within(editForm).getByRole("button", { name: "Save care event" }));
-    await user.click(screen.getByRole("link", { name: "All gardens" }));
+    await user.click(gardensModule());
     await openCare(user);
     await user.click(screen.getByRole("link", { name: "History" }));
     // The breadcrumb is the page's other list; the care history is the one that names the area.
@@ -1390,7 +1399,7 @@ describe("GardenWorkspace", () => {
     fireEvent.change(within(form).getByLabelText("Date"), { target: { value: "2026-06-04" } });
     await user.selectOptions(within(form).getByLabelText("Target"), "planting-area:demo-raised-bed");
     await user.click(within(form).getByRole("button", { name: "Add care event" }));
-    await user.click(screen.getByRole("link", { name: "All gardens" }));
+    await user.click(gardensModule());
     await openPlantingArea(user, "Sample raised bed");
     await user.click(screen.getByRole("button", { name: "Delete area" }));
     await confirmDialog(user);

@@ -59,7 +59,7 @@ test("care form cancellation keeps drafts until explicit discard", async ({ page
   await openWorkspace(page);
   await page.getByRole("button", { name: "Load demo garden" }).click();
   await expect(page.getByText("All changes saved", { exact: true })).toBeVisible();
-  await page.goto("/gardens/demo-garden/care?view=tasks");
+  await page.goto("/care?view=tasks&location=demo-garden");
   await page.getByRole("button", { name: "Add task", exact: true }).click();
   await page.getByLabel("Note (optional)").fill("Keep this draft");
   await page.getByRole("button", { name: "Cancel", exact: true }).click();

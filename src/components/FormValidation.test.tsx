@@ -51,7 +51,7 @@ describe("local form validation", () => {
   });
 
   it("validates task date and whole-day interval without clearing the note", async () => {
-    localRoute("/gardens/demo-garden/care");
+    localRoute("/care?location=demo-garden");
     const user = userEvent.setup();
     await user.click(await screen.findByRole("button", { name: "Add task" }));
     fireEvent.change(screen.getByLabelText("Due date"), { target: { value: "" } });
@@ -64,7 +64,7 @@ describe("local form validation", () => {
   });
 
   it("rejects zero fertilizer amount and accepts a positive amount smaller than 0.01", async () => {
-    localRoute("/gardens/demo-garden/care?view=history");
+    localRoute("/care?view=history&location=demo-garden");
     const user = userEvent.setup();
     await user.click(await screen.findByRole("button", { name: "Add care event" }));
     await user.selectOptions(screen.getByLabelText("Care type"), "fertilizing");

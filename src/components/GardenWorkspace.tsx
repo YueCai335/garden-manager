@@ -12,7 +12,7 @@ import { useWorkspace, useWorkspaceDraft, useUnsavedDraft } from "@/components/w
 import { WorkspaceHome, WorkspaceHomeLoading } from "@/components/workspace/WorkspaceHome";
 import { ServerWorkspaceUnavailable } from "@/components/workspace/ServerWorkspaceUnavailable";
 import homeStyles from "@/components/workspace/WorkspaceHome.module.css";
-import { gardenPath, areaPath, areaEditPath, careView, workspaceHomePath, type WorkspaceRoute } from "@/lib/workspaceRoutes";
+import { gardenPath, areaPath, areaEditPath, careLocationPath, careView, seasonGardenPath, workspaceHomePath, type WorkspaceRoute } from "@/lib/workspaceRoutes";
 
 import { PlantingAreaInspector } from "@/components/PlantingAreaInspector";
 import { areaKindDefaults, defaultAreaName, findFreeAreaSpot, resizeLayout, type AreaSpot } from "@/lib/areaPlacement";
@@ -68,7 +68,7 @@ import { SetupProgress, SetupReady, SetupStepPanel } from "./editor/SetupProgres
 import setupStyles from "./editor/Setup.module.css";
 import { useGuidedSetup } from "@/hooks/useGuidedSetup";
 import { advanceSetup, gardenSizePresets, goToStep, minimumGardenSize, setupSummary, startSetup, type SetupStep } from "@/lib/guidedSetup";
-import { updateCareOwner, type CareOwner } from "@/lib/careViews";
+import { updateCareOwner, workspaceCareGarden, type CareOwner } from "@/lib/careViews";
 import editorStyles from "./editor/Editor.module.css";
 
 export { SERVER_WORKSPACE_STORAGE_KEY };
@@ -87,7 +87,6 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
     name: ({ home: "home", new: "gardenSetup", plan: "management", care: "careLog", season: "seasonPlanner", notes: "aiGardenNote", guide: "plantKnowledge", doctor: "plantHealth" } as const)[route.module],
     view: careView(search.get("view")),
   };
-  const careGardenId = route.module === "care" ? route.gardenId ?? "all-gardens" : undefined;
   const navigate = (href: string, replace = false) => {
     if (typeof window !== "undefined" && `${window.location.pathname}${window.location.search}` === href) return;
     if (replace) router.replace(href); else router.push(href);
@@ -102,8 +101,8 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
   useEffect(() => {
     if (route.module !== "care" || !search.has("view") || ["tasks", "history"].includes(search.get("view") ?? "")) return;
     const query = new URLSearchParams(search.toString()); query.set("view", "tasks");
-    router.replace(`${route.gardenId ? gardenPath(route.gardenId, "care") : "/care"}?${query}`);
-  }, [route.module, route.gardenId, router, search]);
+    router.replace(`/care?${query}`);
+  }, [route.module, router, search]);
   const [newGardenName, setNewGardenName] = useWorkspaceDraft("setup:name", "");
   const [pendingConfirmation, setPendingConfirmation] = useState<{
     message: string;
@@ -122,18 +121,8 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
   const garden = workspace?.gardens.find(
     (candidate) => candidate.id === route.gardenId,
   );
-  const careGarden = careGardenId === "all-gardens" && workspace
-    ? {
-        id: "all-gardens",
-        name: "All gardens",
-        plan: { widthMeters: 1, depthMeters: 1 },
-        growingAreas: [],
-        plantings: [],
-        careEvents: workspace.careEvents,
-        careTasks: workspace.careTasks,
-        healthRecords: [],
-      }
-    : garden;
+  // Care is one L1 module across every location; ?location= filters it (ADR-0073).
+  const careGarden = route.module === "care" && workspace ? workspaceCareGarden(workspace) : undefined;
   const editingArea = garden?.growingAreas.find(
     (area) => area.id === editingLayoutId,
   );
@@ -540,7 +529,7 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
         <p>Open a planting area on the plan, choose a plant, then click inside the area to place it. Fill places a whole row at the plant&apos;s spacing.</p>
       </SetupStepPanel>
       : <SetupReady gardenId={garden.id} gardenName={garden.name} summary={summary}
-        careHref={`${gardenPath(garden.id, "care")}?view=history`} seasonHref={gardenPath(garden.id, "season")}
+        careHref={careLocationPath(garden.id, "history")} seasonHref={seasonGardenPath(garden.id)}
         onLeave={() => setSetup(undefined)} onFinish={finishSetup} />;
     return <><SetupProgress setup={guide} onStep={(step) => changeSetupStep(step)} />{panel}</>;
   })() : undefined;
@@ -628,8 +617,7 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
 
   /** Apply an edit to the care records the Care screen is showing. */
   const updateCareRecords = (update: (records: CareRecords) => CareRecords, owner?: CareOwner) => {
-    const target: CareOwner = owner ?? (careGardenId === "all-gardens" ? { ownerScope: "workspace" } : { ownerScope: "garden", gardenId: careGardenId! });
-    setWorkspace((current) => current ? updateCareOwner(current, target, update) : current);
+    setWorkspace((current) => current ? updateCareOwner(current, owner ?? { ownerScope: "workspace" }, update) : current);
   };
 
   const saveHealthRecord = (gardenId: string, record: HealthRecord) => {
@@ -689,9 +677,10 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
           />
         ) : page.name === "seasonPlanner" ? (
           <SeasonPlanner
-            gardenId={route.gardenId}
             notice={message}
-            gardens={route.gardenId && garden ? [garden] : workspace?.gardens ?? []}
+            gardens={workspace?.gardens ?? []}
+            gardenFilter={search.get("garden") ?? "all"}
+            onGardenFilterChange={(id) => navigate(id === "all" ? "/season" : seasonGardenPath(id))}
             isSynced={isSynced}
             onConfirmAllocation={confirmSeasonAllocation}
             onRemovePlan={removeSeasonPlanPlant}
@@ -725,19 +714,17 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
           <section className="operations-content">
 
             <CareWorkspace
-              key={careGardenId}
               garden={careGarden}
-              gardens={!route.gardenId ? workspace?.gardens : undefined}
-              locationFilter={!route.gardenId ? search.get("location") ?? "all" : undefined}
+              gardens={workspace?.gardens}
+              locationFilter={search.get("location") ?? "all"}
               onLocationChange={(location) => navigate(`/care?${new URLSearchParams({ view: page.view, location })}`)}
-              sharedRecords={route.gardenId && workspace ? { careEvents: workspace.careEvents, careTasks: workspace.careTasks } : undefined}
               initialView={page.view}
-              viewHref={route.gardenId ? gardenPath(route.gardenId, "care") : "/care"}
+              viewHref="/care"
               onMessage={setMessage}
               onUpdateRecords={updateCareRecords}
             />
             <Status message={message} />
-            {!route.gardenId && workspace && <details><summary>Open a garden Care page</summary><CareHub gardens={workspace.gardens} workspace={workspace} /></details>}
+            {workspace && <details><summary>Care by location</summary><CareHub gardens={workspace.gardens} workspace={workspace} /></details>}
           </section>
         ) : garden ? (
           <section className="operations-content management-content">
@@ -978,7 +965,7 @@ function CareHub({
                 <strong>{openTasks} open {openTasks === 1 ? "task" : "tasks"}</strong>
                 <span>{recentEvents} completed care {recentEvents === 1 ? "record" : "records"}</span>
               </p>
-              <Link className="secondary-button" href={gardenPath(candidate.id, "care")}>Open care</Link>
+              <Link className="secondary-button" href={`${careLocationPath(candidate.id, "tasks")}#care-workspace-heading`}>Open care</Link>
             </article>
           );
         })}
