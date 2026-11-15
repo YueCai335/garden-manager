@@ -25,3 +25,6 @@ next-env.d.ts
 
 # File locks left by evaluation runs
 backend/evaluation/**/*.lock
+
+# Full-resolution source photos (credits tracked in design/source-photos/CREDITS.md)
+design/source-photos/*.jpg
