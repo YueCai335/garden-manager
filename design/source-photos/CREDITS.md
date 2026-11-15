@@ -16,5 +16,8 @@ not required.
 | Alternate: fiddle-leaf fig veins | `pexels-surya-prakash-1892195-8437290.jpg` | 2340 × 4160 | Surya Prakash | https://www.pexels.com/photo/8437290/ |
 | Unused candidate: leaf veins | `pexels-kelly-2563471.jpg` | 3840 × 5760 | Kelly | https://www.pexels.com/photo/2563471/ |
 
-Before shipping, export each used photo to a web size (about 2400 px wide,
-WebP) and place the export where the app serves static files.
+`node scripts/export-landing-assets.mjs` exports the hero and footer photos
+to `public/landing/` (2000 px wide, grayscale WebP) and renders the still
+fallbacks and the Open Graph image from them with the landing shader. The app
+header texture `public/textures/leaf-ridges-gray.webp` is a 2400 × 480 band
+cropped from the hero photo (phase S2).

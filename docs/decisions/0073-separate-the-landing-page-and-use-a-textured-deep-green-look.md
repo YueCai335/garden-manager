@@ -1,6 +1,6 @@
 # ADR-0073: Separate the Landing Page from the App and Use a Textured Deep-Green Look
 
-- Status: Accepted on 2026-11-14; S1 to S5 implemented (S4 and S5 on 2026-11-15), S6 and S7 pending. The form of the landing showcases (S6b) is undecided until the app is final.
+- Status: Accepted on 2026-11-14; S1 to S6 implemented (S4 to S6 on 2026-11-15), S7 pending. The form of the landing showcases (S6b) is undecided until the app is final.
 - Date: 2026-11-14
 - Supersedes in part, as each phase lands:
   - [ADR-0051](0051-prioritize-daily-garden-work-on-the-dashboard.md): the dashboard card groups.
@@ -135,8 +135,11 @@ footer.
 - **Fallbacks.** Without WebGL2, or when the user prefers reduced motion, the
   hero and footer show a pre-rendered still of the same grade. Animation
   pauses when its band is off screen.
-- **Assets.** The photos ship as web exports of about 2400 px wide in WebP. The
-  originals stay out of Git, and `CREDITS.md` records each one.
+- **Assets.** The photos ship as grayscale WebP exports 2000 px wide (about
+  1.1 MB together; 2400 px would be about 1.7 MB). The originals stay out of
+  Git, and `CREDITS.md` records each one. `scripts/export-landing-assets.mjs`
+  makes the exports and renders the stills with the same shader code the page
+  runs.
 
 ### 4. App look
 

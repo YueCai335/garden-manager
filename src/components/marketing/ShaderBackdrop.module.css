@@ -1,0 +1,37 @@
+/* A landing band's textured background (ADR-0073, phase S6). The parent band is positioned and clips it. */
+.root {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  background: #14281d;
+  pointer-events: none;
+}
+.canvas,
+.still,
+.tint,
+.nodes {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.canvas { display: block; opacity: 0; transition: opacity 0.9s ease; }
+.root[data-render="webgl"] .canvas { opacity: 1; }
+.root[data-render="still"] .canvas { display: none; }
+/* The still is only requested in still mode, so the WebGL path never downloads it. */
+.still { background: center / cover no-repeat; opacity: 0; }
+.root[data-render="still"] .still { background-image: var(--still); opacity: 1; }
+.tint {
+  background:
+    linear-gradient(90deg, rgb(6 14 10 / 55%), rgb(6 14 10 / 0%) 55%),
+    linear-gradient(180deg, rgb(6 14 10 / 0%) 40%, rgb(6 14 10 / 45%));
+}
+.ring { fill: none; stroke: #d6ff5c; stroke-width: 1; }
+.dot { fill: #d6ff5c; }
+
+/* Reduced motion shows the still even before the script runs. */
+@media (prefers-reduced-motion: reduce) {
+  .canvas { display: none; }
+  .still { background-image: var(--still); opacity: 1; }
+}
