@@ -130,6 +130,38 @@
   - `WorkspaceRouting.test.tsx` 和 `GardenWorkspace.test.tsx` 中关于子标签的断言更新。
   - `workspace-routes.spec.ts` 增加面包屑和 “+ Note” 的旅程。
 
+> 实施说明（2026-11-14 完成）：
+> - 纹理：从香蕉叶原图（Pexels 12321610）裁出 35% 高度附近的一条横带，用 macOS 自带的 `sips` 转成灰度，再用 `cwebp` 输出 2400 × 480 的 WebP，放在 `public/textures/leaf-ridges-gray.webp`（约 157 KB）。没有新增 npm 依赖。
+> - 页头（`AppShell`）：
+>   - 深绿底 `#264A33`，纹理叠在 `::before` 上（overlay 混合，75%，对比度 1.7），左侧渐变在 `::after` 上。
+>   - 和原型第 8 版并排截图对照过，读起来是绿色，不是黑色。e2e 也检查页头的背景色。
+>   - 导航分两组：Gardens、Care、Next Season ｜ Plant Doctor、Plant Guide。当前模块是白色胶囊。在花园页上，Gardens 用 `aria-current="true"` 标出所在的模块。
+>   - 右侧是 “+ Note” 和保存状态。
+> - “+ Note”：
+>   - 走原来的 `openNote`，所以和 Gardens 页里的 Note 入口是同一个会话。
+>   - 在花园页打开时，会预选这个花园。
+>   - Escape 关闭后，焦点回到按钮。
+>   - 手机上它在 Menu 外面。Menu 和 “+ Note” 的视觉顺序和 Tab 顺序一致。
+> - 页面层级：
+>   - 删除了花园页的 Plan/Care/Next Season 子标签。
+>   - L2、L3 页面（花园、种植区、新建花园，以及 S3 之前还在的花园级 Care/Season）显示 “← All gardens” 胶囊按钮、面包屑（Gardens › 花园 › 种植区）和花园下拉框。
+>   - L1 页面不显示这些，回到 Gardens 用页头。
+> - 中等宽度：1024 到 1279px 之间，页头用紧凑的间距和胶囊（顺序和内容不变），1024px 时 “Plant Guide” 不再压到 “+ Note”。Menu 断点仍是 1023px。`workspace-routes.spec.ts` 在 1024、1100、1279、1440px 检查页头每一项的边界框不和相邻项重叠、不换行、不被裁掉；去掉这段样式时，这条检查会报出原来的重叠。
+> - 修了一个旧问题：手机菜单打开时按 Escape，以前会同时让画布退出放大的种植区。现在菜单先处理 Escape，并标记为已处理。
+> - 其他：
+>   - `Button` 和 `ButtonLink` 增加 `shape="pill"`，是新外观的胶囊按钮。
+>   - `PageHeader` 标题用内容绿 `#173322`。
+>   - `tokens.css` 只新增变量（app bar、无色相中性色、内容绿、`--radius-pill`、`--font-body`），旧变量不动，留给 S5。
+>   - 根布局用 `next/font/google` 引入 Instrument Sans。字体在构建时下载并由本站提供，运行时不请求 Google。
+>   - “Overview” 改名为 “Gardens”（链接、页面标题、`<title>`、测试）。
+> - 测试：
+>   - 单元测试改了子标签、“Back to gardens” 和 “Overview” 的断言。
+>   - `WorkspaceRouting.test.tsx` 新增两条：面包屑和层级、从 `/care` 打开 “+ Note” 后焦点返回。
+>   - `workspace-routes.spec.ts` 新增 1440px 的旅程：面包屑、键盘走完页头、“+ Note” 焦点返回、页头颜色。手机那条旅程改为从 `/guide` 用 “+ Note” 打开同一个会话。
+> - 已知限制：
+>   - 内容区还是旧配色，S4、S5 处理。
+>   - 花园级的 Care/Season 地址在 S3 之前仍可访问，面包屑显示为 “Gardens › 花园 › Care”。
+
 ### S3 跨层链接
 
 - **范围**：两个旧的花园级路由、`/season` 的花园筛选、引导设置 Ready 的 “Log the first watering” 和 “Plan next season”、花园卡片上的入口。

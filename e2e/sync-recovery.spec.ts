@@ -61,7 +61,7 @@ test("a failed season save can be retried from another module without creating a
   await area.getByLabel("Plant type").fill("Kale");
   await area.getByRole("button", { name: `Add to ${nextYear} plan` }).click();
   await expect(page.getByText("Changes not synced", { exact: true })).toBeVisible();
-  await page.getByRole("link", { name: "Overview", exact: true }).click();
+  await page.getByRole("navigation", { name: "Workspace sections" }).getByRole("link", { name: "Gardens", exact: true }).click();
   await expect(page.getByText("Changes not synced", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Retry", exact: true }).click();
   await expect(page.getByText("All changes saved", { exact: true })).toBeVisible();

@@ -123,7 +123,8 @@ for (const width of [1440, 390]) {
       await expect(page).toHaveURL(new RegExp(`${gardenBase}/season$`));
     }
     await expect(page.locator("#workspace-garden")).toHaveValue(gardenId);
-    await page.getByRole("navigation", { name: "Garden sections" }).getByRole("link", { name: "Garden Plan" }).click();
+    // The breadcrumb's garden link returns from this garden's care or season page to its plan.
+    await page.getByRole("navigation", { name: "Breadcrumb" }).getByRole("link", { name, exact: true }).click();
     await expect(page.getByRole("region", { name: "Garden properties" })).toContainText(`${name} · 8 × 5 m`);
     await expect(track).toHaveCount(0);
   });

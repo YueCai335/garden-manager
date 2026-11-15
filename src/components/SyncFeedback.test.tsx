@@ -40,7 +40,7 @@ describe("shared save feedback", () => {
   });
 
   it("keeps Retry as the only recovery action when the workspace service returns a server error", async () => {
-    const fetch = vi.fn(async () => response({}, 503));
+    const fetch = vi.fn(async (_url: string) => response({}, 503));
     vi.stubGlobal("fetch", fetch);
     localStorage.setItem(SERVER_WORKSPACE_STORAGE_KEY, "server-unavailable");
     localStorage.setItem(GARDEN_WORKSPACE_STORAGE_KEY, JSON.stringify(createDemoGardenWorkspace()));
@@ -50,7 +50,8 @@ describe("shared save feedback", () => {
     expect(screen.queryByRole("button", { name: /restore browser copy|start a new workspace/i })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Retry" }));
     await screen.findByRole("heading", { name: "Your workspace is unavailable" });
-    expect(fetch).toHaveBeenCalledTimes(2);
+    // The header's "+ Note" reads runtime settings once; only workspace requests count here.
+    expect(fetch.mock.calls.filter(([url]) => !url.endsWith("/runtime-config"))).toHaveLength(2);
     expect(localStorage.getItem(SERVER_WORKSPACE_STORAGE_KEY)).toBe("server-unavailable");
   });
 
@@ -106,7 +107,7 @@ describe("shared save feedback", () => {
     await user.click(within(area).getByRole("button", { name: /Add to .* plan/ }));
     expect(await screen.findByText("Changes not synced")).toBeInTheDocument();
     const firstId = puts[0].gardens[0].seasonPlans![0].plantings[0].id;
-    await user.click(screen.getByRole("link", { name: "Overview" }));
+    await user.click(within(screen.getByRole("navigation", { name: "Workspace sections" })).getByRole("link", { name: "Gardens" }));
     expect(screen.getByText("Changes not synced")).toBeInTheDocument();
     await user.dblClick(screen.getByRole("button", { name: "Retry" }));
     expect(screen.getByRole("button", { name: "Retry" })).toBeDisabled();

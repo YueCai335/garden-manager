@@ -76,14 +76,62 @@ describe("workspace routes and persistent provider", () => {
     const user = userEvent.setup();
     render(<GardenWorkspace />);
     await user.click(await screen.findByRole("link", { name: "Open Demo Garden" }));
-    await user.click(within(screen.getByRole("navigation", { name: "Garden sections" })).getByRole("link", { name: "Care" }));
+    const modules = () => within(screen.getByRole("navigation", { name: "Workspace sections" }));
+    await user.click(modules().getByRole("link", { name: "Care" }));
     expect(screen.getByRole("heading", { level: 1, name: "Care" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { level: 2, name: "Tasks" })).toBeInTheDocument();
-    await user.click(within(screen.getByRole("navigation", { name: "Garden sections" })).getByRole("link", { name: "Next Season" }));
+    await user.click(modules().getByRole("link", { name: "Next Season" }));
     expect(screen.getByRole("heading", { level: 1, name: `Next Season · ${new Date().getFullYear() + 1}` })).toBeInTheDocument();
-    await user.click(screen.getByRole("link", { name: "Overview" }));
+    await user.click(modules().getByRole("link", { name: "Gardens" }));
+    expect(screen.getByRole("heading", { level: 1, name: "Gardens" })).toBeInTheDocument();
     expect(fetch.mock.calls.filter(([url]) => url.endsWith("/workspaces/routing"))).toHaveLength(1);
     expect(fetch.mock.calls.filter(([, init]) => init?.method === "PUT")).toHaveLength(0);
+  });
+
+  it("shows the header modules once and the breadcrumb below them (ADR-0073)", async () => {
+    const workspace = createDemoGardenWorkspace();
+    window.localStorage.setItem(GARDEN_WORKSPACE_STORAGE_KEY, JSON.stringify(workspace));
+    const user = userEvent.setup();
+    render(<GardenWorkspace />);
+    const modules = within(await screen.findByRole("navigation", { name: "Workspace sections" }));
+    expect(modules.getAllByRole("link").map((link) => link.textContent)).toEqual(["Gardens", "Care", "Next Season", "Plant Doctor", "Plant Guide"]);
+    expect(modules.getByRole("link", { name: "Gardens" })).toHaveAttribute("aria-current", "page");
+    // L1 pages have no breadcrumb or "All gardens".
+    expect(screen.queryByRole("navigation", { name: "Breadcrumb" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "All gardens" })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("link", { name: "Open Demo Garden" }));
+    const breadcrumb = () => within(screen.getByRole("navigation", { name: "Breadcrumb" }));
+    expect(breadcrumb().getByRole("link", { name: "Gardens" })).toHaveAttribute("href", "/gardens");
+    expect(breadcrumb().getByText("Demo Garden")).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: "All gardens" })).toHaveAttribute("href", "/gardens");
+    expect(modules.getByRole("link", { name: "Gardens" })).toHaveAttribute("aria-current", "true");
+    // A garden page has no second Care or Next Season.
+    expect(screen.queryByRole("navigation", { name: "Garden sections" })).not.toBeInTheDocument();
+    expect(screen.getAllByRole("link", { name: "Care" })).toHaveLength(1);
+    expect(screen.getAllByRole("link", { name: "Next Season" })).toHaveLength(1);
+
+    // L3: the zoomed area adds itself, and the garden becomes a link back to the whole plan.
+    act(() => testRouter.push(areaPath(workspace.selectedGardenId, "demo-raised-bed")));
+    expect(breadcrumb().getByRole("link", { name: "Demo Garden" })).toHaveAttribute("href", gardenPath(workspace.selectedGardenId));
+    expect(breadcrumb().getByText("Sample raised bed")).toHaveAttribute("aria-current", "page");
+
+    await user.click(screen.getByRole("link", { name: "All gardens" }));
+    expect(location.pathname).toBe("/gardens");
+  });
+
+  it("opens the Garden Note from the header on any page and returns focus on Escape", async () => {
+    seedLocal();
+    resetTestRouter("/care");
+    const user = userEvent.setup();
+    render(<GardenWorkspace />);
+    const note = await screen.findByRole("button", { name: "Note" });
+    expect(note).toHaveAttribute("aria-haspopup", "dialog");
+    await user.click(note);
+    expect(await screen.findByRole("heading", { name: "Garden Note", level: 2 })).toHaveFocus();
+    expect(note).toHaveAttribute("aria-expanded", "true");
+    fireEvent(screen.getByRole("dialog", { hidden: true }), new Event("cancel", { cancelable: true }));
+    await waitFor(() => expect(screen.queryByRole("heading", { name: "Garden Note", level: 2 })).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole("button", { name: "Note" })).toHaveFocus());
   });
 
   it("uses care view query parameters and retains a care form across route unmounts", async () => {

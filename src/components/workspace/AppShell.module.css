@@ -1,64 +1,138 @@
-.header { border-bottom: 1px solid var(--color-line); background: var(--color-surface); }
+/* The app bar (ADR-0073): deep green with a grayscale banana-leaf ridge texture in overlay blend.
+   It must read clearly green, never black, so the texture only modulates the green. */
+.header { position: relative; isolation: isolate; background: var(--color-app-bar); color: var(--color-app-bar-text); }
+.header::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: url("/textures/leaf-ridges-gray.webp") center 40% / cover no-repeat;
+  filter: contrast(1.7) brightness(1.05);
+  mix-blend-mode: overlay;
+  opacity: 0.75;
+  pointer-events: none;
+}
+.header::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(90deg, rgb(5 13 8 / 18%), rgb(5 13 8 / 0%) 50%);
+  pointer-events: none;
+}
+.header :focus-visible { outline: 2px solid var(--color-app-bar-text); outline-offset: 2px; }
 .headerInner {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  grid-template-areas: "brand nav sync";
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  grid-template-areas: "brand nav note sync";
   align-items: center;
-  gap: 0 16px;
+  gap: 0 12px;
   width: min(var(--content-width), calc(100% - var(--workspace-gutters)));
   min-height: 68px;
+  padding-block: 12px;
   margin: auto;
 }
-.brand { grid-area: brand; display: flex; align-items: center; min-height: 44px; font-weight: 700; line-height: 1.15; color: var(--color-text); text-decoration: none; }
-.navigation { grid-area: nav; display: flex; gap: 4px; }
-.navigation a, .gardenNav a {
+.brand { grid-area: brand; display: flex; align-items: center; gap: 10px; min-height: 44px; margin-right: 18px; color: inherit; font-size: 18px; font-weight: 600; line-height: 1.15; text-decoration: none; white-space: nowrap; }
+.brand svg { flex: none; width: 24px; height: 24px; }
+.navigation { grid-area: nav; display: flex; align-items: center; gap: 4px; }
+.navigation a {
   display: inline-flex;
   align-items: center;
-  min-height: 44px;
-  padding: 8px 11px;
-  border-radius: var(--radius-control);
-  color: var(--color-text);
-  font-size: 14px;
+  min-height: 40px;
+  padding: 8px 16px;
+  border-radius: var(--radius-pill);
+  color: var(--color-app-bar-text);
+  font-size: 15.5px;
+  font-weight: 500;
+  line-height: 1.2;
   text-decoration: none;
+  text-shadow: 0 1px 8px rgb(0 0 0 / 35%);
   white-space: nowrap;
+  opacity: 0.92;
   transition: background-color 140ms;
 }
-.navigation a:hover, .gardenNav a:hover { background: var(--color-soft); }
-.navigation a:active, .gardenNav a:active { box-shadow: inset 0 0 0 1px var(--color-brand); }
-.navigation a[aria-current], .gardenNav a[aria-current] { color: var(--color-brand-hover); font-weight: 650; background: var(--color-soft); }
+.navigation a:hover { background: rgb(255 255 255 / 12%); opacity: 1; }
+.navigation a[aria-current] { background: var(--color-app-bar-text); color: var(--color-app-bar-active-text); font-weight: 600; text-shadow: none; opacity: 1; }
+.divider { flex: none; width: 1px; height: 18px; margin: 0 8px; background: rgb(255 255 255 / 25%); }
+.note {
+  grid-area: note;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 8px 16px;
+  border: 1px solid rgb(255 255 255 / 28%);
+  border-radius: var(--radius-pill);
+  background: rgb(255 255 255 / 10%);
+  color: var(--color-app-bar-text);
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 140ms;
+}
+.note:hover { background: rgb(255 255 255 / 18%); }
+.note > span { white-space: pre; }
 .headerInner .toggle { grid-area: toggle; display: none; }
-.sync { grid-area: sync; font-size: 13px; color: var(--color-muted); white-space: nowrap; }
+.sync { grid-area: sync; font-size: 13px; color: rgb(255 255 255 / 85%); white-space: nowrap; }
 .syncDetails { position: relative; }
 .syncDetails summary { display: flex; align-items: center; min-height: 44px; gap: 5px; cursor: pointer; }
 .syncDetails summary::after { content: "⌄"; }
 .syncDetails summary::-webkit-details-marker { display: none; }
-.syncDetails p { position: absolute; z-index: 5; right: 0; width: 230px; margin: 0; padding: 12px; border: 1px solid var(--color-line); border-radius: var(--radius-card); background: var(--color-surface); box-shadow: 0 4px 16px #22312920; white-space: normal; }
+.syncDetails p { position: absolute; z-index: 5; right: 0; width: 230px; margin: 0; padding: 12px; border: 1px solid var(--color-line); border-radius: var(--radius-card); background: var(--color-surface); box-shadow: 0 4px 16px #22312920; color: var(--color-text); white-space: normal; }
 .recovery { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin: 0 0 12px; padding: 10px 14px; border-radius: var(--radius-control); background: var(--color-warning-surface); color: var(--color-warning); font-size: 14px; overflow-wrap: anywhere; }
 .recovery p { margin: 2px 0 0; }
 .recovery > div:first-child { flex: 1 1 320px; min-width: 0; }
 .recoveryActions { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* Below the header modules: "All gardens", the breadcrumb, and the garden switcher. */
 .context { width: min(var(--content-width), calc(100% - var(--workspace-gutters))); padding: 24px 0 0; margin: auto; overflow-wrap: anywhere; }
 .context h1:focus { outline: none; }
-.context select { max-width: 100%; min-height: 44px; }
-.gardenNav { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 12px; }
+.crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-bottom: 12px; }
+.allGardens { gap: 6px; padding: 6px 16px 6px 12px; }
+.breadcrumb ol { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin: 0; padding: 0; list-style: none; color: var(--color-ink-muted); }
+.breadcrumb li + li::before { content: "›"; margin-right: 4px; color: var(--color-ink-subtle); }
+.breadcrumb a { color: var(--color-ink-muted); text-decoration: none; }
+.breadcrumb a:hover { color: var(--color-ink); text-decoration: underline; }
+.breadcrumb [aria-current] { color: var(--color-ink); font-weight: 600; }
+.switcher { display: flex; align-items: center; gap: 8px; margin-left: auto; color: var(--color-ink-muted); font-size: 14px; }
+.switcher select { max-width: min(260px, 60vw); min-height: 40px; }
 .skip { position: absolute; top: -100px; left: 16px; z-index: 20; background: var(--color-surface); padding: 12px; }
 .skip:focus { top: 8px; }
 
+/* Just above the Menu breakpoint the full row must still fit: tighter gaps and pills, same order. */
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .headerInner { gap: 0 8px; }
+  .brand { gap: 8px; margin-right: 4px; font-size: 17px; }
+  .navigation { gap: 2px; }
+  .navigation a { padding: 8px 11px; font-size: 15px; }
+  .divider { margin: 0 4px; }
+  .note { padding: 8px 13px; }
+}
 @media (max-width: 1023px) {
   .headerInner {
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas: "brand toggle" "nav nav" "sync sync";
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    /* Visual order follows the Tab order: Menu, then "+ Note". */
+    grid-template-areas: "brand toggle note" "nav nav nav" "sync sync sync";
     gap: 0 8px;
-    padding-top: 8px;
+    padding-block: 8px;
   }
-  .headerInner .toggle { display: inline-flex; padding-inline: 10px; font-size: 14px; }
+  .brand { margin-right: 0; }
+  /* The menu toggle sits on the green bar, so it uses the bar's outline style instead of the page's secondary button. */
+  .headerInner .toggle { display: inline-flex; min-height: 44px; padding-inline: 14px; border-color: rgb(255 255 255 / 28%); border-radius: var(--radius-pill); background: transparent; color: var(--color-app-bar-text); font-size: 15px; font-weight: 500; }
+  .headerInner .toggle:hover:not(:disabled) { border-color: rgb(255 255 255 / 45%); background: rgb(255 255 255 / 12%); }
+  .note { min-height: 44px; }
   .navigation { display: none; flex-wrap: wrap; padding-top: 8px; }
   .navigation.open { display: flex; }
+  .navigation a { min-height: 44px; }
   .sync { min-height: 30px; display: flex; align-items: center; }
   .syncDetails summary { min-height: 30px; }
   .syncDetails p { right: auto; left: 0; }
 }
 @media (max-width: 767px) {
-  .navigation.open { flex-direction: column; }
+  .navigation.open { flex-direction: column; align-items: stretch; }
+  .navigation.open .divider { width: auto; height: 1px; margin: 4px 16px; }
   .context { padding-top: 16px; }
+  .switcher { margin-left: 0; }
 }

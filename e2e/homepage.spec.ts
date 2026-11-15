@@ -61,7 +61,7 @@ for (const [width, height, columns] of [[320, 844, 1], [390, 844, 2], [768, 1024
       const menu = page.getByRole("button", { name: "Menu", exact: true });
       await menu.focus();
       await page.keyboard.press("Enter");
-      await expect(page.getByRole("link", { name: "Overview", exact: true })).toBeFocused();
+      await expect(page.getByRole("link", { name: "Gardens", exact: true })).toBeFocused();
       await page.keyboard.press("Escape");
       await expect(menu).toBeFocused();
       await expect(menu).toHaveAttribute("aria-expanded", "false");
@@ -141,10 +141,10 @@ test("note dialog generates only on request and reopens the same draft", async (
   await resume.click();
   await expect(page.getByRole("heading", { name: "AI extracted draft" })).toBeVisible();
   await dialog.getByRole("button", { name: "Close", exact: true }).click();
-  // Notes start only from Overview (ADR-0069 amendment); the draft survives a trip to another page.
+  // The draft survives a trip to another page.
   await page.getByRole("link", { name: "Plant Guide", exact: true }).click();
   await expect(page).toHaveURL("/guide");
-  await page.getByRole("link", { name: "Back to gardens", exact: true }).click();
+  await page.getByRole("navigation", { name: "Workspace sections" }).getByRole("link", { name: "Gardens", exact: true }).click();
   await expect(page).toHaveURL(workspaceHome);
   await page.getByRole("button", { name: "Continue note · 1 draft" }).click();
   await expect(dialog.getByRole("heading", { name: "AI extracted draft" })).toBeVisible();

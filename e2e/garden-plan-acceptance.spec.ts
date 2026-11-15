@@ -61,7 +61,7 @@ for (const viewport of viewports) {
       await expect(surface).not.toHaveAttribute("data-focused-area", /.+/);
 
       // A new garden starts the guide on the same canvas.
-      await page.getByRole("link", { name: "Back to gardens" }).click();
+      await page.getByRole("link", { name: "All gardens", exact: true }).click();
       await page.getByRole("link", { name: "Add garden" }).click();
       await page.getByLabel("Garden name").fill("Acceptance plot");
       await page.getByRole("button", { name: "Continue setup" }).click();

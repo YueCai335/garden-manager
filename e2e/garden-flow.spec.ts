@@ -81,7 +81,7 @@ test("create a garden, save an edit, add and arrange an area, plan next season, 
   }).toEqual({ kind: "raised-bed", placement: { ...moved, rotationDegrees: 0 }, size: [1.5, 2.6] });
 
   // Plan a plant for next season in the raised bed.
-  await page.getByRole("link", { name: "Back to gardens" }).click();
+  await page.getByRole("link", { name: "All gardens", exact: true }).click();
   await expect(page).toHaveURL(workspaceHome);
   await page.getByRole("navigation", { name: "Workspace sections" }).getByRole("link", { name: "Next Season", exact: true }).click();
   await expect(page.getByRole("heading", { name: /Next Season ·/ })).toBeVisible();

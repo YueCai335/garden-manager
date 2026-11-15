@@ -21,6 +21,21 @@
   --space-6: 24px; --space-8: 32px; --space-12: 48px;
   --content-width: 1440px;
   --workspace-gutters: 32px;
+  /* ADR-0073 app look. S2 uses these in the header and page layers; S5 moves the older tokens onto them. */
+  --color-app-bar: #264a33;
+  --color-app-bar-text: #ffffff;
+  --color-app-bar-active-text: #0b1a11;
+  --color-neutral-page: #f4f4f3;
+  --color-neutral-surface: #ffffff;
+  --color-neutral-line: #e3e3e1;
+  --color-ink: #18181a;
+  --color-ink-muted: #5f5f63;
+  --color-ink-subtle: #8d8d91;
+  --color-content-green: #1f4230;
+  --color-content-green-hover: #285239;
+  --color-heading: #173322;
+  --radius-pill: 999px;
+  --font-body: var(--font-instrument-sans), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   /* Compatibility for modules migrated in T05–T07. */
   --ops-ink: var(--color-text); --ops-ink-soft: var(--color-muted);
   --ops-green: var(--color-brand); --ops-green-dark: var(--color-brand-hover);

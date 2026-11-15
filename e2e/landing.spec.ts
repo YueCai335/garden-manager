@@ -17,8 +17,8 @@ test("the landing page loads without the API and every entry point opens the app
 
   await page.getByRole("banner").getByRole("link", { name: "Open app" }).click();
   await expect(page).toHaveURL(workspaceHome);
-  // The app frame: its Overview heading shows at every width (the phone width folds the navigation into Menu).
-  await expect(page.getByRole("heading", { name: "Overview", level: 1 })).toBeVisible();
+  // The app frame: its Gardens heading shows at every width (the phone width folds the navigation into Menu).
+  await expect(page.getByRole("heading", { name: "Gardens", level: 1 })).toBeVisible();
 
   await page.goto("/");
   await page.getByRole("link", { name: "Open the app" }).click();

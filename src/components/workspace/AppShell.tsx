@@ -1,18 +1,23 @@
 "use client";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { createContext, Fragment, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { useWorkspace } from "./WorkspaceProvider";
 import { SyncStatus } from "./SyncStatus";
 import { gardenPath, routeFromPath, workspaceHomePath } from "@/lib/workspaceRoutes";
 import { nextSeasonYear } from "@/lib/seasonAllocation";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { Button } from "@/components/ui/Button";
+import { Button, ButtonLink } from "@/components/ui/Button";
 import { GardenNoteDialog } from "@/components/notes/GardenNoteDialog";
+import { useRuntimeConfig } from "@/components/PortfolioFeaturePreview";
 import { OverviewGardenNote } from "./OverviewGardenNote";
 import styles from "./AppShell.module.css";
 
-const links = [[workspaceHomePath, "Overview"], ["/care", "Care"], ["/season", "Next Season"], ["/doctor", "Plant Doctor"], ["/guide", "Plant Guide"]];
+// The L1 modules (ADR-0073): the garden modules, a divider, then the AI helpers.
+const moduleGroups = [
+  [[workspaceHomePath, "Gardens"], ["/care", "Care"], ["/season", "Next Season"]],
+  [["/doctor", "Plant Doctor"], ["/guide", "Plant Guide"]],
+] as const;
 const OverviewNoteEntryContext = createContext<ReactNode>(null);
 type OpenGardenNote = (opener: HTMLButtonElement | null, options: { batchAvailable: boolean; gardenId?: string }) => void;
 const OpenGardenNoteContext = createContext<OpenGardenNote | null>(null);
@@ -21,9 +26,16 @@ export function OverviewNoteEntry() {
   return useContext(OverviewNoteEntryContext);
 }
 
-/** Opens the Garden Note dialog, the same session as Overview's, from any page (the guided setup's Ready step). */
+/** Opens the Garden Note dialog, the same session as the header's "+ Note", from any page (the guided setup's Ready step). */
 export function useOpenGardenNote() {
   return useContext(OpenGardenNoteContext);
+}
+
+/** The header's current module: a module's own page is the page; a garden below Gardens marks Gardens as its section. */
+function currentFor(href: string, pathname: string) {
+  if (pathname === href) return "page" as const;
+  if (href === workspaceHomePath && pathname.startsWith(`${workspaceHomePath}/`)) return "true" as const;
+  return undefined;
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -31,22 +43,32 @@ export function AppShell({ children }: { children: ReactNode }) {
   const search = useSearchParams();
   const router = useRouter();
   const { workspace, isLoaded } = useWorkspace();
+  const { config } = useRuntimeConfig();
   const route = routeFromPath(pathname);
   const garden = workspace?.gardens.find((item) => item.id === route.gardenId);
+  const area = route.module === "plan" ? garden?.growingAreas.find((item) => item.id === search.get("area")) : undefined;
   const [menuOpen, setMenuOpen] = useState(false);
   const [noteMode, setNoteMode] = useState<"batch" | "default" | null>(null);
   const [noteGardenId, setNoteGardenId] = useState<string>();
   const noteButton = useRef<HTMLButtonElement>(null);
+  const headerNoteButton = useRef<HTMLButtonElement>(null);
   const noteOpener = useRef<HTMLButtonElement>(null);
   const menuButton = useRef<HTMLButtonElement>(null);
   const navigation = useRef<HTMLElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   const title = {
-    home: "Overview", new: "Add garden", plan: garden?.name ?? "Garden Plan", care: "Care",
+    home: "Gardens", new: "Add garden", plan: garden?.name ?? "Garden Plan", care: "Care",
     season: `Next Season · ${nextSeasonYear()}`, notes: "AI Garden Note", guide: "Plant Guide", doctor: "Plant Doctor",
   }[route.module];
   const description = route.module === "doctor" ? "Record what you observe and review an assessment before saving it to health history."
     : route.module === "guide" ? "Ask a gardening question and see the reviewed sources behind the answer." : undefined;
+  // L2 and L3 pages sit below the header modules: one garden, one area, or a new garden.
+  const crumbs: { label: string; href?: string }[] | null = route.module === "new" ? [{ label: "Add garden" }]
+    : route.gardenId === undefined ? null : [
+      ...(garden ? [{ label: garden.name, href: route.module === "plan" && !area ? undefined : gardenPath(garden.id) }] : []),
+      ...(area ? [{ label: area.name }] : []),
+      ...(route.module === "care" ? [{ label: "Care" }] : route.module === "season" ? [{ label: "Next Season" }] : []),
+    ];
   useEffect(() => { if (isLoaded) heading.current?.focus(); }, [pathname, isLoaded]);
   useEffect(() => { if (menuOpen) navigation.current?.querySelector("a")?.focus(); }, [menuOpen]);
   // Moving to another page closes the dialog; the note session itself stays in the provider.
@@ -54,6 +76,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   useEffect(() => { if (notePath.current !== pathname) { notePath.current = pathname; setNoteMode(null); } }, [pathname]);
   const closeMenu = () => { setMenuOpen(false); if (menuOpen) menuButton.current?.focus(); };
   const showNote = noteMode !== null;
+  const batchAvailable = config?.careNoteBatchAvailable === true;
   const openNote: OpenGardenNote = (opener, { batchAvailable, gardenId }) => {
     noteOpener.current = opener;
     setMenuOpen(false);
@@ -65,28 +88,49 @@ export function AppShell({ children }: { children: ReactNode }) {
     <a className={styles.skip} href="#workspace-content">Skip to content</a>
     <header className={styles.header}>
       <div className={styles.headerInner}>
-        <Link className={styles.brand} href={workspaceHomePath} onClick={closeMenu}>Garden Manager</Link>
-        <nav ref={navigation} id="workspace-navigation" aria-label="Workspace sections" className={`${styles.navigation} ${menuOpen ? styles.open : ""}`} onKeyDown={(event) => { if (menuOpen && event.key === "Escape") closeMenu(); }}>
-          {links.map(([href, label]) => <Link key={href} href={href} aria-current={pathname === href ? "page" : undefined} onClick={closeMenu}>{label}</Link>)}
+        <Link className={styles.brand} href={workspaceHomePath} onClick={closeMenu}>
+          <svg viewBox="0 0 26 26" aria-hidden="true"><path d="M13 23C6 19 4 12 6 4c6 1 11 5 12 12 0 3-2 5-5 7Z" fill="none" stroke="currentColor" strokeWidth="1.6" /></svg>
+          Garden Manager
+        </Link>
+        <nav ref={navigation} id="workspace-navigation" aria-label="Workspace sections" className={`${styles.navigation} ${menuOpen ? styles.open : ""}`} onKeyDown={(event) => {
+          // The menu claims this Escape, so the plan's zoom does not also leave its area.
+          if (menuOpen && event.key === "Escape") { event.preventDefault(); closeMenu(); }
+        }}>
+          {moduleGroups.map((group, index) => <Fragment key={group[0][0]}>
+            {index > 0 && <span className={styles.divider} aria-hidden="true" />}
+            {group.map(([href, label]) => <Link key={href} href={href} aria-current={currentFor(href, pathname)} onClick={closeMenu}>{label}</Link>)}
+          </Fragment>)}
         </nav>
         <Button className={styles.toggle} ref={menuButton} aria-expanded={menuOpen} aria-controls="workspace-navigation" onClick={() => { if (menuOpen) closeMenu(); else setMenuOpen(true); }}>Menu</Button>
+        <button ref={headerNoteButton} type="button" className={styles.note} aria-haspopup="dialog" aria-expanded={showNote}
+          onClick={(event) => openNote(event.currentTarget, { batchAvailable, gardenId: garden?.id })}>
+          <span aria-hidden="true">+ </span>Note
+        </button>
         <SyncStatus />
       </div>
     </header>
     <main id="workspace-content">
       <div className={styles.context}>
-        {pathname !== workspaceHomePath && <Link href={workspaceHomePath}>Back to gardens</Link>}
-        <PageHeader title={title} description={description} headingRef={heading} />
-        {garden && <>
-          <label htmlFor="workspace-garden">Garden</label>{" "}
-          <select id="workspace-garden" value={garden.id} onChange={(event) => {
-            const next = gardenPath(event.target.value, route.module as "plan" | "care" | "season");
-            router.push(route.module === "care" && search.has("view") ? `${next}?view=${search.get("view") === "history" ? "history" : "tasks"}` : next);
-          }}>{workspace?.gardens.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select>
-          <nav className={styles.gardenNav} aria-label="Garden sections">
-            {([['plan', 'Garden Plan'], ['care', 'Care'], ['season', 'Next Season']] as const).map(([module, label]) => <Link key={module} href={gardenPath(garden.id, module)} aria-current={route.module === module ? "page" : undefined}>{label}</Link>)}
+        {crumbs && <div className={styles.crumbs}>
+          <ButtonLink href={workspaceHomePath} shape="pill" className={styles.allGardens}><span aria-hidden="true">←</span>All gardens</ButtonLink>
+          <nav aria-label="Breadcrumb" className={styles.breadcrumb}>
+            <ol>
+              <li><Link href={workspaceHomePath}>Gardens</Link></li>
+              {crumbs.map((crumb, index) => <li key={`${index}-${crumb.label}`}>
+                {crumb.href ? <Link href={crumb.href}>{crumb.label}</Link>
+                  : <span aria-current={index === crumbs.length - 1 ? "page" : undefined}>{crumb.label}</span>}
+              </li>)}
+            </ol>
           </nav>
-        </>}
+          {garden && <div className={styles.switcher}>
+            <label htmlFor="workspace-garden">Garden</label>
+            <select id="workspace-garden" value={garden.id} onChange={(event) => {
+              const next = gardenPath(event.target.value, route.module as "plan" | "care" | "season");
+              router.push(route.module === "care" && search.has("view") ? `${next}?view=${search.get("view") === "history" ? "history" : "tasks"}` : next);
+            }}>{workspace?.gardens.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select>
+          </div>}
+        </div>}
+        <PageHeader title={title} description={description} headingRef={heading} />
       </div>
       <OpenGardenNoteContext.Provider value={openNote}>
       {route.module === "home" ? <OverviewNoteEntryContext.Provider value={
@@ -95,6 +139,6 @@ export function AppShell({ children }: { children: ReactNode }) {
       </OpenGardenNoteContext.Provider>
     </main>
     </div>
-    {showNote && <GardenNoteDialog opener={noteOpener} fallbackOpener={noteButton} batchAvailable={noteMode === "batch"} initialGardenId={noteGardenId} onClose={() => setNoteMode(null)} />}
+    {showNote && <GardenNoteDialog opener={noteOpener} fallbackOpener={route.module === "home" ? noteButton : headerNoteButton} batchAvailable={noteMode === "batch"} initialGardenId={noteGardenId} onClose={() => setNoteMode(null)} />}
   </>;
 }
