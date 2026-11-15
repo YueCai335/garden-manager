@@ -44,7 +44,6 @@ import styles from "./care/Care.module.css";
 export function CareWorkspace({
   garden: scopeGarden,
   gardens = [],
-  sharedRecords,
   locationFilter, onLocationChange,
   initialView = "tasks",
   viewHref,
@@ -53,7 +52,6 @@ export function CareWorkspace({
 }: {
   garden: Garden;
   gardens?: Garden[];
-  sharedRecords?: CareRecords;
   locationFilter?: string;
   onLocationChange?: (location: string) => void;
   initialView?: CareView;
@@ -525,7 +523,6 @@ export function CareWorkspace({
           onSetForm={setForm}
         />}
       </div>
-      {!allGardens && sharedRecords && <SharedCare records={sharedRecords} view={view} />}
     </section>
   );
 }
@@ -999,15 +996,4 @@ function CareLocation({ id, label, gardens, value, editing, onChange }: { id: st
     <option value="">Choose a location</option>
     {gardens.map((garden) => <option key={garden.id} value={garden.id}>{garden.name}</option>)}
   </select></FormField>;
-}
-
-function SharedCare({ records, view }: { records: CareRecords; view: CareView }) {
-  const items = view === "tasks" ? records.careTasks : records.careEvents;
-  if (!items.length) return null;
-  return <section className={styles.shared} aria-label="Applies to all gardens">
-    <h3>Applies to all gardens</h3>
-    <p>These records belong to the whole workspace. Manage them in global Care.</p>
-    <ul>{items.map((item) => <li key={item.id}><strong>{item.type === "watering" ? "Watering" : "Fertilizing"}</strong> · {"dueDate" in item ? `Due ${item.dueDate}` : item.date}{item.note && <p>{item.note}</p>}</li>)}</ul>
-    <Link href={`/care?view=${view}&location=all-gardens`}>Manage all-gardens {view === "tasks" ? "tasks" : "records"}</Link>
-  </section>;
 }

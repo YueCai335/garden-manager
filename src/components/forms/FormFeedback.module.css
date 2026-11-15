@@ -4,5 +4,5 @@
 .notice { margin: 8px 0; padding: 8px 12px; border-left: 3px solid currentColor; font-size: 14px; overflow-wrap: anywhere; }
 .error.notice { background: var(--color-error-surface); }
 .status, .info { color: var(--color-muted); background: var(--color-soft); }
-.success { color: var(--color-brand-hover); background: var(--color-soft); }
+.success { color: var(--color-text); background: var(--color-soft); }
 .warning { color: var(--color-warning); background: var(--color-warning-surface); }

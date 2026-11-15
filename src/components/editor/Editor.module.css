@@ -1,6 +1,5 @@
 .workbench { min-width: 0; }
-.workbench[data-mode="wide"] { display: grid; grid-template-columns: minmax(640px, 1fr) 360px; gap: 24px; align-items: start; }
-.workbench[data-mode="wide"][data-single] { grid-template-columns: minmax(0, 1fr); }
+/* The wide layout floats the area panel over a full-width canvas (ADR-0073 S4). */
 .plan { min-width: 0; }
 .planToolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 12px; }
 .planToolbar :global(.plan-view-controls) { margin: 0; }
@@ -19,7 +18,7 @@
 .panel[open] { display: flex; flex-direction: column; }
 .panel[data-mode="wide"] { position: sticky; top: 16px; max-height: calc(100dvh - 32px); }
 .panel[data-mode="overlay"] { position: fixed; inset: 16px 16px 16px auto; width: 440px; max-width: calc(100vw - 32px); height: calc(100dvh - 32px); max-height: calc(100dvh - 32px); }
-.panel::backdrop { background: rgb(20 35 26 / 40%); }
+.panel::backdrop { background: rgb(24 24 26 / 40%); }
 .panel[data-mode="mobile"] { position: static; max-height: none; border: 0; }
 .panelHeader { flex: 0 0 auto; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 12px; align-items: center; padding: 16px; border-bottom: 1px solid var(--color-line); background: var(--color-surface); }
 .panelHeader p { grid-column: 1 / -1; margin: 0; color: var(--color-muted); overflow-wrap: anywhere; }

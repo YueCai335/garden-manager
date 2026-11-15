@@ -51,6 +51,13 @@ for (const width of [390, 1440]) {
     await expect.poll(async () => (await remote()).gardens.find((garden) => garden.id === "back")!.careTasks[0].dueDate).toBe("2026-06-07");
     await page.reload();
     await expect(page.getByText("Due 2026-06-07 · Repeats every 3 days")).toBeVisible();
+    // An old garden Care link lands on this view filtered to that garden (ADR-0073, phase S3).
+    await page.goto("/gardens/back/care?view=history");
+    await expect(page).toHaveURL(/\/care\?view=history&location=back$/);
+    await expect(location).toHaveValue("back");
+    await expect(page.getByText("Back two", { exact: true })).toBeVisible();
+    await expect(page.getByText("Front one", { exact: true })).toHaveCount(0);
+    await expect(page.getByText("Every garden", { exact: true })).toHaveCount(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
     await page.screenshot({ path: testInfo.outputPath(`global-care-${width}.png`), fullPage: true });
   });

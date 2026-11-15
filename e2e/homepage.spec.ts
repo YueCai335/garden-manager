@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { addDays, createDemoGardenWorkspace, createGarden, todayDate } from "../src/lib/gardenWorkspace";
+import { openWorkspace, workspaceHome } from "./workspace";
 
 for (const [width, height, columns] of [[320, 844, 1], [390, 844, 2], [768, 1024, 2], [1024, 768, 2], [1440, 900, 3]]) {
   test(`overview shows garden maps and task groups at ${width}px`, async ({ page }, testInfo) => {
@@ -7,7 +8,7 @@ for (const [width, height, columns] of [[320, 844, 1], [390, 844, 2], [768, 1024
     page.on("pageerror", (error) => errors.push(error.message));
     await page.setViewportSize({ width, height });
     await page.route("**/ai/**", (route) => route.abort());
-    await page.goto("/");
+    await openWorkspace(page);
     const note = page.getByRole("region", { name: "AI Garden Notes" });
     await expect(note).toBeInViewport();
     await expect(page.getByRole("banner").getByRole("textbox", { name: "Quick garden note" })).toHaveCount(0);
@@ -42,13 +43,16 @@ for (const [width, height, columns] of [[320, 844, 1], [390, 844, 2], [768, 1024
     await expect(frontCard).toHaveAccessibleDescription(/Growing now:/);
     await expect(gallery.getByText(/1 needs a size/)).toBeVisible();
     await expect(note).toBeInViewport();
-    const tasks = page.getByRole("complementary", { name: "Care tasks" });
+    // ADR-0073: a short Today strip above the gardens; the full list lives in Care.
+    const todayStrip = page.getByRole("region", { name: "Today" });
     const noteBox = (await note.boundingBox())!;
-    const taskBox = (await tasks.boundingBox())!;
+    const todayBox = (await todayStrip.boundingBox())!;
     expect(noteBox.height).toBeGreaterThanOrEqual(80);
-    expect(taskBox.y - noteBox.y - noteBox.height).toBeCloseTo(12, 0);
-    await expect(tasks.getByText("All gardens", { exact: true })).toHaveCount(3);
-    await expect(tasks.locator("dd")).toHaveText(["1", "1", "1"]);
+    expect(todayBox.y + todayBox.height).toBeLessThanOrEqual(noteBox.y);
+    expect(todayBox.y + todayBox.height).toBeLessThanOrEqual((await gallery.boundingBox())!.y);
+    await expect(todayStrip.getByText("All gardens", { exact: true })).toHaveCount(3);
+    await expect(todayStrip.getByText("1 overdue · 1 due today · 1 in the next 7 days")).toBeVisible();
+    await expect(todayStrip.getByRole("link", { name: "Open Care" })).toHaveAttribute("href", "/care?view=tasks");
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     const boxes = await cards.evaluateAll((elements) => elements.map((element) => ({ x: element.getBoundingClientRect().x, y: element.getBoundingClientRect().y })));
     expect(new Set(boxes.map((box) => box.x)).size).toBe(columns);
@@ -60,7 +64,7 @@ for (const [width, height, columns] of [[320, 844, 1], [390, 844, 2], [768, 1024
       const menu = page.getByRole("button", { name: "Menu", exact: true });
       await menu.focus();
       await page.keyboard.press("Enter");
-      await expect(page.getByRole("link", { name: "Overview", exact: true })).toBeFocused();
+      await expect(page.getByRole("link", { name: "Gardens", exact: true })).toBeFocused();
       await page.keyboard.press("Escape");
       await expect(menu).toBeFocused();
       await expect(menu).toHaveAttribute("aria-expanded", "false");
@@ -89,7 +93,7 @@ test("eight gardens with long names reflow at 320px and remain reachable", async
   await page.addInitScript(() => localStorage.setItem("sun-aware-garden-planner:server-workspace-id:v1", "home-eight-gardens"));
 
   await page.setViewportSize({ width: 320, height: 844 });
-  await page.goto("/");
+  await openWorkspace(page);
   const gallery = page.getByRole("region", { name: "Your gardens (8)" });
   const cards = gallery.getByRole("link", { name: /^Open / });
   await expect(cards).toHaveCount(8);
@@ -97,7 +101,7 @@ test("eight gardens with long names reflow at 320px and remain reachable", async
   const lastCard = gallery.getByRole("link", { name: `Open ${englishName}`, exact: true });
   await lastCard.scrollIntoViewIfNeeded();
   await expect(lastCard).toBeInViewport();
-  await expect(page.getByRole("complementary", { name: "Care tasks" }).getByText(englishName, { exact: true })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Today" }).getByText(englishName, { exact: true })).toBeVisible();
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
   await page.screenshot({ path: testInfo.outputPath("eight-gardens-320.png"), fullPage: true });
 
@@ -122,12 +126,12 @@ test("note dialog generates only on request and reopens the same draft", async (
   });
   await page.route("**/workspaces/home-note", (route) => route.fulfill({ json: { ...workspace, workspaceId: "home-note", revision: 0 } }));
   await page.addInitScript(() => localStorage.setItem("sun-aware-garden-planner:server-workspace-id:v1", "home-note"));
-  await page.goto("/");
+  await openWorkspace(page);
   // Without batch drafting the primary Overview button opens the single-record dialog.
   await page.getByRole("button", { name: "Open note editor" }).click();
   const dialog = page.getByRole("dialog", { name: "Garden Note" });
   await expect(dialog.getByRole("heading", { name: "Garden Note", exact: true })).toBeFocused();
-  await expect(page).toHaveURL("/");
+  await expect(page).toHaveURL(workspaceHome);
   await page.getByLabel("Care note").fill("Watered today");
   await page.getByLabel("Garden", { exact: true }).selectOption("demo-garden");
   expect(requests).toBe(0);
@@ -140,11 +144,11 @@ test("note dialog generates only on request and reopens the same draft", async (
   await resume.click();
   await expect(page.getByRole("heading", { name: "AI extracted draft" })).toBeVisible();
   await dialog.getByRole("button", { name: "Close", exact: true }).click();
-  // Notes start only from Overview (ADR-0069 amendment); the draft survives a trip to another page.
+  // The draft survives a trip to another page.
   await page.getByRole("link", { name: "Plant Guide", exact: true }).click();
   await expect(page).toHaveURL("/guide");
-  await page.getByRole("link", { name: "Back to gardens", exact: true }).click();
-  await expect(page).toHaveURL("/");
+  await page.getByRole("navigation", { name: "Workspace sections" }).getByRole("link", { name: "Gardens", exact: true }).click();
+  await expect(page).toHaveURL(workspaceHome);
   await page.getByRole("button", { name: "Continue note · 1 draft" }).click();
   await expect(dialog.getByRole("heading", { name: "AI extracted draft" })).toBeVisible();
   await expect(dialog.getByLabel("Care note")).toBeVisible();

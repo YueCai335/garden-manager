@@ -1,26 +1,50 @@
 :root {
-  --color-page: #f6f7f4;
-  --color-surface: #ffffff;
-  --color-soft: #eef3ee;
-  --color-text: #223129;
-  --color-muted: #59665e;
-  --color-brand: #2f6846;
-  --color-brand-hover: #245236;
-  --color-line: #d9e1d8;
-  --color-input-border: #7b897e;
+  /*
+   * ADR-0073 app look (S5). The older names below point at the hue-free neutrals and the
+   * content green, so every page moves at once. src/styles/tokens.test.ts checks contrast.
+   */
+  --color-page: var(--color-neutral-page);
+  --color-surface: var(--color-neutral-surface);
+  --color-soft: #f2f2f1;
+  --color-text: var(--color-ink);
+  --color-muted: var(--color-ink-muted);
+  --color-brand: var(--color-content-green);
+  --color-brand-hover: var(--color-content-green-hover);
+  --color-brand-pressed: var(--color-heading);
+  --color-line: var(--color-neutral-line);
+  --color-input-border: var(--color-ink-subtle);
   --color-error: #b42318;
   --color-error-surface: #fff1f0;
   --color-warning: #8a4b08;
   --color-warning-surface: #fff7e8;
-  --color-map: #edf2e8;
-  --color-map-grid: #cdd9c9;
-  --color-brand-pressed: #1d432c;
-  --radius-control: 6px;
-  --radius-card: 10px;
+  --radius-control: 8px;
+  --radius-card: 14px;
   --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
   --space-6: 24px; --space-8: 32px; --space-12: 48px;
   --content-width: 1440px;
   --workspace-gutters: 32px;
+  /* ADR-0073 app look: the deep-green header, hue-free neutrals, and content green. */
+  --color-app-bar: #264a33;
+  --color-app-bar-text: #ffffff;
+  --color-app-bar-active-text: #0b1a11;
+  --color-neutral-page: #f4f4f3;
+  --color-neutral-surface: #ffffff;
+  --color-neutral-line: #e3e3e1;
+  --color-ink: #18181a;
+  --color-ink-muted: #5f5f63;
+  --color-ink-subtle: #8d8d91;
+  --color-content-green: #1f4230;
+  --color-content-green-hover: #285239;
+  --color-heading: #173322;
+  --radius-pill: 999px;
+  /* Garden Plan canvas (ADR-0073 S4); src/lib/planAppearance.ts mirrors the Konva colours. */
+  --color-plan-outside: #ffffff;
+  --color-plan-dot: #d4d4d2;
+  /* The Next Season mini-map shares the plan's ground and raised-bed colours (planAppearance.ts). */
+  --color-plan-ground: #fafafa;
+  --color-plan-bed: #f1ece4;
+  --color-plan-bed-edge: #8c6a48;
+  --font-body: var(--font-instrument-sans), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   /* Compatibility for modules migrated in T05–T07. */
   --ops-ink: var(--color-text); --ops-ink-soft: var(--color-muted);
   --ops-green: var(--color-brand); --ops-green-dark: var(--color-brand-hover);

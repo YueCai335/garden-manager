@@ -14,7 +14,7 @@ async function openBed() {
   return user;
 }
 // These journeys use the side-column layout, where area properties and plants share one panel.
-beforeEach(() => { testLayout.width = 1280; });
+beforeEach(() => { testLayout.width = 1280; testLayout.viewportWidth = 1280; });
 const properties = () => within(screen.getByLabelText("Planting-area name").closest("form")!);
 const saved = () => JSON.parse(window.localStorage.getItem(GARDEN_WORKSPACE_STORAGE_KEY)!);
 
@@ -38,9 +38,9 @@ describe("planting-area draft protection", () => {
   it("keeps area drafts when navigating to another module and back", async () => {
     const user = await openBed();
     fireEvent.change(screen.getByLabelText("Planting-area name"), { target: { value: "Unsaved bed" } });
-    await user.click(screen.getByRole("link", { name: "Back to gardens" }));
+    await user.click(screen.getByRole("link", { name: "All gardens" }));
     await user.click(screen.getByRole("link", { name: "Next Season" }));
-    await user.click(screen.getByRole("link", { name: "Back to gardens" }));
+    await user.click(within(screen.getByRole("navigation", { name: "Workspace sections" })).getByRole("link", { name: "Gardens" }));
     await user.click(screen.getByRole("link", { name: "Open Demo Garden" }));
     await user.click(screen.getByLabelText("Open Sample raised bed on Garden Plan"));
     // A value still being typed (never blurred) is a draft that survives navigation.
@@ -74,7 +74,7 @@ it("keeps a plant coordinate draft through resizing and navigation, then validat
   fireEvent.keyDown(screen.getByLabelText("X position (m)"), { key: "Enter" });
   expect(saved()).toEqual(before);
   expect(screen.queryByRole("button", { name: "Save plant" })).not.toBeInTheDocument();
-  await user.click(screen.getByRole("link", { name: "Back to gardens" }));
+  await user.click(screen.getByRole("link", { name: "All gardens" }));
   await user.click(screen.getByRole("link", { name: "Open Demo Garden" }));
   await user.click(screen.getByLabelText("Open Sample raised bed on Garden Plan"));
   expect(screen.getByLabelText("X position (m)")).toHaveValue(1.8);

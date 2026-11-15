@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, type RefObject, useEffect, useRef, useState } from "react";
+import { type ReactNode, type RefObject, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { KonvaEventObject } from "konva/lib/Node";
 import { useWorkspaceDraft } from "@/components/workspace/WorkspaceProvider";
 import Link from "next/link";
@@ -10,9 +10,10 @@ import { useCanvasSize } from "@/hooks/useCanvasSize";
 import { useAnimatedViewport } from "@/hooks/useAnimatedViewport";
 import { useCoarsePointer } from "@/hooks/useCoarsePointer";
 import { areaKindDefaults, overlappingAreas, resizedAreaSize } from "@/lib/areaPlacement";
-import { canvasToMetres, canvasGridTicks, fitCanvas, metresToCanvas, type CanvasTransform } from "@/lib/canvasViewport";
-import { areaAppearance, areaLabelPosition, areaSizeText, isRectangularLayout, planColors, ridgeLine } from "@/lib/planAppearance";
-import { isInsideArea, planToAreaLocal } from "@/lib/planGeometry";
+import { canvasToMetres, canvasGridTicks, fitCanvas, insetViewport, metresToCanvas, noInsets, overlayInsets, type CanvasInsets, type CanvasTransform, type OverlayCorner } from "@/lib/canvasViewport";
+import { allocationCropFamily, areaAppearance, areaLabelPosition, areaSizeText, cropFamilyColor, cropFamilyLegendLabels, familiesInView, isRectangularLayout, planColors, plantingFamilies, ridgeLine } from "@/lib/planAppearance";
+import { PLANT_LABEL_HEIGHT, placePlantLabels, type Box, type PlantCircle, type PlantGroup } from "@/lib/plantLabels";
+import { areaLocalToPlan, isInsideArea, planToAreaLocal } from "@/lib/planGeometry";
 import { plantCenterInArea, plantWarnings } from "@/lib/plantLayout";
 import { minimumGardenSize, resizedGardenSize, type SetupStep } from "@/lib/guidedSetup";
 import { GardenDetailsFields, type GardenDetailsChange } from "./editor/GardenDetailsFields";
@@ -23,7 +24,6 @@ import canvasStyles from "./canvas/Canvas.module.css";
 import setupStyles from "./editor/Setup.module.css";
 
 import {
-  allocationPlantColor,
   areaFocusViewport,
   clampPlanPosition,
   gardenPlanViewport,
@@ -34,6 +34,7 @@ import {
   type GrowingArea,
   type GrowingAreaKind,
   type PlanPlacement,
+  type PlantingRecord,
 } from "@/lib/gardenWorkspace";
 
 type AreaSize = { widthMeters: number; depthMeters: number };
@@ -55,7 +56,7 @@ export type CanvasPlanting = {
   areaId: string;
   selectedPlantId?: string;
   /** Set while the add form describes a valid plant: clicks inside the area place it. */
-  placing?: { label: string; diameterMeters: number; color: string };
+  placing?: { label: string; diameterMeters: number; plantType?: string; variety?: string };
   onSelectPlant: (plantId: string) => void;
   onMovePlant: (plantId: string, point: LayoutPoint) => void;
   onPlacePlant: (point: LayoutPoint) => void;
@@ -68,8 +69,18 @@ type GardenPlanOverviewProps = {
   gardenName?: string;
   selectedAreaId?: string;
   growingAreas: GrowingArea[];
+  /** Planting records: a plant linked to one takes the record's crop family colour. */
+  plantings?: Pick<PlantingRecord, "id" | "cropFamily">[];
   compact?: boolean;
   editable?: boolean;
+  /**
+   * The wide layout (ADR-0073 S4): the toolbar, zoom, legend, and `sidePanel`
+   * float over a full-width canvas as glass layers. Otherwise they sit in the
+   * page flow above and below the canvas.
+   */
+  floating?: boolean;
+  /** The zoomed area's panel, floating at the canvas's top right in the wide layout. */
+  sidePanel?: ReactNode;
   headingRef?: RefObject<HTMLHeadingElement | null>;
   isAreaInspectorOpen?: boolean;
   areaListInSidebar?: boolean;
@@ -107,8 +118,11 @@ export function GardenPlanOverview({
   selectedAreaId,
   gardenName: gardenNameFromProps = "",
   growingAreas,
+  plantings,
   compact = false,
   editable = false,
+  floating = false,
+  sidePanel,
   headingRef,
   isAreaInspectorOpen = false,
   areaListInSidebar = false,
@@ -202,6 +216,7 @@ export function GardenPlanOverview({
         <GardenPlanCanvas
           compact
           growingAreas={growingAreas}
+          plantings={plantings}
           interactive={false}
           onMove={() => undefined}
           plan={plan}
@@ -231,6 +246,21 @@ export function GardenPlanOverview({
     onPlanChange?.(size);
     setMessage(`Garden size set to ${size.widthMeters} × ${size.depthMeters} m.`);
   };
+  // The plan's tools: in the page flow on narrower layouts, a floating glass toolbar on wide ones.
+  const wholeGarden = canExitArea ? <Button id="plan-whole-garden" onClick={exitArea}><span aria-hidden="true">← </span>Whole garden</Button> : null;
+  const addButtons = editable && onAddArea && (!setupStep || setupStep === "areas") ? <AddAreaButtons onAdd={onAddArea} /> : null;
+  const historyButtons = editable && history ? <div className={editorStyles.history} role="group" aria-label="Plan history">
+    <Button aria-keyshortcuts="Control+Z Meta+Z" disabled={!history.canUndo} title={history.undoLabel ? `Undo ${history.undoLabel}` : "Nothing to undo"} onClick={history.onUndo}>
+      <span aria-hidden="true">↶ </span>Undo
+    </Button>
+    <Button aria-keyshortcuts="Control+Shift+Z Meta+Shift+Z Control+Y" disabled={!history.canRedo} title={history.redoLabel ? `Redo ${history.redoLabel}` : "Nothing to redo"} onClick={history.onRedo}>
+      <span aria-hidden="true">↷ </span>Redo
+    </Button>
+  </div> : null;
+  // The floating toolbar also carries Undo and Redo; the page-flow layout keeps them in the header.
+  const tools = floating
+    ? addButtons || historyButtons ? <>{addButtons}{addButtons && historyButtons && <span className={canvasStyles.toolSeparator} aria-hidden="true" />}{historyButtons}</> : null
+    : addButtons;
 
   return (
     <section className="garden-plan" aria-labelledby="garden-plan-heading">
@@ -242,14 +272,7 @@ export function GardenPlanOverview({
           </h2>
         </div>
         <div className="plan-header-actions">
-          {editable && history && <div className={editorStyles.history} role="group" aria-label="Plan history">
-            <Button aria-keyshortcuts="Control+Z Meta+Z" disabled={!history.canUndo} title={history.undoLabel ? `Undo ${history.undoLabel}` : "Nothing to undo"} onClick={history.onUndo}>
-              <span aria-hidden="true">↶ </span>Undo
-            </Button>
-            <Button aria-keyshortcuts="Control+Shift+Z Meta+Shift+Z Control+Y" disabled={!history.canRedo} title={history.redoLabel ? `Redo ${history.redoLabel}` : "Nothing to redo"} onClick={history.onRedo}>
-              <span aria-hidden="true">↷ </span>Redo
-            </Button>
-          </div>}
+          {!floating && historyButtons}
           <p className="plan-count">
             {growingAreas.length} planting{" "}
             {growingAreas.length === 1 ? "area" : "areas"}
@@ -280,15 +303,18 @@ export function GardenPlanOverview({
       </div>}
       <div>
         <div className="plan-view">
-          <div className={editorStyles.planToolbar}>
-          {canExitArea && <Button id="plan-whole-garden" onClick={exitArea}><span aria-hidden="true">← </span>Whole garden</Button>}
-          {editable && onAddArea && (!setupStep || setupStep === "areas") && <AddAreaButtons onAdd={onAddArea} />}
-          </div>
+          {!floating && (wholeGarden || tools) && <div className={editorStyles.planToolbar}>
+            {wholeGarden}
+            {tools}
+          </div>}
           <div>
             <GardenPlanCanvas
               compact={false}
+              floating={floating}
+              overlays={floating ? { toolbar: tools, zoom: wholeGarden, side: focusedArea ? sidePanel : undefined } : undefined}
               selectedAreaId={selectedAreaId}
               growingAreas={growingAreas}
+              plantings={plantings}
               interactive={editable && !viewOnly}
               onEditLayout={viewOnly ? undefined : onEditLayout}
               onMove={moveArea}
@@ -366,10 +392,16 @@ export function GardenAreaList({ gardenId, areas, selectedAreaId, onEditLayout, 
   </section>;
 }
 
+type CanvasOverlays = { toolbar?: ReactNode; zoom?: ReactNode; side?: ReactNode };
+
 type GardenPlanCanvasProps = {
   plan: GardenPlan;
   growingAreas: GrowingArea[];
+  plantings?: Pick<PlantingRecord, "id" | "cropFamily">[];
   compact: boolean;
+  floating?: boolean;
+  /** Glass layers over the canvas in the floating layout. */
+  overlays?: CanvasOverlays;
   interactive: boolean;
   selectedAreaId?: string;
   onMove: (areaId: string, point: LayoutPoint) => void;
@@ -387,7 +419,10 @@ type GardenPlanCanvasProps = {
 function GardenPlanCanvas({
   plan,
   growingAreas,
+  plantings,
   compact,
+  floating = false,
+  overlays,
   interactive,
   selectedAreaId,
   onMove,
@@ -445,6 +480,14 @@ function GardenPlanCanvas({
     session.restore();
     setPlantDrag(undefined);
   };
+  // A finger that travels (a page scroll over the canvas) is not a tap, even when it
+  // ends over the shape it started on, so it never opens an area or selects a plant.
+  const touchStart = useRef<LayoutPoint | undefined>(undefined);
+  const scrolledTouch = (event: Event | undefined) => {
+    const start = touchStart.current;
+    const end = touchPoint(event);
+    return Boolean(start && end && Math.hypot(end.x - start.x, end.y - start.y) > 10);
+  };
   const stopPlacing = useRef<(() => void) | undefined>(undefined);
   useEffect(() => { stopPlacing.current = planting?.placing ? planting.onStopPlacing : undefined; });
   useEffect(() => {
@@ -466,12 +509,32 @@ function GardenPlanCanvas({
     return () => window.removeEventListener("keydown", escape, true);
   }, []);
   const focusedArea = growingAreas.find((area) => area.id === focusedAreaId && area.layout);
+  const measuredAreas = growingAreas.filter((area) => area.layout);
+  // Crop-family colours (ADR-0073 S4): a linked planting record's family, else the family the name implies.
+  const recordFamilies = plantingFamilies(plantings);
+  const familyOf = (allocation: Parameters<typeof allocationCropFamily>[0]) => allocationCropFamily(allocation, recordFamilies);
+  // The legend lists the families in view: the zoomed area's, or the whole garden's.
+  const legendFamilies = compact ? [] : familiesInView((focusedArea ? [focusedArea] : measuredAreas).flatMap((area) => area.layout!.allocations.map(familyOf)));
+  const [fontFamily, setFontFamily] = useState<string>();
+  useEffect(() => {
+    // Konva draws text itself, so it needs the page's font by name once the font has loaded.
+    let active = true;
+    const read = () => { if (active) setFontFamily(getComputedStyle(document.body).fontFamily || undefined); };
+    read();
+    document.fonts?.ready.then(read).catch(() => undefined);
+    return () => { active = false; };
+  }, []);
+  // Floating layers reserve bands along the canvas edges; framing keeps the garden or area clear of them.
+  const stageRef = useRef<HTMLDivElement>(null);
+  const insets = useOverlayInsets(stageRef, floating && !compact, [overlays?.toolbar, overlays?.zoom, overlays?.side, legendFamilies.length]);
+  const framePadding = compact ? 12 : 34;
   // The size step frames the whole garden with room past its far edges, so the corner can be dragged outwards.
   const room = Math.max(1, Math.max(plan.widthMeters, plan.depthMeters) * 0.4);
   const target = (focusedArea && areaFocusViewport(focusedArea))
     || (boundary ? { x: 0, y: 0, widthMeters: plan.widthMeters + room, depthMeters: plan.depthMeters + room } : gardenPlanViewport(plan, growingAreas, "growing-areas", compact ? 0.05 : undefined));
-  const { viewport: bounds, animating: zooming } = useAnimatedViewport(target, focusedArea?.id ?? (boundary ? "garden-size" : "whole-garden"));
-  const calculated = fitCanvas(bounds, size.width, size.height, compact ? 12 : 34);
+  const framedTarget = compact ? target : insetViewport(target, size.width, size.height, framePadding, insets);
+  const { viewport: bounds, animating: zooming } = useAnimatedViewport(framedTarget, focusedArea?.id ?? (boundary ? "garden-size" : "whole-garden"));
+  const calculated = fitCanvas(bounds, size.width, size.height, framePadding);
   const transform = drag?.transform ?? resize?.transform ?? gardenResize?.transform ?? calculated;
   // While the corner is dragged, the boundary and grid follow the previewed size.
   const drawnPlan = gardenResize?.size ?? plan;
@@ -479,15 +542,34 @@ function GardenPlanCanvas({
   const { padding = 34, scale = 0, width = 0, height = 0 } = transform ?? {};
   const offsetX = compact ? (width - viewport.widthMeters * scale) / 2 - padding : 0;
   const offsetY = compact ? (height - viewport.depthMeters * scale) / 2 - padding : 0;
+  // Rulers sit just outside the garden's top and left edges, kept on screen and clear of floating layers.
+  const rulerTop = Math.min(Math.max(padding - viewport.y * scale - 18, insets.top + 2), height - insets.bottom - 16);
+  const rulerLeft = Math.min(Math.max(padding - viewport.x * scale - 34, insets.left + 2), width - insets.right - 32);
   const verticalGrid = compact ? [] : canvasGridTicks(Math.max(0, viewport.x), Math.min(drawnPlan.widthMeters, viewport.x + viewport.widthMeters), scale);
   const horizontalGrid = compact ? [] : canvasGridTicks(Math.max(0, viewport.y), Math.min(drawnPlan.depthMeters, viewport.y + viewport.depthMeters), scale);
-  const measuredAreas = growingAreas.filter((area) => area.layout);
   const draggedArea = measuredAreas.find((area) => area.id === drag?.id);
   const areaLabels = measuredAreas.map((area) => ({ area, ...areaLabelPosition(area, scale, padding, viewport) }));
   // While zoomed, only the focused area keeps its name so neighbours' labels never cover its plants.
   const labels = compact ? fitThumbnailLabels(areaLabels, width, height, offsetX, offsetY) : areaLabels.filter(({ area }) => !focusedArea || area.id === focusedArea.id);
   const dimmed = (area: GrowingArea) => Boolean(focusedArea && area.id !== focusedArea.id);
   const plantingArea = planting && focusedArea?.id === planting.areaId ? focusedArea : undefined;
+  const plantLabels = compact || !transform ? [] : groupLabels({
+    areas: focusedArea ? [focusedArea] : measuredAreas,
+    allAreas: measuredAreas,
+    // An area or plant being moved redraws its labels when it lands.
+    hidden: new Set([drag?.id, resize?.id, plantDrag ? plantingArea?.id : undefined].filter((id): id is string => Boolean(id))),
+    obstacles: [
+      ...labels.map(({ x, y, width: labelWidth }) => ({ left: x, top: y, right: x + labelWidth, bottom: y + 16 })),
+      ...areaLabels.filter(({ area }) => area.id === selectedAreaId).map(({ x, width: labelWidth, sizeY }) => {
+        const sizeWidth = Math.max(labelWidth, 88);
+        const left = x + (labelWidth - sizeWidth) / 2;
+        return { left, top: sizeY, right: left + sizeWidth, bottom: sizeY + 16 };
+      }),
+    ],
+    bounds: { left: insets.left, top: insets.top, right: width - insets.right, bottom: height - insets.bottom },
+    toCanvas: (point) => ({ x: padding + (point.x - viewport.x) * scale, y: padding + (point.y - viewport.y) * scale }),
+    scale,
+  });
   const warnings = plantingArea?.layout ? plantWarnings(plantingArea.layout) : undefined;
   const placing = plantingArea ? planting?.placing : undefined;
   // Areas drag directly with a mouse or pen, and only in Move mode on touch screens.
@@ -527,11 +609,20 @@ function GardenPlanCanvas({
     : focusedArea ? `Viewing ${focusedArea.name}. Drag it to move it, or drag its corner to resize it. Escape returns to the whole garden.`
     : "Click an area to open it, or drag it to move it. Escape cancels a move.";
 
-  return <div className={compact ? undefined : canvasStyles.frame}>
+  const legend = legendFamilies.length > 0 ? <div className={`${canvasStyles.legend}${floating ? ` ${canvasStyles.glass} ${canvasStyles.layer}` : ""}`} data-corner={floating ? "bottom-left" : undefined} data-testid="plan-legend">
+    <span className={canvasStyles.legendTitle} id="plan-legend-title">Crop family</span>
+    <ul aria-labelledby="plan-legend-title">{legendFamilies.map((family) => {
+      const colors = cropFamilyColor(family);
+      return <li key={family}><span aria-hidden="true" className={canvasStyles.legendDot} style={{ background: colors.fill, borderColor: colors.stroke }} />{cropFamilyLegendLabels[family]}</li>;
+    })}</ul>
+  </div> : null;
+
+  return <div className={compact ? undefined : canvasStyles.frame} data-floating={compact ? undefined : floating}>
     {interactive && !compact && measuredAreas.length > 0 && <div className={canvasStyles.toolbar}>
       {coarse && <Button aria-pressed={moveMode} onClick={() => { cancelDrag(); cancelResize(); setMoveMode((value) => !value); }}>Move planting areas</Button>}
       <p>{hint}</p>
     </div>}
+    <div ref={stageRef} className={compact ? canvasStyles.thumbnailStage : canvasStyles.stage}>
     <div ref={size.ref} className={`${canvasStyles.surface} ${compact ? canvasStyles.compact : ""}`} data-testid={compact ? undefined : "garden-plan-canvas"} data-move={moveMode} data-dragging={Boolean(drag || resize || plantDrag || gardenResize)} data-focused-area={focusedArea?.id} data-placing={Boolean(placing)} data-zooming={zooming}>
     {readout && <p className={canvasStyles.readout} role="status">{readout}</p>}
     {transform ? <Stage
@@ -539,14 +630,13 @@ function GardenPlanCanvas({
       height={height}
       width={width}
       style={{ touchAction: moveMode ? "none" : "pan-y" }}
+      onTouchStart={(event) => { touchStart.current = touchPoint(event.evt); }}
     >
       <Layer listening={!compact} x={offsetX} y={offsetY}>
         {!compact && <Rect
           preventDefault={false}
           fill={planColors.ground}
           height={drawnPlan.depthMeters * scale}
-          stroke={planColors.boundary}
-          strokeWidth={2}
           width={drawnPlan.widthMeters * scale}
           x={padding - viewport.x * scale}
           y={padding - viewport.y * scale}
@@ -579,28 +669,44 @@ function GardenPlanCanvas({
             strokeWidth={1}
           />
         ))}
+        {/* The boundary sits over the grid: a 2 px content-green line (ADR-0073). */}
+        {!compact && <Rect
+          listening={false}
+          height={drawnPlan.depthMeters * scale}
+          stroke={planColors.boundary}
+          strokeWidth={2}
+          width={drawnPlan.widthMeters * scale}
+          x={padding - viewport.x * scale}
+          y={padding - viewport.y * scale}
+        />}
         {!compact && verticalGrid.map((metre) => (
           <Text
             listening={false}
+            fill={planColors.ruler}
+            fontFamily={fontFamily}
             fontSize={12}
             key={`x-label-${metre}`}
             text={`${metre} m`}
             x={padding + (metre - viewport.x) * scale - 10}
-            y={12}
+            y={rulerTop}
           />
         ))}
         {!compact && horizontalGrid.map((metre) => (
           <Text
             listening={false}
+            fill={planColors.ruler}
+            fontFamily={fontFamily}
             fontSize={12}
             key={`y-label-${metre}`}
+            align="right"
             text={`${metre} m`}
-            x={3}
+            width={30}
+            x={rulerLeft}
             y={padding + (metre - viewport.y) * scale - 6}
           />
         ))}
         {drag && draggedArea && <Line
-          listening={false} closed dash={[5, 4]} stroke="#59665e" strokeWidth={2}
+          listening={false} closed dash={[5, 4]} stroke="#5f5f63" strokeWidth={2}
           rotation={drag.origin.rotationDegrees} {...metresToCanvas(drag.origin, transform)}
           points={draggedArea.layout!.boundary.flatMap(({ x, y }) => [x * scale, y * scale])}
         />}
@@ -651,7 +757,7 @@ function GardenPlanCanvas({
               if (!cancelled) onMove(area.id, point);
               setDrag(undefined);
             }}
-            onTap={() => onEditLayout?.(area.id)}
+            onTap={(event) => { if (!scrolledTouch(event.evt)) onEditLayout?.(area.id); }}
             onMouseEnter={(event) => { if (canDragAreas && !dimmed(area)) setCursor(event, "grab"); }}
             onMouseLeave={(event) => setCursor(event, "")}
             opacity={dimmed(area) ? 0.35 : 1}
@@ -664,18 +770,19 @@ function GardenPlanCanvas({
               const editablePlant = plantingArea?.id === area.id;
               const selectedPlant = editablePlant && planting?.selectedPlantId === allocation.id;
               const warned = editablePlant && (warnings?.crowdedIds.has(allocation.id) || warnings?.pastEdgeIds.has(allocation.id));
+              const colors = cropFamilyColor(familyOf(allocation));
+              const radius = (allocation.diameterMeters * scale) / 2;
               return <Group key={allocation.id}>
                 <Circle
                   aria-label={`${allocation.label} plant on Garden Plan`}
                   data-warning={warned ? "true" : undefined}
                   draggable={editablePlant && !placing && !moveMode}
                   dragDistance={4}
-                  fill={allocationPlantColor(allocation, area.layout!.allocations)}
-                  opacity={0.9}
+                  fill={colors.fill}
                   preventDefault={moveMode || editablePlant}
-                  radius={(allocation.diameterMeters * scale) / 2}
-                  stroke={selectedPlant ? planColors.selection : warned ? planColors.warning : "#183a2a"}
-                  strokeWidth={selectedPlant ? 3 : warned ? 2 : 1}
+                  radius={radius}
+                  stroke={selectedPlant ? planColors.selection : warned ? planColors.warning : colors.stroke}
+                  strokeWidth={selectedPlant ? 3 : warned ? 2 : compact ? 0.75 : 1.25}
                   dash={warned && !selectedPlant ? [4, 3] : undefined}
                   x={allocation.x * scale}
                   y={allocation.y * scale}
@@ -686,6 +793,7 @@ function GardenPlanCanvas({
                   }}
                   onTap={(event) => {
                     event.cancelBubble = true;
+                    if (scrolledTouch(event.evt)) return;
                     if (editablePlant) planting?.onSelectPlant(allocation.id);
                     else onEditLayout?.(area.id);
                   }}
@@ -713,21 +821,8 @@ function GardenPlanCanvas({
                     if (point.x !== allocation.x || point.y !== allocation.y) planting?.onMovePlant(allocation.id, point);
                   }}
                 />
-                {!compact && allocation.diameterMeters * scale >= 36 ? (
-                  <Text
-                    align="center"
-                    fill="#183a2a"
-                    fontSize={12}
-                    height={Math.max(2, allocation.diameterMeters * scale)}
-                    listening={false}
-                    text={allocation.label}
-                    verticalAlign="middle"
-                    width={Math.max(2, allocation.diameterMeters * scale)}
-                    wrap="none"
-                    x={allocation.x * scale - allocation.diameterMeters * scale / 2}
-                    y={allocation.y * scale - allocation.diameterMeters * scale / 2}
-                  />
-                ) : null}
+                {/* A small centre dot marks where the plant stands inside its spacing circle. */}
+                {radius >= 6 && <Circle listening={false} fill={colors.stroke} radius={Math.max(1.4, radius * 0.12)} x={allocation.x * scale} y={allocation.y * scale} />}
               </Group>;
             })}
             {resize?.id === area.id && <Rect
@@ -787,9 +882,9 @@ function GardenPlanCanvas({
             {placing && ghost && plantingArea?.id === area.id && <Circle
               data-testid="placement-preview"
               dash={[5, 3]}
-              fill={placing.color}
+              fill={cropFamilyColor(familyOf({ label: placing.label, plantType: placing.plantType, variety: placing.variety })).fill}
               listening={false}
-              opacity={0.45}
+              opacity={0.6}
               radius={(placing.diameterMeters * scale) / 2}
               stroke={planColors.selection}
               strokeWidth={2}
@@ -804,8 +899,9 @@ function GardenPlanCanvas({
             data-testid={`area-label-${area.id}`}
             ellipsis
             fill={planColors.label}
+            fontFamily={fontFamily}
             fontSize={compact ? 12 : 13}
-            fontStyle="bold"
+            fontStyle="600"
             height={16}
             key={`area-label-${area.id}`}
             listening={false}
@@ -822,6 +918,7 @@ function GardenPlanCanvas({
             align="center"
             data-testid={`area-size-${area.id}`}
             fill={planColors.mutedLabel}
+            fontFamily={fontFamily}
             fontSize={12}
             height={16}
             key={`area-size-${area.id}`}
@@ -833,6 +930,29 @@ function GardenPlanCanvas({
             y={sizeY}
           />;
         })}
+        {plantLabels.map((label) => (
+          <Text
+            data-testid={`plant-label-${label.key}`}
+            fill={planColors.label}
+            fillAfterStrokeEnabled
+            fontFamily={fontFamily}
+            fontSize={12}
+            fontStyle="600"
+            height={PLANT_LABEL_HEIGHT}
+            key={`plant-label-${label.key}`}
+            lineJoin="round"
+            listening={false}
+            stroke={planColors.labelHalo}
+            strokeWidth={4}
+            text={label.text}
+            verticalAlign="middle"
+            align="center"
+            width={label.width}
+            wrap="none"
+            x={label.x}
+            y={label.y}
+          />
+        ))}
         {!compact && !measuredAreas.length ? (
           <Text
             fill={planColors.mutedLabel}
@@ -900,7 +1020,74 @@ function GardenPlanCanvas({
       </Layer>
     </Stage> : <p className={canvasStyles.placeholder}>Preparing garden view…</p>}
     </div>
+    {floating && overlays?.toolbar && <div className={`${canvasStyles.glass} ${canvasStyles.layer} ${canvasStyles.tools}`} data-corner="top-left" role="toolbar" aria-label="Plan tools">{overlays.toolbar}</div>}
+    {floating && overlays?.zoom && <div className={`${canvasStyles.glass} ${canvasStyles.layer} ${canvasStyles.zoom}`} data-corner="bottom-right">{overlays.zoom}</div>}
+    {floating && legend}
+    {floating && overlays?.side && <div className={canvasStyles.side} data-corner="top-right">{overlays.side}</div>}
+    </div>
+    {!floating && !compact && legend}
   </div>;
+}
+
+/**
+ * Measures the floating layers inside `stage` and returns the canvas insets that
+ * keep them clear of the framed garden or area. Remeasures when a layer resizes.
+ */
+function useOverlayInsets(stageRef: RefObject<HTMLDivElement | null>, enabled: boolean, layers: unknown[]) {
+  const [insets, setInsets] = useState<CanvasInsets>(noInsets);
+  const present = layers.map(Boolean).join();
+  useLayoutEffect(() => {
+    const stage = stageRef.current;
+    if (!enabled || !stage) { setInsets((current) => current === noInsets ? current : noInsets); return; }
+    const measure = () => {
+      const base = stage.getBoundingClientRect();
+      const next = overlayInsets({ width: base.width, height: base.height }, [...stage.querySelectorAll<HTMLElement>(":scope > [data-corner]")].map((layer) => {
+        const box = layer.getBoundingClientRect();
+        return { corner: layer.dataset.corner as OverlayCorner, left: box.left - base.left, top: box.top - base.top, right: box.right - base.left, bottom: box.bottom - base.top };
+      }));
+      const rounded = { top: Math.ceil(next.top), right: Math.ceil(next.right), bottom: Math.ceil(next.bottom), left: Math.ceil(next.left) };
+      setInsets((current) => current.top === rounded.top && current.right === rounded.right && current.bottom === rounded.bottom && current.left === rounded.left ? current : rounded);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(stage);
+    stage.querySelectorAll(":scope > [data-corner]").forEach((layer) => observer.observe(layer));
+    return () => observer.disconnect();
+  }, [stageRef, enabled, present]);
+  return insets;
+}
+
+/**
+ * One label per plant group (same plant type) in each labelled area, placed in
+ * canvas pixels so it reads upright whatever the area's rotation. Circles of every
+ * drawn area count as obstacles, so a label never covers a plant (ADR-0072 G1).
+ */
+function groupLabels({ areas, allAreas, hidden, obstacles, bounds, toCanvas, scale }: {
+  areas: GrowingArea[];
+  allAreas: GrowingArea[];
+  hidden: Set<string>;
+  obstacles: Box[];
+  bounds: Box;
+  toCanvas: (point: LayoutPoint) => LayoutPoint;
+  scale: number;
+}) {
+  const circleOf = (area: GrowingArea, allocation: { x: number; y: number; diameterMeters: number }): PlantCircle => ({
+    ...toCanvas(areaLocalToPlan(area, allocation)),
+    radius: (allocation.diameterMeters * scale) / 2,
+  });
+  const circles = allAreas.flatMap((area) => area.layout!.allocations.map((allocation) => circleOf(area, allocation)));
+  const groups: PlantGroup[] = areas.filter((area) => !hidden.has(area.id)).flatMap((area) => {
+    const byType = new Map<string, PlantGroup>();
+    for (const allocation of area.layout!.allocations) {
+      const name = allocation.plantType?.trim() || allocation.label;
+      const identity = name.toLocaleLowerCase();
+      const group = byType.get(identity) ?? { key: `${area.id}:${identity}`, name, circles: [] };
+      group.circles.push(circleOf(area, allocation));
+      byType.set(identity, group);
+    }
+    return [...byType.values()];
+  });
+  return placePlantLabels({ groups, circles, obstacles, bounds });
 }
 
 /** One planting area's outline, drawn in area-local canvas pixels inside its positioned Group. */
@@ -912,12 +1099,17 @@ function AreaShape({ area, scale, compact, selected, overlapping, preventDefault
   const points = layout.boundary.flatMap((point) => [point.x * scale, point.y * scale]);
   const rectangle = isRectangularLayout(layout);
   const radius = look.rounded ? Math.min(width, height) / 2 : Math.min(3, width / 4, height / 4);
-  const ring = 4;
+  // The selection ring stands a little off the outline so the area keeps its own frame.
+  const ring = compact ? 4 : 6;
   return <>
     {/* Selection draws a separate ring so the area keeps its type colours. */}
     {selected && (rectangle
-      ? <Rect listening={false} x={-ring} y={-ring} width={width + ring * 2} height={height + ring * 2} cornerRadius={radius + ring} stroke={planColors.selection} strokeWidth={3} />
+      ? <Rect listening={false} x={-ring} y={-ring} width={width + ring * 2} height={height + ring * 2} cornerRadius={radius + ring} stroke={planColors.selection} strokeWidth={2} />
       : <Line listening={false} closed points={points} stroke={planColors.selection} strokeWidth={look.strokeWidth + 6} opacity={0.45} />)}
+    {/* Framed beds and pots cast a faint shadow, which lifts them off the ground. */}
+    {look.shadow && !compact && (rectangle
+      ? <Rect listening={false} x={2} y={3} width={width} height={height} cornerRadius={radius} fill={planColors.shadow} />
+      : <Line listening={false} x={2} y={3} closed points={points} fill={planColors.shadow} />)}
     {rectangle
       ? <Rect preventDefault={preventDefault} width={width} height={height} cornerRadius={radius} fill={look.fill} stroke={look.stroke} strokeWidth={look.strokeWidth} dash={look.dash} />
       : <Line preventDefault={preventDefault} closed points={points} fill={look.fill} stroke={look.stroke} strokeWidth={look.strokeWidth} dash={look.dash} />}
@@ -927,6 +1119,13 @@ function AreaShape({ area, scale, compact, selected, overlapping, preventDefault
       ? <Rect data-testid={`overlap-${area.id}`} listening={false} width={width} height={height} cornerRadius={radius} stroke={planColors.warning} strokeWidth={2} dash={[6, 4]} />
       : <Line data-testid={`overlap-${area.id}`} listening={false} closed points={points} stroke={planColors.warning} strokeWidth={2} dash={[6, 4]} />)}
   </>;
+}
+
+/** The first finger's position in the viewport, from a touch event. */
+function touchPoint(event: Event | undefined): LayoutPoint | undefined {
+  if (typeof TouchEvent === "undefined" || !(event instanceof TouchEvent)) return undefined;
+  const touch = event.touches[0] ?? event.changedTouches[0];
+  return touch ? { x: touch.clientX, y: touch.clientY } : undefined;
 }
 
 function isTouchEvent(event: Event | undefined) {

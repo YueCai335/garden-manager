@@ -1,4 +1,7 @@
-/* Shared controls; legacy class aliases are removed as callers migrate. */
+/*
+ * Shared controls; legacy class aliases are removed as callers migrate.
+ * ADR-0073: pill buttons, neutral hairlines, and content green only on the primary button.
+ */
 .primary-button,
 .secondary-button,
 .text-button,
@@ -10,11 +13,11 @@
 .complete-button,
 .ghost-button,
 .toolbar-button,
-.back-button { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 8px 16px; border: 1px solid transparent; border-radius: var(--radius-control); font: inherit; font-weight: 600; line-height: 1.5; text-align: center; text-decoration: none; cursor: pointer; transition: background-color 140ms, border-color 140ms; }
+.back-button { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 8px 16px; border: 1px solid transparent; border-radius: var(--radius-pill); font: inherit; font-weight: 600; line-height: 1.5; text-align: center; text-decoration: none; cursor: pointer; transition: background-color 140ms, border-color 140ms; }
 .primary-button,
 .create-button,
 .save-button,
-.complete-button { background: var(--color-brand); color: white; border-color: var(--color-brand); }
+.complete-button { background: var(--color-brand); color: #ffffff; border-color: var(--color-brand); box-shadow: 0 6px 16px -8px rgb(31 66 48 / 75%); }
 .primary-button:hover:not(:disabled),
 .create-button:hover:not(:disabled),
 .save-button:hover:not(:disabled),
@@ -23,13 +26,13 @@
 .duplicate-button,
 .ghost-button,
 .toolbar-button,
-.back-button { background: var(--color-surface); color: var(--color-text); border-color: var(--color-input-border); }
+.back-button { background: var(--color-surface); color: var(--color-text); border-color: var(--color-line); font-weight: 500; }
 .secondary-button:hover:not(:disabled),
 .duplicate-button:hover:not(:disabled),
 .ghost-button:hover:not(:disabled),
 .toolbar-button:hover:not(:disabled),
-.back-button:hover:not(:disabled) { background: var(--color-soft); border-color: var(--color-brand); }
-.text-button { background: transparent; color: var(--color-brand-hover); }
+.back-button:hover:not(:disabled) { background: var(--color-page); border-color: var(--color-input-border); }
+.text-button { background: transparent; color: var(--color-text); }
 .text-button:hover:not(:disabled) { background: var(--color-soft); }
 .danger-button,
 .remove-button { background: var(--color-surface); border-color: var(--color-error); color: var(--color-error); }

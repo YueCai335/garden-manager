@@ -11,11 +11,9 @@ import { Button } from "./ui/Button";
 import canvasStyles from "./canvas/Canvas.module.css";
 
 import {
-  allocationPlantColor,
   clampAllocationCenter,
   findDuplicatePlantPosition,
   snapToGrid,
-  defaultPlantColor,
   plantDisplayName,
   plantTypeSuggestions,
   type GrowingArea,
@@ -48,7 +46,7 @@ export function GrowingAreaLayoutEditor({
   currentLayout.current = layout;
   const [localDraft, setLocalDraft] = useState(emptyPlantEditorDraft);
   const plantDraft = draft ?? localDraft;
-  const { allocationPlantType, allocationVariety, allocationColor, allocationDiameter, selectedId, editingAllocation, isAddFormOpen, isEditOpen, coordinates } = plantDraft;
+  const { allocationPlantType, allocationVariety, allocationDiameter, selectedId, editingAllocation, isAddFormOpen, isEditOpen, coordinates } = plantDraft;
   const updateDraft = useCallback((update: (current: PlantEditorDraft) => PlantEditorDraft) => (onDraftChange ?? setLocalDraft)(update), [onDraftChange]);
   const setField = <K extends keyof PlantEditorDraft>(key: K, value: PlantEditorDraft[K]) => updateDraft((current) => ({ ...current, [key]: value }));
   // A spacing the user has not changed follows the suggestion for the typed plant.
@@ -94,9 +92,6 @@ export function GrowingAreaLayoutEditor({
   const draftAllocation: PlantAllocation | undefined = layout && newPlant
     ? { ...newPlant, id: "new-allocation", ...clampAllocationCenter({ x: layout.widthMeters / 2, y: layout.depthMeters / 2 }, layout) }
     : undefined;
-  const suggestedAllocationColor = draftAllocation && layout
-    ? allocationPlantColor(draftAllocation, [...layout.allocations, draftAllocation])
-    : defaultPlantColor(allocationPlantType, allocationVariety);
   const spacingSuggestion = suggestedPlantSpacing(allocationPlantType);
   const warnings = layout ? plantWarnings(layout) : undefined;
   const groups = layout ? plantGroups(layout) : [];
@@ -174,11 +169,6 @@ export function GrowingAreaLayoutEditor({
 
   const updateEditingAllocation = (field: "x" | "y" | "diameterMeters", rawValue: string) => {
     updateDraft((current) => ({ ...current, coordinates: { ...current.coordinates, [field]: rawValue } }));
-  };
-
-  const updateEditingColor = (color: string) => {
-    if (!editingAllocation) return;
-    setEditingAllocation({ ...editingAllocation, color });
   };
 
   const updateEditingIdentity = (field: "plantType" | "variety", value: string) => {
@@ -294,7 +284,7 @@ export function GrowingAreaLayoutEditor({
           {isEditOpen && selected && editingAllocation ? <FeedbackForm className="selected-allocation" onKeyDown={applyOnEnter} onSubmit={(event) => {
             if ((event.nativeEvent as SubmitEvent).submitter?.getAttribute("data-action") === "duplicate") duplicateSelected();
             else applyPlant();
-          }}><h3>Edit {selected.label}</h3><div className="selected-fields"><FormField id="selected-allocation-plant-type"><label htmlFor="selected-allocation-plant-type">Plant type</label><input id="selected-allocation-plant-type" required list="plant-type-suggestions" onBlur={() => applyPlant()} onChange={(event) => updateEditingIdentity("plantType", event.target.value)} value={editingAllocation.plantType ?? editingAllocation.label} /></FormField><div className="field"><label htmlFor="selected-allocation-variety">Variety (optional)</label><input id="selected-allocation-variety" onBlur={() => applyPlant()} onChange={(event) => updateEditingIdentity("variety", event.target.value)} value={editingAllocation.variety ?? ""} /></div><FormField id="allocation-x"><label htmlFor="allocation-x">X position (m)</label><input id="allocation-x" required max={layout.widthMeters} aria-invalid={Boolean(layout && plantPositionError(plantDraft, layout))} aria-describedby={layout && plantPositionError(plantDraft, layout) ? "plant-position-error" : undefined} min="0" onBlur={() => applyPlant()} onChange={(event) => updateEditingAllocation("x", event.target.value)} step="0.1" type="number" value={coordinates.x} /></FormField><FormField id="allocation-y"><label htmlFor="allocation-y">Y position (m)</label><input id="allocation-y" required max={layout.depthMeters} aria-invalid={Boolean(layout && plantPositionError(plantDraft, layout))} aria-describedby={layout && plantPositionError(plantDraft, layout) ? "plant-position-error" : undefined} min="0" onBlur={() => applyPlant()} onChange={(event) => updateEditingAllocation("y", event.target.value)} step="0.1" type="number" value={coordinates.y} /></FormField><FormField id="selected-allocation-diameter"><label htmlFor="selected-allocation-diameter">Plant spacing (m)</label><input id="selected-allocation-diameter" required aria-invalid={Boolean(layout && plantPositionError(plantDraft, layout))} aria-describedby={layout && plantPositionError(plantDraft, layout) ? "plant-position-error" : undefined} min="0.1" onBlur={() => applyPlant()} onChange={(event) => updateEditingAllocation("diameterMeters", event.target.value)} step="0.1" type="number" value={coordinates.diameterMeters} /></FormField><div className="field"><label htmlFor="selected-allocation-color">Plant color</label><input id="selected-allocation-color" onBlur={() => applyPlant()} onChange={(event) => updateEditingColor(event.target.value)} type="color" value={allocationPlantColor(editingAllocation, layout.allocations)} /></div></div><p className="field-hint">Changes apply when you leave a field or press Enter.</p><div className="form-actions"><button className="duplicate-button" data-action="duplicate" type="submit">Duplicate plant</button><button className="secondary-button" onClick={cancelPlantForm} type="button">Close</button><button className="remove-button" onClick={() => removePlant(selected.id)} type="button">Remove plant</button></div></FeedbackForm> : null}
+          }}><h3>Edit {selected.label}</h3><div className="selected-fields"><FormField id="selected-allocation-plant-type"><label htmlFor="selected-allocation-plant-type">Plant type</label><input id="selected-allocation-plant-type" required list="plant-type-suggestions" onBlur={() => applyPlant()} onChange={(event) => updateEditingIdentity("plantType", event.target.value)} value={editingAllocation.plantType ?? editingAllocation.label} /></FormField><div className="field"><label htmlFor="selected-allocation-variety">Variety (optional)</label><input id="selected-allocation-variety" onBlur={() => applyPlant()} onChange={(event) => updateEditingIdentity("variety", event.target.value)} value={editingAllocation.variety ?? ""} /></div><FormField id="allocation-x"><label htmlFor="allocation-x">X position (m)</label><input id="allocation-x" required max={layout.widthMeters} aria-invalid={Boolean(layout && plantPositionError(plantDraft, layout))} aria-describedby={layout && plantPositionError(plantDraft, layout) ? "plant-position-error" : undefined} min="0" onBlur={() => applyPlant()} onChange={(event) => updateEditingAllocation("x", event.target.value)} step="0.1" type="number" value={coordinates.x} /></FormField><FormField id="allocation-y"><label htmlFor="allocation-y">Y position (m)</label><input id="allocation-y" required max={layout.depthMeters} aria-invalid={Boolean(layout && plantPositionError(plantDraft, layout))} aria-describedby={layout && plantPositionError(plantDraft, layout) ? "plant-position-error" : undefined} min="0" onBlur={() => applyPlant()} onChange={(event) => updateEditingAllocation("y", event.target.value)} step="0.1" type="number" value={coordinates.y} /></FormField><FormField id="selected-allocation-diameter"><label htmlFor="selected-allocation-diameter">Plant spacing (m)</label><input id="selected-allocation-diameter" required aria-invalid={Boolean(layout && plantPositionError(plantDraft, layout))} aria-describedby={layout && plantPositionError(plantDraft, layout) ? "plant-position-error" : undefined} min="0.1" onBlur={() => applyPlant()} onChange={(event) => updateEditingAllocation("diameterMeters", event.target.value)} step="0.1" type="number" value={coordinates.diameterMeters} /></FormField></div><p className="field-hint">Changes apply when you leave a field or press Enter.</p><div className="form-actions"><button className="duplicate-button" data-action="duplicate" type="submit">Duplicate plant</button><button className="secondary-button" onClick={cancelPlantForm} type="button">Close</button><button className="remove-button" onClick={() => removePlant(selected.id)} type="button">Remove plant</button></div></FeedbackForm> : null}
           {isAddFormOpen ? <FeedbackForm className="allocation-form" onSubmit={(event) => {
             if ((event.nativeEvent as SubmitEvent).submitter?.getAttribute("data-action") === "duplicate") addAndDuplicateAllocation();
             else addAllocation(event);
@@ -303,7 +293,6 @@ export function GrowingAreaLayoutEditor({
             <FormField id="allocation-plant-type" className="field"><label htmlFor="allocation-plant-type">Plant type</label><input id="allocation-plant-type" autoFocus list="plant-type-suggestions" onChange={(event) => setAllocationPlantType(event.target.value)} placeholder="e.g. Tomato" required value={allocationPlantType} /></FormField>
             <div className="field"><label htmlFor="allocation-variety">Variety (optional)</label><input id="allocation-variety" onChange={(event) => setAllocationVariety(event.target.value)} placeholder="e.g. Sun Gold" value={allocationVariety} /></div>
             <FormField id="allocation-diameter" className="field"><label htmlFor="allocation-diameter">Plant spacing (m)</label><input id="allocation-diameter" required min="0.1" aria-describedby={spacingSuggestion ? "allocation-diameter-suggestion" : undefined} onChange={(event) => setAllocationDiameter(event.target.value)} step="0.1" type="number" value={allocationDiameter} />{spacingSuggestion && <p id="allocation-diameter-suggestion" className="field-hint">Suggested for {spacingSuggestion.plantType}: {spacingSuggestion.metres} m ({spacingSuggestion.inches} in{spacingSuggestion.note ? `, ${spacingSuggestion.note}` : ""}). Source: {plantSpacingSource}.</p>}</FormField>
-            <div className="field"><label htmlFor="allocation-color">Plant color</label><input id="allocation-color" onChange={(event) => setAllocationColor(event.target.value)} type="color" value={allocationColor || suggestedAllocationColor} /></div>
             {newPlant && <p className={canvasStyles.preview} role="status">Click inside {area.name} on the plan to place {newPlant.label}. Escape stops.</p>}
             <div className="form-actions"><button className="primary-button" type="submit">Add</button><button className="duplicate-button" data-action="duplicate" type="submit">Add &amp; duplicate</button><button className="secondary-button" onClick={fillArea} type="button">Fill area</button><button className="secondary-button" onClick={finishAdding} type="button">Done</button></div>
           </FeedbackForm> : null}

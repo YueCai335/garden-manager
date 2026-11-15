@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { openWorkspace } from "./workspace";
 
 for (const width of [390, 1440]) {
   test(`Plant Doctor review and Plant Guide sources at ${width}px`, async ({ page }, testInfo) => {
@@ -33,7 +34,7 @@ for (const width of [390, 1440]) {
       } });
     });
 
-    await page.goto("/");
+    await openWorkspace(page);
     await page.getByRole("button", { name: "Load demo garden" }).click();
     await expect(page.getByText("All changes saved", { exact: true })).toBeVisible();
     await page.goto("/doctor");

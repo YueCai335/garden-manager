@@ -11,11 +11,16 @@ for (const width of [390, 1440]) {
     await page.addInitScript((value) => {
       if (!localStorage.getItem("sun-aware-garden-planner:garden-workspace:v1")) localStorage.setItem("sun-aware-garden-planner:garden-workspace:v1", JSON.stringify(value));
     }, workspace);
+    // The old garden route lands on Next Season filtered to that garden (ADR-0073, phase S3).
     await page.goto("/gardens/demo-garden/season");
+    await expect(page).toHaveURL(/\/season\?garden=demo-garden$/);
     await expect(page.getByRole("heading", { level: 1, name: /Next Season ·/ })).toBeVisible();
     await expect(page.getByText("0 of 3 areas planned")).toBeVisible();
-    await expect(page.getByLabel("Garden", { exact: true })).toHaveValue("demo-garden");
-    await expect(page.getByRole("region", { name: "Planting plans" }).getByLabel("Garden", { exact: true })).toHaveCount(0);
+    const filter = page.getByRole("region", { name: "Planting plans" }).getByRole("combobox", { name: "Garden", exact: true });
+    await expect(filter).toHaveValue("demo-garden");
+    await expect(page.getByText("Only Demo Garden ·")).toBeVisible();
+    // An L1 page has no garden switcher or breadcrumb.
+    await expect(page.locator("#workspace-garden")).toHaveCount(0);
     await expect(page.getByText("All changes saved", { exact: true })).toBeVisible();
     const id = await page.evaluate(() => localStorage.getItem("sun-aware-garden-planner:server-workspace-id:v1"));
     const workspaceUrl = `http://127.0.0.1:8100/workspaces/${id}`;
@@ -38,6 +43,7 @@ for (const width of [390, 1440]) {
     expect(saved.gardens[0].plantings).toEqual(originalPlantings);
     expect(saved.gardens[0].seasonPlans[0].plantings[0].commonName).toBe("Kale");
     await page.reload();
+    await expect(filter).toHaveValue("demo-garden");
     await expect(card.getByText("Kale", { exact: true })).toBeVisible();
     await expect(card.getByRole("button", { name: "Add a plant" })).toBeVisible();
     await page.locator("summary", { hasText: "Plan preview · Demo Garden" }).click();

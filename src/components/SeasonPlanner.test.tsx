@@ -33,7 +33,7 @@ describe("Next Season hierarchy", () => {
     expect(vi.mocked(fetch).mock.calls.every(([url]) => String(url).endsWith("/runtime-config"))).toBe(true);
   });
 
-  it("filters history and plans together and ignores a global filter on a garden route", async () => {
+  it("filters history and plans together and follows a filter the page's URL owns", async () => {
     const user = userEvent.setup();
     const first = createDemoGardenWorkspace().gardens[0];
     const second = { ...first, id: "back", name: "Back garden", growingAreas: [{ ...first.growingAreas[0], id: "back-bed", name: "Back bed" }], plantings: [] };
@@ -43,10 +43,18 @@ describe("Next Season hierarchy", () => {
     expect(screen.getByRole("heading", { name: "Back bed" })).toBeVisible();
     expect(screen.queryByRole("heading", { name: "Sample raised bed" })).not.toBeInTheDocument();
     expect(screen.queryByText("Tomato · Sun Gold")).not.toBeInTheDocument();
-    rerender(<SeasonPlanner gardens={[first, second]} gardenId={first.id} {...handlers} />);
-    expect(screen.queryByLabelText("Garden")).not.toBeInTheDocument();
+    const onGardenFilterChange = vi.fn();
+    rerender(<SeasonPlanner gardens={[first, second]} gardenFilter={first.id} onGardenFilterChange={onGardenFilterChange} {...handlers} />);
+    expect(screen.getByLabelText("Garden")).toHaveValue(first.id);
     expect(screen.getByRole("heading", { name: "Sample raised bed" })).toBeVisible();
     expect(screen.queryByRole("heading", { name: "Back bed" })).not.toBeInTheDocument();
+    expect(screen.getByText(/Only Demo Garden/)).toBeVisible();
+    expect(screen.getByRole("link", { name: "Show all" })).toHaveAttribute("href", "/season");
+    await user.selectOptions(screen.getByLabelText("Garden"), "back");
+    expect(onGardenFilterChange).toHaveBeenCalledWith("back");
+    rerender(<SeasonPlanner gardens={[first, second]} gardenFilter="missing" onGardenFilterChange={onGardenFilterChange} {...handlers} />);
+    expect(screen.getByRole("heading", { name: "Garden unavailable" })).toBeVisible();
+    expect(screen.getByText(/Only an unavailable garden/)).toBeVisible();
     expect(handlers.onSavePlan).not.toHaveBeenCalled();
   });
 

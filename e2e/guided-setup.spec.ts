@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
-import { fitCanvas, metresToCanvas } from "../src/lib/canvasViewport";
-import { planCanvas, planSurface } from "./areaHelpers";
+import { metresToCanvas } from "../src/lib/canvasViewport";
+import { planCanvas, planSurface, planTransform } from "./areaHelpers";
+import { openWorkspace } from "./workspace";
 
 /**
  * ADR-0072, phase G6: a new garden walks through four steps on the normal
@@ -16,7 +17,7 @@ for (const width of [1440, 390]) {
   test(`guides a new garden from Add garden to Ready at ${width}px`, async ({ page }, testInfo) => {
     await page.route("**/ai/**", (route) => route.abort());
     await page.setViewportSize({ width, height: 900 });
-    await page.goto("/");
+    await openWorkspace(page);
     await page.getByRole("button", { name: "Load demo garden" }).click();
     await expect(page.getByRole("link", { name: "Open Demo Garden" })).toBeVisible();
     await page.getByRole("link", { name: "Add garden" }).click();
@@ -39,7 +40,7 @@ for (const width of [1440, 390]) {
       const canvas = planCanvas(page);
       await canvas.scrollIntoViewIfNeeded();
       const box = (await canvas.boundingBox())!;
-      const view = fitCanvas({ x: 0, y: 0, widthMeters: 14, depthMeters: 10 }, box.width, box.height)!;
+      const view = await planTransform(page, { x: 0, y: 0, widthMeters: 14, depthMeters: 10 });
       const from = metresToCanvas({ x: 10, y: 6 }, view);
       const to = metresToCanvas({ x: 8, y: 5 }, view);
       await page.mouse.move(box.x + from.x, box.y + from.y);
@@ -98,8 +99,9 @@ for (const width of [1440, 390]) {
     const summary = page.getByRole("list", { name: "Garden summary" });
     await expect(summary).toContainText("1 planting area");
     await expect(summary).toContainText("1 plant group");
-    await expect(page.getByRole("link", { name: "Log the first watering" })).toHaveAttribute("href", `${gardenBase}/care?view=history`);
-    await expect(page.getByRole("link", { name: "Plan next season" })).toHaveAttribute("href", `${gardenBase}/season`);
+    const gardenId = decodeURIComponent(gardenBase.split("/")[2]);
+    await expect(page.getByRole("link", { name: "Log the first watering" })).toHaveAttribute("href", `/care?${new URLSearchParams({ view: "history", location: gardenId })}`);
+    await expect(page.getByRole("link", { name: "Plan next season" })).toHaveAttribute("href", `/season?${new URLSearchParams({ garden: gardenId })}`);
     await page.screenshot({ path: testInfo.outputPath(`ready-${width}.png`) });
     await expectNoSideScroll(page);
 
@@ -111,18 +113,21 @@ for (const width of [1440, 390]) {
     await expect(note).toHaveCount(0);
     await expect(page.getByRole("heading", { name: `${name} is ready` })).toBeVisible();
 
-    // Each width follows a different Ready link into this garden; leaving Ready ends the guide.
-    const gardenId = decodeURIComponent(gardenBase.split("/")[2]);
+    // Each width follows a different Ready link into the L1 module filtered to this garden; leaving Ready ends the guide.
     if (width === 1440) {
       await page.getByRole("link", { name: "Log the first watering" }).click();
-      await expect(page).toHaveURL(new RegExp(`${gardenBase}/care\\?view=history$`));
+      await expect(page).toHaveURL(/\/care\?view=history&location=/);
+      await expect(page.getByRole("combobox", { name: "Location", exact: true })).toHaveValue(gardenId);
       await expect(page.getByRole("button", { name: "Add care event" })).toBeVisible();
     } else {
       await page.getByRole("link", { name: "Plan next season" }).click();
-      await expect(page).toHaveURL(new RegExp(`${gardenBase}/season$`));
+      await expect(page).toHaveURL(/\/season\?garden=/);
+      await expect(page.getByRole("region", { name: "Planting plans" }).getByRole("combobox", { name: "Garden", exact: true })).toHaveValue(gardenId);
+      await expect(page.getByText(`Only ${name} ·`)).toBeVisible();
     }
-    await expect(page.locator("#workspace-garden")).toHaveValue(gardenId);
-    await page.getByRole("navigation", { name: "Garden sections" }).getByRole("link", { name: "Garden Plan" }).click();
+    // Back returns to this garden's plan, and the finished guide stays closed.
+    await page.goBack();
+    await expect(page).toHaveURL(new RegExp(`${gardenBase}/plan$`));
     await expect(page.getByRole("region", { name: "Garden properties" })).toContainText(`${name} · 8 × 5 m`);
     await expect(track).toHaveCount(0);
   });

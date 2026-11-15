@@ -17,12 +17,12 @@
 [data-status="current"] .marker { border: 2px solid var(--color-brand); background: var(--color-soft); color: var(--color-brand); transform: scale(1.2); animation: pulse 2s ease-out infinite; }
 [data-status="current"] .stepText { color: var(--color-text); font-weight: 700; }
 @keyframes pulse {
-  0% { box-shadow: 0 0 0 0 rgb(47 104 70 / 45%); }
-  70% { box-shadow: 0 0 0 9px rgb(47 104 70 / 0%); }
-  100% { box-shadow: 0 0 0 0 rgb(47 104 70 / 0%); }
+  0% { box-shadow: 0 0 0 0 rgb(31 66 48 / 45%); }
+  70% { box-shadow: 0 0 0 9px rgb(31 66 48 / 0%); }
+  100% { box-shadow: 0 0 0 0 rgb(31 66 48 / 0%); }
 }
 @media (prefers-reduced-motion: reduce) {
-  [data-status="current"] .marker { animation: none; box-shadow: 0 0 0 3px rgb(47 104 70 / 25%); }
+  [data-status="current"] .marker { animation: none; box-shadow: 0 0 0 3px rgb(31 66 48 / 25%); }
   .track::after { transition: none; }
 }
 .srOnly { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }

@@ -7,7 +7,7 @@ import { Button, ButtonLink } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { plantDisplayName, type Garden } from "@/lib/gardenWorkspace";
 import { homeTasks } from "@/lib/homeTasks";
-import { gardenPath } from "@/lib/workspaceRoutes";
+import { careLocationPath, gardenPath } from "@/lib/workspaceRoutes";
 import { OverviewNoteEntry } from "./AppShell";
 import { useWorkspace } from "./WorkspaceProvider";
 import styles from "./WorkspaceHome.module.css";
@@ -27,7 +27,7 @@ function GardenCard({ garden }: { garden: Garden }) {
   return <Link aria-label={`Open ${garden.name}`} aria-describedby={detailsId} className={styles.card} href={gardenPath(garden.id)}>
     <div className={styles.map} aria-hidden="true">
       {areaCount > unmeasured
-        ? <GardenPlanOverview compact growingAreas={garden.growingAreas} plan={garden.plan} />
+        ? <GardenPlanOverview compact growingAreas={garden.growingAreas} plantings={garden.plantings} plan={garden.plan} />
         : <span>{areaCount ? "Planting areas need a size" : "No planting areas yet"}</span>}
     </div>
     <div className={styles.cardDetails}>
@@ -38,6 +38,31 @@ function GardenCard({ garden }: { garden: Garden }) {
       </div>
     </div>
   </Link>;
+}
+
+type HomeTasks = ReturnType<typeof homeTasks>;
+
+/** ADR-0073: a short "Today" strip; the full task list lives in Care. */
+function TodayStrip({ counts, tasks }: { counts: HomeTasks["counts"]; tasks: HomeTasks["recent"] }) {
+  const due = counts.overdue + counts["due-today"];
+  return <section aria-labelledby="today-heading" className={styles.today}>
+    <div className={styles.todaySummary}>
+      <h2 id="today-heading">Today</h2>
+      <p>
+        {counts.overdue > 0 && <><span className={styles.overdue}>{counts.overdue} overdue</span> · </>}
+        {due ? `${counts["due-today"]} due today` : "Nothing due today"}
+        {counts.upcoming > 0 && ` · ${counts.upcoming} in the next 7 days`}
+      </p>
+    </div>
+    {tasks.length > 0 && <ul className={styles.todayTasks}>{tasks.map(({ key, task, location, gardenId, status }) => <li key={key}>
+      <Link href={careLocationPath(gardenId ?? "all-gardens", "tasks")}>
+        <strong>{task.type === "watering" ? "Watering" : "Fertilizing"}</strong>
+        <span>{location}</span>
+        <span className={status === "overdue" ? styles.overdue : undefined}>{taskGroups.find((group) => group.status === status)?.label} · <time dateTime={task.dueDate}>{task.dueDate}</time></span>
+      </Link>
+    </li>)}</ul>}
+    <ButtonLink className={styles.todayLink} href="/care?view=tasks">{tasks.length ? "Open Care" : "Add a care task"} <span aria-hidden="true">→</span></ButtonLink>
+  </section>;
 }
 
 export function WorkspaceHomeLoading() {
@@ -57,26 +82,10 @@ export function WorkspaceHome({ onOpenDemoGarden, onboarding }: { onOpenDemoGard
   const { counts, recent } = workspace ? homeTasks(workspace) : { counts: { overdue: 0, "due-today": 0, upcoming: 0 }, recent: [] };
 
   return <div className={styles.home}>
+    {workspace && <TodayStrip counts={counts} tasks={recent.slice(0, 3)} />}
     <div className={styles.overview}>
       <div className={styles.daily}>
         <OverviewNoteEntry />
-        <aside aria-labelledby="upcoming-care-heading" className={styles.tasks}>
-          <h2 id="upcoming-care-heading">Care tasks</h2>
-          <p className={styles.hint}>Due now and in the next 7 days</p>
-          <dl className={styles.taskCounts}>
-            {taskGroups.map(({ status, label }) => <div key={status}>
-              <dt>{label}</dt><dd className={status === "overdue" && counts[status] ? styles.overdue : undefined}>{counts[status]}</dd>
-            </div>)}
-          </dl>
-          {recent.length > 0 ? <ul className={styles.taskList}>{recent.map(({ key, task, location, gardenId, status }) => <li key={key}>
-            <Link href={gardenId ? `${gardenPath(gardenId, "care")}?view=tasks` : "/care?view=tasks&location=all-gardens"}>
-              <strong>{task.type === "watering" ? "Watering" : "Fertilizing"}</strong>
-              <span>{location}</span>
-              <span className={status === "overdue" ? styles.overdue : undefined}>{taskGroups.find((group) => group.status === status)?.label} · <time dateTime={task.dueDate}>{task.dueDate}</time></span>
-            </Link>
-          </li>)}</ul> : <p className={styles.noTasks}>No tasks due in this period.</p>}
-          {workspace && <ButtonLink className={styles.taskLink} variant="text" href="/care?view=tasks">{recent.length ? "View all tasks →" : "Add task →"}</ButtonLink>}
-        </aside>
       </div>
       <div className={styles.gallery}>
         {onboarding ?? <section aria-labelledby="your-gardens-heading" className={styles.gardens}>

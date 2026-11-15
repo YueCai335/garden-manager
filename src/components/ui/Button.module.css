@@ -1,2 +1,8 @@
 .label { display: grid; }
 .label > span { grid-area: 1 / 1; }
+/* The ADR-0073 pill: neutral hairline border, no tinted hover. */
+.pill { border-radius: var(--radius-pill); font-weight: 500; }
+.pill:global(.secondary-button) { border-color: var(--color-neutral-line); background: var(--color-neutral-surface); color: var(--color-ink); }
+.pill:global(.secondary-button):hover:not(:disabled) { border-color: var(--color-ink-subtle); background: var(--color-neutral-page); }
+.pill:global(.primary-button) { border-color: var(--color-content-green); background: var(--color-content-green); }
+.pill:global(.primary-button):hover:not(:disabled) { border-color: var(--color-content-green-hover); background: var(--color-content-green-hover); }

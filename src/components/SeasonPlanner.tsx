@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef } from "react";
+import Link from "next/link";
+import { useRef, useState } from "react";
 import { gardenPath } from "@/lib/workspaceRoutes";
 import { ButtonLink } from "@/components/ui/Button";
 import styles from "./season/Season.module.css";
@@ -37,7 +38,8 @@ type PlanChoice = Pick<PlantChoice, "plantType" | "cropFamily">;
 
 export function SeasonPlanner({
   gardens,
-  gardenId,
+  gardenFilter: urlGardenFilter,
+  onGardenFilterChange,
   workspaceId,
   isSynced,
   notice,
@@ -46,7 +48,9 @@ export function SeasonPlanner({
   onConfirmAllocation,
 }: {
   gardens: Garden[];
-  gardenId?: string;
+  /** The `?garden=` filter: a garden ID, or "all". The page's URL owns it; without it the filter is local. */
+  gardenFilter?: string;
+  onGardenFilterChange?: (gardenId: string) => void;
   workspaceId?: string;
   isSynced: boolean;
   notice?: string;
@@ -69,20 +73,19 @@ export function SeasonPlanner({
   const { requestConfirmation, confirmation, confirmDiscard } = useConfirmation();
   const currentGardens = useRef(gardens);
   currentGardens.current = gardens;
-  const scopeKey = gardenId ?? "all";
-  const [gardenFilter, setGardenFilter] = useWorkspaceDraft(`season:${scopeKey}:gardenFilter`, "all");
+  const [localGardenFilter, setLocalGardenFilter] = useState("all");
+  const gardenFilter = urlGardenFilter ?? localGardenFilter;
+  const setGardenFilter = onGardenFilterChange ?? setLocalGardenFilter;
+  const filteredGarden = gardens.find((garden) => garden.id === gardenFilter);
   const [previewMode, setPreviewMode] =
-    useWorkspaceDraft<GardenPlanViewMode>(`season:${scopeKey}:previewMode`, "growing-areas");
-  const [choosingAreaKey, setChoosingAreaKey] = useWorkspaceDraft<string | undefined>(`season:${scopeKey}:choosingAreaKey`, undefined);
-  const [choices, setChoices] = useWorkspaceDraft<Record<string, PlantChoice>>(`season:${scopeKey}:choices`, {});
-  useUnsavedDraft(`season:${scopeKey}:choices`, Boolean(choosingAreaKey));
+    useWorkspaceDraft<GardenPlanViewMode>("season:all:previewMode", "growing-areas");
+  const [choosingAreaKey, setChoosingAreaKey] = useWorkspaceDraft<string | undefined>("season:all:choosingAreaKey", undefined);
+  const [choices, setChoices] = useWorkspaceDraft<Record<string, PlantChoice>>("season:all:choices", {});
+  useUnsavedDraft("season:all:choices", Boolean(choosingAreaKey));
   const { config, failed, retry } = useRuntimeConfig();
   const isPortfolioDemo = config?.portfolioDemo;
   const planningYear = nextSeasonYear();
-  const visibleGardens =
-    gardenId ? gardens.filter((garden) => garden.id === gardenId) : gardenFilter === "all"
-      ? gardens
-      : gardens.filter((garden) => garden.id === gardenFilter);
+  const visibleGardens = gardenFilter === "all" ? gardens : gardens.filter((garden) => garden.id === gardenFilter);
 
   return (
     <section
@@ -91,7 +94,7 @@ export function SeasonPlanner({
     >
       {confirmation}
       <InlineNotice tone="status">{notice}</InlineNotice>
-      {!gardenId && <label className="season-filter" htmlFor="season-garden-filter">
+      <label className="season-filter" htmlFor="season-garden-filter">
         Garden
         <select
           id="season-garden-filter"
@@ -106,7 +109,10 @@ export function SeasonPlanner({
             </option>
           ))}
         </select>
-      </label>}
+      </label>
+      {gardenFilter !== "all" && <p className="section-context">
+        Only {filteredGarden?.name ?? "an unavailable garden"} · <Link href="/season">Show all</Link>
+      </p>}
 
       {!visibleGardens.length ? (
         <div className="season-planner-empty">

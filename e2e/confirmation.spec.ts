@@ -1,11 +1,12 @@
 import { expect, test } from "@playwright/test";
 import { openAreaProperties } from "./areaHelpers";
+import { openWorkspace } from "./workspace";
 
 for (const width of [390, 1440]) {
   test(`destructive confirmations contain focus and restore context at ${width}px`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: width === 390 ? 844 : 900 });
     await page.route("**/ai/**", (route) => route.abort());
-    await page.goto("/");
+    await openWorkspace(page);
     await page.getByRole("button", { name: "Load demo garden" }).click();
     await page.getByRole("link", { name: "Open Demo Garden" }).click();
     await openAreaProperties(page, "Sample raised bed");
@@ -55,10 +56,10 @@ for (const width of [390, 1440]) {
 }
 
 test("care form cancellation keeps drafts until explicit discard", async ({ page }) => {
-  await page.goto("/");
+  await openWorkspace(page);
   await page.getByRole("button", { name: "Load demo garden" }).click();
   await expect(page.getByText("All changes saved", { exact: true })).toBeVisible();
-  await page.goto("/gardens/demo-garden/care?view=tasks");
+  await page.goto("/care?view=tasks&location=demo-garden");
   await page.getByRole("button", { name: "Add task", exact: true }).click();
   await page.getByLabel("Note (optional)").fill("Keep this draft");
   await page.getByRole("button", { name: "Cancel", exact: true }).click();

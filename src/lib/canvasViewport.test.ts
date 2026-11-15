@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canvasGridTicks, canvasToMetres, fitCanvas, interpolateViewport, metresToCanvas } from "./canvasViewport";
+import { canvasGridTicks, canvasToMetres, fitCanvas, insetViewport, interpolateViewport, metresToCanvas, noInsets, overlayInsets, type CanvasInsets } from "./canvasViewport";
 import { createRectangularLayout, gardenPlanViewport, type GrowingArea } from "./gardenWorkspace";
 
 describe("canvas transforms", () => {
@@ -53,5 +53,54 @@ describe("viewport zoom animation", () => {
   it("clamps progress outside 0 to 1", () => {
     expect(interpolateViewport(from, to, -1)).toEqual(from);
     expect(interpolateViewport(from, to, 3)).toEqual(to);
+  });
+});
+
+describe("framing around floating layers", () => {
+  const target = { x: 2, y: 1, widthMeters: 4, depthMeters: 2 };
+  // The target's rectangle on screen once the inset viewport is fitted to the whole canvas.
+  const onScreen = (width: number, height: number, insets: CanvasInsets) => {
+    const transform = fitCanvas(insetViewport(target, width, height, 34, insets), width, height, 34)!;
+    const topLeft = metresToCanvas({ x: target.x, y: target.y }, transform);
+    const bottomRight = metresToCanvas({ x: target.x + target.widthMeters, y: target.y + target.depthMeters }, transform);
+    return { left: topLeft.x, top: topLeft.y, right: bottomRight.x, bottom: bottomRight.y };
+  };
+
+  it("leaves the target unchanged without insets", () => {
+    expect(insetViewport(target, 800, 600, 34, noInsets)).toBe(target);
+  });
+
+  it("centres the target in the free part of the canvas", () => {
+    const insets = { top: 70, right: 340, bottom: 60, left: 0 };
+    const box = onScreen(1200, 700, insets);
+    expect(box.left).toBeGreaterThanOrEqual(34 - 1e-9);
+    expect(box.right).toBeLessThanOrEqual(1200 - 340 - 34 + 1e-9);
+    expect(box.top).toBeGreaterThanOrEqual(70 + 34 - 1e-9);
+    expect(box.bottom).toBeLessThanOrEqual(700 - 60 - 34 + 1e-9);
+    // Centred horizontally in the free width (the free height is not the limit here).
+    expect((box.left + box.right) / 2).toBeCloseTo((1200 - 340) / 2);
+    expect((box.top + box.bottom) / 2).toBeCloseTo(70 + (700 - 70 - 60) / 2);
+  });
+
+  it("falls back to the plain target when the insets leave no room", () => {
+    expect(insetViewport(target, 300, 300, 34, { top: 200, right: 0, bottom: 100, left: 0 })).toBe(target);
+  });
+
+  it("reserves a band for each floating layer by its corner", () => {
+    const insets = overlayInsets({ width: 1000, height: 700 }, [
+      { corner: "top-left", left: 16, top: 16, right: 500, bottom: 62 },
+      { corner: "top-right", left: 684, top: 16, right: 984, bottom: 684 },
+      { corner: "bottom-left", left: 16, top: 640, right: 400, bottom: 684 },
+      { corner: "bottom-right", left: 820, top: 630, right: 984, bottom: 684 },
+    ]);
+    expect(insets).toEqual({ top: 74, right: 328, bottom: 82, left: 0 });
+  });
+
+  it("ignores missing layers and layers that would leave no room", () => {
+    expect(overlayInsets({ width: 1000, height: 700 }, [{ corner: "top-left", left: 0, top: 0, right: 0, bottom: 0 }])).toEqual(noInsets);
+    expect(overlayInsets({ width: 1000, height: 700 }, [
+      { corner: "top-left", left: 0, top: 0, right: 1000, bottom: 700 },
+      { corner: "bottom-right", left: 0, top: 0, right: 1000, bottom: 700 },
+    ])).toEqual(noInsets);
   });
 });

@@ -3,14 +3,20 @@ import { createDemoGardenWorkspace } from "../src/lib/gardenWorkspace";
 import { planSurface } from "./areaHelpers";
 
 /**
- * ADR-0072, phase G7: the single-canvas Garden Plan journey at the three
- * reference widths, plus a 720 × 450 viewport at device scale 2, which is
- * what a 1440 × 900 window shows at 200% browser zoom. Each step keeps a
- * viewport screenshot in the test output and checks for sideways scrolling.
- * The app has one (light) theme, so there is no dark run.
+ * ADR-0072, phase G7: the single-canvas Garden Plan journey at the reference
+ * widths, plus a 720 × 450 viewport at device scale 2, which is what a
+ * 1440 × 900 window shows at 200% browser zoom. Each step keeps a viewport
+ * screenshot in the test output and checks for sideways scrolling. The app has
+ * one (light) theme, so there is no dark run.
+ *
+ * ADR-0073 S4 adds 1080 and 900 px: from 900 px the toolbar, zoom, legend, and
+ * area panel float over the canvas, and a geometry check confirms that none of
+ * them covers the selected area.
  */
 const viewports = [
   { name: "1440px", width: 1440, height: 900, scale: 1 },
+  { name: "1080px", width: 1080, height: 900, scale: 1 },
+  { name: "900px", width: 900, height: 900, scale: 1 },
   { name: "768px", width: 768, height: 1024, scale: 1 },
   { name: "390px", width: 390, height: 844, scale: 1 },
   { name: "200% zoom", width: 720, height: 450, scale: 2 },
@@ -18,6 +24,46 @@ const viewports = [
 
 async function expectNoSideScroll(page: Page) {
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
+}
+
+type Box = { left: number; top: number; right: number; bottom: number };
+
+/**
+ * The selected area as Konva drew it (its outline, plants, and selection ring) and
+ * the floating layers, all in page pixels. Konva's own scene graph gives the area's
+ * box, so the check does not reuse the app's framing maths.
+ */
+async function selectedAreaAndLayers(page: Page, areaName: string) {
+  return page.evaluate((label) => {
+    type KonvaNode = { getAttr: (name: string) => unknown; getClientRect: () => { x: number; y: number; width: number; height: number } };
+    type KonvaStage = { container: () => HTMLElement; findOne: (test: (node: KonvaNode) => boolean) => KonvaNode | undefined };
+    const surface = document.querySelector<HTMLElement>('[data-testid="garden-plan-canvas"]')!;
+    const stage = (window as unknown as { Konva: { stages: KonvaStage[] } }).Konva.stages.find((candidate) => surface.contains(candidate.container()))!;
+    const node = stage.findOne((candidate) => candidate.getAttr("aria-label") === label)!;
+    const rect = node.getClientRect();
+    const origin = stage.container().getBoundingClientRect();
+    const toBox = (box: DOMRect) => ({ left: box.left, top: box.top, right: box.right, bottom: box.bottom });
+    return {
+      area: { left: origin.left + rect.x, top: origin.top + rect.y, right: origin.left + rect.x + rect.width, bottom: origin.top + rect.y + rect.height },
+      canvas: toBox(surface.getBoundingClientRect()),
+      layers: [...surface.parentElement!.querySelectorAll<HTMLElement>(":scope > [data-corner]")].map((layer) => ({ corner: layer.dataset.corner!, ...toBox(layer.getBoundingClientRect()) })),
+    };
+  }, `Open ${areaName} on Garden Plan`);
+}
+
+const overlaps = (first: Box, second: Box) => first.left < second.right && first.right > second.left && first.top < second.bottom && first.bottom > second.top;
+
+async function expectSelectedAreaClear(page: Page, areaName: string, floating: boolean) {
+  const { area, canvas, layers } = await selectedAreaAndLayers(page, areaName);
+  // The whole area is on the canvas.
+  expect(area.left).toBeGreaterThanOrEqual(canvas.left);
+  expect(area.right).toBeLessThanOrEqual(canvas.right);
+  expect(area.top).toBeGreaterThanOrEqual(canvas.top);
+  expect(area.bottom).toBeLessThanOrEqual(canvas.bottom);
+  if (!floating) { expect(layers).toEqual([]); return; }
+  // Toolbar, zoom, legend, and the area panel all float, and none of them covers the area.
+  expect(layers.map(({ corner }) => corner).sort()).toEqual(["bottom-left", "bottom-right", "top-left", "top-right"]);
+  for (const layer of layers) expect(overlaps(area, layer), `${layer.corner} layer covers ${areaName}`).toBe(false);
 }
 
 for (const viewport of viewports) {
@@ -40,13 +86,21 @@ for (const viewport of viewports) {
       await expectNoSideScroll(page);
 
       // Opening an area zooms the same canvas; plants go straight onto it.
+      // The legend names the crop families in view.
+      await expect(page.getByTestId("plan-legend")).toContainText("Crop family");
+      await expect(page.getByTestId("plan-legend")).toContainText("Nightshade");
       await page.getByRole("link", { name: "Edit Sample raised bed" }).click();
       await expect(surface).toHaveAttribute("data-focused-area", "demo-raised-bed");
       await expect(surface).toHaveAttribute("data-zooming", "false");
+      const floating = viewport.width >= 900;
+      await expectSelectedAreaClear(page, "Sample raised bed", floating);
       await page.getByRole("button", { name: "Add plant", exact: true }).click();
       await page.getByLabel("Plant type", { exact: true }).fill("Lettuce");
       await page.getByRole("button", { name: "Fill area", exact: true }).click();
       await expect(page.getByText(/^Placed \d+ Lettuce\. Undo removes them\.$/)).toBeVisible();
+      // Lettuce is a leafy green, so the legend gains that family; the area stays clear of the layers.
+      await expect(page.getByTestId("plan-legend")).toContainText("Leafy green");
+      await expectSelectedAreaClear(page, "Sample raised bed", floating);
       await surface.scrollIntoViewIfNeeded();
       await shot("02-zoomed-area");
       await expectNoSideScroll(page);
@@ -61,7 +115,7 @@ for (const viewport of viewports) {
       await expect(surface).not.toHaveAttribute("data-focused-area", /.+/);
 
       // A new garden starts the guide on the same canvas.
-      await page.getByRole("link", { name: "Back to gardens" }).click();
+      await page.getByRole("link", { name: "All gardens", exact: true }).click();
       await page.getByRole("link", { name: "Add garden" }).click();
       await page.getByLabel("Garden name").fill("Acceptance plot");
       await page.getByRole("button", { name: "Continue setup" }).click();

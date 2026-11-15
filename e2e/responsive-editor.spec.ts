@@ -1,13 +1,15 @@
 import { expect, test } from "@playwright/test";
-import { fitCanvas, metresToCanvas } from "../src/lib/canvasViewport";
+import { metresToCanvas } from "../src/lib/canvasViewport";
 import { createDemoGardenWorkspace, gardenPlanViewport, type GardenWorkspace } from "../src/lib/gardenWorkspace";
-import { openAreaProperties, planCanvas, planSurface } from "./areaHelpers";
+import { openAreaProperties, planCanvas, planSurface, planTransform } from "./areaHelpers";
+import { openWorkspace } from "./workspace";
 
-for (const width of [390, 900, 1280, 1440]) {
+// 820 px keeps the overlay editor; from 900 px the area panel floats over the canvas (ADR-0073 S4).
+for (const width of [390, 820, 900, 1440]) {
   test(`garden details and area editing preserve context at ${width}px`, async ({ page }, testInfo) => {
     await page.route("**/ai/**", (route) => route.abort());
     await page.setViewportSize({ width, height: 900 });
-    await page.goto("/");
+    await openWorkspace(page);
     await page.getByRole("button", { name: "Load demo garden" }).click();
     await page.getByRole("link", { name: "Open Demo Garden" }).click();
     await expect(page.getByLabel("Garden name", { exact: true })).toHaveCount(0);
@@ -23,10 +25,9 @@ for (const width of [390, 900, 1280, 1440]) {
     if (width === 390) {
       const canvas = planCanvas(page);
       await expect(canvas).toBeVisible();
-      const box = (await canvas.boundingBox())!;
       const [garden] = createDemoGardenWorkspace().gardens;
       const [area] = garden.growingAreas;
-      const transform = fitCanvas(gardenPlanViewport(garden.plan, garden.growingAreas, "growing-areas"), box.width, box.height)!;
+      const transform = await planTransform(page, gardenPlanViewport(garden.plan, garden.growingAreas, "growing-areas"));
       await canvas.click({ position: metresToCanvas({ x: area.planPlacement.x + 0.2, y: area.planPlacement.y + 0.2 }, transform) });
       await expect(page).toHaveURL(/\?area=demo-raised-bed$/);
       const selected = page.getByRole("region", { name: "Sample raised bed" });
@@ -41,7 +42,7 @@ for (const width of [390, 900, 1280, 1440]) {
     if (width === 390) {
       await expect(panel).toHaveAttribute("data-mode", "mobile");
       await expect(page.getByRole("button", { name: "Move planting areas" })).not.toBeVisible();
-    } else if (width === 900) {
+    } else if (width === 820) {
       await expect(panel).toHaveAttribute("aria-modal", "true");
       expect(await page.evaluate(() => document.body.style.overflow)).toBe("hidden");
       const close = panel.getByRole("button", { name: "Close", exact: true });
@@ -56,11 +57,13 @@ for (const width of [390, 900, 1280, 1440]) {
       }
     } else {
       await expect(panel).toHaveAttribute("data-mode", "wide");
-      const plan = planSurface(page);
-      const canvasBox = (await plan.boundingBox())!;
+      // The panel floats inside the full-width canvas at its top right, 300 px wide.
+      const canvasBox = (await planSurface(page).boundingBox())!;
       const panelBox = (await panel.boundingBox())!;
-      expect(canvasBox.width).toBeGreaterThanOrEqual(640);
-      expect(canvasBox.x + canvasBox.width).toBeLessThanOrEqual(panelBox.x);
+      expect(Math.round(panelBox.width)).toBe(300);
+      expect(panelBox.x).toBeGreaterThan(canvasBox.x + canvasBox.width / 2);
+      expect(panelBox.x + panelBox.width).toBeLessThanOrEqual(canvasBox.x + canvasBox.width);
+      expect(panelBox.y).toBeGreaterThanOrEqual(canvasBox.y);
     }
     // A valid value applies when focus leaves its field (ADR-0072, phase G5).
     await page.getByLabel("Area X position (m)").fill("2.34");
@@ -113,13 +116,12 @@ test.describe("touch editing", () => {
   test("tap selects a planting area and opens the mobile editor", async ({ page }) => {
     const [garden] = createDemoGardenWorkspace().gardens;
     const [area] = garden.growingAreas;
-    await page.goto("/");
+    await openWorkspace(page);
     await page.getByRole("button", { name: "Load demo garden" }).tap();
     await page.getByRole("link", { name: "Open Demo Garden" }).tap();
     const canvas = planCanvas(page);
     await canvas.scrollIntoViewIfNeeded();
-    const box = (await canvas.boundingBox())!;
-    const transform = fitCanvas(gardenPlanViewport(garden.plan, garden.growingAreas, "growing-areas"), box.width, box.height)!;
+    const transform = await planTransform(page, gardenPlanViewport(garden.plan, garden.growingAreas, "growing-areas"));
     const position = metresToCanvas({ x: area.planPlacement.x + 0.2, y: area.planPlacement.y + 0.2 }, transform);
     await canvas.tap({ position });
     await expect(page).toHaveURL(/\?area=demo-raised-bed$/);
@@ -137,7 +139,7 @@ test.describe("touch editing", () => {
   test("a swipe over the canvas scrolls the page, and Move still moves an area", async ({ page }, testInfo) => {
     const [garden] = createDemoGardenWorkspace().gardens;
     const [area] = garden.growingAreas;
-    await page.goto("/");
+    await openWorkspace(page);
     await page.getByRole("button", { name: "Load demo garden" }).tap();
     await page.getByRole("link", { name: "Open Demo Garden" }).tap();
     await expect(page.getByText("All changes saved", { exact: true })).toBeVisible();
@@ -169,7 +171,7 @@ test.describe("touch editing", () => {
     }).toBe(true);
     const bedPoint = async () => {
       const box = (await canvas.boundingBox())!;
-      const transform = fitCanvas(gardenPlanViewport(garden.plan, garden.growingAreas, "growing-areas"), box.width, box.height)!;
+      const transform = await planTransform(page, gardenPlanViewport(garden.plan, garden.growingAreas, "growing-areas"));
       const point = metresToCanvas({ x: area.planPlacement.x + 2, y: area.planPlacement.y + 0.6 }, transform);
       return { x: box.x + point.x, y: box.y + point.y, scale: transform.scale };
     };
@@ -179,6 +181,8 @@ test.describe("touch editing", () => {
     const scrollBefore = await page.evaluate(() => scrollY);
     await swipe(start, { x: start.x, y: start.y - 160 });
     await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(scrollBefore + 40);
+    // A swipe that ends over the bed it started on is still a scroll, not a tap that opens the bed.
+    await settle();
     await expect(page).toHaveURL(/\/plan$/);
     expect(await placement()).toEqual(original);
 

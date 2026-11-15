@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 import { createGardenWorkspace, GARDEN_WORKSPACE_STORAGE_KEY } from "../src/lib/gardenWorkspace";
 import type { ServerWorkspace } from "../src/lib/gardenWorkspaceApi";
+import { openWorkspace } from "./workspace";
 
 test("a missing workspace can export and restore its browser copy without reusing the old ID", async ({ page }) => {
   const serverKey = "sun-aware-garden-planner:server-workspace-id:v1";
@@ -28,7 +29,7 @@ test("a missing workspace can export and restore its browser copy without reusin
 
   await page.getByRole("button", { name: "Restore browser copy" }).click();
   await page.getByRole("alertdialog").getByRole("button", { name: "Restore browser copy" }).click();
-  await expect(page).toHaveURL(/\/$/);
+  await expect(page).toHaveURL(/\/gardens$/);
   await expect(page.getByText("All changes saved", { exact: true })).toBeVisible();
   const restoredId = await page.evaluate((key) => localStorage.getItem(key), serverKey);
   expect(restoredId).toBeTruthy();
@@ -42,7 +43,7 @@ test("a missing workspace can export and restore its browser copy without reusin
 
 test("a failed season save can be retried from another module without creating a duplicate", async ({ page }) => {
   const nextYear = new Date().getFullYear() + 1;
-  await page.goto("/");
+  await openWorkspace(page);
   await page.getByRole("button", { name: "Load demo garden" }).click();
   await expect(page.getByText("All changes saved", { exact: true })).toBeVisible();
 
@@ -60,7 +61,7 @@ test("a failed season save can be retried from another module without creating a
   await area.getByLabel("Plant type").fill("Kale");
   await area.getByRole("button", { name: `Add to ${nextYear} plan` }).click();
   await expect(page.getByText("Changes not synced", { exact: true })).toBeVisible();
-  await page.getByRole("link", { name: "Overview", exact: true }).click();
+  await page.getByRole("navigation", { name: "Workspace sections" }).getByRole("link", { name: "Gardens", exact: true }).click();
   await expect(page.getByText("Changes not synced", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Retry", exact: true }).click();
   await expect(page.getByText("All changes saved", { exact: true })).toBeVisible();
@@ -80,7 +81,7 @@ test("a failed season save can be retried from another module without creating a
 
 test("a committed save with a lost response reloads the original record after a 409", async ({ page }) => {
   const nextYear = new Date().getFullYear() + 1;
-  await page.goto("/");
+  await openWorkspace(page);
   await page.getByRole("button", { name: "Load demo garden" }).click();
   await expect(page.getByText("All changes saved", { exact: true })).toBeVisible();
   const workspaceId = await page.evaluate(() => localStorage.getItem("sun-aware-garden-planner:server-workspace-id:v1"));
@@ -130,7 +131,7 @@ test("a committed save with a lost response reloads the original record after a 
 });
 
 test("a sync conflict clears Garden Plan undo history and says why", async ({ page }) => {
-  await page.goto("/");
+  await openWorkspace(page);
   await page.getByRole("button", { name: "Load demo garden" }).click();
   await page.getByRole("link", { name: "Open Demo Garden" }).click();
   await expect(page.getByText("All changes saved", { exact: true })).toBeVisible();

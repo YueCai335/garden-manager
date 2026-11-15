@@ -1,8 +1,9 @@
 import { expect, test } from "@playwright/test";
-import { fitCanvas, metresToCanvas } from "../src/lib/canvasViewport";
+import { metresToCanvas } from "../src/lib/canvasViewport";
 import { areaKindDefaults, findFreeAreaSpot } from "../src/lib/areaPlacement";
 import { areaFocusViewport, createDemoGardenWorkspace, createRectangularLayout, type GardenWorkspace, type GrowingArea } from "../src/lib/gardenWorkspace";
-import { planCanvas, planSurface } from "./areaHelpers";
+import { planCanvas, planSurface, planTransform } from "./areaHelpers";
+import { openWorkspace, workspaceHome } from "./workspace";
 
 /**
  * The one flow that has to work end to end: a gardener creates a garden,
@@ -14,7 +15,7 @@ import { planCanvas, planSurface } from "./areaHelpers";
 test("create a garden, save an edit, add and arrange an area, plan next season, and find it all after a reload", async ({ page }, testInfo) => {
   const nextYear = new Date().getFullYear() + 1;
 
-  await page.goto("/");
+  await openWorkspace(page);
 
   // Load the demo garden so there is a planting area to plan against.
   await page.getByRole("button", { name: "Load demo garden" }).click();
@@ -54,8 +55,7 @@ test("create a garden, save an edit, add and arrange an area, plan next season, 
   };
 
   // A mouse drags the body to move it, with no Move mode.
-  let box = (await canvas.boundingBox())!;
-  let view = fitCanvas(areaFocusViewport(added(spot.x, spot.y, 1.2, 2.4))!, box.width, box.height)!;
+  let view = await planTransform(page, areaFocusViewport(added(spot.x, spot.y, 1.2, 2.4))!);
   const moved = { x: Math.round((spot.x - 0.5) * 10) / 10, y: Math.round((spot.y + 0.3) * 10) / 10 };
   await drag(
     metresToCanvas({ x: spot.x + 0.6, y: spot.y + 1.2 }, view),
@@ -64,8 +64,7 @@ test("create a garden, save an edit, add and arrange an area, plan next season, 
   );
 
   // Dragging the bottom-right corner handle resizes it on the re-centred view.
-  box = (await canvas.boundingBox())!;
-  view = fitCanvas(areaFocusViewport(added(moved.x, moved.y, 1.2, 2.4))!, box.width, box.height)!;
+  view = await planTransform(page, areaFocusViewport(added(moved.x, moved.y, 1.2, 2.4))!);
   await drag(
     metresToCanvas({ x: moved.x + 1.2, y: moved.y + 2.4 }, view),
     metresToCanvas({ x: moved.x + 1.5, y: moved.y + 2.6 }, view),
@@ -80,8 +79,8 @@ test("create a garden, save an edit, add and arrange an area, plan next season, 
   }).toEqual({ kind: "raised-bed", placement: { ...moved, rotationDegrees: 0 }, size: [1.5, 2.6] });
 
   // Plan a plant for next season in the raised bed.
-  await page.getByRole("link", { name: "Back to gardens" }).click();
-  await expect(page).toHaveURL("/");
+  await page.getByRole("link", { name: "All gardens", exact: true }).click();
+  await expect(page).toHaveURL(workspaceHome);
   await page.getByRole("navigation", { name: "Workspace sections" }).getByRole("link", { name: "Next Season", exact: true }).click();
   await expect(page.getByRole("heading", { name: /Next Season ·/ })).toBeVisible();
   const raisedBed = page.locator("article", { has: page.getByRole("heading", { name: "Sample raised bed" }) });

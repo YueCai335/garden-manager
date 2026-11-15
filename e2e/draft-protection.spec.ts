@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { openAreaProperties } from "./areaHelpers";
+import { openWorkspace, workspaceHome } from "./workspace";
 
 // Area properties apply on blur or Enter (ADR-0072, phase G5). A value that
 // cannot apply stays as a draft, and that draft survives navigation (ADR-0062).
@@ -7,7 +8,7 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 1440, height: 900 
   test(`applied edits and an invalid area draft survive plant creation and navigation at ${viewport.width}px`, async ({ page }, testInfo) => {
     const narrow = viewport.width < 768;
     await page.setViewportSize(viewport);
-    await page.goto("/");
+    await openWorkspace(page);
     await page.getByRole("button", { name: "Load demo garden" }).click();
     await page.getByRole("link", { name: "Open Demo Garden" }).click();
     await openAreaProperties(page, "Sample raised bed");
@@ -20,7 +21,7 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 1440, height: 900 
     await expect(page.getByText("Not applied yet: fix the highlighted values.", { exact: true })).toBeVisible();
     if (narrow) {
       // On a phone the properties page covers the plan; plants are added below the zoomed plan.
-      await page.getByRole("link", { name: "Back to gardens" }).click();
+      await page.getByRole("link", { name: "All gardens", exact: true }).click();
       await page.getByRole("link", { name: "Open Demo Garden" }).click();
       await page.getByRole("link", { name: "Edit Draft kitchen bed" }).click();
       // The draft that could not apply reopens its editor with the area.
@@ -31,14 +32,15 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 1440, height: 900 
       await page.getByRole("button", { name: "Add", exact: true }).click();
       await expect(width).toHaveValue("");
     }
-    await page.getByRole("link", { name: "Back to gardens" }).click();
-    await expect(page).toHaveURL("/");
+    await page.getByRole("link", { name: "All gardens", exact: true }).click();
+    await expect(page).toHaveURL(workspaceHome);
     const menu = page.getByRole("button", { name: "Menu", exact: true });
     if (narrow) await menu.click();
     await page.getByRole("navigation", { name: "Workspace sections" }).getByRole("link", { name: "Next Season", exact: true }).click();
     await expect(page).toHaveURL("/season");
-    await page.getByRole("link", { name: "Back to gardens" }).click();
-    await expect(page).toHaveURL("/");
+    if (narrow) await menu.click();
+    await page.getByRole("navigation", { name: "Workspace sections" }).getByRole("link", { name: "Gardens", exact: true }).click();
+    await expect(page).toHaveURL(workspaceHome);
     await page.getByRole("link", { name: "Open Demo Garden" }).click();
     await page.getByRole("link", { name: "Edit Draft kitchen bed" }).click();
     await expect(name).toHaveValue("Draft kitchen bed");

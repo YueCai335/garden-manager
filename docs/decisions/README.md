@@ -72,7 +72,7 @@ changes, mark the old record as superseded and add a new record.
 | [ADR-0027](0027-use-persistent-plant-colors-and-garden-plan-zoom.md) | Use persistent plant colors and Garden Plan zoom | Superseded in part by ADR-0054 |
 | [ADR-0028](0028-use-plant-types-varieties-and-bilingual-color-aliases.md) | Use plant types, varieties, and bilingual color aliases | Accepted |
 | [ADR-0029](0029-use-a-thumbnail-first-garden-hub.md) | Use a thumbnail-first Garden Hub | Accepted |
-| [ADR-0030](0030-use-context-aware-plant-colors.md) | Use context-aware plant colors | Accepted |
+| [ADR-0030](0030-use-context-aware-plant-colors.md) | Use context-aware plant colors | Accepted; amended for canvas colors by ADR-0073 (S4): the Garden Plan and thumbnails color plants by crop family, and the plant panel hides the color picker; the stored `color` field stays |
 | [ADR-0031](0031-use-review-first-ai-care-note-extraction.md) | Use review-first AI care note extraction | Superseded by ADR-0032 |
 | [ADR-0032](0032-use-local-first-ai-providers-for-care-notes.md) | Use local-first AI providers for care notes | Accepted; provider configuration amended by ADR-0058 |
 | [ADR-0033](0033-use-deterministic-fallbacks-for-clear-ai-care-notes.md) | Use deterministic fallbacks for clear AI care notes | Accepted; fallback scope amended by ADR-0058 |
@@ -91,9 +91,9 @@ changes, mark the old record as superseded and add a new record.
 | [ADR-0046](0046-use-an-in-context-planting-area-creation-panel.md) | Use an in-context planting-area creation panel | Superseded by ADR-0050 |
 | [ADR-0047](0047-use-a-unified-planting-area-properties-form.md) | Use a unified planting-area properties form | Superseded by ADR-0050 |
 | [ADR-0048](0048-place-garden-properties-above-the-plan-canvas.md) | Place Garden properties above the Plan canvas | Superseded in part by ADR-0072 (G6) |
-| [ADR-0049](0049-use-visually-distinct-automatic-plant-colors.md) | Use visually distinct automatic plant colors | Accepted |
+| [ADR-0049](0049-use-visually-distinct-automatic-plant-colors.md) | Use visually distinct automatic plant colors | Accepted; amended for canvas colors by ADR-0073 (S4): crop-family colors replace the automatic per-plant colors on the Garden Plan and thumbnails |
 | [ADR-0050](0050-use-a-garden-plan-planting-area-inspector.md) | Use a Garden Plan planting-area inspector | Superseded by ADR-0053 |
-| [ADR-0051](0051-prioritize-daily-garden-work-on-the-dashboard.md) | Prioritize daily garden work on the dashboard | Accepted |
+| [ADR-0051](0051-prioritize-daily-garden-work-on-the-dashboard.md) | Prioritize daily garden work on the dashboard | Accepted; the dashboard care-task card superseded in part by ADR-0073 (S5): a short "Today" strip at the top of Gardens links to Care, which holds the full list |
 | [ADR-0052](0052-show-save-actions-only-for-pending-edits.md) | Show Save actions only for pending edits | Accepted; amended for Garden Plan by ADR-0072 (G5, G6) |
 | [ADR-0053](0053-keep-plant-layout-in-the-planting-area-inspector.md) | Keep plant layout in the planting-area inspector | Superseded by ADR-0072 (G3) |
 | [ADR-0054](0054-use-fixed-canvas-garden-plan-views.md) | Use fixed-canvas Garden Plan views | Superseded in part by ADR-0072 (G2) |
@@ -105,16 +105,17 @@ changes, mark the old record as superseded and add a new record.
 | [ADR-0060](0060-offer-assisted-care-note-drafting-in-the-portfolio-demo.md) | Offer assisted care-note drafting in the portfolio demo | Accepted |
 | [ADR-0061](0061-prioritize-global-garden-notes-and-consistent-workflows.md) | Prioritize global AI garden notes, clear workspace scopes, and consistent feedback | Accepted for product direction; implementation pending |
 | [ADR-0062](0062-preserve-planting-area-editor-drafts.md) | Preserve planting-area property and plant-editor drafts | Accepted; amended for Garden Plan by ADR-0072 (G5) |
-| [ADR-0063](0063-use-workspace-routes-and-shared-session-state.md) | Use workspace routes and shared session state | Accepted |
+| [ADR-0063](0063-use-workspace-routes-and-shared-session-state.md) | Use workspace routes and shared session state | Accepted; superseded in part by ADR-0073: the home route moved to `/gardens` (S1), the garden subnavigation and "Back to gardens" replaced by the L1 header and a breadcrumb (S2), and `/gardens/[gardenId]/care` and `/gardens/[gardenId]/season` redirect to the filtered `/care` and `/season` (S3) |
 | [ADR-0064](0064-separate-workspace-save-status-and-explicit-retries.md) | Separate workspace save status and explicit retries | Accepted |
 | [ADR-0065](0065-fit-metric-canvases-to-their-containers.md) | Fit metric canvases to their containers | Accepted |
 | [ADR-0066](0066-adapt-area-editing-to-available-space.md) | Adapt area editing to available space | Superseded in part by ADR-0072 (G3) |
-| [ADR-0067](0067-project-care-across-locations-with-explicit-ownership.md) | Project Care across locations with explicit ownership | Accepted |
+| [ADR-0067](0067-project-care-across-locations-with-explicit-ownership.md) | Project Care across locations with explicit ownership | Accepted; superseded in part by ADR-0073 (S3): the garden Care page and its "Applies to all gardens" section are replaced, and a garden's care is global Care filtered to that location |
 | [ADR-0068](0068-extract-bounded-workspace-care-note-batches.md) | Extract bounded workspace care-note batches | Accepted; real-model evaluation pending |
-| [ADR-0069](0069-open-garden-notes-in-place-from-overview.md) | Open Garden Notes in place from Overview | Accepted; entry amended to Overview only |
+| [ADR-0069](0069-open-garden-notes-in-place-from-overview.md) | Open Garden Notes in place from Overview | Accepted; entry superseded in part by ADR-0073 (S2): the header "+ Note" opens the dialog from any app page |
 | [ADR-0070](0070-preview-and-position-planting-areas-on-the-plan.md) | Preview and position planting areas on the plan | Superseded in part by ADR-0072 (G2, G3, G4) |
 | [ADR-0071](0071-recover-missing-workspaces-from-browser-copies.md) | Recover missing workspaces from browser copies | Accepted |
-| [ADR-0072](0072-use-a-single-plan-canvas-with-guided-setup.md) | Use a single plan canvas with guided setup | Accepted; implemented (G1–G7) |
+| [ADR-0072](0072-use-a-single-plan-canvas-with-guided-setup.md) | Use a single plan canvas with guided setup | Accepted; implemented (G1–G7); the G1 presentation and the wide side column superseded in part by ADR-0073 (S4): a pale planting chart, and from 900 px the toolbar, zoom, legend, and area panel float over a full-width canvas |
+| [ADR-0073](0073-separate-the-landing-page-and-use-a-textured-deep-green-look.md) | Separate the landing page from the app and use a textured deep-green look | Accepted; implemented (S1–S7); the landing showcases (S6b) are placeholders until their form is decided |
 
 ## Interview Use
 

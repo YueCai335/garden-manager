@@ -1,7 +1,8 @@
 import { expect, test } from "@playwright/test";
+import { openWorkspace } from "./workspace";
 
 test("invalid garden properties keep input, describe each error, and focus the first field", async ({ page }) => {
-  await page.goto("/");
+  await openWorkspace(page);
   await page.getByRole("button", { name: "Load demo garden" }).click();
   await page.getByRole("link", { name: "Open Demo Garden" }).click();
   await page.getByRole("button", { name: "Edit garden details" }).click();
