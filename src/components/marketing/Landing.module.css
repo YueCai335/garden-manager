@@ -30,21 +30,45 @@
 }
 .band > :not(:first-child) { position: relative; z-index: 2; }
 
-/* Header: sits on top of the hero band. */
+/* Header: fixed to the window. Clear over the hero; once the page scrolls it becomes a bar
+   with the hero's own shader grade (the same photo, greens, relief, and light), not a new color. */
 .header {
-  position: absolute;
+  position: fixed;
   top: var(--band-gap);
   left: var(--band-gap);
   right: var(--band-gap);
-  z-index: 3;
+  z-index: 20;
+  border: 1px solid transparent;
+  border-radius: var(--band-radius);
   color: #ffffff;
+  transition: background-color 0.2s, border-color 0.2s, box-shadow 0.2s;
 }
-.headerInner { display: flex; align-items: center; gap: 28px; padding-top: 22px; }
-.brand { display: inline-flex; align-items: center; gap: 10px; color: inherit; font-family: var(--display); font-size: 18px; font-weight: 600; letter-spacing: -0.01em; text-decoration: none; }
+.headerInner { position: relative; z-index: 1; display: flex; align-items: center; gap: 20px; padding: 22px 0 0; transition: padding 0.2s; }
+.scrolled {
+  isolation: isolate;
+  overflow: hidden;
+  border-color: rgb(255 255 255 / 12%);
+  background: #14281d;
+  box-shadow: 0 18px 40px -20px rgb(0 0 0 / 55%);
+}
+.scrolled .headerInner { padding: 10px 0; }
+.brand { display: inline-flex; align-items: center; gap: 10px; color: inherit; font-family: var(--display); font-size: 18px; font-weight: 600; letter-spacing: -0.01em; text-decoration: none; white-space: nowrap; }
 .brand svg { width: 26px; height: 26px; flex: none; }
-.siteNav { display: flex; gap: 24px; margin-right: auto; }
-.siteNav a { color: rgb(255 255 255 / 82%); font-size: 14px; text-decoration: none; }
-.siteNav a:hover { color: #ffffff; }
+.siteNav { display: flex; flex: 1; gap: 4px; margin-left: 8px; }
+/* White, medium weight, and a soft shadow keep the links clear on the textured bar without looking bold. */
+.siteNav a { padding: 8px 12px; border-radius: 999px; color: rgb(255 255 255 / 95%); font-size: 15px; font-weight: 500; text-decoration: none; text-shadow: 0 1px 8px rgb(0 0 0 / 35%); white-space: nowrap; transition: background-color 0.15s; }
+.siteNav a { transition: background-color 0.15s, color 0.15s, box-shadow 0.15s; }
+/* Three states that stay distinct on the texture: hover and keyboard focus get a translucent
+   pill with a hairline; the section in view gets a solid white pill, like the app's tray. */
+.siteNav a:hover,
+.siteNav a:focus-visible { color: #ffffff; background: rgb(255 255 255 / 18%); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 24%); }
+.siteNav a[aria-current],
+.siteNav a[aria-current]:hover { color: #173322; background: #ffffff; box-shadow: none; text-shadow: none; }
+.github { display: inline-flex; flex: none; align-items: center; justify-content: center; width: 40px; height: 40px; margin-left: auto; border-radius: 999px; color: rgb(255 255 255 / 85%); }
+.github { transition: background-color 0.15s, box-shadow 0.15s; }
+.github:hover,
+.github:focus-visible { color: #ffffff; background: rgb(255 255 255 / 18%); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 24%); }
+.github svg { width: 20px; height: 20px; }
 
 .ghost,
 .primary {
@@ -67,8 +91,10 @@
   backdrop-filter: blur(12px);
 }
 .ghost:hover { background: rgb(255 255 255 / 14%); }
-.header .ghost { margin-left: auto; min-height: 40px; padding: 0 18px; font-size: 14px; }
-.siteNav + .ghost { margin-left: 0; }
+.header .ghost { min-height: 40px; padding: 0 18px; font-size: 14px; transition: background-color 0.15s, color 0.15s, border-color 0.15s; }
+/* The header's main action fills solid white on hover, like a secondary button filling with color. */
+.header .ghost:hover,
+.header .ghost:focus-visible { border-color: #ffffff; background: #ffffff; color: #173322; }
 .primary {
   min-height: 50px;
   padding: 0 26px;
@@ -123,21 +149,27 @@
 .records b { display: block; font-weight: 600; }
 .records span { color: rgb(255 255 255 / 78%); }
 
-/* Feature placeholders on the neutral page (the showcases come in S6b). */
-.features { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; padding: 72px 0; }
+/* Feature sections on the neutral page: one full-width section each, stacked in the header's
+   order. The showcases (S6b) come later; until then each section is text and "Try it". */
+.features { padding: 24px 0 64px; }
 .feature {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  padding: 32px;
-  border: 1px solid #e3e3e1;
-  border-radius: 20px;
-  background: #ffffff;
-  scroll-margin-top: 24px;
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: 48px;
+  padding: 72px 0;
+  border-top: 1px solid #e3e3e1;
+  /* Leaves room for the fixed header when a header link jumps here. */
+  scroll-margin-top: 88px;
 }
-.kicker { margin: 0 0 12px; color: #1f4230; font-size: 13px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
-.feature h2 { margin: 0 0 12px; color: #173322; font-family: var(--display); font-size: clamp(1.5rem, 2.6vw, 2rem); font-weight: 500; line-height: 1.1; letter-spacing: -0.02em; }
-.feature p:not(.kicker) { flex: 1; margin: 0 0 24px; color: #5f5f63; font-size: 16px; line-height: 1.55; }
+.feature:first-child { border-top: 0; }
+.kicker { margin: 0 0 14px; color: #1f4230; font-size: 13px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
+.kicker span { margin-right: 10px; color: #8d8d91; }
+.feature h2 { max-width: 16ch; margin: 0; color: #173322; font-family: var(--display); font-size: clamp(1.75rem, 3.4vw, 2.75rem); font-weight: 500; line-height: 1.05; letter-spacing: -0.025em; text-wrap: balance; }
+.featureText { max-width: 52ch; margin: 0 0 22px; color: #5f5f63; font-size: 17px; line-height: 1.55; }
+.points { display: grid; gap: 10px; margin: 0 0 28px; padding: 0; list-style: none; }
+.points li { position: relative; padding-left: 22px; color: #18181a; font-size: 16px; line-height: 1.5; }
+.points li::before { content: ""; position: absolute; top: 0.55em; left: 2px; width: 8px; height: 8px; border-radius: 50%; background: #1f4230; }
+.featureLinks { display: flex; flex-wrap: wrap; gap: 12px; }
 .secondary {
   display: inline-flex;
   align-items: center;
@@ -174,10 +206,19 @@
 .footerGrid p,
 .footerGrid li,
 .footerBase { text-shadow: 0 1px 2px rgb(0 0 0 / 70%), 0 0 14px rgb(0 0 0 / 55%); }
-.footer .footerHeading { margin: 0 0 10px; font-size: 12px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: rgb(255 255 255 / 70%); }
-.footer ul { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; font-size: 14px; }
+.footer .footerHeading { margin: 0 0 10px; font-size: 12px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: rgb(255 255 255 / 85%); }
+.footer ul { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; font-size: 15px; }
 .footer a { color: rgb(255 255 255 / 88%); text-decoration: none; }
 .footer a:hover { color: #ffffff; text-decoration: underline; }
+/* The link columns sit where the veins light up, so they get pure white, medium weight,
+   and a deeper shadow than the rest of the footer text. */
+.footer nav a { display: inline-block; margin: -3px -10px; padding: 3px 10px; border-radius: 999px; color: #ffffff; font-weight: 500; transition: background-color 0.15s, box-shadow 0.15s; }
+/* The light follows the pointer, so a hovered link always sits on the brightest veins.
+   A dark pill, not a brighter color, marks it there. */
+.footer nav a:hover,
+.footer nav a:focus-visible { background: rgb(6 14 10 / 70%); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 28%); text-decoration: none; }
+.footer nav li,
+.footer nav .footerHeading { text-shadow: 0 1px 2px rgb(0 0 0 / 85%), 0 0 18px rgb(0 0 0 / 80%), 0 0 4px rgb(0 0 0 / 70%); }
 .footerBase {
   grid-column: 1 / -1;
   display: flex;
@@ -196,16 +237,25 @@
   .frame { --band-gap: 8px; --band-radius: 18px; }
   .siteNav { display: none; }
   .heroGrid { grid-template-columns: 1fr; gap: 36px; padding: 112px 0 48px; }
-  .features { grid-template-columns: 1fr; padding: 40px 0; }
-  .feature { padding: 24px; }
+  .features { padding: 8px 0 40px; }
+  .feature { grid-template-columns: 1fr; gap: 16px; padding: 48px 0; }
   .footerGrid { grid-template-columns: 1fr 1fr; padding-top: 56px; }
   .footerGrid > :first-child { grid-column: 1 / -1; }
 }
 @media (max-width: 420px) {
   .records { grid-template-columns: 1fr; }
+  /* Brand, GitHub, and Open app share one row on a phone. */
+  .headerInner { gap: 4px; }
+  .header .ghost { padding: 0 14px; }
   .ctas > * { flex: 1 1 100%; }
 }
 @media (prefers-reduced-motion: reduce) {
   .split path { animation: none; }
-  .primary { transition: none; }
+  .siteNav a,
+  .github,
+  .header .ghost,
+  .footer nav a,
+  .primary,
+  .header,
+  .headerInner { transition: none; }
 }

@@ -2,9 +2,8 @@ import Link from "next/link";
 import { workspaceHomePath } from "@/lib/workspaceRoutes";
 import { ShaderBackdrop } from "./ShaderBackdrop";
 import { footerPreset } from "./landingShader";
+import { repositoryUrl as repository } from "./landingFeatures";
 import styles from "./Landing.module.css";
-
-const repository = "https://github.com/YueCai335/garden-manager";
 
 /** The landing footer: a dense leaf-vein photo whose veins light up lime near the cursor (ADR-0073). */
 export function LandingFooter() {
@@ -20,6 +19,9 @@ export function LandingFooter() {
         <ul>
           <li><Link href={workspaceHomePath}>Garden Plan</Link></li>
           <li><Link href="/notes">AI Note</Link></li>
+          <li><Link href="/care">Care</Link></li>
+          <li><Link href="/doctor">Plant Doctor</Link></li>
+          <li><Link href="/guide">Plant Guide</Link></li>
           <li><Link href="/season">Next Season</Link></li>
         </ul>
       </nav>

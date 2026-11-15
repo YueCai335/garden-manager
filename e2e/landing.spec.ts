@@ -27,14 +27,19 @@ test("the landing page loads without the API and every entry point opens the app
   await page.getByRole("link", { name: "Open the app" }).click();
   await expect(page).toHaveURL(workspaceHome);
 
+  // Each feature section opens its own app page; Plant AI opens both assistants.
   await page.goto("/");
   const features = page.getByRole("region", { name: "Features" });
+  const tries = features.getByRole("link", { name: /^Try / });
+  expect(await tries.evaluateAll((links) => links.map((link) => `${link.textContent} ${link.getAttribute("href")}`))).toEqual([
+    "Try it /gardens", "Try it /notes", "Try Plant Doctor /doctor", "Try Plant Guide /guide", "Try it /season",
+  ]);
   await features.getByRole("link", { name: "Try it" }).first().click();
   await expect(page).toHaveURL(workspaceHome);
 
   await page.goto("/");
   await features.getByRole("link", { name: "Try it" }).last().click();
-  await expect(page).toHaveURL(/\/notes$/);
+  await expect(page).toHaveURL(/\/season$/);
 
   // Inside the app, the brand link returns to the landing page, and "Open app" leads back in.
   await page.getByRole("banner").getByRole("link", { name: "Garden Manager" }).click();
@@ -99,13 +104,59 @@ test("with reduced motion the bands show the stills and the AI Note lines do not
 });
 
 test("the landing page has a social preview and in-page section links", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/");
   await expect(page.locator('meta[property="og:image"]')).toHaveAttribute("content", /\/landing\/og\.jpg$/);
   await expect(page.locator('meta[name="description"]')).toHaveAttribute("content", /care records/);
   const og = await page.request.get("/landing/og.jpg");
   expect(og.ok()).toBe(true);
 
-  await page.getByRole("navigation", { name: "Site" }).getByRole("link", { name: "AI Note" }).click();
+  // The header links follow the season: plan, log, ask, then plan the next season.
+  const site = page.getByRole("navigation", { name: "Site" });
+  await expect(site.getByRole("link")).toHaveText(["Garden Plan", "AI Note", "Plant AI", "Season Planner"]);
+  // The links on the textured bands are white at medium weight, so they stay readable.
+  await expect(site.getByRole("link", { name: "Garden Plan" })).toHaveCSS("font-weight", "500");
+  await expect(page.getByRole("contentinfo").getByRole("link", { name: "Architecture" })).toHaveCSS("color", "rgb(255, 255, 255)");
+  await expect(page.getByRole("contentinfo").getByRole("link", { name: "Architecture" })).toHaveCSS("font-weight", "500");
+  await expect(page.getByRole("banner").getByRole("link", { name: "GitHub" })).toHaveAttribute("href", /github\.com/);
+
+  await site.getByRole("link", { name: "AI Note" }).click();
   await expect(page).toHaveURL(/#ai-note$/);
   await expect(page.getByRole("heading", { name: "Write one note, get reviewed records" })).toBeInViewport();
+
+  // The header stays in the window, turns into the glass bar, never covers the section heading, and marks the section.
+  await site.getByRole("link", { name: "Plant AI" }).click();
+  await expect(page).toHaveURL(/#plant-ai$/);
+  const header = (await page.getByRole("banner").boundingBox())!;
+  const heading = (await page.getByRole("heading", { name: "Ask about a sick plant or a growing question" }).boundingBox())!;
+  expect(header.y).toBeGreaterThanOrEqual(0);
+  expect(heading.y).toBeGreaterThanOrEqual(header.y + header.height);
+  await expect(page.getByRole("banner")).not.toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+  // The bar is graded by the hero's own shader, not a separate flat color.
+  await expect(page.getByRole("banner").locator("[data-render]")).toHaveAttribute("data-render", "webgl");
+  await expect(site.getByRole("link", { name: "Plant AI" })).toHaveAttribute("aria-current", "location");
+  await expect(site.locator("[aria-current]")).toHaveCount(1);
+  // The section in view is a solid white pill; hovering another link gives it a translucent pill.
+  await expect(site.getByRole("link", { name: "Plant AI" })).toHaveCSS("background-color", "rgb(255, 255, 255)");
+  await site.getByRole("link", { name: "Garden Plan" }).hover();
+  await expect(site.getByRole("link", { name: "Garden Plan" })).not.toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+  const openApp = page.getByRole("banner").getByRole("link", { name: "Open app" });
+  await openApp.hover();
+  await expect(openApp).toHaveCSS("background-color", "rgb(255, 255, 255)");
+  const architecture = page.getByRole("contentinfo").getByRole("link", { name: "Architecture" });
+  await architecture.hover();
+  await expect(architecture).not.toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+});
+
+test("on a phone the landing header keeps the brand, GitHub, and Open app on one row", async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 800 });
+  await page.goto("/");
+  const items = await page.getByRole("banner").locator("a").evaluateAll((links) => links
+    .filter((link) => link.getClientRects().length > 0)
+    .map((link) => { const box = link.getBoundingClientRect(); return { left: box.left, right: box.right, height: box.height }; }));
+  expect(items).toHaveLength(3);
+  for (let index = 1; index < items.length; index += 1) expect(items[index].left).toBeGreaterThanOrEqual(items[index - 1].right);
+  expect(items.at(-1)!.right).toBeLessThanOrEqual(360);
+  // The brand stays on one line.
+  expect(items[0].height).toBeLessThan(40);
 });
