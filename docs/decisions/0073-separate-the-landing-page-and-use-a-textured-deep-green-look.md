@@ -1,6 +1,6 @@
 # ADR-0073: Separate the Landing Page from the App and Use a Textured Deep-Green Look
 
-- Status: Accepted on 2026-11-14 and implemented: S1 to S3 on 2026-11-14, S4 to S7 on 2026-11-15. The landing showcases (S6b) remain placeholders; their form is undecided until the app is final.
+- Status: Accepted on 2026-11-14 and implemented: S1 to S3 on 2026-11-14, S4 to S7 on 2026-11-15. Amended on 2026-11-15: the brand link returns to the landing page, and the header modules sit in one tray. The landing showcases (S6b) remain placeholders; their form is undecided until the app is final.
 - Date: 2026-11-14
 - Supersedes in part (all marked in the decision index):
   - [ADR-0051](0051-prioritize-daily-garden-work-on-the-dashboard.md): the dashboard card groups.
@@ -96,6 +96,13 @@ The app has three strict layers:
 Rules:
 
 - The Overview moves from `/` to `/gardens` and is renamed "Gardens".
+- The "Garden Manager" brand in the app header always links to the landing
+  page at `/`. The brand names the whole site. Gardens, the first header
+  module, is the app's home. The landing page's "Open app" button leads back
+  into the app. Gardens keeps its name; a second "Home" would compete with the
+  brand.
+- Care, Next Season, Plant Doctor, and Plant Guide are siblings of Gardens,
+  not children of it. They cover every garden.
 - A garden page no longer has Care or Next Season tabs. A link from a garden
   to its care or its season plan is a filtered link to the L1 module, such as
   `/care?location=<gardenId>`.
@@ -149,7 +156,10 @@ elements that mean something.
 - **Header.** A deep-green bar `#264A33`. A grayscale copy of the hero photo
   sits over it in overlay blend at 75%, with a light gradient on the left. The
   bar must read clearly green, never black. The nav text is white, 15.5 px,
-  weight 500. The active module gets a lighter pill.
+  weight 500. The active module gets a lighter pill. At 1024 px and wider, the
+  five modules sit in one capsule tray (white 9%, a white 18% hairline), and
+  the brand stands outside it. The tray separates the site's brand from the
+  app's modules. Below 1024 px the modules fold into Menu without the tray.
 - **Neutrals.** The neutrals have no hue: page `#F4F4F3`, surface `#FFFFFF`,
   lines `#E3E3E1`, and ink `#18181A`, `#5F5F63`, and `#8D8D91`. Neutrals are
   never tinted green.
@@ -268,7 +278,8 @@ without a product reason.
   `/` and must start at `/gardens` instead, through one shared helper.
 - The README screenshots and the demo link change.
 - `routeFromPath`, the brand link, the guided setup's Ready links, and every
-  "Back to gardens" link change in S1.
+  "Back to gardens" link change in S1. The 2026-11-15 amendment points the
+  brand link at `/`, because the app had no way back to the landing page.
 - Removing the garden tabs changes `AppShell`, the garden switcher, and the
   routing tests.
 - The redirects keep the old garden Care and Season URLs alive.

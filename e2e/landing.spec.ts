@@ -36,8 +36,10 @@ test("the landing page loads without the API and every entry point opens the app
   await features.getByRole("link", { name: "Try it" }).last().click();
   await expect(page).toHaveURL(/\/notes$/);
 
-  // Inside the app, the brand link stays in the app.
-  await page.getByRole("link", { name: "Garden Manager" }).click();
+  // Inside the app, the brand link returns to the landing page, and "Open app" leads back in.
+  await page.getByRole("banner").getByRole("link", { name: "Garden Manager" }).click();
+  await expect.poll(() => new URL(page.url()).pathname).toBe("/");
+  await page.getByRole("banner").getByRole("link", { name: "Open app" }).click();
   await expect(page).toHaveURL(workspaceHome);
 });
 

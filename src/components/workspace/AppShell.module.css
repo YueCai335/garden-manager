@@ -54,6 +54,17 @@
 .navigation a:hover { background: rgb(255 255 255 / 12%); opacity: 1; }
 .navigation a[aria-current] { background: var(--color-app-bar-text); color: var(--color-app-bar-active-text); font-weight: 600; text-shadow: none; opacity: 1; }
 .divider { flex: none; width: 1px; height: 18px; margin: 0 8px; background: rgb(255 255 255 / 25%); }
+/* On wide screens the modules sit in one capsule tray, apart from the brand, so the bar reads as
+   "the site" (brand, links to /) and "the app" (the tray, with Gardens as its home). */
+@media (min-width: 1024px) {
+  .navigation {
+    justify-self: start;
+    padding: 3px;
+    border: 1px solid rgb(255 255 255 / 18%);
+    border-radius: var(--radius-pill);
+    background: rgb(255 255 255 / 9%);
+  }
+}
 .note {
   grid-area: note;
   display: inline-flex;
