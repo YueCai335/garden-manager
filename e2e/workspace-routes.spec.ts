@@ -1,7 +1,8 @@
 import { expect, test } from "@playwright/test";
+import { openWorkspace, workspaceHome } from "./workspace";
 
 test("deep links, browser history, and missing entities keep explicit garden context", async ({ page }) => {
-  await page.goto("/");
+  await openWorkspace(page);
   await page.getByRole("button", { name: "Load demo garden" }).click();
   await page.getByRole("link", { name: "Open Demo Garden" }).click();
   await expect(page).toHaveURL(/\/gardens\/demo-garden\/plan$/);
@@ -37,7 +38,7 @@ test("mobile navigation preserves a note across routes without a model request",
   await page.setViewportSize({ width: 390, height: 844 });
   let modelRequests = 0;
   page.on("request", (request) => { if (request.url().includes("/ai/care-note-draft")) modelRequests += 1; });
-  await page.goto("/");
+  await openWorkspace(page);
   await page.getByRole("button", { name: "Load demo garden" }).click();
   await expect(page.getByText("All changes saved", { exact: true })).toBeVisible();
   // Wait for batch drafting so the editor opens the same session the Overview quick note shows.
@@ -52,7 +53,7 @@ test("mobile navigation preserves a note across routes without a model request",
   await expect(page).toHaveURL("/guide");
   // Notes start only from Overview (ADR-0069 amendment); the note survives the round trip.
   await page.getByRole("link", { name: "Back to gardens", exact: true }).click();
-  await expect(page).toHaveURL("/");
+  await expect(page).toHaveURL(workspaceHome);
   await expect(page.getByRole("textbox", { name: "Quick garden note" })).toHaveValue("Watered the front garden today");
   await page.getByRole("button", { name: "Open note editor" }).click();
   await expect(page.getByRole("dialog", { name: "Garden Note" }).getByLabel("Care note")).toHaveValue("Watered the front garden today");

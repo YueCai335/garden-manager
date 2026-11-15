@@ -4,7 +4,7 @@ A full-stack garden operations and seasonal-planning application. It helps a
 gardener organize multiple locations, visualize planting areas, record care,
 plan the next season, and ask source-grounded plant questions.
 
-**[▶ Open the live demo](https://garden-manager-demo.vercel.app)** — no install, no account. Select **Load demo garden** to explore a populated workspace.
+**[▶ Open the live demo](https://garden-manager-demo.vercel.app)** — no install, no account. Select **Open app**, then **Load demo garden** to explore a populated workspace.
 
 `Next.js` `React` `TypeScript` `FastAPI` `Pydantic` `PostgreSQL` `SQLAlchemy` `Alembic` `pgvector` `OpenAI API` `Docker Compose` `GitHub Actions` `pytest` `Vitest` `Playwright`
 
@@ -51,19 +51,19 @@ The frontend updates described here are local changes and have not been deployed
 
 ### Hosted demo (fastest)
 
-Open the [live demo](https://garden-manager-demo.vercel.app), select **Load demo garden**,
+Open the [live demo](https://garden-manager-demo.vercel.app), select **Open app**, then **Load demo garden**,
 then walk through steps 4-6 below. Garden, Care, and Next Season are available
 online; AI and photo workflows are shown as previews and run in the local app.
 In **Next Season**, the Allocation Assistant does not run live online; it
 offers a labelled recording of one real evaluation run under the expandable **Allocation Assistant**.
-AI Garden Note stays directly available on the home page; the hosted build keeps its assisted-entry restrictions.
+AI Garden Note stays directly available on the Gardens page; the hosted build keeps its assisted-entry restrictions.
 The API sleeps on the free tier, so the first request can take about a minute.
 
 ### Local (full feature set, including AI)
 
 1. Start the API and database with `docker compose up --build`.
 2. In another terminal, run `npm install`, then start the web app with `npm run dev`.
-3. Open `http://localhost:3000` and select **Load demo garden**.
+3. Open `http://localhost:3000/gardens` and select **Load demo garden**. The landing page is at `http://localhost:3000`.
 4. Select the **Demo Garden** card. Open an area to zoom the plan into it and
    place plants, drag an area to move it, and use **Undo** to reverse a change.
    **Add garden** starts the four-step guided setup on the same canvas.
@@ -123,7 +123,7 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:3000`. The API documentation is available at
+Open `http://localhost:3000` for the landing page and `http://localhost:3000/gardens` for the app. The API documentation is available at
 `http://localhost:8000/docs`.
 
 ### Enable local AI features

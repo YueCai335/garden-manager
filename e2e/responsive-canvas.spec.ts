@@ -2,6 +2,7 @@ import { expect, test, type Locator } from "@playwright/test";
 import { fitCanvas, metresToCanvas } from "../src/lib/canvasViewport";
 import { areaFocusViewport, createDemoGardenWorkspace, gardenPlanViewport, type GardenWorkspace } from "../src/lib/gardenWorkspace";
 import { planCanvas, planSurface } from "./areaHelpers";
+import { openWorkspace } from "./workspace";
 
 // Native canvas, pointer and touch behavior require a real browser run.
 // These scenarios are prepared; test discovery alone is not acceptance.
@@ -21,7 +22,7 @@ for (const width of [390, 900, 1440]) {
   test(`canvas fits, drags in metres, and retains position at ${width}px`, async ({ page }, testInfo) => {
     await page.route("**/ai/**", (route) => route.abort());
     await page.setViewportSize({ width, height: 900 });
-    await page.goto("/");
+    await openWorkspace(page);
     await page.getByRole("button", { name: "Load demo garden" }).click();
     await page.getByRole("link", { name: "Open Demo Garden" }).click();
     await expect(page.getByText("All changes saved", { exact: true })).toBeVisible();
@@ -77,7 +78,7 @@ for (const width of [390, 900, 1440]) {
 
 test("a mouse drags an area without a mode: snapped preview, Escape cancel, and one saved drag", async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto("/");
+  await openWorkspace(page);
   await page.getByRole("button", { name: "Load demo garden" }).click();
   await page.getByRole("link", { name: "Open Demo Garden" }).click();
   await expect(page.getByText("All changes saved", { exact: true })).toBeVisible();
@@ -134,7 +135,7 @@ for (const width of [390, 1440]) {
   test(`zooms into a planting area on the same canvas and returns to the whole garden at ${width}px`, async ({ page }, testInfo) => {
     await page.route("**/ai/**", (route) => route.abort());
     await page.setViewportSize({ width, height: 900 });
-    await page.goto("/");
+    await openWorkspace(page);
     await page.getByRole("button", { name: "Load demo garden" }).click();
     await page.getByRole("link", { name: "Open Demo Garden" }).click();
     await expect(page.getByText("All changes saved", { exact: true })).toBeVisible();
@@ -172,7 +173,7 @@ for (const width of [390, 1440]) {
 test("a rotated area stays zoomed after reload and Escape returns to the whole garden", async ({ page }, testInfo) => {
   await page.route("**/ai/**", (route) => route.abort());
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto("/");
+  await openWorkspace(page);
   await page.getByRole("button", { name: "Load demo garden" }).click();
   await page.getByRole("link", { name: "Open Demo Garden" }).click();
   await expect(page.getByText("All changes saved", { exact: true })).toBeVisible();

@@ -2,12 +2,13 @@ import { expect, test } from "@playwright/test";
 import { fitCanvas, metresToCanvas } from "../src/lib/canvasViewport";
 import { createDemoGardenWorkspace, gardenPlanViewport, type GardenWorkspace } from "../src/lib/gardenWorkspace";
 import { openAreaProperties, planCanvas, planSurface } from "./areaHelpers";
+import { openWorkspace } from "./workspace";
 
 for (const width of [390, 900, 1280, 1440]) {
   test(`garden details and area editing preserve context at ${width}px`, async ({ page }, testInfo) => {
     await page.route("**/ai/**", (route) => route.abort());
     await page.setViewportSize({ width, height: 900 });
-    await page.goto("/");
+    await openWorkspace(page);
     await page.getByRole("button", { name: "Load demo garden" }).click();
     await page.getByRole("link", { name: "Open Demo Garden" }).click();
     await expect(page.getByLabel("Garden name", { exact: true })).toHaveCount(0);
@@ -113,7 +114,7 @@ test.describe("touch editing", () => {
   test("tap selects a planting area and opens the mobile editor", async ({ page }) => {
     const [garden] = createDemoGardenWorkspace().gardens;
     const [area] = garden.growingAreas;
-    await page.goto("/");
+    await openWorkspace(page);
     await page.getByRole("button", { name: "Load demo garden" }).tap();
     await page.getByRole("link", { name: "Open Demo Garden" }).tap();
     const canvas = planCanvas(page);
@@ -137,7 +138,7 @@ test.describe("touch editing", () => {
   test("a swipe over the canvas scrolls the page, and Move still moves an area", async ({ page }, testInfo) => {
     const [garden] = createDemoGardenWorkspace().gardens;
     const [area] = garden.growingAreas;
-    await page.goto("/");
+    await openWorkspace(page);
     await page.getByRole("button", { name: "Load demo garden" }).tap();
     await page.getByRole("link", { name: "Open Demo Garden" }).tap();
     await expect(page.getByText("All changes saved", { exact: true })).toBeVisible();

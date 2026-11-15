@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Button } from "@/components/ui/Button";
+import { workspaceHomePath } from "@/lib/workspaceRoutes";
 import { useWorkspace } from "./WorkspaceProvider";
 import styles from "./AppShell.module.css";
 
@@ -47,7 +48,7 @@ export function ServerWorkspaceUnavailable() {
           : "This opens an empty workspace on this device. The old reference is kept, and any unreadable browser data is archived."}
         confirmLabel={action}
         onCancel={() => setConfirming(false)}
-        onConfirm={() => { recoverMissingWorkspace(); setConfirming(false); router.replace("/"); }}
+        onConfirm={() => { recoverMissingWorkspace(); setConfirming(false); router.replace(workspaceHomePath); }}
       />}
     </> : <p>Your saved workspace is still linked to this browser. Use Retry in the saving status above to load it again.</p>}
   </section>;

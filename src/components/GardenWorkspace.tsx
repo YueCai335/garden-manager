@@ -12,7 +12,7 @@ import { useWorkspace, useWorkspaceDraft, useUnsavedDraft } from "@/components/w
 import { WorkspaceHome, WorkspaceHomeLoading } from "@/components/workspace/WorkspaceHome";
 import { ServerWorkspaceUnavailable } from "@/components/workspace/ServerWorkspaceUnavailable";
 import homeStyles from "@/components/workspace/WorkspaceHome.module.css";
-import { gardenPath, areaPath, areaEditPath, careView, type WorkspaceRoute } from "@/lib/workspaceRoutes";
+import { gardenPath, areaPath, areaEditPath, careView, workspaceHomePath, type WorkspaceRoute } from "@/lib/workspaceRoutes";
 
 import { PlantingAreaInspector } from "@/components/PlantingAreaInspector";
 import { areaKindDefaults, defaultAreaName, findFreeAreaSpot, resizeLayout, type AreaSpot } from "@/lib/areaPlacement";
@@ -153,7 +153,7 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
 
   useUnsavedDraft("setup:name", Boolean(newGardenName));
   const openManagement = (gardenId?: string) => { if (gardenId) navigate(gardenPath(gardenId)); };
-  const returnToDashboard = () => navigate("/");
+  const returnToDashboard = () => navigate(workspaceHomePath);
 
   const createFirstGarden = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -230,12 +230,12 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
           if (JSON.stringify(latest) !== JSON.stringify(workspace)) throw new Error("Your workspace changed. Cancel and review the deletion again.");
           if (!clearBrowserWorkspace()) throw new Error("The workspace could not be removed from this device. Keep this page open and try again.");
           garden.growingAreas.forEach((area) => discardDrafts(areaDraftKey(garden.id, area.id)));
-          navigate("/");
+          navigate(workspaceHomePath);
           setMessage("Create a garden when you are ready.");
           return;
         }
         setWorkspace(next);
-        navigate("/");
+        navigate(workspaceHomePath);
         garden.growingAreas.forEach((area) => discardDrafts(areaDraftKey(garden.id, area.id)));
         setMessage(`${garden.name} deleted.`);
       },
@@ -652,7 +652,7 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
   if (route.gardenId && !garden) return <div className={homeStyles.home}>
     <section className={homeStyles.onboarding} aria-labelledby="garden-not-found-heading">
       <h2 id="garden-not-found-heading">Garden not found in this workspace</h2>
-      <ButtonLink href="/">Return to overview</ButtonLink>
+      <ButtonLink href={workspaceHomePath}>Return to overview</ButtonLink>
     </section>
   </div>;
   if (!workspace && ["home", "new", "plan", "care", "season"].includes(route.module)) {

@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { careFixture } from "../src/test/careFixture";
 import { todayDate, type GardenWorkspace } from "../src/lib/gardenWorkspace";
+import { openWorkspace, workspaceHome } from "./workspace";
 
 // "Generate draft" appears once the workspace is synced and batch drafting is enabled.
 // Waiting for it ensures "Open note editor" opens the batch review, not the single-record fallback.
@@ -27,12 +28,12 @@ for (const width of [390, 1440]) {
     await page.addInitScript((workspace) => {
       if (!localStorage.getItem("sun-aware-garden-planner:garden-workspace:v1")) localStorage.setItem("sun-aware-garden-planner:garden-workspace:v1", JSON.stringify(workspace));
     }, fixture);
-    await page.goto("/");
+    await openWorkspace(page);
     await expect(page.getByText("All changes saved", { exact: true })).toBeVisible();
     await openNoteEditor(page);
     const dialog = page.getByRole("dialog", { name: "Garden Note" });
     await expect(dialog).toBeVisible();
-    await expect(page).toHaveURL("/");
+    await expect(page).toHaveURL(workspaceHome);
     await page.getByLabel("Care note").fill("Watered front today; Watered back today");
     await page.getByRole("button", { name: "Create drafts", exact: true }).click();
     const first = page.getByRole("article", { name: "Draft 1" });
@@ -68,7 +69,7 @@ for (const width of [390, 1440]) {
     await save.focus();
     await page.keyboard.press("Enter");
     await expect(page.getByRole("heading", { name: "Saved 2 records", exact: true })).toBeVisible();
-    await expect(page).toHaveURL("/");
+    await expect(page).toHaveURL(workspaceHome);
     const after = await remote();
     expect(after.revision).toBe(before.revision + 1);
     expect(after.gardens.map((garden) => garden.careEvents.length)).toEqual([3, 4]);
@@ -91,7 +92,7 @@ test("mobile review keeps six drafts and retries a failed save inside the dialog
     drafts: Array.from({ length: 6 }, (_, index) => ({ gardenId: "demo-garden", sourceText: `Watered plant ${index + 1}`, type: "watering", date, targetScope: "garden", growingAreaId: null, plantingRecordId: null, fertilizerProduct: null, fertilizerAmount: null, fertilizerUnit: null, reviewNotes: [] })),
     notices: [],
   } }));
-  await page.goto("/");
+  await openWorkspace(page);
   await page.getByRole("button", { name: "Load demo garden" }).click();
   await expect(page.getByText("All changes saved", { exact: true })).toBeVisible();
   await openNoteEditor(page);
@@ -126,5 +127,5 @@ test("mobile review keeps six drafts and retries a failed save inside the dialog
   expect(attempts).toBe(2);
   await dialog.getByRole("button", { name: "Done and close" }).click();
   await expect(dialog).toBeHidden();
-  await expect(page).toHaveURL("/");
+  await expect(page).toHaveURL(workspaceHome);
 });

@@ -35,7 +35,7 @@ describe("shared save feedback", () => {
     await user.click(within(dialog).getByRole("button", { name: "Restore browser copy" }));
     expect(await screen.findByRole("link", { name: "Open Demo Garden" })).toBeInTheDocument();
     await screen.findByText("All changes saved");
-    expect(window.location.pathname).toBe("/");
+    expect(window.location.pathname).toBe("/gardens");
     expect(localStorage.getItem(SERVER_WORKSPACE_STORAGE_KEY)).toMatch(/^local-/);
   });
 

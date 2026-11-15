@@ -96,6 +96,14 @@
   - 新增 `e2e/landing.spec.ts`：不连后端时打开 `/`，点进 App。
   - 所有现有 spec 通过。
 
+> 实施说明（2026-11-14 完成）：
+> - `(workspace)` 改名为 `(app)`，Overview 移到 `/gardens`。
+> - `workspaceRoutes.ts` 新增 `workspaceHomePath`。品牌链接、“Back to gardens”、删除花园后的跳转、“Return to overview”、恢复浏览器副本后的跳转都改用它。
+> - `(marketing)` 只放占位：页头（品牌名、“Open app”）、一句介绍、两张功能卡片和各自的 “Try it”。Garden Plan 的 “Try it” 进入 `/gardens`，那里有 “Load demo garden”；AI Note 的进入 `/notes`。
+> - e2e 新增 `e2e/workspace.ts` 的 `openWorkspace(page)` 和 `workspaceHome`，13 个 spec 改用它。新增 `e2e/landing.spec.ts`：1440 和 390px 下打开 `/`，不发出任何 API 请求，没有横向滚动；四个入口都进入 App；App 内的品牌链接留在 App。
+> - 单元测试的默认路由改为 `/gardens`，新增 `Landing.test.tsx`。README 的入口说明已更新。
+> - 页头文字仍叫 “Overview”，改名 “Gardens” 放在 S2。
+
 ### S2 App 页头与层级
 
 - **范围**：`AppShell.tsx` 及其样式、`tokens.css`（只加新变量，不删旧的）、`Button`、`PageHeader`、根布局的字体配置。

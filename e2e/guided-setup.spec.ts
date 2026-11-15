@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { fitCanvas, metresToCanvas } from "../src/lib/canvasViewport";
 import { planCanvas, planSurface } from "./areaHelpers";
+import { openWorkspace } from "./workspace";
 
 /**
  * ADR-0072, phase G6: a new garden walks through four steps on the normal
@@ -16,7 +17,7 @@ for (const width of [1440, 390]) {
   test(`guides a new garden from Add garden to Ready at ${width}px`, async ({ page }, testInfo) => {
     await page.route("**/ai/**", (route) => route.abort());
     await page.setViewportSize({ width, height: 900 });
-    await page.goto("/");
+    await openWorkspace(page);
     await page.getByRole("button", { name: "Load demo garden" }).click();
     await expect(page.getByRole("link", { name: "Open Demo Garden" })).toBeVisible();
     await page.getByRole("link", { name: "Add garden" }).click();

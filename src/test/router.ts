@@ -14,7 +14,7 @@ export const testRouter = {
   refresh() {},
   prefetch() {},
 };
-export function resetTestRouter(href = "/") { history.replaceState({}, "", href); notify(); }
+export function resetTestRouter(href = "/gardens") { history.replaceState({}, "", href); notify(); }
 export function useTestPathname() { return useSyncExternalStore(subscribe, () => location.pathname); }
 export function useTestSearchParams() {
   const search = useSyncExternalStore(subscribe, () => location.search);

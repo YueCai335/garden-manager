@@ -33,7 +33,7 @@ function seed() {
     return response(server);
   }));
   localStorage.setItem(SERVER_WORKSPACE_STORAGE_KEY, "batch");
-  resetTestRouter("/");
+  resetTestRouter("/gardens");
   return { control, puts, requests, remote: () => server };
 }
 // Before sync finishes, the primary button reads "Open note editor" and then becomes "Generate draft".
@@ -91,7 +91,7 @@ describe("global batch note review", () => {
     expect(api.puts).toHaveLength(1);
     expect(api.remote().gardens.map((garden) => garden.careEvents.length)).toEqual([3, 4]);
     expect(api.remote().selectedGardenId).toBe("front");
-    expect(location.pathname).toBe("/");
+    expect(location.pathname).toBe("/gardens");
     expect(screen.getByRole("link", { name: "View records" })).toHaveAttribute("href", "/care?view=history");
     await user.click(screen.getByRole("button", { name: "Done and close" }));
     expect(screen.queryByRole("dialog", { name: "Garden Note" })).not.toBeInTheDocument();

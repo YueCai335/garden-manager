@@ -53,7 +53,7 @@ describe("overview garden gallery and note entry", () => {
     const trigger = screen.getByRole("button", { name: "Open note editor" });
     await user.click(trigger);
     const dialog = screen.getByRole("dialog", { name: "Garden Note" });
-    expect(location.pathname).toBe("/");
+    expect(location.pathname).toBe("/gardens");
     expect(within(dialog).getByRole("heading", { name: "Garden Note" })).toHaveFocus();
     expect(screen.queryByRole("link", { name: "Open Front garden" })).not.toBeInTheDocument();
     const note = await screen.findByLabelText("Care note");
@@ -106,7 +106,7 @@ describe("overview garden gallery and note entry", () => {
     await user.selectOptions(dialog.getByLabelText("Target"), "garden");
     await user.click(dialog.getByRole("button", { name: "Save to Care History" }));
     expect(await dialog.findByRole("heading", { name: "Saved 1 record" })).toBeVisible();
-    expect(location.pathname).toBe("/");
+    expect(location.pathname).toBe("/gardens");
     expect(writes).toHaveLength(1);
     expect(JSON.parse(writes[0]).gardens[0].careEvents.at(-1)).toMatchObject({ note: "Watered today", targetScope: "garden" });
     await user.click(dialog.getByRole("button", { name: "Done and close" }));

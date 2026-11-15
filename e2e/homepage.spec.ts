@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { addDays, createDemoGardenWorkspace, createGarden, todayDate } from "../src/lib/gardenWorkspace";
+import { openWorkspace, workspaceHome } from "./workspace";
 
 for (const [width, height, columns] of [[320, 844, 1], [390, 844, 2], [768, 1024, 2], [1024, 768, 2], [1440, 900, 3]]) {
   test(`overview shows garden maps and task groups at ${width}px`, async ({ page }, testInfo) => {
@@ -7,7 +8,7 @@ for (const [width, height, columns] of [[320, 844, 1], [390, 844, 2], [768, 1024
     page.on("pageerror", (error) => errors.push(error.message));
     await page.setViewportSize({ width, height });
     await page.route("**/ai/**", (route) => route.abort());
-    await page.goto("/");
+    await openWorkspace(page);
     const note = page.getByRole("region", { name: "AI Garden Notes" });
     await expect(note).toBeInViewport();
     await expect(page.getByRole("banner").getByRole("textbox", { name: "Quick garden note" })).toHaveCount(0);
@@ -89,7 +90,7 @@ test("eight gardens with long names reflow at 320px and remain reachable", async
   await page.addInitScript(() => localStorage.setItem("sun-aware-garden-planner:server-workspace-id:v1", "home-eight-gardens"));
 
   await page.setViewportSize({ width: 320, height: 844 });
-  await page.goto("/");
+  await openWorkspace(page);
   const gallery = page.getByRole("region", { name: "Your gardens (8)" });
   const cards = gallery.getByRole("link", { name: /^Open / });
   await expect(cards).toHaveCount(8);
@@ -122,12 +123,12 @@ test("note dialog generates only on request and reopens the same draft", async (
   });
   await page.route("**/workspaces/home-note", (route) => route.fulfill({ json: { ...workspace, workspaceId: "home-note", revision: 0 } }));
   await page.addInitScript(() => localStorage.setItem("sun-aware-garden-planner:server-workspace-id:v1", "home-note"));
-  await page.goto("/");
+  await openWorkspace(page);
   // Without batch drafting the primary Overview button opens the single-record dialog.
   await page.getByRole("button", { name: "Open note editor" }).click();
   const dialog = page.getByRole("dialog", { name: "Garden Note" });
   await expect(dialog.getByRole("heading", { name: "Garden Note", exact: true })).toBeFocused();
-  await expect(page).toHaveURL("/");
+  await expect(page).toHaveURL(workspaceHome);
   await page.getByLabel("Care note").fill("Watered today");
   await page.getByLabel("Garden", { exact: true }).selectOption("demo-garden");
   expect(requests).toBe(0);
@@ -144,7 +145,7 @@ test("note dialog generates only on request and reopens the same draft", async (
   await page.getByRole("link", { name: "Plant Guide", exact: true }).click();
   await expect(page).toHaveURL("/guide");
   await page.getByRole("link", { name: "Back to gardens", exact: true }).click();
-  await expect(page).toHaveURL("/");
+  await expect(page).toHaveURL(workspaceHome);
   await page.getByRole("button", { name: "Continue note · 1 draft" }).click();
   await expect(dialog.getByRole("heading", { name: "AI extracted draft" })).toBeVisible();
   await expect(dialog.getByLabel("Care note")).toBeVisible();

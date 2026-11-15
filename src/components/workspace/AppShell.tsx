@@ -4,7 +4,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { useWorkspace } from "./WorkspaceProvider";
 import { SyncStatus } from "./SyncStatus";
-import { gardenPath, routeFromPath } from "@/lib/workspaceRoutes";
+import { gardenPath, routeFromPath, workspaceHomePath } from "@/lib/workspaceRoutes";
 import { nextSeasonYear } from "@/lib/seasonAllocation";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Button } from "@/components/ui/Button";
@@ -12,7 +12,7 @@ import { GardenNoteDialog } from "@/components/notes/GardenNoteDialog";
 import { OverviewGardenNote } from "./OverviewGardenNote";
 import styles from "./AppShell.module.css";
 
-const links = [["/", "Overview"], ["/care", "Care"], ["/season", "Next Season"], ["/doctor", "Plant Doctor"], ["/guide", "Plant Guide"]];
+const links = [[workspaceHomePath, "Overview"], ["/care", "Care"], ["/season", "Next Season"], ["/doctor", "Plant Doctor"], ["/guide", "Plant Guide"]];
 const OverviewNoteEntryContext = createContext<ReactNode>(null);
 type OpenGardenNote = (opener: HTMLButtonElement | null, options: { batchAvailable: boolean; gardenId?: string }) => void;
 const OpenGardenNoteContext = createContext<OpenGardenNote | null>(null);
@@ -65,7 +65,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     <a className={styles.skip} href="#workspace-content">Skip to content</a>
     <header className={styles.header}>
       <div className={styles.headerInner}>
-        <Link className={styles.brand} href="/" onClick={closeMenu}>Garden Manager</Link>
+        <Link className={styles.brand} href={workspaceHomePath} onClick={closeMenu}>Garden Manager</Link>
         <nav ref={navigation} id="workspace-navigation" aria-label="Workspace sections" className={`${styles.navigation} ${menuOpen ? styles.open : ""}`} onKeyDown={(event) => { if (menuOpen && event.key === "Escape") closeMenu(); }}>
           {links.map(([href, label]) => <Link key={href} href={href} aria-current={pathname === href ? "page" : undefined} onClick={closeMenu}>{label}</Link>)}
         </nav>
@@ -75,7 +75,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     </header>
     <main id="workspace-content">
       <div className={styles.context}>
-        {pathname !== "/" && <Link href="/">Back to gardens</Link>}
+        {pathname !== workspaceHomePath && <Link href={workspaceHomePath}>Back to gardens</Link>}
         <PageHeader title={title} description={description} headingRef={heading} />
         {garden && <>
           <label htmlFor="workspace-garden">Garden</label>{" "}

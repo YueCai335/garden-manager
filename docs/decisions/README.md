@@ -105,7 +105,7 @@ changes, mark the old record as superseded and add a new record.
 | [ADR-0060](0060-offer-assisted-care-note-drafting-in-the-portfolio-demo.md) | Offer assisted care-note drafting in the portfolio demo | Accepted |
 | [ADR-0061](0061-prioritize-global-garden-notes-and-consistent-workflows.md) | Prioritize global AI garden notes, clear workspace scopes, and consistent feedback | Accepted for product direction; implementation pending |
 | [ADR-0062](0062-preserve-planting-area-editor-drafts.md) | Preserve planting-area property and plant-editor drafts | Accepted; amended for Garden Plan by ADR-0072 (G5) |
-| [ADR-0063](0063-use-workspace-routes-and-shared-session-state.md) | Use workspace routes and shared session state | Accepted |
+| [ADR-0063](0063-use-workspace-routes-and-shared-session-state.md) | Use workspace routes and shared session state | Accepted; home route moved to `/gardens` by ADR-0073 (S1) |
 | [ADR-0064](0064-separate-workspace-save-status-and-explicit-retries.md) | Separate workspace save status and explicit retries | Accepted |
 | [ADR-0065](0065-fit-metric-canvases-to-their-containers.md) | Fit metric canvases to their containers | Accepted |
 | [ADR-0066](0066-adapt-area-editing-to-available-space.md) | Adapt area editing to available space | Superseded in part by ADR-0072 (G3) |
