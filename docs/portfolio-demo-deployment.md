@@ -58,6 +58,36 @@ contains `{ "status": "ok" }`.
 The first API request after Render idles can take about a minute. Wait for the
 page request to finish, then refresh once when necessary.
 
+## 5. Keep the Demo Awake
+
+Free Render services sleep after about 15 idle minutes, and free Supabase
+projects pause after about 7 days without database activity. The
+`Demo Keep-Alive` workflow (ADR-0074) calls `/health/db` every 10 minutes,
+which wakes the API and runs one read-only `SELECT 1`.
+
+1. In GitHub, open **Settings > Secrets and variables > Actions > Variables**
+   and add `DEMO_API_URL` with the Render API URL, such as
+   `https://your-render-service.onrender.com`. It is not a secret.
+2. Open **Actions > Demo Keep-Alive > Run workflow** once and confirm the run
+   passes.
+3. Open `https://your-render-service.onrender.com/health/db`: it answers
+   `{ "status": "ok" }`, or `503` when the database is unreachable.
+
+When a run fails, GitHub emails the owner. Check the run log first:
+
+- `503` from `/health/db`: the database is unreachable. If Supabase paused the
+  project, restore it in the Supabase dashboard, then redeploy the Render
+  service so the startup migration runs again.
+- Timeouts or `5xx` from Render: open the Render service's **Events** and
+  **Logs**.
+- The configuration step fails: `DEMO_API_URL` is missing.
+
+GitHub disables scheduled workflows in a public repository after 60 days
+without repository activity; re-enable it from the Actions tab. The schedule
+keeps one free Render service running about 730 of its 750 monthly free
+hours, so do not add a second always-on free service to the same Render
+workspace.
+
 ## Demo Boundaries
 
 - AI Garden Note, Plant Health assessment, Plant Knowledge, and photo uploads

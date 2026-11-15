@@ -116,6 +116,7 @@ changes, mark the old record as superseded and add a new record.
 | [ADR-0071](0071-recover-missing-workspaces-from-browser-copies.md) | Recover missing workspaces from browser copies | Accepted |
 | [ADR-0072](0072-use-a-single-plan-canvas-with-guided-setup.md) | Use a single plan canvas with guided setup | Accepted; implemented (G1–G7); the G1 presentation and the wide side column superseded in part by ADR-0073 (S4): a pale planting chart, and from 900 px the toolbar, zoom, legend, and area panel float over a full-width canvas |
 | [ADR-0073](0073-separate-the-landing-page-and-use-a-textured-deep-green-look.md) | Separate the landing page from the app and use a textured deep-green look | Accepted; implemented (S1–S7); the landing showcases (S6b) are placeholders until their form is decided |
+| [ADR-0074](0074-keep-the-portfolio-demo-awake-with-a-scheduled-check.md) | Keep the portfolio demo awake with a scheduled check | Accepted |
 
 ## Interview Use
 
