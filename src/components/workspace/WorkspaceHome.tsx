@@ -27,7 +27,7 @@ function GardenCard({ garden }: { garden: Garden }) {
   return <Link aria-label={`Open ${garden.name}`} aria-describedby={detailsId} className={styles.card} href={gardenPath(garden.id)}>
     <div className={styles.map} aria-hidden="true">
       {areaCount > unmeasured
-        ? <GardenPlanOverview compact growingAreas={garden.growingAreas} plan={garden.plan} />
+        ? <GardenPlanOverview compact growingAreas={garden.growingAreas} plantings={garden.plantings} plan={garden.plan} />
         : <span>{areaCount ? "Planting areas need a size" : "No planting areas yet"}</span>}
     </div>
     <div className={styles.cardDetails}>

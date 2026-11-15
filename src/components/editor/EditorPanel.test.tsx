@@ -18,8 +18,8 @@ function mockNarrowViewport() {
 }
 
 describe("responsive editor", () => {
-  it.each([[0, false, "overlay"], [1079, false, "overlay"], [1080, false, "wide"], [700, false, "overlay"], [1200, true, "mobile"]] as const)("uses content width %s and mobile viewport %s for %s", (content, mobileViewport, expected) => {
-    expect(editorMode(content, mobileViewport)).toBe(expected);
+  it.each([[false, false, "overlay"], [false, true, "wide"], [true, false, "mobile"], [true, true, "mobile"]] as const)("uses mobile viewport %s and wide viewport %s for %s", (mobileViewport, wideViewport, expected) => {
+    expect(editorMode(mobileViewport, wideViewport)).toBe(expected);
   });
 
   it("preserves the same form node while changing modes and releases the modal scroll lock", () => {

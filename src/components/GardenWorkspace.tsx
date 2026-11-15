@@ -20,7 +20,7 @@ import { applyAreaProperties, areaPropertyErrors, areaDraftKey, createAllocation
 import { CareWorkspace, type CareRecords } from "@/components/CareWorkspace";
 import { areaDeletionMessage, gardenDeletionMessage } from "@/lib/deletionImpact";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { GardenAreaList, GardenPlanOverview, type CanvasPlanting } from "@/components/GardenPlanOverview";
+import { GardenPlanOverview, type CanvasPlanting } from "@/components/GardenPlanOverview";
 import { GrowingAreaLayoutEditor } from "@/components/GrowingAreaLayoutEditor";
 import { SeasonPlanner } from "@/components/SeasonPlanner";
 import { WorkspaceGardenNote } from "@/components/notes/WorkspaceGardenNote";
@@ -33,7 +33,6 @@ import {
   createGarden,
   createGardenWorkspace,
   createId,
-  defaultPlantColor,
   growingAreaKindLabels,
   linkCurrentLayoutPlants,
   type Garden,
@@ -429,7 +428,8 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
     placing: placingPlant && {
       label: placingPlant.label,
       diameterMeters: placingPlant.diameterMeters,
-      color: placingPlant.color ?? defaultPlantColor(placingPlant.plantType ?? placingPlant.label, placingPlant.variety),
+      plantType: placingPlant.plantType,
+      variety: placingPlant.variety,
     },
     onSelectPlant: (plantId) => {
       const plant = editingArea.layout?.allocations.find((allocation) => allocation.id === plantId);
@@ -746,6 +746,27 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
                     onChange={(layout, label) => updateAreaLayout(editingArea.id, layout, label)}
                   />
                 ) : null;
+                // The wide layout floats this panel over the canvas's top right (ADR-0073 S4).
+                const inspector = editingArea && showInspector ? (
+                  <PlantingAreaInspector
+                    key={areaDraftKey(garden.id, editingArea.id)}
+                    area={editingArea}
+                    plan={garden.plan}
+                    mode={mode}
+                    gardenName={garden.name}
+                    returnFocusId={mode === "wide" ? undefined : "edit-area-properties"}
+                    draft={areaDrafts[areaDraftKey(garden.id, editingArea.id)]}
+                    onDraftChange={(draft) => setAreaDraft(areaDraftKey(garden.id, editingArea.id), draft)}
+                    hasPlantChanges={mode === "wide" && plantDraftIsDirty(plantDrafts[areaDraftKey(garden.id, editingArea.id)])}
+                    onDiscardPlants={() => discardDrafts(areaDraftKey(garden.id, editingArea.id))}
+                    onClose={() => mode === "wide" ? setEditingLayoutId(undefined) : navigate(areaPath(garden.id, editingArea.id))}
+                    onDelete={() => deleteArea(editingArea)}
+                    onSave={saveAreaEditor}
+                    showProperties={setupStep !== "plants"}
+                  >
+                    {mode === "wide" ? plantEditor : null}
+                  </PlantingAreaInspector>
+                ) : null;
                 return <>
                 {/* Record a draft-opened editor in the URL so it stays open after Save. */}
                 {mode !== "wide" && editingArea && hasAreaPropertiesDraft && !editingAreaProperties && (
@@ -757,10 +778,12 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
                   gardenId={garden.id}
                   gardenName={garden.name}
                   growingAreas={garden.growingAreas}
+                  plantings={garden.plantings}
+                  floating={mode === "wide"}
+                  sidePanel={mode === "wide" ? inspector : undefined}
                   headingRef={gardenPlanHeadingRef}
                   isAreaInspectorOpen={showInspector}
                   selectedAreaId={editingArea?.id}
-                  areaListInSidebar={mode === "wide" && !editingArea}
                   areaPanel={mode !== "wide" && editingArea ? (
                     <section className={editorStyles.areaPanel} aria-labelledby="area-panel-heading">
                       <header>
@@ -789,29 +812,7 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
                   plan={garden.plan}
                 />
                 </div>
-                {mode === "wide" && !editingArea && setupStep !== "size" && setupStep !== "ready" && <aside className={editorStyles.summary} aria-label="Garden area summary">
-                  <GardenAreaList gardenId={garden.id} areas={garden.growingAreas} onPlaceArea={placeUnsizedArea} />
-                </aside>}
-                {editingArea && showInspector ? (
-                  <PlantingAreaInspector
-                    key={areaDraftKey(garden.id, editingArea.id)}
-                    area={editingArea}
-                    plan={garden.plan}
-                    mode={mode}
-                    gardenName={garden.name}
-                    returnFocusId={mode === "wide" ? undefined : "edit-area-properties"}
-                    draft={areaDrafts[areaDraftKey(garden.id, editingArea.id)]}
-                    onDraftChange={(draft) => setAreaDraft(areaDraftKey(garden.id, editingArea.id), draft)}
-                    hasPlantChanges={mode === "wide" && plantDraftIsDirty(plantDrafts[areaDraftKey(garden.id, editingArea.id)])}
-                    onDiscardPlants={() => discardDrafts(areaDraftKey(garden.id, editingArea.id))}
-                    onClose={() => mode === "wide" ? setEditingLayoutId(undefined) : navigate(areaPath(garden.id, editingArea.id))}
-                    onDelete={() => deleteArea(editingArea)}
-                    onSave={saveAreaEditor}
-                    showProperties={setupStep !== "plants"}
-                  >
-                    {mode === "wide" ? plantEditor : null}
-                  </PlantingAreaInspector>
-                ) : null}
+                {mode !== "wide" && inspector}
               </>;
               }}</EditorWorkbench>
               <div hidden={Boolean(editingArea)}>

@@ -35,9 +35,10 @@
   place-items: center;
   height: 148px;
   overflow: hidden;
-  background-color: var(--color-map);
-  background-image: radial-gradient(var(--color-map-grid) 1px, transparent 1px);
-  background-size: 16px 16px;
+  /* The same pale dot grid as the Garden Plan canvas (ADR-0073 S4). */
+  background-color: var(--color-plan-outside);
+  background-image: radial-gradient(var(--color-plan-dot) 1px, transparent 1.2px);
+  background-size: 14px 14px;
   border-bottom: 1px solid var(--color-line);
   color: var(--color-muted);
   font-size: 14px;

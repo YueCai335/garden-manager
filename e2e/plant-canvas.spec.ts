@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
-import { fitCanvas, metresToCanvas } from "../src/lib/canvasViewport";
+import { metresToCanvas } from "../src/lib/canvasViewport";
 import { areaFocusViewport, createDemoGardenWorkspace, type GardenWorkspace, type PlantAllocation } from "../src/lib/gardenWorkspace";
-import { planCanvas, planSurface } from "./areaHelpers";
+import { planCanvas, planSurface, planTransform } from "./areaHelpers";
 import { openWorkspace } from "./workspace";
 
 // ADR-0072, phase G3: plants are placed, filled, and moved on the Garden Plan canvas itself.
@@ -35,7 +35,7 @@ for (const width of [390, 1440]) {
     await canvas.scrollIntoViewIfNeeded();
     const box = (await canvas.boundingBox())!;
     const bed = createDemoGardenWorkspace().gardens[0].growingAreas[0];
-    const zoomed = fitCanvas(areaFocusViewport(bed)!, box.width, box.height)!;
+    const zoomed = await planTransform(page, areaFocusViewport(bed)!);
     const at = (x: number, y: number) => metresToCanvas({ x: bed.planPlacement.x + x, y: bed.planPlacement.y + y }, zoomed);
     const target = at(2.03, 0.38);
     await page.mouse.move(box.x + target.x, box.y + target.y);

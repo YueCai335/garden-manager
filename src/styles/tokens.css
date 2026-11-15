@@ -35,6 +35,9 @@
   --color-content-green-hover: #285239;
   --color-heading: #173322;
   --radius-pill: 999px;
+  /* Garden Plan canvas (ADR-0073 S4); src/lib/planAppearance.ts mirrors the Konva colours. */
+  --color-plan-outside: #ffffff;
+  --color-plan-dot: #d4d4d2;
   --font-body: var(--font-instrument-sans), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   /* Compatibility for modules migrated in T05–T07. */
   --ops-ink: var(--color-text); --ops-ink-soft: var(--color-muted);

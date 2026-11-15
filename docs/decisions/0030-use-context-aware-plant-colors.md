@@ -1,6 +1,6 @@
 # ADR-0030: Use Context-Aware Plant Colors
 
-- Status: Accepted
+- Status: Accepted; amended for canvas colors by [ADR-0073](0073-separate-the-landing-page-and-use-a-textured-deep-green-look.md) (phase S4, 2026-11-15): the Garden Plan canvas and the Gardens thumbnails color plants by crop family, and the plant panel hides its color picker. The stored `color` field and this resolver stay, so the change can be reversed in the interface alone.
 - Date: 2026-09-01
 - Refines: [ADR-0027](0027-use-persistent-plant-colors-and-garden-plan-zoom.md) and [ADR-0028](0028-use-plant-types-varieties-and-bilingual-color-aliases.md)
 

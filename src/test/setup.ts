@@ -2,7 +2,7 @@ import "@testing-library/jest-dom/vitest";
 import { cleanup } from "@testing-library/react";
 import { afterEach, beforeEach, vi } from "vitest";
 import { resetTestRouter } from "./router";
-import { testLayout } from "./layout";
+import { testLayout, testMediaMatches } from "./layout";
 
 vi.mock("next/navigation", async () => {
   const { testRouter, useTestPathname, useTestSearchParams } = await import("./router");
@@ -97,8 +97,9 @@ Object.defineProperty(window, "ResizeObserver", { configurable: true, value: Res
 
 beforeEach(() => {
   testLayout.width = 1000;
+  testLayout.viewportWidth = 800;
   resetTestRouter();
-  vi.stubGlobal("matchMedia", (media: string) => ({ media, matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() }));
+  vi.stubGlobal("matchMedia", (media: string) => ({ media, matches: testMediaMatches(media), addEventListener: vi.fn(), removeEventListener: vi.fn() }));
   // Default every test to "no network reachable" so results never depend on
   // whether something real happens to be listening on localhost:8000. A test
   // that needs real request/response behavior stubs its own fetch, which

@@ -7,7 +7,7 @@ import { areaFocusViewport, areaPlanCorners, createRectangularLayout, gardenPlan
 import { areaLocalToPlan } from "@/lib/planGeometry";
 import type { CanvasPlanting } from "./GardenPlanOverview";
 import { fitCanvas, metresToCanvas } from "@/lib/canvasViewport";
-import { areaAppearances } from "@/lib/planAppearance";
+import { areaAppearances, planColors } from "@/lib/planAppearance";
 
 const size = vi.hoisted(() => ({ width: 700, height: 420 }));
 vi.mock("@/hooks/useCanvasSize", async () => {
@@ -199,7 +199,7 @@ describe("planting on the zoomed area", () => {
   const pointerAt = (node: HTMLElement, pixel: LayoutPoint) => Object.assign(node, { getStage: () => ({ getPointerPosition: () => pixel }) });
 
   it("places a plant where a click lands inside a rotated area, snapped and kept inside", () => {
-    const actions = planting({ placing: { label: "Basil", diameterMeters: 0.4, color: "#519a55" } });
+    const actions = planting({ placing: { label: "Basil", diameterMeters: 0.4 } });
     const { area, transform } = renderPlan({ planting: actions });
     const layer = screen.getByLabelText("Place Basil on North bed");
     pointerAt(layer, metresToCanvas(areaLocalToPlan(area, { x: 2.53, y: 0.07 }), transform));
@@ -211,7 +211,7 @@ describe("planting on the zoomed area", () => {
   });
 
   it("ignores a placement click outside the area and explains where to click", () => {
-    const actions = planting({ placing: { label: "Basil", diameterMeters: 0.4, color: "#519a55" } });
+    const actions = planting({ placing: { label: "Basil", diameterMeters: 0.4 } });
     const { area, transform } = renderPlan({ planting: actions });
     const layer = screen.getByLabelText("Place Basil on North bed");
     pointerAt(layer, metresToCanvas(areaLocalToPlan(area, { x: -0.5, y: 1 }), transform));
@@ -224,7 +224,7 @@ describe("planting on the zoomed area", () => {
 
   it("stops placing on Escape before leaving the zoomed area", () => {
     const onExitArea = vi.fn();
-    const actions = planting({ placing: { label: "Basil", diameterMeters: 0.4, color: "#519a55" } });
+    const actions = planting({ placing: { label: "Basil", diameterMeters: 0.4 } });
     renderPlan({ planting: actions, onExitArea });
     fireEvent.keyDown(window, { key: "Escape" });
     expect(actions.onStopPlacing).toHaveBeenCalledOnce();
@@ -237,7 +237,7 @@ describe("planting on the zoomed area", () => {
     const { transform } = renderPlan({ planting: actions, onEditLayout });
     const basil = screen.getByLabelText("Basil plant on Garden Plan");
     expect(basil).toHaveAttribute("draggable", "true");
-    expect(basil).toHaveAttribute("stroke", "#2f6846");
+    expect(basil).toHaveAttribute("stroke", planColors.selection);
     expect(screen.getByLabelText("Kale plant on Garden Plan")).toHaveAttribute("data-warning", "true");
     expect(screen.getByLabelText("Squash plant on Garden Plan")).toHaveAttribute("data-warning", "true");
     expect(screen.getByLabelText("Carrot plant on Garden Plan")).toHaveAttribute("draggable", "false");
@@ -267,7 +267,7 @@ describe("planting on the zoomed area", () => {
   });
 
   it("disables plant dragging while placing", () => {
-    renderPlan({ planting: planting({ placing: { label: "Basil", diameterMeters: 0.4, color: "#519a55" } }) });
+    renderPlan({ planting: planting({ placing: { label: "Basil", diameterMeters: 0.4 } }) });
     expect(screen.getByLabelText("Basil plant on Garden Plan")).toHaveAttribute("draggable", "false");
   });
 });
@@ -373,7 +373,7 @@ describe("placing and sizing planting areas directly (ADR-0072, phase G4)", () =
     const view = render(<GardenPlanOverview plan={plan} growingAreas={[square()]} editable onPlacementChange={vi.fn()} onResizeArea={vi.fn()} />);
     expect(screen.queryByLabelText("Resize North bed")).not.toBeInTheDocument();
     expect(screen.getByText("Click an area to open it, or drag it to move it. Escape cancels a move.")).toBeInTheDocument();
-    const placing: CanvasPlanting = { areaId: "bed", placing: { label: "Basil", diameterMeters: 0.4, color: "#519a55" }, onSelectPlant: vi.fn(), onMovePlant: vi.fn(), onPlacePlant: vi.fn(), onStopPlacing: vi.fn() };
+    const placing: CanvasPlanting = { areaId: "bed", placing: { label: "Basil", diameterMeters: 0.4 }, onSelectPlant: vi.fn(), onMovePlant: vi.fn(), onPlacePlant: vi.fn(), onStopPlacing: vi.fn() };
     view.rerender(<GardenPlanOverview plan={plan} growingAreas={[square()]} editable selectedAreaId="bed" onExitArea={vi.fn()} onPlacementChange={vi.fn()} onResizeArea={vi.fn()} planting={placing} />);
     expect(screen.queryByLabelText("Resize North bed")).not.toBeInTheDocument();
     expect(screen.getByLabelText("Open North bed on Garden Plan")).toHaveAttribute("draggable", "false");

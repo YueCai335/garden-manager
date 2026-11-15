@@ -1,8 +1,8 @@
 import { expect, test } from "@playwright/test";
-import { fitCanvas, metresToCanvas } from "../src/lib/canvasViewport";
+import { metresToCanvas } from "../src/lib/canvasViewport";
 import { areaKindDefaults, findFreeAreaSpot } from "../src/lib/areaPlacement";
 import { areaFocusViewport, createDemoGardenWorkspace, createRectangularLayout, type GardenWorkspace, type GrowingArea } from "../src/lib/gardenWorkspace";
-import { planCanvas, planSurface } from "./areaHelpers";
+import { planCanvas, planSurface, planTransform } from "./areaHelpers";
 import { openWorkspace, workspaceHome } from "./workspace";
 
 /**
@@ -55,8 +55,7 @@ test("create a garden, save an edit, add and arrange an area, plan next season, 
   };
 
   // A mouse drags the body to move it, with no Move mode.
-  let box = (await canvas.boundingBox())!;
-  let view = fitCanvas(areaFocusViewport(added(spot.x, spot.y, 1.2, 2.4))!, box.width, box.height)!;
+  let view = await planTransform(page, areaFocusViewport(added(spot.x, spot.y, 1.2, 2.4))!);
   const moved = { x: Math.round((spot.x - 0.5) * 10) / 10, y: Math.round((spot.y + 0.3) * 10) / 10 };
   await drag(
     metresToCanvas({ x: spot.x + 0.6, y: spot.y + 1.2 }, view),
@@ -65,8 +64,7 @@ test("create a garden, save an edit, add and arrange an area, plan next season, 
   );
 
   // Dragging the bottom-right corner handle resizes it on the re-centred view.
-  box = (await canvas.boundingBox())!;
-  view = fitCanvas(areaFocusViewport(added(moved.x, moved.y, 1.2, 2.4))!, box.width, box.height)!;
+  view = await planTransform(page, areaFocusViewport(added(moved.x, moved.y, 1.2, 2.4))!);
   await drag(
     metresToCanvas({ x: moved.x + 1.2, y: moved.y + 2.4 }, view),
     metresToCanvas({ x: moved.x + 1.5, y: moved.y + 2.6 }, view),

@@ -1,6 +1,6 @@
 # ADR-0073: Separate the Landing Page from the App and Use a Textured Deep-Green Look
 
-- Status: Accepted on 2026-11-14; implementation pending, in phases S1 to S7. The form of the landing showcases (S6b) is undecided until the app is final.
+- Status: Accepted on 2026-11-14; S1 to S4 implemented (S4 on 2026-11-15), S5 to S7 pending. The form of the landing showcases (S6b) is undecided until the app is final.
 - Date: 2026-11-14
 - Supersedes in part, as each phase lands:
   - [ADR-0051](0051-prioritize-daily-garden-work-on-the-dashboard.md): the dashboard card groups.

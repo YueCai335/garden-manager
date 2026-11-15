@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
-import { fitCanvas, metresToCanvas } from "../src/lib/canvasViewport";
-import { planCanvas, planSurface } from "./areaHelpers";
+import { metresToCanvas } from "../src/lib/canvasViewport";
+import { planCanvas, planSurface, planTransform } from "./areaHelpers";
 import { openWorkspace } from "./workspace";
 
 /**
@@ -40,7 +40,7 @@ for (const width of [1440, 390]) {
       const canvas = planCanvas(page);
       await canvas.scrollIntoViewIfNeeded();
       const box = (await canvas.boundingBox())!;
-      const view = fitCanvas({ x: 0, y: 0, widthMeters: 14, depthMeters: 10 }, box.width, box.height)!;
+      const view = await planTransform(page, { x: 0, y: 0, widthMeters: 14, depthMeters: 10 });
       const from = metresToCanvas({ x: 10, y: 6 }, view);
       const to = metresToCanvas({ x: 8, y: 5 }, view);
       await page.mouse.move(box.x + from.x, box.y + from.y);

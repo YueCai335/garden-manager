@@ -14,7 +14,7 @@ async function openBed() {
   return user;
 }
 // These journeys use the side-column layout, where area properties and plants share one panel.
-beforeEach(() => { testLayout.width = 1280; });
+beforeEach(() => { testLayout.width = 1280; testLayout.viewportWidth = 1280; });
 const properties = () => within(screen.getByLabelText("Planting-area name").closest("form")!);
 const saved = () => JSON.parse(window.localStorage.getItem(GARDEN_WORKSPACE_STORAGE_KEY)!);
 

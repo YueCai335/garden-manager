@@ -1,7 +1,8 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { resetTestRouter, testRouter } from "@/test/router";
 import { careLocationPath, seasonGardenPath } from "@/lib/workspaceRoutes";
-import { testLayout } from "@/test/layout";
+import { testLayout, testMediaMatches } from "@/test/layout";
+import { cropFamilyColors } from "@/lib/planAppearance";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -75,7 +76,7 @@ async function cancelDialog(user: ReturnType<typeof userEvent.setup>, message?: 
 
 describe("GardenWorkspace", () => {
   // Area journeys here use the side-column layout; the overlay and phone layouts have their own tests.
-  beforeEach(() => { testLayout.width = 1280; });
+  beforeEach(() => { testLayout.width = 1280; testLayout.viewportWidth = 1280; });
   it("opens the Garden Plan directly from a garden thumbnail", async () => {
     const user = userEvent.setup();
 
@@ -1462,7 +1463,7 @@ describe("GardenWorkspace", () => {
     expect(areaInspectorForm().queryByRole("button", { name: "Save" })).not.toBeInTheDocument();
   });
 
-  it("zooms Garden Plan into an opened area, persists a selected plant color, and returns to the whole garden", async () => {
+  it("zooms Garden Plan into an opened area, draws plants in their crop family's colours, and returns to the whole garden", async () => {
     const user = userEvent.setup();
     await loadDemo(user);
     await openSelectedGarden();
@@ -1477,10 +1478,12 @@ describe("GardenWorkspace", () => {
     expect(screen.getByLabelText("Open Sample raised bed on Garden Plan")).toHaveAttribute("opacity", "1");
     expect(screen.getByLabelText("Open Sample in-ground area on Garden Plan")).toHaveAttribute("opacity", "0.35");
     expect(screen.queryByTestId("area-label-demo-in-ground-area")).not.toBeInTheDocument();
+    // ADR-0073 S4: the canvas colours plants by crop family, and the plant panel has no colour picker.
+    expect(screen.getByLabelText("Tomato plant on Garden Plan")).toHaveAttribute("fill", cropFamilyColors.nightshade.fill);
     fireEvent.click(screen.getByLabelText("Tomato plant on Garden Plan"));
-    fireEvent.change(screen.getByLabelText("Plant color"), { target: { value: "#1f77b4" } });
-    fireEvent.blur(screen.getByLabelText("Plant color"));
-    await waitFor(() => expect(JSON.parse(window.localStorage.getItem(GARDEN_WORKSPACE_STORAGE_KEY) ?? "{}").gardens[0].growingAreas[0].layout.allocations[0].color).toBe("#1f77b4"));
+    expect(screen.getByLabelText("Plant type")).toHaveValue("Tomato");
+    expect(screen.queryByLabelText("Plant color")).not.toBeInTheDocument();
+    expect(within(screen.getByTestId("plan-legend")).getByText("Nightshade")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Whole garden" }));
     expect(window.location.search).toBe("");
     expect(screen.queryByRole("button", { name: "Whole garden" })).not.toBeInTheDocument();
@@ -1515,7 +1518,7 @@ describe("GardenWorkspace", () => {
 
   it("places plants on the main canvas, moves one, and stops placing on Escape", async () => {
     // Reduced motion puts the zoomed frame in place at once, so pointer maths use the final frame.
-    vi.stubGlobal("matchMedia", (media: string) => ({ media, matches: media.includes("reduced-motion"), addEventListener: vi.fn(), removeEventListener: vi.fn() }));
+    vi.stubGlobal("matchMedia", (media: string) => ({ media, matches: media.includes("reduced-motion") || testMediaMatches(media), addEventListener: vi.fn(), removeEventListener: vi.fn() }));
     const user = userEvent.setup();
     await loadDemo(user);
     await openPlantingArea(user, "Sample raised bed");
@@ -1696,7 +1699,7 @@ describe("GardenWorkspace", () => {
 });
 
 describe("Garden Plan undo and redo (ADR-0072, phase G5)", () => {
-  beforeEach(() => { testLayout.width = 1280; });
+  beforeEach(() => { testLayout.width = 1280; testLayout.viewportWidth = 1280; });
   const storedGarden = () => JSON.parse(window.localStorage.getItem(GARDEN_WORKSPACE_STORAGE_KEY) ?? "{}").gardens?.[0];
   const undo = () => screen.getByRole("button", { name: /Undo/ });
   const redo = () => screen.getByRole("button", { name: /Redo/ });

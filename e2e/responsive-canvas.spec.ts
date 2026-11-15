@@ -1,7 +1,7 @@
 import { expect, test, type Locator } from "@playwright/test";
-import { fitCanvas, metresToCanvas } from "../src/lib/canvasViewport";
+import { metresToCanvas } from "../src/lib/canvasViewport";
 import { areaFocusViewport, createDemoGardenWorkspace, gardenPlanViewport, type GardenWorkspace } from "../src/lib/gardenWorkspace";
-import { planCanvas, planSurface } from "./areaHelpers";
+import { planCanvas, planSurface, planTransform } from "./areaHelpers";
 import { openWorkspace } from "./workspace";
 
 // Native canvas, pointer and touch behavior require a real browser run.
@@ -44,7 +44,7 @@ for (const width of [390, 900, 1440]) {
     const box = (await plan.boundingBox())!;
     const [demo] = createDemoGardenWorkspace().gardens;
     const bed = demo.growingAreas[0];
-    const zoomed = fitCanvas(areaFocusViewport(bed)!, box.width, box.height)!;
+    const zoomed = await planTransform(page, areaFocusViewport(bed)!);
     // Demo bed is 3 × 1.2 m at (0.8, 1); the tomato begins at (0.6, 0.6) inside it.
     const from = metresToCanvas({ x: bed.planPlacement.x + 0.6, y: bed.planPlacement.y + 0.6 }, zoomed);
     const to = metresToCanvas({ x: bed.planPlacement.x + 1.1, y: bed.planPlacement.y + 0.7 }, zoomed);
@@ -82,7 +82,7 @@ test("a mouse drags an area without a mode: snapped preview, Escape cancel, and 
   await page.getByRole("button", { name: "Load demo garden" }).click();
   await page.getByRole("link", { name: "Open Demo Garden" }).click();
   await expect(page.getByText("All changes saved", { exact: true })).toBeVisible();
-  await expect(page.getByRole("complementary", { name: "Garden area summary" })).toContainText("Sample raised bed");
+  await expect(page.getByRole("region", { name: "Planting areas" })).toContainText("Sample raised bed");
   // A mouse drags an area directly; only touch screens show the Move mode (ADR-0072, G4).
   await expect(page.getByRole("button", { name: "Move planting areas" })).toHaveCount(0);
   const canvas = planCanvas(page);
@@ -91,7 +91,7 @@ test("a mouse drags an area without a mode: snapped preview, Escape cancel, and 
   const box = (await canvas.boundingBox())!;
   const [garden] = createDemoGardenWorkspace().gardens;
   const [area] = garden.growingAreas;
-  const transform = fitCanvas(gardenPlanViewport(garden.plan, garden.growingAreas, "growing-areas"), box.width, box.height)!;
+  const transform = await planTransform(page, gardenPlanViewport(garden.plan, garden.growingAreas, "growing-areas"));
   const start = metresToCanvas({ x: area.planPlacement.x + 0.2, y: area.planPlacement.y + 0.2 }, transform);
   const workspaceId = await page.evaluate(() => localStorage.getItem("sun-aware-garden-planner:server-workspace-id:v1"));
   const read = async () => {
@@ -146,7 +146,7 @@ for (const width of [390, 1440]) {
     const box = (await canvas.boundingBox())!;
     const [garden] = createDemoGardenWorkspace().gardens;
     const [area] = garden.growingAreas;
-    const whole = fitCanvas(gardenPlanViewport(garden.plan, garden.growingAreas, "growing-areas"), box.width, box.height)!;
+    const whole = await planTransform(page, gardenPlanViewport(garden.plan, garden.growingAreas, "growing-areas"));
     // A point inside the bed, clear of the tomato at (0.6, 0.6).
     const inside = { x: area.planPlacement.x + 2.6, y: area.planPlacement.y + 0.3 };
     const wholePoint = metresToCanvas(inside, whole);
@@ -157,7 +157,7 @@ for (const width of [390, 1440]) {
     await expect(page).toHaveURL(new RegExp(`area=${area.id}$`));
     if (width === 390) await expect(page.getByRole("region", { name: area.name })).toContainText("Raised bed · 3 × 1.2 m");
     // After the 0.4 s zoom, the same bed point is drawn where the area frame puts it.
-    const zoomed = fitCanvas(areaFocusViewport(area)!, box.width, box.height)!;
+    const zoomed = await planTransform(page, areaFocusViewport(area)!);
     expect(zoomed.scale).toBeGreaterThan(whole.scale * 1.5);
     await expect(surface).toHaveAttribute("data-zooming", "false");
     await page.screenshot({ path: testInfo.outputPath(`area-zoom-${width}.png`) });
