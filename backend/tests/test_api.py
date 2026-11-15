@@ -91,6 +91,29 @@ def test_health(client):
     assert client.get("/health").json() == {"status": "ok"}
 
 
+def test_database_health_runs_a_query(client):
+    assert client.get("/health/db").json() == {"status": "ok"}
+
+
+def test_database_health_reports_an_unreachable_database():
+    from sqlalchemy.exc import OperationalError
+    from fastapi.testclient import TestClient
+
+    from app.database import get_session
+
+    class BrokenSession:
+        def execute(self, *_args, **_kwargs):
+            raise OperationalError("SELECT 1", {}, Exception("paused"))
+
+    app.dependency_overrides[get_session] = lambda: BrokenSession()
+    try:
+        response = TestClient(app).get("/health/db")
+    finally:
+        app.dependency_overrides.pop(get_session, None)
+    assert response.status_code == 503
+    assert response.json() == {"detail": "Database unavailable"}
+
+
 def test_import_persists_and_retrieves_complete_workspace(client):
     payload = workspace_payload()
 
