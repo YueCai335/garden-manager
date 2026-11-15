@@ -1030,3 +1030,33 @@ Phase G7 closes the single-canvas plan ([ADR-0072](decisions/0072-use-a-single-p
   line. `season-hierarchy.spec.ts` checks it at 390 and 1440 px.
 - ADR-0048 is marked as superseded in part (garden details apply without
   Save), and ADR-0052's Garden Plan amendment now covers G6.
+
+## Site redesign: landing page and app look (S1–S7)
+
+The site redesign ([ADR-0073](decisions/0073-separate-the-landing-page-and-use-a-textured-deep-green-look.md), [plan](site-redesign-plan.md)) splits the landing page from the app and restyles both.
+
+- S1 moves the app to `/gardens` under the `(app)` route group and adds a landing page at `/` under `(marketing)`.
+- S2 gives the app a textured deep-green header with the L1 modules, a breadcrumb with an "All gardens" button below L1, and a "+ Note" button that opens the Garden Note dialog from any app page.
+- S3 links a garden to its care and season plans as filtered L1 pages and redirects the old garden Care and Season routes.
+- S4 restyles the Garden Plan as a pale planting chart with crop-family colors and floating glass overlays from 900 px.
+- S5 restyles the remaining app pages with hue-free neutrals and the content green `#1F4230`; `e2e/app-pages-review.spec.ts` checks every L1 page against the allowed colors.
+- S6 builds the landing page: a WebGL2 hero and footer from real leaf photos, still-image fallbacks, and placeholders for the two feature showcases.
+
+## S7: Site redesign browser acceptance and documentation (2026-11-15)
+
+- `e2e/site-journey.spec.ts` runs one visitor journey at 1440, 768, and 390 px,
+  and at 720 × 450 px with device scale 2 (a 1440 × 900 window at 200% zoom).
+  The journey opens the landing page, enters the app with "Open the app",
+  loads the demo garden, opens the Garden Plan canvas, records one note with
+  the header "+ Note", saves it to Care History, and confirms that the record
+  reached the backend. The AI extraction is mocked. Each step keeps a viewport
+  screenshot in the test output and checks that the page does not scroll
+  sideways.
+- The README screenshots are regenerated with the new look. The README states
+  that `/` is the landing page and `/gardens` is the app locally, and the
+  hosted demo keeps its "Open app" instructions.
+- ADR-0073 is Accepted and implemented (S1–S7). The decision index marks
+  ADR-0051, 0063, 0067, 0069, and 0072 as superseded in part, and ADR-0030 and
+  0049 as amended for canvas colors.
+- Limitations: the landing showcases (S6b) remain placeholders; Lighthouse
+  needs the owner's run or a deployed build; the hosted demo is not redeployed.

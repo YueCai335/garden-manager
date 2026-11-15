@@ -1,14 +1,14 @@
 # ADR-0073: Separate the Landing Page from the App and Use a Textured Deep-Green Look
 
-- Status: Accepted on 2026-11-14; S1 to S6 implemented (S4 to S6 on 2026-11-15), S7 pending. The form of the landing showcases (S6b) is undecided until the app is final.
+- Status: Accepted on 2026-11-14 and implemented: S1 to S3 on 2026-11-14, S4 to S7 on 2026-11-15. The landing showcases (S6b) remain placeholders; their form is undecided until the app is final.
 - Date: 2026-11-14
-- Supersedes in part, as each phase lands:
+- Supersedes in part (all marked in the decision index):
   - [ADR-0051](0051-prioritize-daily-garden-work-on-the-dashboard.md): the dashboard card groups.
   - [ADR-0063](0063-use-workspace-routes-and-shared-session-state.md): the route list, the garden subnavigation, and "Back to gardens".
   - [ADR-0067](0067-project-care-across-locations-with-explicit-ownership.md): the garden Care page and its "Applies to all gardens" section, in phase S3.
   - [ADR-0069](0069-open-garden-notes-in-place-from-overview.md): the note entry point.
   - [ADR-0072](0072-use-a-single-plan-canvas-with-guided-setup.md): the G1 presentation and the wide-layout side column.
-- Amends for canvas colors, in phase S4: [ADR-0030](0030-use-context-aware-plant-colors.md) and [ADR-0049](0049-use-visually-distinct-automatic-plant-colors.md).
+- Amends for canvas colors (phase S4): [ADR-0030](0030-use-context-aware-plant-colors.md) and [ADR-0049](0049-use-visually-distinct-automatic-plant-colors.md).
 - Related:
   - [ADR-0025](0025-use-three-season-crop-rotation-warnings.md): crop families.
   - [ADR-0040](0040-use-vercel-render-and-supabase-for-the-portfolio-demo.md): the demo deployment.

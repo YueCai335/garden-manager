@@ -1,7 +1,7 @@
 # 官网与 App 重新设计：实施计划
 
 - 日期：2026-11-14（America/Toronto）
-- 状态：方向与分阶段计划已确认（[ADR-0073](decisions/0073-separate-the-landing-page-and-use-a-textured-deep-green-look.md)）；第 8 节记录确认结果。官网功能展示的形式（S6b）暂不决定。
+- 状态：S1–S7 已完成，S6b 待定。方向与分阶段计划已确认（[ADR-0073](decisions/0073-separate-the-landing-page-and-use-a-textured-deep-green-look.md)）；第 8 节记录确认结果。官网功能展示的形式（S6b）暂不决定。
 - 依据：
   - 用户确认的两份原型：[官网第 4 版](https://claude.ai/artifact/9C4EYxPXFYGcg3DGzonWwn)、[App 与画布第 8 版](https://claude.ai/artifact/41FXSnHJFAVvBBVppYA5iH)
   - 2026-11-14 的讨论记录
@@ -410,6 +410,12 @@
   - 为什么选真实照片加着色器，而不是程序生成纹理
   - 为什么整页深绿被否决
 - 更新 `frontend-professionalization-progress.md`。
+
+> 实施说明（2026-11-15 完成）：
+> - 新增 `e2e/site-journey.spec.ts`：在 1440、768、390px 和模拟 200% 缩放（720 × 450，像素比 2）下走一遍：官网 → “Open the app” → Gardens 载入演示花园 → Garden Plan 画布 → 页头 “+ Note” 写一条记录、生成草稿、存到 Care History，并向测试后端确认记录已保存。AI 提取用模拟响应。每一步在测试输出目录留截图，并检查没有横向滚动。
+> - 用 `readme-screenshots.spec.ts` 重新生成三张 README 截图；README 写明本地 `/` 是官网、`/gardens` 是 App，演示站说明保持 “Open app”（演示站还没重新部署）。
+> - ADR-0073 改为已实施（S1–S7，S6b 待定）；索引里 ADR-0051、0063、0067、0069、0072 统一写成部分被替代，ADR-0030、0049 写成对画布颜色部分修订。
+> - `docs/interview-stories.md` 新增故事 21（整体重新设计，这个文件只在本地，不进 Git）；`frontend-professionalization-progress.md` 补了 S1–S7 的记录。
 
 ## 6. 每阶段统一的完成标准
 

@@ -12,7 +12,7 @@ plan the next season, and ask source-grounded plant questions.
 
 **Garden plan** — one canvas on a real metric grid. Each area type button drops a standard-size bed; areas drag and resize in place, opening an area zooms the same canvas to place plants, and every edit saves at once with Undo and Redo. A new garden walks through four guided steps: garden size, planting areas, plants, and Ready.
 
-<img width="1000" alt="Garden Plan with three planting areas on a metric grid, area type buttons, Undo and Redo, and the planting-area list" src="docs/screenshots/garden-plan.png" />
+<img width="1000" alt="Garden Plan as a pale planting chart: three planting areas on a metric grid, a floating toolbar with area type buttons, Undo and Redo, a crop-family legend, and the planting-area list" src="docs/screenshots/garden-plan.png" />
 
 **Next Season** — area plans first, with expandable rotation history and companion sources.
 
@@ -47,7 +47,7 @@ plan the next season, and ask source-grounded plant questions.
 
 ## Five-Minute Demo
 
-The frontend updates described here are local changes and have not been deployed to the hosted demo.
+The frontend updates described here are local changes and have not been deployed to the hosted demo. Locally, `/` is the landing page and `/gardens` is the app.
 
 ### Hosted demo (fastest)
 
@@ -67,7 +67,7 @@ The API sleeps on the free tier, so the first request can take about a minute.
 4. Select the **Demo Garden** card. Open an area to zoom the plan into it and
    place plants, drag an area to move it, and use **Undo** to reverse a change.
    **Add garden** starts the four-step guided setup on the same canvas.
-5. Return to the dashboard and open **Next Season**. Choose plants for each area. Expand **Rotation details** for history and companion sources,
+5. Return to **Gardens** and open **Next Season**. Choose plants for each area. Expand **Rotation details** for history and companion sources,
    or **Allocation Assistant** to review an AI draft or the recorded demo run.
 6. Open **Care** to create a task or record a completed care event.
 7. After completing [Enable local AI features](#enable-local-ai-features), open
