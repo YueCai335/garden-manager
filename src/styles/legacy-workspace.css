@@ -4,17 +4,17 @@
   margin-bottom: 12px;
 }
 .field label {
-  color: #374034;
+  color: var(--color-text);
   font-size: 14px;
   font-weight: 600;
 }
 .field input,
 .field select {
   width: 100%;
-  border: 1px solid #cfc7b8;
-  border-radius: 6px;
+  border: 1px solid var(--color-input-border);
+  border-radius: var(--radius-control);
   padding: 9px 10px;
-  background: white;
+  background: var(--color-surface);
 }
 .operations-shell {
   min-height: 100vh;
@@ -24,14 +24,14 @@
 .garden-onboarding h2,
 .section-header h2 {
   margin: 0;
-  color: #183a2a;
+  color: var(--color-heading);
   font-size: 28px;
   font-weight: 700;
   letter-spacing: 0;
 }
 .section-eyebrow {
   margin: 0 0 8px;
-  color: #397a5a;
+  color: var(--color-brand);
   font-size: 13px;
   font-weight: 700;
   letter-spacing: 0;
@@ -40,7 +40,7 @@
 .garden-onboarding {
   width: min(600px, calc(100% - 48px));
   margin: 76px auto;
-  border-top: 2px solid #397a5a;
+  border-top: 2px solid var(--color-brand);
   padding-top: 24px;
 }
 .garden-form {
@@ -49,7 +49,7 @@
   margin-top: 28px;
 }
 .garden-form label {
-  color: #374034;
+  color: var(--color-text);
   font-size: 14px;
   font-weight: 600;
 }
@@ -62,16 +62,16 @@
 .area-form input,
 .area-form select {
   width: 100%;
-  border: 1px solid #b8c5ba;
-  border-radius: 6px;
+  border: 1px solid var(--color-input-border);
+  border-radius: var(--radius-control);
   padding: 10px 12px;
-  background: #ffffff;
-  color: #1d2920;
+  background: var(--color-surface);
+  color: var(--color-text);
 }
 .workspace-message {
   min-height: 22px;
   margin: 20px 0 0;
-  color: #5d695f;
+  color: var(--color-muted);
   font-size: 14px;
 }
 .operations-content {
@@ -92,7 +92,7 @@
 }
 .season-label {
   margin: 0;
-  color: #657268;
+  color: var(--color-muted);
   font-size: 14px;
   font-weight: 600;
 }
@@ -100,56 +100,56 @@
   display: grid;
   gap: 6px;
   min-width: 180px;
-  color: #374034;
+  color: var(--color-text);
   font-size: 14px;
   font-weight: 600;
 }
 .season-filter select {
   width: 100%;
-  border: 1px solid #b8c5ba;
-  border-radius: 6px;
+  border: 1px solid var(--color-input-border);
+  border-radius: var(--radius-control);
   padding: 10px 12px;
-  background: #ffffff;
-  color: #1d2920;
+  background: var(--color-surface);
+  color: var(--color-text);
 }
 .season-preview-mode {
   display: inline-flex;
   align-self: end;
+  gap: 2px;
   overflow: hidden;
-  border: 1px solid #b8c5ba;
-  border-radius: 6px;
-  background: #ffffff;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-pill);
+  padding: 3px;
+  background: var(--color-surface);
 }
 .season-preview-mode button {
   border: 0;
-  border-right: 1px solid #b8c5ba;
-  padding: 10px 12px;
-  background: #ffffff;
-  color: #374034;
+  border-radius: var(--radius-pill);
+  padding: 8px 14px;
+  min-height: 38px;
+  background: var(--color-surface);
+  color: var(--color-text);
   font-size: 14px;
 }
-.season-preview-mode button:last-child {
-  border-right: 0;
-}
 .season-preview-mode button[aria-pressed="true"] {
-  background: #276445;
-  color: #ffffff;
+  background: var(--color-brand);
+  color: var(--color-surface);
 }
 .season-planner-empty {
-  border: 1px solid #cfd7ce;
-  border-radius: 8px;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-card);
   padding: 24px;
-  background: #ffffff;
+  background: var(--color-surface);
 }
 .season-planner-empty :is(h2, h3),
 .season-area-card h3 {
   margin: 0;
-  color: #183a2a;
+  color: var(--color-heading);
   font-size: 18px;
 }
 .season-planner-empty p {
   margin: 10px 0 0;
-  color: #657268;
+  color: var(--color-muted);
   font-size: 14px;
   line-height: 1.5;
 }
@@ -162,32 +162,32 @@
   display: grid;
   align-content: start;
   gap: 16px;
-  border: 1px solid #cfd7ce;
-  border-radius: 8px;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-card);
   padding: 20px;
-  background: #ffffff;
+  background: var(--color-surface);
 }
 .season-summary-line,
 .season-selections {
   display: grid;
   gap: 4px;
   margin: 0;
-  color: #657268;
+  color: var(--color-muted);
   font-size: 14px;
   line-height: 1.5;
 }
 .season-summary-line strong,
 .season-selections strong {
-  color: #374034;
+  color: var(--color-text);
 }
 .season-plant-choice {
   display: grid;
   gap: 14px;
-  border-top: 1px solid #dbe2d9;
+  border-top: 1px solid var(--color-line);
   padding-top: 16px;
 }
 .season-selections {
-  border-top: 1px solid #dbe2d9;
+  border-top: 1px solid var(--color-line);
   padding-top: 16px;
 }
 .season-garden-grid {
@@ -206,19 +206,19 @@
 }
 .season-garden-heading h2 {
   margin: 0;
-  color: #183a2a;
+  color: var(--color-heading);
   font-size: 22px;
 }
 .season-garden-heading span {
-  color: #657268;
+  color: var(--color-muted);
   font-size: 14px;
 }
 .season-garden-preview-wrap {
   overflow: auto;
-  border: 1px solid #cfd7ce;
-  border-radius: 8px;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-card);
   padding: 16px;
-  background: #ffffff;
+  background: var(--color-surface);
 }
 .season-garden-preview {
   display: block;
@@ -227,22 +227,22 @@
   min-height: 220px;
 }
 .season-garden-boundary {
-  fill: #f8fbf6;
-  stroke: #183a2a;
+  fill: var(--color-plan-ground);
+  stroke: var(--color-brand);
 }
 .season-garden-area {
-  fill: #dcebdc;
-  stroke: #276445;
+  fill: var(--color-plan-bed);
+  stroke: var(--color-plan-bed-edge);
 }
 .season-garden-area-label {
-  fill: #183a2a;
+  fill: var(--color-text);
   font-weight: 700;
 }
 .season-garden-plant {
-  stroke: #183a2a;
+  stroke: var(--color-text);
 }
 .season-garden-plant-label {
-  fill: #183a2a;
+  fill: var(--color-text);
   font-weight: 700;
   pointer-events: none;
 }
@@ -261,7 +261,7 @@
 }
 .season-crop-family {
   margin: 0;
-  color: #374034;
+  color: var(--color-text);
   font-size: 14px;
 }
 .pairing-note {
@@ -274,29 +274,29 @@
 }
 .pairing-note-helpful,
 .pairing-note-space {
-  color: #276445;
+  color: var(--color-text);
 }
 .pairing-note-caution {
-  color: #8a4720;
+  color: var(--color-warning);
 }
 .allocation-assistant {
   display: grid;
   gap: 16px;
   min-width: 0;
-  border: 1px solid #cfd7ce;
-  border-radius: 8px;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-card);
   padding: 20px;
-  background: #ffffff;
+  background: var(--color-surface);
 }
 .allocation-assistant h3 {
   margin: 0;
-  color: #183a2a;
+  color: var(--color-heading);
   font-size: 18px;
 }
 .allocation-context,
 .allocation-notice {
   margin: 6px 0 0;
-  color: #657268;
+  color: var(--color-muted);
   font-size: 14px;
   line-height: 1.5;
 }
@@ -324,7 +324,7 @@
 .allocation-choices legend {
   margin-bottom: 8px;
   padding: 0;
-  color: #374034;
+  color: var(--color-text);
   font-weight: 700;
 }
 .allocation-choices label {
@@ -351,32 +351,32 @@
   display: grid;
   gap: 4px;
   margin: 0;
-  color: #657268;
+  color: var(--color-muted);
   font-size: 14px;
   line-height: 1.5;
 }
 .allocation-areas strong,
 .allocation-explanation strong {
-  color: #374034;
+  color: var(--color-text);
 }
 .allocation-assistant textarea {
   width: 100%;
-  border: 1px solid #cfd7ce;
-  border-radius: 6px;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-control);
   padding: 10px;
   font: inherit;
   resize: vertical;
 }
 .allocation-count {
   justify-self: end;
-  color: #657268;
+  color: var(--color-muted);
   font-size: 12px;
 }
 .allocation-error {
   margin: 0;
-  border-left: 3px solid #af5144;
+  border-left: 3px solid var(--color-error);
   padding: 4px 0 4px 12px;
-  color: #7a3329;
+  color: var(--color-error);
   font-size: 14px;
   line-height: 1.5;
 }
@@ -388,9 +388,9 @@
 .allocation-trace {
   display: grid;
   gap: 10px;
-  border-top: 1px solid #dbe2d9;
+  border-top: 1px solid var(--color-line);
   padding-top: 16px;
-  color: #374034;
+  color: var(--color-text);
   font-size: 14px;
   line-height: 1.5;
 }
@@ -409,11 +409,11 @@
   min-width: 0;
 }
 .allocation-warning {
-  color: #8a4720;
+  color: var(--color-warning);
 }
 .allocation-confirmed {
   margin: 0;
-  color: #276445;
+  color: var(--color-text);
   font-size: 14px;
   font-weight: 700;
 }
@@ -424,8 +424,8 @@
   overflow-wrap: anywhere;
   border-radius: 4px;
   padding: 4px 6px;
-  background: #f4f6f2;
-  color: #374034;
+  background: var(--color-soft);
+  color: var(--color-text);
   font-size: 12px;
 }
 .allocation-explanation span {
@@ -434,17 +434,17 @@
 .allocation-example {
   display: grid;
   gap: 12px;
-  border: 1px dashed #bfc9bd;
-  border-radius: 6px;
+  border: 1px dashed var(--color-input-border);
+  border-radius: var(--radius-control);
   padding: 14px;
-  background: #f8faf6;
+  background: var(--color-soft);
 }
 .allocation-example .section-eyebrow,
 .allocation-example .allocation-notice {
   margin: 0;
 }
 .allocation-tool-results {
-  color: #374034;
+  color: var(--color-text);
   font-size: 14px;
 }
 .allocation-tool-results ol {
@@ -463,7 +463,7 @@
   overflow-wrap: anywhere;
   border-radius: 4px;
   padding: 4px 6px;
-  background: #f4f6f2;
+  background: var(--color-soft);
   font-size: 12px;
 }
 .care-event-type {
@@ -483,7 +483,7 @@
 }
 .section-context {
   margin: 6px 0 0;
-  color: #657268;
+  color: var(--color-muted);
   font-size: 14px;
 }
 .section-header {
@@ -491,7 +491,7 @@
   align-items: flex-end;
   justify-content: space-between;
   gap: 24px;
-  border-bottom: 1px solid #cfd7ce;
+  border-bottom: 1px solid var(--color-line);
   padding-bottom: 18px;
 }
 .garden-plan {
@@ -499,7 +499,7 @@
 }
 .plan-count {
   margin: 0;
-  color: #657268;
+  color: var(--color-muted);
   font-size: 14px;
 }
 .plan-header-actions {
@@ -516,7 +516,7 @@
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
   align-items: flex-end;
   gap: 12px;
-  border-bottom: 1px solid #d7ddd6;
+  border-bottom: 1px solid var(--color-line);
   padding-bottom: 20px;
 }
 .plan-dimensions .field {
@@ -524,11 +524,11 @@
 }
 .plan-dimensions input {
   width: 100%;
-  border: 1px solid #b8c5ba;
-  border-radius: 6px;
+  border: 1px solid var(--color-input-border);
+  border-radius: var(--radius-control);
   padding: 10px 12px;
-  background: #ffffff;
-  color: #1d2920;
+  background: var(--color-surface);
+  color: var(--color-text);
 }
 .plan-view {
   min-width: 0;
@@ -538,7 +538,7 @@
   grid-template-columns: minmax(0, 1fr) minmax(0, 0.7fr) minmax(0, 0.5fr) auto;
   align-items: flex-end;
   gap: 14px;
-  border-bottom: 1px solid #d7ddd6;
+  border-bottom: 1px solid var(--color-line);
   padding: 22px 0;
 }
 .area-form .field {
@@ -550,12 +550,12 @@
   justify-content: space-between;
   gap: 16px;
   margin-top: 24px;
-  border-top: 1px solid #d7ddd6;
+  border-top: 1px solid var(--color-line);
   padding-top: 20px;
 }
 .data-settings p {
   margin: 0;
-  color: #657268;
+  color: var(--color-muted);
   font-size: 14px;
 }
 .plantings-section {
@@ -566,7 +566,7 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
   align-items: flex-end;
   gap: 14px;
-  border-bottom: 1px solid #d7ddd6;
+  border-bottom: 1px solid var(--color-line);
   padding: 22px 0;
 }
 .care-form {
@@ -574,13 +574,13 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
   align-items: end;
   gap: 14px;
-  border-bottom: 1px solid #d7ddd6;
+  border-bottom: 1px solid var(--color-line);
   padding: 22px 0;
 }
 .care-form h3,
 .care-log h3 {
   margin: 0;
-  color: #183a2a;
+  color: var(--color-heading);
   font-size: 16px;
 }
 .care-view-header,
@@ -599,14 +599,14 @@
 .care-task-group h3,
 .care-completion-form h3 {
   margin: 0;
-  color: #183a2a;
+  color: var(--color-heading);
 }
 .care-task-group {
   margin-top: 28px;
 }
 .care-completion-form {
   align-items: end;
-  border-bottom: 1px solid #d7ddd6;
+  border-bottom: 1px solid var(--color-line);
   padding: 22px 0;
 }
 .care-completion-form h3 {
@@ -616,11 +616,11 @@
   margin: 0;
 }
 .care-completion-form input {
-  border: 1px solid #b8c5ba;
-  border-radius: 6px;
+  border: 1px solid var(--color-input-border);
+  border-radius: var(--radius-control);
   padding: 10px 12px;
-  background: #ffffff;
-  color: #1d2920;
+  background: var(--color-surface);
+  color: var(--color-text);
 }
 .care-form h3,
 .care-note-field {
@@ -632,11 +632,11 @@
 .care-form input,
 .care-form select {
   width: 100%;
-  border: 1px solid #b8c5ba;
-  border-radius: 6px;
+  border: 1px solid var(--color-input-border);
+  border-radius: var(--radius-control);
   padding: 10px 12px;
-  background: #ffffff;
-  color: #1d2920;
+  background: var(--color-surface);
+  color: var(--color-text);
 }
 .health-photo-strip {
   display: flex;
@@ -653,8 +653,8 @@
 .health-photo-strip img {
   width: 132px;
   height: 96px;
-  border: 1px solid #cfd7ce;
-  border-radius: 6px;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-control);
   object-fit: cover;
 }
 .health-history {
@@ -662,7 +662,7 @@
 }
 .health-history h3 {
   margin: 0;
-  color: #183a2a;
+  color: var(--color-heading);
 }
 .health-history ul {
   display: grid;
@@ -674,22 +674,22 @@
 .health-history li {
   display: grid;
   gap: 5px;
-  border: 1px solid #cfd7ce;
-  border-radius: 8px;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-card);
   padding: 14px 16px;
-  background: #ffffff;
+  background: var(--color-surface);
 }
 .health-history li > span {
-  color: #657268;
+  color: var(--color-muted);
 }
 .knowledge-answer {
   display: grid;
   gap: 12px;
   margin-top: 28px;
-  border: 1px solid #cfd7ce;
-  border-radius: 8px;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-card);
   padding: 20px;
-  background: #ffffff;
+  background: var(--color-surface);
 }
 .knowledge-answer h3,
 .knowledge-answer h4,
@@ -698,7 +698,7 @@
 }
 .knowledge-answer h3,
 .knowledge-answer h4 {
-  color: #183a2a;
+  color: var(--color-heading);
 }
 .knowledge-answer > ul {
   display: grid;
@@ -716,16 +716,16 @@
 .knowledge-citations li {
   display: grid;
   gap: 4px;
-  border-top: 1px solid #d7ddd6;
+  border-top: 1px solid var(--color-line);
   padding-top: 10px;
 }
 .knowledge-citations a {
-  color: #286143;
+  color: var(--color-text);
   font-weight: 700;
 }
 .knowledge-citations span,
 .knowledge-citations p {
-  color: #657268;
+  color: var(--color-muted);
   font-size: 14px;
 }
 .portfolio-feature-preview {
@@ -734,20 +734,20 @@
 .feature-preview-sample {
   display: grid;
   gap: 12px;
-  border: 1px solid #cfd7ce;
-  border-radius: 8px;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-card);
   padding: 20px;
-  background: #ffffff;
+  background: var(--color-surface);
 }
 .feature-preview-sample h3,
 .feature-preview-sample p {
   margin: 0;
 }
 .feature-preview-sample h3 {
-  color: #183a2a;
+  color: var(--color-heading);
 }
 .feature-preview-label {
-  color: #657268;
+  color: var(--color-muted);
   font-size: 13px;
   font-weight: 700;
   text-transform: uppercase;
@@ -762,19 +762,19 @@
   gap: 3px;
 }
 .feature-preview-details dt {
-  color: #657268;
+  color: var(--color-muted);
   font-size: 13px;
 }
 .feature-preview-details dd {
   margin: 0;
 }
 .feature-preview-source {
-  color: #657268;
+  color: var(--color-muted);
   font-size: 14px;
 }
 .feature-preview-future {
   margin: 0;
-  color: #657268;
+  color: var(--color-muted);
   font-size: 14px;
   line-height: 1.5;
 }
@@ -790,20 +790,20 @@
   align-items: center;
   justify-content: space-between;
   gap: 18px;
-  border: 1px solid #cfd7ce;
-  border-radius: 8px;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-card);
   padding: 16px;
-  background: #ffffff;
+  background: var(--color-surface);
 }
 .care-event-list p {
   margin: 5px 0 0;
-  color: #657268;
+  color: var(--color-muted);
   font-size: 14px;
 }
 .planting-form h3,
 .planting-group h3 {
   margin: 0;
-  color: #183a2a;
+  color: var(--color-heading);
   font-size: 16px;
 }
 .planting-form h3 {
@@ -812,17 +812,17 @@
 .rotation-guidance {
   grid-column: 1 / -1;
   margin: 0;
-  border-left: 3px solid #6a8b70;
+  border-left: 3px solid var(--color-input-border);
   padding: 10px 12px;
-  background: #f4f8f1;
-  color: #374034;
+  background: var(--color-soft);
+  color: var(--color-text);
   font-size: 14px;
 }
 .rotation-guidance p {
   margin: 6px 0 0;
 }
 .rotation-warning {
-  color: #8a4720;
+  color: var(--color-warning);
   font-weight: 700;
 }
 .planting-form .field {
@@ -831,18 +831,18 @@
 .planting-form input,
 .planting-form select {
   width: 100%;
-  border: 1px solid #b8c5ba;
-  border-radius: 6px;
+  border: 1px solid var(--color-input-border);
+  border-radius: var(--radius-control);
   padding: 10px 12px;
-  background: #ffffff;
-  color: #1d2920;
+  background: var(--color-surface);
+  color: var(--color-text);
 }
 .checkbox-field {
   display: flex;
   align-items: center;
   gap: 8px;
   min-height: 42px;
-  color: #374034;
+  color: var(--color-text);
   font-size: 14px;
   font-weight: 600;
 }
@@ -855,10 +855,10 @@
   margin-top: 20px;
 }
 .planting-group {
-  border: 1px solid #cfd7ce;
-  border-radius: 8px;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-card);
   padding: 16px;
-  background: #ffffff;
+  background: var(--color-surface);
 }
 .planting-list {
   display: grid;
@@ -875,7 +875,7 @@
 }
 .planting-list p {
   margin: 5px 0 0;
-  color: #657268;
+  color: var(--color-muted);
   font-size: 14px;
 }
 .planting-list .text-button {
@@ -898,10 +898,10 @@
   align-items: center;
   justify-content: space-between;
   gap: 18px;
-  border: 1px solid #cfd7ce;
-  border-radius: 8px;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-card);
   padding: 18px 20px;
-  background: #ffffff;
+  background: var(--color-surface);
 }
 .area-actions {
   display: flex;
@@ -913,12 +913,12 @@
 }
 .planting-area-properties {
   margin-bottom: 28px;
-  border-bottom: 1px solid #d7ddd6;
+  border-bottom: 1px solid var(--color-line);
   padding-bottom: 22px;
 }
 .layout-intro {
   margin: 18px 0;
-  color: #657268;
+  color: var(--color-muted);
 }
 .planting-area-property-form,
 .allocation-form,
@@ -940,11 +940,11 @@
 .allocation-form input,
 .selected-fields input {
   width: 100%;
-  border: 1px solid #b8c5ba;
-  border-radius: 6px;
+  border: 1px solid var(--color-input-border);
+  border-radius: var(--radius-control);
   padding: 10px 12px;
-  background: #ffffff;
-  color: #1d2920;
+  background: var(--color-surface);
+  color: var(--color-text);
 }
 .allocation-form input[type="color"],
 .selected-fields input[type="color"] {
@@ -960,14 +960,14 @@
   margin-top: 24px;
 }
 .allocation-controls {
-  border-left: 1px solid #d7ddd6;
+  border-left: 1px solid var(--color-line);
   padding-left: 24px;
 }
 .plant-toolbar {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  border-bottom: 1px solid #d7ddd6;
+  border-bottom: 1px solid var(--color-line);
   padding-bottom: 16px;
 }
 .plant-toolbar .primary-button {
@@ -979,7 +979,7 @@
 .allocation-controls h3,
 .selected-allocation h3 {
   margin: 0 0 12px;
-  color: #183a2a;
+  color: var(--color-heading);
   font-size: 16px;
 }
 .allocation-controls h3:not(:first-child) {
@@ -994,21 +994,21 @@
 }
 .allocation-select {
   width: 100%;
-  border: 1px solid #cfd7ce;
-  border-radius: 6px;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-control);
   padding: 9px 10px;
-  background: #ffffff;
-  color: #183a2a;
+  background: var(--color-surface);
+  color: var(--color-heading);
   cursor: pointer;
   text-align: left;
 }
 .allocation-select[aria-pressed="true"] {
-  border-color: #397a5a;
-  background: #edf5ec;
+  border-color: var(--color-brand);
+  background: var(--color-soft);
 }
 .selected-allocation {
   margin-top: 24px;
-  border-top: 1px solid #d7ddd6;
+  border-top: 1px solid var(--color-line);
   padding-top: 20px;
 }
 .selected-allocation .remove-button {
@@ -1017,26 +1017,26 @@
 .growing-area-item h3,
 .empty-areas h3 {
   margin: 0;
-  color: #183a2a;
+  color: var(--color-heading);
   font-size: 17px;
   letter-spacing: 0;
 }
 .growing-area-item p,
 .empty-areas p {
   margin: 5px 0 0;
-  color: #657268;
+  color: var(--color-muted);
   font-size: 14px;
 }
 .empty-areas {
   margin-top: 20px;
-  border-bottom: 1px solid #d7ddd6;
+  border-bottom: 1px solid var(--color-line);
   padding: 24px 0;
 }
 .loading-state {
   width: min(1180px, calc(100% - 48px));
   margin: 0 auto;
   padding-top: 48px;
-  color: #657268;
+  color: var(--color-muted);
 }
 
 @media (max-width: 720px) {
@@ -1063,7 +1063,7 @@
     grid-template-columns: 1fr;
   }
 .allocation-controls {
-    border-top: 1px solid #d7ddd6;
+    border-top: 1px solid var(--color-line);
     border-left: 0;
     padding: 24px 0 0;
   }
@@ -1090,7 +1090,7 @@ body {
 .operations-app-shell .section-header h2,
 .operations-app-shell .garden-onboarding h1,
 .operations-app-shell .management-section h2 {
-  color: var(--ops-ink);
+  color: var(--color-heading);
   letter-spacing: 0;
 }
 .operations-app-shell .section-header p,
@@ -1114,7 +1114,7 @@ body {
 .operations-app-shell .allocation-assistant,
 .operations-app-shell .season-planner-empty {
   border-color: var(--ops-line);
-  border-radius: 6px;
+  border-radius: var(--radius-card);
   background: var(--ops-surface);
   box-shadow: none;
 }
@@ -1165,7 +1165,7 @@ body {
   border: 1px solid var(--ops-line);
   border-radius: 5px;
   padding: 3px;
-  background: #f3f5f0;
+  background: var(--color-soft);
 }
 .operations-app-shell .plan-view-control {
   min-height: 44px;
@@ -1180,8 +1180,8 @@ body {
 }
 .operations-app-shell .plan-view-control[aria-pressed="true"] {
   background: var(--ops-surface);
-  color: var(--ops-green-dark);
-  box-shadow: 0 1px 3px rgb(24 58 42 / 14%);
+  color: var(--color-text);
+  box-shadow: 0 1px 3px rgb(24 24 26 / 12%);
 }
 
 
@@ -1289,7 +1289,7 @@ body {
 }
 .operations-app-shell .allocation-select[aria-pressed="true"] {
   border-color: var(--ops-green);
-  background: #eaf3e9;
+  background: var(--color-soft);
 }
 
 @media (max-width: 980px) {

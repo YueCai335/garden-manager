@@ -305,6 +305,31 @@
   - 现有单元测试和 e2e 全部通过。
   - 增加一条把每个 L1 页面截图的旅程，供审阅。
 
+> 实施说明（2026-11-15 完成）：
+> - 配色变量（`tokens.css`）：
+>   - 旧变量名保留，取值改为指向 S2 加的新变量：`--color-page` → `#F4F4F3`，`--color-surface` → `#FFFFFF`，`--color-line` → `#E3E3E1`，`--color-text` → `#18181A`，`--color-muted` → `#5F5F63`，`--color-brand` → `#1F4230`，`--color-brand-hover` → `#285239`，`--color-brand-pressed` → `#173322`。所以 CSS Modules 里引用旧名字的地方一次全部换装。
+>   - `--color-soft` 改为中性的 `#F2F2F1`（悬停和浅底），`--color-input-border` 改为 `#8D8D91`（表单边框，对页面和卡片都至少 3:1）。
+>   - `--radius-control` 6 → 8px，`--radius-card` 10 → 14px，接近原型的圆角。
+>   - 删掉了没有使用的 `--color-map`、`--color-map-grid`。新增 `--color-plan-ground`、`--color-plan-bed`、`--color-plan-bed-edge`，给 Next Season 小地图用，取值和 `planAppearance.ts` 一致。
+> - `legacy-workspace.css`：所有写死的偏绿灰色（`#183a2a`、`#374034`、`#657268`、`#cfd7ce`、`#b8c5ba`、`#f4f6f2`、`#eaf3e9` 等）换成变量；圆角换成 `--radius-control` 和 `--radius-card`。`globals.css` 给所有文本框加了内边距（以前文字贴边，Note 弹窗里也是）。浇水和施肥的蓝色、琥珀色标签，错误和警告色保留，它们表示类别和状态，不是绿色。
+> - 按钮（`controls.css`）：所有按钮都是原型的胶囊形。主按钮是内容绿，带原型的淡阴影；次要按钮是白底细灰边，悬停变成页面灰，不再变绿；文字按钮和链接是墨色，不再是绿色。画布浮动工具栏有自己的圆角规则，不受影响。
+> - 绿色只出现在：主按钮、选中状态（Care 的 Tasks/History 选中项改为内容绿胶囊、Next Season 预览模式选中项、焦点框）、页面和面板标题（App 内的 `h1`、`h2` 统一用 `#173322`，确认框和 Note 弹窗标题也是）、保存状态点。卡片悬停、卡片箭头、成功提示、“Helpful” 搭配说明、引用链接都改为墨色或灰色。
+> - 弹窗：确认框、Garden Note 弹窗和区域面板的遮罩、阴影改为无色相的黑色；Note 弹窗圆角 18px，和原型的面板一致。
+> - 空状态：`EmptyState` 加了样式（白底、灰色虚线边、说明文字用次要墨色）。其他页面里的空状态已经通过 legacy 样式换成新配色。
+> - Gardens 的 “Today” 条（第 8 节第 2 条）：
+>   - 页面顶部、花园列表上方，一行白色卡片：标题 “Today”，一句计数（“1 overdue · 1 due today · 1 in the next 7 days”，逾期数字用错误色），最多 3 条任务（类型、位置、状态和日期，点进去是这个位置筛选后的 Care），右边 “Open Care →” 去 `/care?view=tasks`；没有任务时按钮是 “Add a care task →”。
+>   - 原来右栏的 “Care tasks” 卡片（计数表和 5 条任务）删掉了，完整列表只在 Care 里。右栏只剩 AI Garden Notes。计数沿用 `homeTasks`，不改逻辑。
+> - 其他：Next Season 小地图的花园边界、种植区底色改为 S4 的地面、高床颜色；植物圆仍用旧的单株颜色（见已知限制）。Setup 引导的脉冲阴影改为内容绿。
+> - 测试：
+>   - 新增 `src/styles/tokens.test.ts`：直接读 `tokens.css`（解析 `var()` 引用），检查原型的中性色和内容绿取值、中性色没有绿色偏色、正文和标题对页面、卡片、浅底至少 4.5:1、表单边框至少 3:1、主按钮三种状态上的白字、错误和警告提示在各自底色上的对比度。
+>   - `GardenWorkspace.test.tsx`：原来 “Note 卡片后面是 Care tasks” 的断言改为 “Today 条在花园列表上方、链接到 Care、没有 Care tasks 卡片”。
+>   - e2e：新增 `app-pages-review.spec.ts`，在 1440px 和 390px 依次打开 `/gardens`、`/care`、`/season`、`/notes`、`/doctor`、`/guide`，再打开 “+ Note” 弹窗：每页检查页面底色是 `#F4F4F3`、没有横向滚动，并遍历页面上所有元素的文字色、背景色、边框色，除了内容绿、页头绿、错误、警告和两种照料类型标签，其余必须是中性灰（三个通道差不超过 4），然后整页截图到测试输出目录供审阅。`homepage.spec.ts` 的任务卡片断言改为 Today 条（在 Note 和花园列表上方、计数文字、Open Care 链接）。
+> - 已知限制：
+>   - Next Season 小地图的植物圆还是旧的单株颜色（`SeasonPlanner.tsx`）。改成作物科颜色需要用户确认，未改。
+>   - 原型第 8 版只画了 Garden Plan 页，其余页面按它的规则（中性白、胶囊按钮、绿色标题和选中态）换装，没有逐页的原型可以对照。
+>   - `/notes` 页面上 “AI Garden Note” 同时是页面标题和表单标题，这是原有结构，本阶段不改。
+>   - `legacy-workspace.css` 里还有一些已经没有使用的旧选择器（例如 `.plan-view-controls`、`.allocation-select`），只换了颜色，删除留给以后的清理。
+
 ### S6 正式官网
 
 - **范围**：`src/app/(marketing)/`、`src/components/marketing/`（新）、`public/landing/`（新）、`next/font` 字体配置。

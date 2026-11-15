@@ -706,7 +706,7 @@ function GardenPlanCanvas({
           />
         ))}
         {drag && draggedArea && <Line
-          listening={false} closed dash={[5, 4]} stroke="#59665e" strokeWidth={2}
+          listening={false} closed dash={[5, 4]} stroke="#5f5f63" strokeWidth={2}
           rotation={drag.origin.rotationDegrees} {...metresToCanvas(drag.origin, transform)}
           points={draggedArea.layout!.boundary.flatMap(({ x, y }) => [x * scale, y * scale])}
         />}

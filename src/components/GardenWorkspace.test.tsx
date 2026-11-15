@@ -86,17 +86,19 @@ describe("GardenWorkspace", () => {
     expect(screen.getByRole("navigation", { name: "Workspace sections" })).toBeInTheDocument();
   });
 
-  it("places the Overview note action next to care tasks and keeps navigation in the header", async () => {
+  it("puts a short Today strip above the Overview, keeps the note action, and keeps navigation in the header", async () => {
     const user = userEvent.setup();
     await loadDemo(user);
 
     const gallery = screen.getByRole("region", { name: /Your gardens/ });
-    const tasks = screen.getByRole("complementary", { name: "Care tasks" });
+    const today = screen.getByRole("region", { name: "Today" });
+    expect(today.compareDocumentPosition(gallery) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(within(today).getByRole("link", { name: /Open Care|Add a care task/ })).toHaveAttribute("href", "/care?view=tasks");
+    expect(screen.queryByRole("complementary", { name: "Care tasks" })).not.toBeInTheDocument();
     expect(within(gallery).getByRole("link", { name: "Open Demo Garden" })).toHaveAccessibleDescription(expect.stringContaining("Growing now:"));
     const card = screen.getByRole("region", { name: "AI Garden Notes" });
     const note = within(card).getByRole("button", { name: "Open note editor" });
     expect(note).toHaveAttribute("aria-haspopup", "dialog");
-    expect(card.nextElementSibling).toBe(tasks);
     expect(within(gallery).getByRole("heading", { name: /Your gardens/ }).nextElementSibling).toBe(within(gallery).getByRole("link", { name: "Add garden" }));
     expect(within(screen.getByRole("banner")).queryByText("Record Garden Note")).not.toBeInTheDocument();
     const gardenTools = screen.getByRole("navigation", { name: "Workspace sections" });

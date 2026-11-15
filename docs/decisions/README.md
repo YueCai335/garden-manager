@@ -93,7 +93,7 @@ changes, mark the old record as superseded and add a new record.
 | [ADR-0048](0048-place-garden-properties-above-the-plan-canvas.md) | Place Garden properties above the Plan canvas | Superseded in part by ADR-0072 (G6) |
 | [ADR-0049](0049-use-visually-distinct-automatic-plant-colors.md) | Use visually distinct automatic plant colors | Accepted; amended for canvas colors by ADR-0073 (S4): crop-family colors replace the automatic per-plant colors on the Garden Plan and thumbnails |
 | [ADR-0050](0050-use-a-garden-plan-planting-area-inspector.md) | Use a Garden Plan planting-area inspector | Superseded by ADR-0053 |
-| [ADR-0051](0051-prioritize-daily-garden-work-on-the-dashboard.md) | Prioritize daily garden work on the dashboard | Accepted |
+| [ADR-0051](0051-prioritize-daily-garden-work-on-the-dashboard.md) | Prioritize daily garden work on the dashboard | Accepted; the dashboard care-task card superseded in part by ADR-0073 (S5): a short "Today" strip at the top of Gardens links to Care, which holds the full list |
 | [ADR-0052](0052-show-save-actions-only-for-pending-edits.md) | Show Save actions only for pending edits | Accepted; amended for Garden Plan by ADR-0072 (G5, G6) |
 | [ADR-0053](0053-keep-plant-layout-in-the-planting-area-inspector.md) | Keep plant layout in the planting-area inspector | Superseded by ADR-0072 (G3) |
 | [ADR-0054](0054-use-fixed-canvas-garden-plan-views.md) | Use fixed-canvas Garden Plan views | Superseded in part by ADR-0072 (G2) |
@@ -115,7 +115,7 @@ changes, mark the old record as superseded and add a new record.
 | [ADR-0070](0070-preview-and-position-planting-areas-on-the-plan.md) | Preview and position planting areas on the plan | Superseded in part by ADR-0072 (G2, G3, G4) |
 | [ADR-0071](0071-recover-missing-workspaces-from-browser-copies.md) | Recover missing workspaces from browser copies | Accepted |
 | [ADR-0072](0072-use-a-single-plan-canvas-with-guided-setup.md) | Use a single plan canvas with guided setup | Accepted; implemented (G1–G7); the G1 presentation and the wide side column superseded in part by ADR-0073 (S4): a pale planting chart, and from 900 px the toolbar, zoom, legend, and area panel float over a full-width canvas |
-| [ADR-0073](0073-separate-the-landing-page-and-use-a-textured-deep-green-look.md) | Separate the landing page from the app and use a textured deep-green look | Accepted; S1–S4 implemented, S5–S7 pending |
+| [ADR-0073](0073-separate-the-landing-page-and-use-a-textured-deep-green-look.md) | Separate the landing page from the app and use a textured deep-green look | Accepted; S1–S5 implemented, S6–S7 pending |
 
 ## Interview Use
 
