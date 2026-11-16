@@ -88,7 +88,8 @@ export function AppShell({ children }: { children: ReactNode }) {
     <a className={styles.skip} href="#workspace-content">Skip to content</a>
     <header className={styles.header}>
       <div className={styles.headerInner}>
-        <Link className={styles.brand} href={workspaceHomePath} onClick={closeMenu}>
+        {/* The brand names the whole site, so it always returns to the landing page; Gardens is the app's home (ADR-0073). */}
+        <Link className={styles.brand} href="/" onClick={closeMenu}>
           <svg viewBox="0 0 26 26" aria-hidden="true"><path d="M13 23C6 19 4 12 6 4c6 1 11 5 12 12 0 3-2 5-5 7Z" fill="none" stroke="currentColor" strokeWidth="1.6" /></svg>
           Garden Manager
         </Link>

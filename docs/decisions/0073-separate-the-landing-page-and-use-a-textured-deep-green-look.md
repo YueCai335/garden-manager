@@ -1,6 +1,6 @@
 # ADR-0073: Separate the Landing Page from the App and Use a Textured Deep-Green Look
 
-- Status: Accepted on 2026-11-14 and implemented: S1 to S3 on 2026-11-14, S4 to S7 on 2026-11-15. The landing showcases (S6b) remain placeholders; their form is undecided until the app is final.
+- Status: Accepted on 2026-11-14 and implemented: S1 to S3 on 2026-11-14, S4 to S7 on 2026-11-15. Amended on 2026-11-15: the brand link returns to the landing page, the header modules sit in one tray, and the landing page has a fixed header over four feature sections. The landing showcases (S6b) remain placeholders; their form is undecided until the app is final.
 - Date: 2026-11-14
 - Supersedes in part (all marked in the decision index):
   - [ADR-0051](0051-prioritize-daily-garden-work-on-the-dashboard.md): the dashboard card groups.
@@ -79,7 +79,7 @@ visitor reads it without a backend.
 
 Entry points into the app:
 
-- An "Open app" button in the landing header.
+- An "Open app" glass button in the landing header.
 - The primary hero call to action.
 - One "Try it" link per showcase feature. Each opens that feature's app page.
 
@@ -96,6 +96,13 @@ The app has three strict layers:
 Rules:
 
 - The Overview moves from `/` to `/gardens` and is renamed "Gardens".
+- The "Garden Manager" brand in the app header always links to the landing
+  page at `/`. The brand names the whole site. Gardens, the first header
+  module, is the app's home. The landing page's "Open app" button leads back
+  into the app. Gardens keeps its name; a second "Home" would compete with the
+  brand.
+- Care, Next Season, Plant Doctor, and Plant Guide are siblings of Gardens,
+  not children of it. They cover every garden.
 - A garden page no longer has Care or Next Season tabs. A link from a garden
   to its care or its season plan is a filtered link to the L1 module, such as
   `/care?location=<gardenId>`.
@@ -112,8 +119,30 @@ Rules:
 
 ### 3. Landing page look
 
-The landing page has three bands: the hero, the two showcase sections, and the
-footer.
+The landing page has the hero band, four feature sections on the neutral page,
+and the footer band.
+
+- **Landing header.** The header stays fixed at the top of the window. Over the
+  hero it is clear. Once the page scrolls, it becomes a bar graded by the
+  hero's own shader and photo: the same greens, relief, and moving light. A
+  separate flat or glass green looked like a different, lighter color, so the
+  bar keeps the hero's look instead. The bar starts its shader only after the
+  page scrolls, and it falls back to the hero still like the hero does.
+  It holds the brand, one link per feature section, a GitHub icon, and the
+  "Open app" glass button. The link for the section in view is marked. Below
+  860 px the section links hide, and the brand, GitHub, and "Open app" stay on
+  one row.
+- **Feature sections.** The sections follow a growing season, and the header
+  links follow the same order:
+  1. Garden Plan: draw the garden to scale.
+  2. AI Note: log the work in one note; Care keeps the records and tasks.
+  3. Plant AI: Plant Doctor and Plant Guide.
+  4. Season Planner: the Next Season module and its crop rotation checks.
+  Each section spans the full width and stacks below the previous one. It has
+  no side-by-side cards. Each section names only features the app has today.
+  A sowing calendar joins the Season Planner section once that feature exists.
+- **GitHub.** The header shows a GitHub icon so a reviewer finds the code on
+  the first screen. The footer keeps the full project links.
 
 - **Hero.** The background is a real photo of light banana-leaf ridges (Pexels
   12321610). A WebGL2 fragment shader re-grades the photo:
@@ -128,10 +157,26 @@ footer.
 - **Type and color.** All type is white. Lime `#D6FF5C` appears in only two
   places: the primary call to action and the split lines in the AI Note
   showcase. Large landing headings use Bricolage Grotesque.
-- **Showcases.** Garden Plan drawing and AI Note are presented as animated
-  cards or short videos, not as a live embedded canvas. The owner chooses the
+  The landing header links and the footer link columns are white at weight
+  500 with a soft dark shadow. Thin, translucent white was hard to read on the
+  textured bands, and the footer links sit where the veins light up. Weight
+  500 reads clearly without looking bold; weight 700 is not used.
+- **Hover on the bands.** A small change in white opacity disappears on the
+  texture, so the landing links use pills with clear steps:
+  - A header link on hover or keyboard focus gets a translucent white pill
+    with a hairline. The section in view gets a solid white pill with deep
+    green text, like the app's module tray.
+  - "Open app" fills solid white with deep green text on hover.
+  - A footer link on hover gets a dark pill with a hairline. The footer light
+    follows the pointer to the brightest veins, so a brighter color cannot
+    mark the link there.
+  - Dimming the other links and a lime hover were tried and rejected. Dimmed
+    links became unreadable on the lit veins, and lime is limited to two
+    places.
+- **Showcases.** Each feature section later gains a showcase, such as an
+  animation or a short video, not a live embedded canvas. The owner chooses the
   form after the app is final, and the showcases are built from its real
-  screens. Until then, the landing page shows placeholders with "Try it".
+  screens. Until then, each section shows its text, its points, and "Try it".
 - **Fallbacks.** Without WebGL2, or when the user prefers reduced motion, the
   hero and footer show a pre-rendered still of the same grade. Animation
   pauses when its band is off screen.
@@ -149,7 +194,10 @@ elements that mean something.
 - **Header.** A deep-green bar `#264A33`. A grayscale copy of the hero photo
   sits over it in overlay blend at 75%, with a light gradient on the left. The
   bar must read clearly green, never black. The nav text is white, 15.5 px,
-  weight 500. The active module gets a lighter pill.
+  weight 500. The active module gets a lighter pill. At 1024 px and wider, the
+  five modules sit in one capsule tray (white 9%, a white 18% hairline), and
+  the brand stands outside it. The tray separates the site's brand from the
+  app's modules. Below 1024 px the modules fold into Menu without the tray.
 - **Neutrals.** The neutrals have no hue: page `#F4F4F3`, surface `#FFFFFF`,
   lines `#E3E3E1`, and ink `#18181A`, `#5F5F63`, and `#8D8D91`. Neutrals are
   never tinted green.
@@ -268,7 +316,8 @@ without a product reason.
   `/` and must start at `/gardens` instead, through one shared helper.
 - The README screenshots and the demo link change.
 - `routeFromPath`, the brand link, the guided setup's Ready links, and every
-  "Back to gardens" link change in S1.
+  "Back to gardens" link change in S1. The 2026-11-15 amendment points the
+  brand link at `/`, because the app had no way back to the landing page.
 - Removing the garden tabs changes `AppShell`, the garden switcher, and the
   routing tests.
 - The redirects keep the old garden Care and Season URLs alive.

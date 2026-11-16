@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ShaderBackdrop } from "@/components/marketing/ShaderBackdrop";
 import { heroPreset } from "@/components/marketing/landingShader";
 import { workspaceHomePath } from "@/lib/workspaceRoutes";
+import { landingFeatures } from "@/components/marketing/landingFeatures";
 import styles from "@/components/marketing/Landing.module.css";
 
 const title = "Garden Manager · Draw your garden, log it in one sentence";
@@ -16,24 +17,6 @@ export const metadata: Metadata = {
   openGraph: { title, description, type: "website", images: [{ url: "/landing/og.jpg", width: 1200, height: 630, alt: "Garden Manager: Draw your garden. Log it in one sentence." }] },
   twitter: { card: "summary_large_image", title, description, images: ["/landing/og.jpg"] },
 };
-
-/** The two features the landing page presents. Their showcases come in phase S6b (ADR-0073). */
-const features = [
-  {
-    id: "garden-plan",
-    kicker: "Garden Plan",
-    title: "Draw your garden to scale",
-    text: "Place raised beds, in-ground beds, and containers on a metric plan, then fill each one with plants at their real spacing.",
-    href: workspaceHomePath,
-  },
-  {
-    id: "ai-note",
-    kicker: "AI Note",
-    title: "Write one note, get reviewed records",
-    text: "Describe what you did in the garden in your own words. The AI Note splits it into care records you review before saving.",
-    href: "/notes",
-  },
-];
 
 export default function LandingPage() {
   return <>
@@ -65,12 +48,20 @@ export default function LandingPage() {
         </figure>
       </div>
     </section>
+    {/* One full-width section per feature, in the header's order. Each keeps room for its showcase (S6b). */}
     <section id="features" className={`${styles.wrap} ${styles.features}`} aria-label="Features">
-      {features.map((feature) => <article key={feature.id} id={feature.id} className={styles.feature} aria-labelledby={`feature-${feature.id}`}>
-        <p className={styles.kicker}>{feature.kicker}</p>
-        <h2 id={`feature-${feature.id}`}>{feature.title}</h2>
-        <p>{feature.text}</p>
-        <Link className={styles.secondary} href={feature.href} aria-describedby={`feature-${feature.id}`}>Try it</Link>
+      {landingFeatures.map((feature, index) => <article key={feature.id} id={feature.id} className={styles.feature} aria-labelledby={`feature-${feature.id}`}>
+        <div>
+          <p className={styles.kicker}><span aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>{feature.label}</p>
+          <h2 id={`feature-${feature.id}`}>{feature.title}</h2>
+        </div>
+        <div>
+          <p className={styles.featureText}>{feature.text}</p>
+          <ul className={styles.points}>{feature.points.map((point) => <li key={point}>{point}</li>)}</ul>
+          <div className={styles.featureLinks}>
+            {feature.links.map((link) => <Link key={link.href} className={styles.secondary} href={link.href} aria-describedby={`feature-${feature.id}`}>{link.label}</Link>)}
+          </div>
+        </div>
       </article>)}
     </section>
   </>;
