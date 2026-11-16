@@ -2,9 +2,9 @@ import { act, fireEvent, render, screen, waitFor, within } from "@testing-librar
 import { resetTestRouter, testRouter } from "@/test/router";
 import { careLocationPath, seasonGardenPath } from "@/lib/workspaceRoutes";
 import { testLayout, testMediaMatches } from "@/test/layout";
-import { cropFamilyColors } from "@/lib/planAppearance";
+import { plantSwatches } from "@/lib/planAppearance";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { GrowingAreaLayoutEditor } from "@/components/GrowingAreaLayoutEditor";
 import { GardenWorkspace } from "@/test/WorkspaceHarness";
@@ -110,14 +110,14 @@ describe("GardenWorkspace", () => {
     expect(screen.getByRole("navigation", { name: "Workspace sections" })).toBeInTheDocument();
   });
 
-  it("puts a short Today strip above the Overview, keeps the note action, and keeps navigation in the header", async () => {
+  it("puts Care to do before the gardens, keeps the note action, and keeps navigation in the header", async () => {
     const user = userEvent.setup();
     await loadDemo(user);
 
     const gallery = screen.getByRole("region", { name: /Your gardens/ });
-    const today = screen.getByRole("region", { name: "Today" });
+    const today = screen.getByRole("region", { name: "Care to do" });
     expect(today.compareDocumentPosition(gallery) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(within(today).getByRole("link", { name: /Open Care|Add a care task/ })).toHaveAttribute("href", "/care?view=tasks");
+    expect(within(today).getByRole("link", { name: /All tasks|Add a care task/ })).toHaveAttribute("href", "/care?view=tasks");
     expect(screen.queryByRole("complementary", { name: "Care tasks" })).not.toBeInTheDocument();
     expect(within(gallery).getByRole("link", { name: "Open Demo Garden" })).toHaveAccessibleDescription(expect.stringContaining("Growing now:"));
     const card = screen.getByRole("region", { name: "AI Garden Notes" });
@@ -1351,6 +1351,48 @@ describe("GardenWorkspace", () => {
     expect(screen.queryByRole("link", { name: "Open Demo Garden" })).not.toBeInTheDocument();
   });
 
+  describe("showcase demo (ADR-0077)", () => {
+    beforeEach(() => vi.stubEnv("NEXT_PUBLIC_DEMO_FIXTURE", ""));
+    afterEach(() => vi.unstubAllEnvs());
+
+    it("loads three gardens with their plants and care", async () => {
+      const user = userEvent.setup();
+      await loadDemo(user);
+      for (const name of ["Backyard", "Community Garden", "Front Yard"])
+        expect(await screen.findByRole("link", { name: `Open ${name}` })).toBeInTheDocument();
+      expect(screen.getByText("Your gardens")).toHaveTextContent("(3)");
+      expect(screen.getByText("Fertilize all gardens")).toBeInTheDocument();
+      await user.click(screen.getByRole("link", { name: "Open Front Yard" }));
+      await screen.findByRole("heading", { name: "Garden Plan" });
+      expect(screen.getAllByLabelText("Marigold plant on Garden Plan")).toHaveLength(18);
+      expect(screen.getAllByLabelText("Panicle hydrangea plant on Garden Plan")).toHaveLength(3);
+    });
+
+    it("adds all three gardens beside a personal garden and opens Backyard", async () => {
+      const user = userEvent.setup();
+      const workspace = createGardenWorkspace("Back garden");
+      window.localStorage.setItem(GARDEN_WORKSPACE_STORAGE_KEY, JSON.stringify(workspace));
+
+      render(<GardenWorkspace />);
+      await user.click(await screen.findByRole("button", { name: "Demo garden" }));
+      expect(screen.getByRole("heading", { name: "Garden Plan" })).toBeInTheDocument();
+      await waitFor(() => expect(JSON.parse(window.localStorage.getItem(GARDEN_WORKSPACE_STORAGE_KEY) ?? "{}")).toMatchObject({
+        selectedGardenId: "demo-backyard",
+        // The demo's workspace-wide care stays out of the user's workspace.
+        careTasks: [],
+        gardens: [
+          expect.objectContaining({ name: "Back garden" }),
+          expect.objectContaining({ id: "demo-backyard" }),
+          expect.objectContaining({ id: "demo-community-garden" }),
+          expect.objectContaining({ id: "demo-front-yard" }),
+        ],
+      }));
+      await user.click(screen.getByRole("link", { name: "All gardens" }));
+      expect(screen.getByRole("link", { name: "Open Back garden" })).toBeInTheDocument();
+      expect(screen.queryByRole("link", { name: "Open Backyard" })).not.toBeInTheDocument();
+    });
+  });
+
   it("saves Demo Garden removal from a multi-garden PostgreSQL workspace", async () => {
     const user = userEvent.setup();
     const workspace = createDemoGardenWorkspace();
@@ -1565,12 +1607,12 @@ describe("GardenWorkspace", () => {
     expect(areaInspectorForm().queryByRole("button", { name: "Save" })).not.toBeInTheDocument();
   });
 
-  it("zooms Garden Plan into an opened area, draws plants in their crop family's colours, and zooms out without closing it", async () => {
+  it("zooms Garden Plan into an opened area, draws each plant type in its own colour, and zooms out without closing it", async () => {
     const user = userEvent.setup();
     await loadDemo(user);
     await openSelectedGarden();
     expect(screen.queryByRole("button", { name: "Whole garden" })).not.toBeInTheDocument();
-    expect(screen.getByText("Tomato")).toBeInTheDocument();
+    expect(screen.getByTestId("plant-label-demo-raised-bed:tomato")).toHaveTextContent("Tomato");
     // A planted area is named by its plants until it is opened.
     expect(screen.queryByTestId("area-label-demo-raised-bed")).not.toBeInTheDocument();
     await user.click(screen.getByLabelText("Open Sample raised bed on Garden Plan"));
@@ -1582,12 +1624,12 @@ describe("GardenWorkspace", () => {
     expect(screen.getByLabelText("Open Sample raised bed on Garden Plan")).toHaveAttribute("opacity", "1");
     expect(screen.getByLabelText("Open Sample in-ground area on Garden Plan")).toHaveAttribute("opacity", "0.35");
     expect(screen.queryByTestId("area-label-demo-in-ground-area")).not.toBeInTheDocument();
-    // ADR-0073 S4: the canvas colours plants by crop family, and the plant panel has no colour picker.
-    expect(screen.getByLabelText("Tomato plant on Garden Plan")).toHaveAttribute("fill", cropFamilyColors.nightshade.fill);
+    // ADR-0076: the canvas gives each plant type its own colour, and the plant panel has no colour picker.
+    expect(screen.getByLabelText("Tomato plant on Garden Plan")).toHaveAttribute("fill", plantSwatches.red.fill);
     fireEvent.click(screen.getByLabelText("Tomato plant on Garden Plan"));
     expect(screen.getByLabelText("Plant type")).toHaveValue("Tomato");
     expect(screen.queryByLabelText("Plant color")).not.toBeInTheDocument();
-    expect(within(screen.getByTestId("plan-legend")).getByText("Nightshade")).toBeInTheDocument();
+    expect(within(screen.getByTestId("plan-legend")).getByText("Tomato")).toBeInTheDocument();
     // Whole garden only zooms out: the area and its panel stay open.
     await user.click(screen.getByRole("button", { name: "Whole garden" }));
     expect(window.location.search).toBe("?area=demo-raised-bed");

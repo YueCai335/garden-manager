@@ -1,5 +1,5 @@
 import { careTargetLabel } from "./careRecords";
-import { plantDisplayName, type CareEvent, type CareTask, type Garden, type GardenWorkspace } from "./gardenWorkspace";
+import { addDays, plantDisplayName, type CareEvent, type CareTask, type Garden, type GardenWorkspace } from "./gardenWorkspace";
 
 export type CareOwner = { ownerScope: "workspace" } | { ownerScope: "garden"; gardenId: string };
 export type CareRow<T> = { key: string; record: T; owner: CareOwner; garden: Garden; targetLabel: string };
@@ -39,4 +39,41 @@ export function careRows(gardens: Garden[], collection: "careEvents" | "careTask
 export function updateCareOwner(workspace: GardenWorkspace, owner: CareOwner, update: (records: CareRecords) => CareRecords): GardenWorkspace {
   if (owner.ownerScope === "workspace") return { ...workspace, ...update({ careEvents: workspace.careEvents, careTasks: workspace.careTasks }) };
   return { ...workspace, gardens: workspace.gardens.map((garden) => garden.id === owner.gardenId ? { ...garden, ...update({ careEvents: garden.careEvents, careTasks: garden.careTasks }) } : garden) };
+}
+
+/** ADR-0023: completing a task writes one history record for the date it was done. */
+export function careEventForTask(task: CareTask, date: string, owner: CareOwner, id: string): CareEvent {
+  return {
+    id,
+    type: task.type,
+    date,
+    note: task.note,
+    targetScope: owner.ownerScope === "workspace" ? "all-gardens" : task.targetScope,
+    ...(task.targetScope === "planting-area"
+      ? { growingAreaId: task.growingAreaId, growingAreaName: task.growingAreaName, ...(task.targetAreaDeleted ? { targetAreaDeleted: true } : {}) }
+      : {}),
+    ...(task.targetScope === "plant-group"
+      ? { plantingRecordId: task.plantingRecordId, plantingRecordName: task.plantingRecordName, ...(task.targetPlantingRecordDeleted ? { targetPlantingRecordDeleted: true } : {}) }
+      : {}),
+  };
+}
+
+/** A one-time task leaves the list; a repeating task moves to its next date from the day it was done. */
+export function completeCareTask(records: CareRecords, task: CareTask, event: CareEvent): CareRecords {
+  return {
+    ...records,
+    careEvents: [...records.careEvents, event],
+    careTasks: records.careTasks.flatMap((item) => item.id !== task.id ? [item]
+      : item.repeatIntervalDays ? [{ ...item, dueDate: addDays(event.date, item.repeatIntervalDays) }] : []),
+  };
+}
+
+/** Reverses completeCareTask: removes its history record and puts the task back as it was. */
+export function undoCareTaskCompletion(records: CareRecords, task: CareTask, eventId: string): CareRecords {
+  const present = records.careTasks.some((item) => item.id === task.id);
+  return {
+    ...records,
+    careEvents: records.careEvents.filter((item) => item.id !== eventId),
+    careTasks: present ? records.careTasks.map((item) => item.id === task.id ? task : item) : [...records.careTasks, task],
+  };
 }

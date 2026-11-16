@@ -1,5 +1,6 @@
 import {
   inferPlantCropFamily,
+  inferPlantType,
   plantingCropFamilies,
   type GardenPlanViewport,
   type GrowingArea,
@@ -62,34 +63,180 @@ export const planColors = {
 export type PlantColors = { fill: string; stroke: string };
 
 /**
- * Plant circles take the colours of their crop family (ADR-0073 S4), the same
- * families the rotation warnings use (ADR-0025). Fills are light and strokes are
- * dark, with at least 3:1 contrast between a stroke and its fill, the soil, and the
- * ground. "Other" is a neutral grey. The stored per-plant `color` field is kept in
- * the data but no longer drawn.
+ * Plant colours (ADR-0076). Each plant type takes its own colour from two rings of
+ * muted swatches. The plant ring keeps the seven crop-family colours of ADR-0073 S4
+ * and adds a blend between each neighbouring pair, so every swatch belongs to the
+ * same palette. The flower ring holds slightly richer petal colours. Fills are light
+ * and strokes are dark, with at least 3:1 contrast between a stroke and its fill, the
+ * soil, and the ground. Konva cannot read CSS custom properties, so the hex values live
+ * here. The stored per-plant `color` field is kept in the data but not drawn.
  */
-export const cropFamilyColors: Record<PlantingCropFamily, PlantColors> = {
-  nightshade: { fill: "#ebc3b4", stroke: "#a85a42" },
-  brassica: { fill: "#c9daea", stroke: "#466f9a" },
-  cucurbit: { fill: "#f0dcae", stroke: "#8f6d1f" },
-  legume: { fill: "#c4ddd4", stroke: "#3f7a68" },
-  allium: { fill: "#dad3ee", stroke: "#6656a0" },
-  root: { fill: "#edcbd9", stroke: "#a04a73" },
-  leafy: { fill: "#d3e4bc", stroke: "#5a8236" },
-  other: { fill: "#e6e6e4", stroke: "#77777b" },
+export const plantSwatches = {
+  coral: { fill: "#ebc3b4", stroke: "#a85a42" },
+  orange: { fill: "#f1ceb0", stroke: "#9f632f" },
+  amber: { fill: "#f0dcae", stroke: "#8f6d1f" },
+  olive: { fill: "#e1e1b3", stroke: "#777923" },
+  leaf: { fill: "#d3e4bc", stroke: "#5a8236" },
+  green: { fill: "#c6e2ca", stroke: "#438054" },
+  sea: { fill: "#c4ddd4", stroke: "#3f7a68" },
+  teal: { fill: "#c0dde2", stroke: "#1a7888" },
+  blue: { fill: "#c9daea", stroke: "#466f9a" },
+  periwinkle: { fill: "#cfd7ee", stroke: "#4f65a1" },
+  lavender: { fill: "#dad3ee", stroke: "#6656a0" },
+  plum: { fill: "#e5cee5", stroke: "#8c4d8c" },
+  pink: { fill: "#edcbd9", stroke: "#a04a73" },
+  red: { fill: "#f0c6c7", stroke: "#ab4e59" },
+} as const satisfies Record<string, PlantColors>;
+
+export const flowerSwatches = {
+  red: { fill: "#f3b4b8", stroke: "#aa434f" },
+  orange: { fill: "#f6c39a", stroke: "#93571f" },
+  yellow: { fill: "#ecd08e", stroke: "#7b6310" },
+  blue: { fill: "#b4cdf0", stroke: "#36679f" },
+  violet: { fill: "#cdc4f4", stroke: "#5f5aa8" },
+  pink: { fill: "#f3b8d4", stroke: "#a44374" },
+} as const satisfies Record<string, PlantColors>;
+
+type PlantSwatch = keyof typeof plantSwatches;
+type FlowerSwatch = keyof typeof flowerSwatches;
+type SwatchChoice = { ring: "plant"; swatch: PlantSwatch } | { ring: "flower"; swatch: FlowerSwatch };
+
+// Swatches in ring order: neighbours are close in hue, so a garden avoids them together.
+const rings = {
+  plant: Object.keys(plantSwatches) as PlantSwatch[],
+  flower: Object.keys(flowerSwatches) as FlowerSwatch[],
 };
 
-/** The legend's names for each family; "Other" covers plants the families do not list. */
-export const cropFamilyLegendLabels: Record<PlantingCropFamily, string> = {
-  nightshade: "Nightshade",
-  brassica: "Brassica",
-  cucurbit: "Cucurbit",
-  legume: "Legume",
-  allium: "Allium",
-  root: "Root crop",
-  leafy: "Leafy green",
-  other: "Other",
+// The plant swatch each flower swatch shares its hue with, such as Sunflower yellow and Squash amber.
+const flowerHues: Record<FlowerSwatch, PlantSwatch> = {
+  red: "red",
+  orange: "orange",
+  yellow: "amber",
+  blue: "periwinkle",
+  violet: "lavender",
+  pink: "pink",
 };
+
+/**
+ * Each known plant type's colour, close to how the plant looks. The order is the
+ * priority: when two plants in a garden would look alike, the later one moves.
+ */
+const knownPlantSwatches: Array<[string, SwatchChoice]> = [
+  ["Tomato", { ring: "plant", swatch: "red" }],
+  ["Pepper", { ring: "plant", swatch: "coral" }],
+  ["Eggplant", { ring: "plant", swatch: "plum" }],
+  ["Marigold", { ring: "flower", swatch: "orange" }],
+  ["Sunflower", { ring: "flower", swatch: "yellow" }],
+  ["Meadow sage", { ring: "flower", swatch: "violet" }],
+  ["Panicle hydrangea", { ring: "flower", swatch: "pink" }],
+  ["Squash", { ring: "plant", swatch: "amber" }],
+  ["Bean", { ring: "plant", swatch: "green" }],
+  ["Pea", { ring: "plant", swatch: "leaf" }],
+  ["Lettuce", { ring: "plant", swatch: "olive" }],
+  ["Kale", { ring: "plant", swatch: "blue" }],
+  ["Basil", { ring: "plant", swatch: "green" }],
+  ["Cucumber", { ring: "plant", swatch: "teal" }],
+  ["Carrot", { ring: "plant", swatch: "orange" }],
+];
+
+/** A plant type the list does not name keeps its crop family's ADR-0073 colour. */
+const familySwatches: Record<Exclude<PlantingCropFamily, "other">, PlantSwatch> = {
+  nightshade: "coral",
+  brassica: "blue",
+  cucurbit: "amber",
+  legume: "sea",
+  allium: "lavender",
+  root: "pink",
+  leafy: "leaf",
+};
+
+/** The colour a plant group is drawn in: one per plant type, shared by its varieties. */
+export function plantColorKey(allocation: Pick<PlantAllocation, "label" | "plantType">) {
+  return (allocation.plantType?.trim() || allocation.label).trim().toLocaleLowerCase();
+}
+
+type ColorAllocation = Pick<PlantAllocation, "label" | "plantType" | "variety" | "plantingRecordId">;
+
+function preferredSwatch(allocation: ColorAllocation, families: Map<string, PlantingCropFamily>) {
+  const name = allocation.plantType?.trim() || allocation.label;
+  const known = inferPlantType(name, allocation.variety);
+  const index = knownPlantSwatches.findIndex(([type]) => type === known);
+  if (index >= 0) return { choice: knownPlantSwatches[index][1], priority: index };
+  const family = allocationCropFamily(allocation, families);
+  if (family !== "other") return { choice: { ring: "plant", swatch: familySwatches[family] } satisfies SwatchChoice, priority: knownPlantSwatches.length };
+  // An unknown plant still gets a steady colour of its own, picked from its name.
+  let hash = 0;
+  for (const character of plantColorKey(allocation)) hash = (hash * 31 + character.charCodeAt(0)) >>> 0;
+  return { choice: { ring: "plant", swatch: rings.plant[hash % rings.plant.length] } satisfies SwatchChoice, priority: knownPlantSwatches.length + 1 };
+}
+
+function ringDistance(first: number, second: number, size: number) {
+  const distance = Math.abs(first - second) % size;
+  return Math.min(distance, size - distance);
+}
+
+/**
+ * Colours for every plant type in a garden, keyed by plantColorKey. Each type starts
+ * from its own swatch. When that swatch is taken or sits next to a taken one, the
+ * type moves to the closest clear swatch within three steps, then to any unused
+ * swatch, and shares only when the ring is full. Flowers keep to the flower ring and
+ * avoid only identical swatches, since its neighbours already differ clearly. A clear
+ * swatch also avoids the hue of a flower or plant already in the other ring.
+ */
+export function gardenPlantColors(allocations: ColorAllocation[], families: Map<string, PlantingCropFamily> = new Map()) {
+  const types = new Map<string, ReturnType<typeof preferredSwatch>>();
+  for (const allocation of allocations) {
+    const key = plantColorKey(allocation);
+    if (key && !types.has(key)) types.set(key, preferredSwatch(allocation, families));
+  }
+  const ordered = [...types].sort(([firstKey, first], [secondKey, second]) => first.priority - second.priority || firstKey.localeCompare(secondKey));
+  const taken = { plant: [] as number[], flower: [] as number[] };
+  // Plant-ring positions of the hues in use, by the ring that uses them.
+  const hues = { plant: [] as number[], flower: [] as number[] };
+  const huePosition = (ring: "plant" | "flower", index: number) =>
+    ring === "plant" ? index : rings.plant.indexOf(flowerHues[rings.flower[index]]);
+  const colors = new Map<string, PlantColors>();
+  for (const [key, { choice }] of ordered) {
+    const ring: readonly string[] = rings[choice.ring];
+    const preferred = ring.indexOf(choice.swatch);
+    const used = taken[choice.ring];
+    const otherHues = hues[choice.ring === "plant" ? "flower" : "plant"];
+    const gap = choice.ring === "plant" ? 2 : 1;
+    const candidates = ring.map((_, index) => index)
+      .sort((first, second) => ringDistance(first, preferred, ring.length) - ringDistance(second, preferred, ring.length) || first - second);
+    const clear = (candidate: number) => ringDistance(candidate, preferred, ring.length) <= 3
+      && used.every((other) => ringDistance(candidate, other, ring.length) >= gap)
+      && !otherHues.includes(huePosition(choice.ring, candidate));
+    const index = candidates.find(clear)
+      ?? candidates.find((candidate) => !used.includes(candidate))
+      ?? preferred;
+    used.push(index);
+    hues[choice.ring].push(huePosition(choice.ring, index));
+    const swatches: Record<string, PlantColors> = choice.ring === "plant" ? plantSwatches : flowerSwatches;
+    colors.set(key, swatches[ring[index]]);
+  }
+  return colors;
+}
+
+/** A plant's colour from a gardenPlantColors map, or its own swatch when the map lacks it. */
+export function plantColor(allocation: ColorAllocation, colors: Map<string, PlantColors>, families: Map<string, PlantingCropFamily> = new Map()) {
+  return colors.get(plantColorKey(allocation)) ?? gardenPlantColors([allocation], families).values().next().value ?? plantSwatches.coral;
+}
+
+/**
+ * One legend entry per plant type, grouped by crop family in the standard family
+ * order and then by name, so related plants sit together.
+ */
+export function plantsInView(allocations: ColorAllocation[], families: Map<string, PlantingCropFamily> = new Map()) {
+  const entries = new Map<string, { key: string; name: string; family: PlantingCropFamily }>();
+  for (const allocation of allocations) {
+    const key = plantColorKey(allocation);
+    if (key && !entries.has(key)) entries.set(key, { key, name: allocation.plantType?.trim() || allocation.label.trim(), family: allocationCropFamily(allocation, families) });
+  }
+  return [...entries.values()]
+    .sort((first, second) => plantingCropFamilies.indexOf(first.family) - plantingCropFamilies.indexOf(second.family) || first.name.localeCompare(second.name))
+    .map(({ key, name }) => ({ key, name }));
+}
 
 /** Planting-record families by record ID, so a linked plant uses its record's family. */
 export function plantingFamilies(plantings: Pick<PlantingRecord, "id" | "cropFamily">[] = []) {
@@ -107,16 +254,6 @@ export function allocationCropFamily(
   const linked = allocation.plantingRecordId ? families.get(allocation.plantingRecordId) : undefined;
   if (linked && plantingCropFamilies.includes(linked)) return linked;
   return inferPlantCropFamily(allocation.plantType?.trim() || allocation.label, allocation.variety);
-}
-
-export function cropFamilyColor(family: PlantingCropFamily): PlantColors {
-  return cropFamilyColors[family] ?? cropFamilyColors.other;
-}
-
-/** The families present among these plants, in the standard family order. */
-export function familiesInView(families: Iterable<PlantingCropFamily>) {
-  const present = new Set(families);
-  return plantingCropFamilies.filter((family) => present.has(family));
 }
 
 export function areaAppearance(kind: GrowingAreaKind, compact = false): AreaAppearance {

@@ -193,25 +193,25 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
   };
 
   const openDemoGarden = () => {
-    const demoGarden = workspace?.gardens.find(
-      (candidate) => candidate.id === "demo-garden",
-    );
-    if (demoGarden) {
-      openManagement(demoGarden.id);
+    // The demo's gardens join the user's own; its workspace-wide care stays out,
+    // since that care would apply to the user's gardens too (ADR-0077).
+    const demoGardens = createDemoGardenWorkspace().gardens;
+    const existingDemoGarden = demoGardens.find((demo) => workspace?.gardens.some((candidate) => candidate.id === demo.id));
+    if (existingDemoGarden) {
+      openManagement(existingDemoGarden.id);
       return;
     }
 
-    const createdDemoGarden = createDemoGardenWorkspace().gardens[0];
     setWorkspace((current) =>
       current
         ? {
             ...current,
-            selectedGardenId: createdDemoGarden.id,
-            gardens: [...current.gardens, createdDemoGarden],
+            selectedGardenId: demoGardens[0].id,
+            gardens: [...current.gardens, ...demoGardens],
           }
         : current,
     );
-    navigate(gardenPath(createdDemoGarden.id));
+    navigate(gardenPath(demoGardens[0].id));
     setMessage("Demo garden opened.");
   };
 

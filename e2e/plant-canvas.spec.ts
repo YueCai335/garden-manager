@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { metresToCanvas } from "../src/lib/canvasViewport";
-import { areaFocusViewport, createDemoGardenWorkspace, type GardenWorkspace, type PlantAllocation } from "../src/lib/gardenWorkspace";
+import { areaFocusViewport, createSampleGardenWorkspace, type GardenWorkspace, type PlantAllocation } from "../src/lib/gardenWorkspace";
 import { planCanvas, planSurface, planTransform } from "./areaHelpers";
 import { openWorkspace } from "./workspace";
 
@@ -34,7 +34,7 @@ for (const width of [390, 1440]) {
     await expect(planSurface(page)).toHaveAttribute("data-zooming", "false");
     await canvas.scrollIntoViewIfNeeded();
     const box = (await canvas.boundingBox())!;
-    const bed = createDemoGardenWorkspace().gardens[0].growingAreas[0];
+    const bed = createSampleGardenWorkspace().gardens[0].growingAreas[0];
     const zoomed = await planTransform(page, areaFocusViewport(bed)!);
     const at = (x: number, y: number) => metresToCanvas({ x: bed.planPlacement.x + x, y: bed.planPlacement.y + y }, zoomed);
     const target = at(2.03, 0.38);

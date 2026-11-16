@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { metresToCanvas } from "../src/lib/canvasViewport";
-import { createDemoGardenWorkspace, gardenPlanViewport, type GardenWorkspace } from "../src/lib/gardenWorkspace";
+import { createSampleGardenWorkspace, gardenPlanViewport, type GardenWorkspace } from "../src/lib/gardenWorkspace";
 import { goToLevel, openAreaProperties, planCanvas, planSurface, planTransform } from "./areaHelpers";
 import { openWorkspace } from "./workspace";
 
@@ -26,7 +26,7 @@ for (const width of [390, 820, 900, 1440]) {
       await goToLevel(page, "Plants");
       const canvas = planCanvas(page);
       await expect(canvas).toBeVisible();
-      const [garden] = createDemoGardenWorkspace().gardens;
+      const [garden] = createSampleGardenWorkspace().gardens;
       const [area] = garden.growingAreas;
       const transform = await planTransform(page, gardenPlanViewport(garden.plan, garden.growingAreas, "growing-areas"));
       await canvas.click({ position: metresToCanvas({ x: area.planPlacement.x + 0.2, y: area.planPlacement.y + 0.2 }, transform) });
@@ -115,7 +115,7 @@ test.describe("touch editing", () => {
   test.use({ hasTouch: true, isMobile: true, viewport: { width: 390, height: 844 } });
 
   test("tap selects a planting area and opens the mobile editor", async ({ page }) => {
-    const [garden] = createDemoGardenWorkspace().gardens;
+    const [garden] = createSampleGardenWorkspace().gardens;
     const [area] = garden.growingAreas;
     await openWorkspace(page);
     await page.getByRole("button", { name: "Load demo garden" }).tap();
@@ -140,7 +140,7 @@ test.describe("touch editing", () => {
   });
 
   test("a swipe over the canvas scrolls the page, and Move still moves an area", async ({ page }, testInfo) => {
-    const [garden] = createDemoGardenWorkspace().gardens;
+    const [garden] = createSampleGardenWorkspace().gardens;
     const [area] = garden.growingAreas;
     await openWorkspace(page);
     await page.getByRole("button", { name: "Load demo garden" }).tap();

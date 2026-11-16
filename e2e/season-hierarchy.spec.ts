@@ -1,9 +1,9 @@
 import { expect, test } from "@playwright/test";
-import { createDemoGardenWorkspace } from "../src/lib/gardenWorkspace";
+import { createSampleGardenWorkspace } from "../src/lib/gardenWorkspace";
 
 for (const width of [390, 1440]) {
   test(`Next Season plans, disclosures and future-only saves at ${width}px`, async ({ page }, testInfo) => {
-    const workspace = createDemoGardenWorkspace();
+    const workspace = createSampleGardenWorkspace();
     await page.setViewportSize({ width, height: 900 });
     // This acceptance journey must never generate an AI request.
     const aiRequests: string[] = [];

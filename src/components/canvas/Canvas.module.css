@@ -32,7 +32,7 @@
 .warning p { margin: 0; }
 .toolSeparator { align-self: stretch; width: 1px; margin: 4px 2px; background: var(--color-neutral-line); }
 
-/* Crop-family legend: below the canvas in the page flow, a glass layer at bottom left in the wide layout. */
+/* Plant legend: below the canvas in the page flow, a glass layer at bottom left in the wide layout. */
 .legend { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; padding: 8px 12px; border-top: 1px solid var(--color-neutral-line); color: var(--color-ink-muted); font-size: 13px; }
 .legend ul { display: contents; }
 .legend li { display: inline-flex; align-items: center; gap: 6px; list-style: none; }

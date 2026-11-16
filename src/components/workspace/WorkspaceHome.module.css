@@ -3,8 +3,10 @@
   margin: 20px auto 48px;
   min-width: 0;
 }
-.overview { display: grid; grid-template-areas: "daily" "gallery"; align-items: start; gap: 24px; }
-.daily { grid-area: daily; display: grid; gap: 12px; min-width: 0; }
+/* Narrow screens read Today, then the gardens, then the note box; the header "+ Note" stays in reach. */
+.overview { display: grid; grid-template-areas: "today" "gallery" "note"; align-items: start; gap: 24px; }
+.todayArea { grid-area: today; min-width: 0; }
+.noteArea { grid-area: note; display: grid; gap: 12px; min-width: 0; }
 .gallery { grid-area: gallery; min-width: 0; }
 .overviewNoteForm { display: grid; gap: 8px; }
 .overviewNoteForm .noteField textarea { min-height: 88px; }
@@ -55,23 +57,36 @@
 .hint { color: var(--color-muted); font-size: 14px; line-height: 1.45; }
 .tasks .hint { margin: 4px 0 16px; }
 .overdue { color: var(--color-error); }
-/* The "Today" strip (ADR-0073): due counts, a few tasks, and a link to Care. */
-.today { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; margin-bottom: 24px; padding: 14px 16px 14px 20px; border: 1px solid var(--color-line); border-radius: var(--radius-card); background: var(--color-surface); }
-.todaySummary { display: grid; gap: 2px; min-width: 0; }
-.today h2 { font-size: 16px; line-height: 1.3; }
-.todaySummary p { margin: 0; color: var(--color-muted); font-size: 14px; font-variant-numeric: tabular-nums; }
-.todayTasks { display: flex; flex: 1 1 360px; flex-wrap: wrap; gap: 8px; min-width: 0; margin: 0; padding: 0; list-style: none; }
-.todayTasks li { min-width: 0; }
-.todayTasks a { display: grid; gap: 0; min-height: 44px; padding: 6px 12px; border: 1px solid var(--color-line); border-radius: var(--radius-control); color: var(--color-text); font-size: 13px; line-height: 1.35; text-decoration: none; overflow-wrap: anywhere; }
-.todayTasks a:hover { border-color: var(--color-input-border); background: var(--color-page); }
-.todayTasks strong { font-size: 14px; font-weight: 600; }
-/* A small dot tells watering and fertilizing apart without changing the card. */
-.careType { display: inline-flex; align-items: center; gap: 6px; }
-.careType::before { content: ""; flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--color-care-watering); }
-.careType[data-type="fertilizing"]::before { background: var(--color-care-fertilizing); }
-.todayTasks span { color: var(--color-muted); }
-.todayTasks span.overdue { color: var(--color-error); }
-.todayLink { margin-left: auto; }
+/* "Care to do" (ADR-0073): Overdue, Today, and Coming up, split by hairlines; ticked rows stay, struck through. */
+.today { display: grid; padding: 16px 20px 14px; border: 1px solid var(--color-line); border-radius: var(--radius-card); background: var(--color-surface); }
+.todayHeader { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 2px; }
+.todayCount { flex: none; color: var(--color-muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+.taskGroup { padding: 10px 0 2px; }
+.taskGroup + .taskGroup { border-top: 1px solid var(--color-line); }
+.taskGroup h3 { margin: 0; font-size: 13px; line-height: 1.4; font-weight: 500; color: var(--color-muted); }
+.taskGroup h3.late { color: var(--color-error); }
+.taskList { margin: 0; padding: 0; list-style: none; }
+.taskEmpty { margin: 6px 0 8px; color: var(--color-muted); font-size: 14px; }
+.task { display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 14px; line-height: 1.35; }
+.careDot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--color-care-watering); }
+.careDot[data-type="fertilizing"] { background: var(--color-care-fertilizing); }
+.taskText { display: grid; flex: 1; min-width: 0; padding: 4px 0; overflow-wrap: anywhere; }
+.taskText small { color: var(--color-muted); font-size: 12px; }
+.task[data-upcoming] .taskText > span { color: var(--color-muted); }
+.task[data-done] .taskText { color: var(--color-input-border); text-decoration: line-through; }
+.task[data-done] .taskText small { color: inherit; }
+.task[data-done] .careDot { opacity: 0.4; }
+.when { flex: none; color: var(--color-muted); font-size: 12px; }
+/* A 44 px target around a 22 px circle. */
+.tick { display: grid; flex: none; place-items: center; width: 44px; height: 44px; margin: -2px -11px -2px 0; padding: 0; border: 0; background: none; color: var(--color-brand); cursor: pointer; }
+span.tick { cursor: default; }
+.circle { display: grid; place-items: center; width: 22px; height: 22px; border: 1.5px solid var(--color-input-border); border-radius: 50%; color: transparent; transition: background-color 140ms, border-color 140ms; }
+button.tick:hover .circle { border-color: var(--color-brand); color: var(--color-brand); }
+.tick[aria-checked="true"] .circle, span.tick .circle { border-color: var(--color-brand); background: var(--color-brand); color: var(--color-surface); }
+.tick:focus-visible { outline: none; }
+.tick:focus-visible .circle { outline: 2px solid var(--color-brand); outline-offset: 2px; }
+.todayLink { justify-self: end; margin-top: 6px; color: var(--color-text); font-size: 14px; font-weight: 500; text-decoration: none; }
+.todayLink:hover { text-decoration: underline; }
 .skeleton { min-height: 180px; border: 1px solid var(--color-line); border-radius: var(--radius-card); background: var(--color-soft); }
 .visuallyHidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .onboarding { max-width: 720px; padding: 24px; border: 1px solid var(--color-line); border-radius: var(--radius-card); background: var(--color-surface); }
@@ -79,10 +94,10 @@
 .onboarding .setupForm { margin-top: 0; }
 .onboardingActions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
 @media (min-width: 1024px) {
-  .overview { grid-template-areas: "gallery daily"; grid-template-columns: minmax(0, 1fr) 300px; }
+  .overview { grid-template-areas: "gallery today" "gallery note"; grid-template-columns: minmax(0, 1fr) 300px; grid-template-rows: auto 1fr; }
 }
 @media (min-width: 768px) { .home { margin-top: 24px; } }
-@media (max-width: 767px) { .map { height: 112px; } .tasks { padding: 14px; } .today { padding: 14px; } .todayLink { margin-left: 0; } }
+@media (max-width: 767px) { .map { height: 112px; } .tasks { padding: 14px; } .today { padding: 12px 14px; } }
 
 .note { min-width: 0; padding: 24px; border: 1px solid var(--color-line); border-radius: var(--radius-card); background: var(--color-surface); }
 .note form { max-width: 880px; }

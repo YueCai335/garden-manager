@@ -1,4 +1,5 @@
 import { areaLocalToPlan } from "@/lib/planGeometry";
+import { demoGardenData, demoWorkspaceCare } from "@/lib/demoGardenData";
 export const GARDEN_WORKSPACE_STORAGE_KEY =
   "sun-aware-garden-planner:garden-workspace:v1";
 
@@ -64,6 +65,15 @@ export function knownPlantType(name: string | undefined) {
   const normalized = name?.trim().toLowerCase();
   if (!normalized) return undefined;
   return plantAppearanceDefaults.find(({ aliases }) => (aliases as readonly string[]).includes(normalized))?.name;
+}
+
+/**
+ * The known plant type a name contains ("Cherry tomato" -> "Tomato"), by the same
+ * substring match defaultPlantColor uses; undefined when no known type matches.
+ */
+export function inferPlantType(plantType: string, variety = "") {
+  const normalized = `${plantType} ${variety}`.trim().toLowerCase();
+  return plantAppearanceDefaults.find(({ aliases }) => aliases.some((alias) => normalized.includes(alias)))?.name;
 }
 
 export function defaultPlantColor(plantType: string, variety = "") {
@@ -485,9 +495,84 @@ export function createGardenWorkspace(name: string): GardenWorkspace {
   return { version: 10, selectedGardenId: garden.id, gardens: [garden], careEvents: [], careTasks: [] };
 }
 
-export function createDemoGardenWorkspace(): GardenWorkspace {
+/**
+ * The workspace "Load demo garden" opens: the three-garden showcase (ADR-0077).
+ * Tests and the end-to-end suite set NEXT_PUBLIC_DEMO_FIXTURE=sample to get the
+ * small sample garden instead, so their steps do not depend on the showcase.
+ */
+export function createDemoGardenWorkspace(today = todayDate()): GardenWorkspace {
+  return process.env.NEXT_PUBLIC_DEMO_FIXTURE === "sample" ? createSampleGardenWorkspace() : createShowcaseWorkspace(today);
+}
+
+/** True for a garden the demo created, which the gardens list hides once the user has gardens of their own. */
+export function isDemoGardenId(id: string) {
+  return id === SAMPLE_GARDEN_ID || demoGardenData.some((garden) => garden.id === id);
+}
+
+/**
+ * The showcase gardens with dates counted from `today`, so plantings and care
+ * stay current whenever a visitor opens the demo. Plantings get their crop
+ * family from the plant name, and each plant group links to its record.
+ */
+export function createShowcaseWorkspace(today = todayDate()): GardenWorkspace {
+  const gardens = demoGardenData.map((data): Garden => {
+    const plantings: PlantingRecord[] = [];
+    const growingAreas = data.areas.map((area): GrowingArea => ({
+      id: area.id,
+      name: area.name,
+      kind: area.kind,
+      planPlacement: { x: area.x, y: area.y, rotationDegrees: area.rotation },
+      layout: {
+        widthMeters: area.width,
+        depthMeters: area.depth,
+        boundary: rectangularBoundary(area.width, area.depth),
+        allocations: area.plants.flatMap((group) => {
+          const key = group.type.toLocaleLowerCase().replace(/[^a-z0-9]+/g, "-");
+          const recordId = `${area.id}-${key}`;
+          plantings.push({
+            id: recordId,
+            commonName: group.type,
+            plantType: group.type,
+            cropFamily: inferPlantCropFamily(group.type),
+            quantity: group.at.length,
+            plantingDate: addDays(today, -group.plantedDaysAgo),
+            growingAreaId: area.id,
+            isActive: true,
+          });
+          return group.at.map(([x, y, diameterMeters], index) => ({
+            id: `${recordId}-${index + 1}`,
+            label: group.type,
+            plantType: group.type,
+            plantingRecordId: recordId,
+            x,
+            y,
+            diameterMeters,
+          }));
+        }),
+      },
+    }));
+    return { id: data.id, name: data.name, plan: { ...data.plan }, growingAreas, plantings, seasonPlans: [], careEvents: [], careTasks: [], healthRecords: [] };
+  });
+  const careTasks: CareTask[] = demoWorkspaceCare.map((task) => ({
+    id: task.id,
+    type: task.type,
+    dueDate: addDays(today, task.dueInDays),
+    note: "",
+    targetScope: "all-gardens",
+    repeatIntervalDays: task.repeatIntervalDays,
+  }));
+  return { version: 10, selectedGardenId: gardens[0].id, gardens, careEvents: [], careTasks };
+}
+
+const SAMPLE_GARDEN_ID = "demo-garden";
+
+/**
+ * The small sample garden that was the demo before ADR-0077. The public AI
+ * features (backend/app/demo_garden.json) and the test suites still use it.
+ */
+export function createSampleGardenWorkspace(): GardenWorkspace {
   const garden: Garden = {
-    id: "demo-garden",
+    id: SAMPLE_GARDEN_ID,
     name: "Demo Garden",
     plan: { widthMeters: 10, depthMeters: 6 },
     growingAreas: [

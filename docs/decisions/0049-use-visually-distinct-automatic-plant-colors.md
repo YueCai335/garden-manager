@@ -1,6 +1,6 @@
 # ADR-0049: Use Visually Distinct Automatic Plant Colors
 
-- Status: Accepted; amended for canvas colors by [ADR-0073](0073-separate-the-landing-page-and-use-a-textured-deep-green-look.md) (phase S4, 2026-11-15): crop-family colors replace the automatic per-plant colors on the Garden Plan canvas and the Gardens thumbnails.
+- Status: Accepted; amended for canvas colors by [ADR-0073](0073-separate-the-landing-page-and-use-a-textured-deep-green-look.md) (phase S4, 2026-11-15): crop-family colors replace the automatic per-plant colors on the Garden Plan canvas and the Gardens thumbnails. Refined by [ADR-0076](0076-color-each-plant-type-from-a-shared-muted-palette.md) (2026-11-16): the canvas returns to one color per plant type, drawn from a muted palette and kept distinct within each garden.
 - Date: 2026-09-03
 - Refines: [ADR-0030](0030-use-context-aware-plant-colors.md)
 

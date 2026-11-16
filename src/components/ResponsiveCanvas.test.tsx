@@ -29,17 +29,19 @@ describe("responsive canvas interactions", () => {
     expect(Number(outline?.getAttribute("width"))).toBeGreaterThan(size.width * 0.7);
   });
 
-  it("keeps nearby thumbnail labels from overlapping on narrow cards", () => {
+  it("draws plants but no names in a thumbnail, planted or not (ADR-0073)", () => {
     size.width = 270;
     size.height = 202;
-    const first = { ...bed(), id: "first", name: "Planting bed 1", planPlacement: { x: 0, y: 0, rotationDegrees: 0 } };
-    const second = { ...first, id: "second", name: "Planting bed 2", planPlacement: { x: 4.1, y: 0, rotationDegrees: 0 } };
-    const distant = { ...first, id: "distant", name: "Distant bed", planPlacement: { x: 22, y: 0, rotationDegrees: 0 } };
-    render(<GardenPlanOverview compact plan={plan} growingAreas={[first, second, distant]} />);
-    const firstLabel = screen.getByTestId("area-label-first");
-    const secondLabel = screen.getByTestId("area-label-second");
-    expect(Math.abs(Number(secondLabel.getAttribute("x")) - Number(firstLabel.getAttribute("x")))).toBeLessThan(Number(firstLabel.getAttribute("width")));
-    expect(Math.abs(Number(secondLabel.getAttribute("y")) - Number(firstLabel.getAttribute("y")))).toBeGreaterThanOrEqual(16);
+    const planted = { ...bed(), id: "planted", name: "Planting bed 1", planPlacement: { x: 0, y: 0, rotationDegrees: 0 } };
+    planted.layout!.allocations = [{ id: "sage", label: "Meadow sage", diameterMeters: 0.3, x: 1, y: 1 }];
+    const empty = { ...planted, id: "empty", name: "Planting bed 2", planPlacement: { x: 4.1, y: 0, rotationDegrees: 0 }, layout: createRectangularLayout(4, 2) };
+    const { container, rerender } = render(<GardenPlanOverview compact plan={plan} growingAreas={[planted, empty]} />);
+    expect(screen.getByLabelText("Meadow sage plant on Garden Plan")).toBeInTheDocument();
+    expect(container.querySelector('[data-testid^="area-label-"], [data-testid^="plant-label-"]')).toBeNull();
+    expect(container).not.toHaveTextContent(/Meadow sage|Planting bed/);
+    rerender(<GardenPlanOverview compact plan={plan} growingAreas={[empty]} />);
+    expect(container.querySelector('[data-testid^="area-label-"]')).toBeNull();
+    expect(container).not.toHaveTextContent("Planting bed 2");
   });
 
   it("waits for a nonzero size and zooming does not edit stored geometry", async () => {

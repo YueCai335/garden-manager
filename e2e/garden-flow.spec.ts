@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { metresToCanvas } from "../src/lib/canvasViewport";
 import { areaKindDefaults, findFreeAreaSpot } from "../src/lib/areaPlacement";
-import { createDemoGardenWorkspace, createRectangularLayout, gardenPlanViewport, type GardenWorkspace, type GrowingArea } from "../src/lib/gardenWorkspace";
+import { createSampleGardenWorkspace, createRectangularLayout, gardenPlanViewport, type GardenWorkspace, type GrowingArea } from "../src/lib/gardenWorkspace";
 import { goToLevel, planCanvas, planSurface, planTransform } from "./areaHelpers";
 import { openWorkspace, workspaceHome } from "./workspace";
 
@@ -34,7 +34,7 @@ test("create a garden, save an edit, add and arrange an area, plan next season, 
   // On Planting areas, one click adds a standard raised bed in the first free spot and selects it
   // without zooming, so it can be placed against its neighbours (ADR-0072 G4, ADR-0075).
   await goToLevel(page, "Planting areas");
-  const [demo] = createDemoGardenWorkspace().gardens;
+  const [demo] = createSampleGardenWorkspace().gardens;
   const spot = findFreeAreaSpot(demo.plan, demo.growingAreas, areaKindDefaults["raised-bed"]);
   await page.getByRole("button", { name: "Add Raised bed, 1.2 × 2.4 m" }).click();
   await expect(page.getByText(`Raised bed 1 added at ${spot.x.toFixed(1)}, ${spot.y.toFixed(1)} m. Drag it to move it, or drag its corner to resize it.`)).toBeVisible();

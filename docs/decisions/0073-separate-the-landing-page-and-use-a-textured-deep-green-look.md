@@ -1,6 +1,6 @@
 # ADR-0073: Separate the Landing Page from the App and Use a Textured Deep-Green Look
 
-- Status: Accepted on 2026-11-14 and implemented: S1 to S3 on 2026-11-14, S4 to S7 on 2026-11-15. Amended on 2026-11-15: the brand link returns to the landing page, the header modules sit in one tray, and the landing page has a fixed header over four feature sections. Amended on 2026-11-15: the app header is sticky. Amended on 2026-11-15: the area panel sits beside the canvas, "Whole garden" only zooms out, Delete garden moves into the garden details form, and the Today strip marks care types with a dot. Amended on 2026-11-16: the area panel's button reads Done, plant names replace area names on planted areas, and the area panel drops the type field and the step buttons. The landing showcases (S6b) remain placeholders; their form is undecided until the app is final.
+- Status: Accepted on 2026-11-14 and implemented: S1 to S3 on 2026-11-14, S4 to S7 on 2026-11-15. Amended on 2026-11-15: the brand link returns to the landing page, the header modules sit in one tray, and the landing page has a fixed header over four feature sections. Amended on 2026-11-15: the app header is sticky. Amended on 2026-11-15: the area panel sits beside the canvas, "Whole garden" only zooms out, Delete garden moves into the garden details form, and the Today strip marks care types with a dot. Amended on 2026-11-16: the area panel's button reads Done, plant names replace area names on planted areas, and the area panel drops the type field and the step buttons. Amended again on 2026-11-16: "Care to do" and AI Garden Notes stack in a column beside the gardens, "Care to do" ticks tasks off in place, and garden thumbnails carry no text. The landing showcases (S6b) remain placeholders; their form is undecided until the app is final. Superseded in part by [ADR-0076](0076-color-each-plant-type-from-a-shared-muted-palette.md) on 2026-11-16: plants take a color per plant type instead of per crop family, and the legend lists plants.
 - Date: 2026-11-14
 - Supersedes in part (all marked in the decision index):
   - [ADR-0051](0051-prioritize-daily-garden-work-on-the-dashboard.md): the dashboard card groups.
@@ -113,9 +113,29 @@ Rules:
   and an "All gardens" button styled as a real button.
 - The "+ Note" header button opens the existing Garden Note dialog from any
   app page. This extends ADR-0069, which opens the dialog only from Overview.
-- The Gardens page keeps a short "Today" strip at the top. It shows the count
-  of due care tasks and links to Care, which holds the full list. This keeps
-  the intent of ADR-0051 with one home for the list.
+- The Gardens page keeps a short "Care to do" box with a link to Care, which
+  holds the full list. This keeps the intent of ADR-0051 with one home for the
+  list.
+- **Care to do** (amended 2026-11-16). The box splits tasks into Overdue,
+  Today, and Coming up (the next seven days), with a hairline between groups.
+  Each row reads as a verb and a place, such as "Water Front garden", with the
+  planting area or plant group, or how late it is, on a second line. Overdue
+  and Today rows have a round checkbox on the right; Coming up rows show
+  "Tomorrow" or a weekday instead. Ticking a row completes the task the same
+  way Care does (ADR-0023): it records care history for today, and a repeating
+  task moves to its next date. The ticked row stays in place, struck through,
+  and the header counts progress ("1 of 3 done", then "All done"). A tick can
+  be undone until the user leaves the page. Care work recorded earlier today,
+  from Care or a note, shows in Today already ticked. The earlier "Today" strip
+  read as a date, not a list of jobs, mixed today's and future tasks in one
+  row of chips, and repeated the garden name and date on every chip.
+- **Gardens fill the page** (amended 2026-11-16). From 1024 px the garden
+  cards fill the left of the Gardens page, and a 300 px column on the right
+  stacks the Care to do box above the AI Garden Notes box. Narrower screens show
+  Care to do, then the gardens, then the note box; the header "+ Note" keeps note
+  entry one tap away. Before, Today ran as a full-width strip above both the
+  gardens and the note box, which pushed the gardens down and split the daily
+  items across two places.
 
 ### 3. Landing page look
 
@@ -254,16 +274,24 @@ The plan reads as a plain metric planting chart:
 - Each plant is a circle whose diameter is its spacing footprint. The
   allocation already stores this diameter.
 - Fills are muted and strokes are darker. The colors come from the plant's
-  crop family. Plants with no known family use a neutral "Other" color. The
+  crop family. Plants with no known family use a neutral "Other" color.
+  (Superseded by ADR-0076: each plant type takes its own color from a muted
+  palette built on these family colors, and the legend lists plants.) The
   stored per-plant `color` field stays unchanged, and the plant panel hides
   its color picker.
 - Every plant group in an area carries a short label, such as "Tomato ×2". A
   legend lists the families in view.
 - **Plant names lead** (amended 2026-11-16). An area with plants is named by
   its plants; its own name shows only while it is open. Empty areas keep their
-  names. A garden thumbnail on Gardens shows plant names only once anything is
-  planted, and area names only for a garden with no plants yet. Thumbnails draw
-  every plant at least 3 px in radius so small spacings stay visible. Before,
+  names. Thumbnails draw every plant at least 3 px in radius so small spacings
+  stay visible.
+- **Thumbnails carry no text** (amended again 2026-11-16). A garden thumbnail
+  on Gardens draws planting areas and plants, colored by crop family, and no
+  plant or area names. The card below it already lists "Growing now", and the
+  Garden Plan names every plant. Long plant names overlapped at thumbnail size,
+  and repeating the card's list added clutter without new information. The
+  first 2026-11-16 amendment showed plant names in planted thumbnails and area
+  names in empty ones. Before,
   both names crowded each planted area, and thumbnails showed area names with
   plants as specks, so the overview read as a list of containers rather than a
   garden. A user setting for labels was considered and rejected: one rule
@@ -397,3 +425,5 @@ without a product reason.
   second set of values, including for Konva.
 - Users find family colors less useful than per-plant colors on the canvas.
 - Low-end devices cannot keep the shader smooth, even with the still fallback.
+- Users need to untick a task after leaving Gardens. Each history record from a
+  tick would then need to remember its task's previous due date.

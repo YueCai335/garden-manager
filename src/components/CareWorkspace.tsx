@@ -9,7 +9,6 @@ import Link from "next/link";
 import { startTransition, type FormEvent, type ReactNode, useOptimistic, useRef, useState } from "react";
 
 import {
-  addDays,
   careTaskStatus,
   createId,
   todayDate,
@@ -34,7 +33,7 @@ export type CareView = "tasks" | "history";
 
 /** The two record lists the care screen edits. */
 export type { CareRecords } from "@/lib/careViews";
-import { careRows, careOwner, careLocationKey, type CareOwner, type CareRecords, type CareRow } from "@/lib/careViews";
+import { careEventForTask, careRows, careOwner, careLocationKey, completeCareTask as applyTaskCompletion, type CareOwner, type CareRecords, type CareRow } from "@/lib/careViews";
 import styles from "./care/Care.module.css";
 
 /**
@@ -370,7 +369,6 @@ export function CareWorkspace({
     formEvent.preventDefault();
     const garden = completionGarden;
     if (!garden) return setActionError("This task location no longer exists. Your completion date is kept.");
-    const allGardens = garden.id === "all-gardens";
     if (!completingCareTaskId || completionSubmitted.current) return;
     if (!isCalendarDate(completionDate))
       return onMessage("Enter a valid completion date.");
@@ -379,39 +377,9 @@ export function CareWorkspace({
     );
     if (!task) return setActionError("This task no longer exists. Your completion date is kept.");
     completionSubmitted.current = true;
-    const event: CareEvent = {
-      id: createId("care"),
-      type: task.type,
-      date: completionDate,
-      note: task.note,
-      targetScope: allGardens ? "all-gardens" : task.targetScope,
-      ...(task.targetScope === "planting-area"
-        ? {
-            growingAreaId: task.growingAreaId,
-            growingAreaName: task.growingAreaName,
-            ...(task.targetAreaDeleted ? { targetAreaDeleted: true } : {}),
-          }
-        : {}),
-      ...(task.targetScope === "plant-group"
-        ? {
-            plantingRecordId: task.plantingRecordId,
-            plantingRecordName: task.plantingRecordName,
-            ...(task.targetPlantingRecordDeleted
-              ? { targetPlantingRecordDeleted: true }
-              : {}),
-          }
-        : {}),
-    };
-    onUpdateRecords((records) => ({
-      careEvents: [...records.careEvents, event],
-      careTasks: records.careTasks.flatMap((item) =>
-        item.id !== task.id
-          ? [item]
-          : item.repeatIntervalDays
-            ? [{ ...item, dueDate: addDays(completionDate, item.repeatIntervalDays) }]
-            : [],
-      ),
-    }), careOwner(garden));
+    const owner = careOwner(garden);
+    const event = careEventForTask(task, completionDate, owner, createId("care"));
+    onUpdateRecords((records) => applyTaskCompletion(records, task, event), owner);
     cancelCompletion();
     onMessage(`${task.type === "watering" ? "Watering" : "Fertilizing"} task completed.`);
   };

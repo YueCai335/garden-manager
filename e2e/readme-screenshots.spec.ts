@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { createDemoGardenWorkspace } from "../src/lib/gardenWorkspace";
+import { createSampleGardenWorkspace } from "../src/lib/gardenWorkspace";
 import { planSurface } from "./areaHelpers";
 
 /**
@@ -27,7 +27,7 @@ test.beforeEach(async ({ page }) => {
   });
   await page.addInitScript((value) => {
     if (!localStorage.getItem("sun-aware-garden-planner:garden-workspace:v1")) localStorage.setItem("sun-aware-garden-planner:garden-workspace:v1", JSON.stringify(value));
-  }, createDemoGardenWorkspace());
+  }, createSampleGardenWorkspace());
 });
 
 test("Garden Plan", async ({ page }) => {

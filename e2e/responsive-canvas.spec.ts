@@ -1,6 +1,6 @@
 import { expect, test, type Locator } from "@playwright/test";
 import { metresToCanvas } from "../src/lib/canvasViewport";
-import { areaFocusViewport, createDemoGardenWorkspace, gardenPlanViewport, type GardenWorkspace } from "../src/lib/gardenWorkspace";
+import { areaFocusViewport, createSampleGardenWorkspace, gardenPlanViewport, type GardenWorkspace } from "../src/lib/gardenWorkspace";
 import { goToLevel, planCanvas, planSurface, planTransform } from "./areaHelpers";
 import { openWorkspace } from "./workspace";
 
@@ -42,7 +42,7 @@ for (const width of [390, 900, 1440]) {
     await expect(surface).toHaveAttribute("data-zooming", "false");
     await plan.scrollIntoViewIfNeeded();
     const box = (await plan.boundingBox())!;
-    const [demo] = createDemoGardenWorkspace().gardens;
+    const [demo] = createSampleGardenWorkspace().gardens;
     const bed = demo.growingAreas[0];
     const zoomed = await planTransform(page, areaFocusViewport(bed)!);
     // Demo bed is 3 × 1.2 m at (0.8, 1); the tomato begins at (0.6, 0.6) inside it.
@@ -91,7 +91,7 @@ test("a mouse drags an area without a mode: snapped preview, Escape cancel, and 
   await expectFittedCanvas(canvas);
   await canvas.scrollIntoViewIfNeeded();
   const box = (await canvas.boundingBox())!;
-  const [garden] = createDemoGardenWorkspace().gardens;
+  const [garden] = createSampleGardenWorkspace().gardens;
   const [area] = garden.growingAreas;
   const transform = await planTransform(page, gardenPlanViewport(garden.plan, garden.growingAreas, "growing-areas"));
   const start = metresToCanvas({ x: area.planPlacement.x + 0.2, y: area.planPlacement.y + 0.2 }, transform);
@@ -146,7 +146,7 @@ for (const width of [390, 1440]) {
     await expectFittedCanvas(canvas);
     await canvas.scrollIntoViewIfNeeded();
     const box = (await canvas.boundingBox())!;
-    const [garden] = createDemoGardenWorkspace().gardens;
+    const [garden] = createSampleGardenWorkspace().gardens;
     const [area] = garden.growingAreas;
     const whole = await planTransform(page, gardenPlanViewport(garden.plan, garden.growingAreas, "growing-areas"));
     // A point inside the bed, clear of the tomato at (0.6, 0.6).
