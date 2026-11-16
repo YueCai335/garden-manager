@@ -11,6 +11,8 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from .agent.allocation import AllocationRequest
@@ -72,6 +74,20 @@ async def request_validation_error(request: Request, error: RequestValidationErr
 
 @app.get("/health", response_model=HealthResponse, tags=["system"])
 def health() -> HealthResponse:
+    return HealthResponse(status="ok")
+
+
+@app.get("/health/db", response_model=HealthResponse, tags=["system"])
+def database_health(session: Session = Depends(get_session)) -> HealthResponse:
+    """Run one read-only query so the scheduled keep-alive reaches the database (ADR-0074).
+
+    `/health` stays database-free because Render uses it to decide whether the
+    API is up; a database outage should not make Render restart the service.
+    """
+    try:
+        session.execute(text("SELECT 1"))
+    except SQLAlchemyError as error:
+        raise HTTPException(status_code=503, detail="Database unavailable") from error
     return HealthResponse(status="ok")
 
 
