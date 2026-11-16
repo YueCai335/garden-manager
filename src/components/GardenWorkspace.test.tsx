@@ -906,11 +906,12 @@ describe("GardenWorkspace", () => {
     expect(screen.queryByRole("button", { name: "Edit garden" })).not.toBeInTheDocument();
     await user.click(screen.getByRole("link", { name: "Open Demo Garden" }));
     expect(screen.getByRole("heading", { name: "Demo Garden", level: 1 })).toHaveFocus();
-    // Delete garden lives in the garden details form, not on the page.
-    expect(screen.queryByRole("button", { name: "Delete garden" })).not.toBeInTheDocument();
-    expect(screen.queryByText("Garden settings")).not.toBeInTheDocument();
-    openGardenDetails();
+    // A garden opened from its card starts on the Garden level (ADR-0078):
+    // Done and Delete garden sit on the title's row, and the garden's fields show.
+    expect(screen.getByRole("button", { name: "Garden" })).toHaveAttribute("aria-current", "true");
+    expect(screen.getByRole("button", { name: "Done editing Demo Garden" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Delete garden" })).toBeInTheDocument();
+    expect(screen.queryByText("Garden settings")).not.toBeInTheDocument();
     expect(screen.getByLabelText("Garden width (m)")).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Garden properties" })).toBeInTheDocument();
     // The area list belongs to the area levels; the Garden level keeps the areas still.
@@ -918,6 +919,19 @@ describe("GardenWorkspace", () => {
     goToLevel("Planting areas");
     expect(screen.getByRole("heading", { name: "Planting areas" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Planting records" })).not.toBeInTheDocument();
+    // Delete garden belongs to the Garden level; Done stays on every level.
+    expect(screen.queryByRole("button", { name: "Delete garden" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Done editing Demo Garden" })).toBeInTheDocument();
+  });
+
+  it("finishes editing a garden with Done from any level and returns to Gardens", async () => {
+    const user = userEvent.setup();
+    await loadDemo(user);
+    await user.click(screen.getByRole("link", { name: "Open Demo Garden" }));
+    goToLevel("Plants");
+    await user.click(screen.getByRole("button", { name: "Done editing Demo Garden" }));
+    expect(await screen.findByText("Demo Garden saved.")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open Demo Garden" })).toBeInTheDocument();
   });
 
   it("opens the garden that was clicked when several gardens exist", async () => {
@@ -1007,10 +1021,9 @@ describe("GardenWorkspace", () => {
     await user.click(track().getByRole("button", { name: "Ready, reached" }));
     await user.click(screen.getByRole("button", { name: "Finish setup" }));
     expect(screen.queryByRole("navigation", { name: "Guided setup" })).not.toBeInTheDocument();
-    // After the guide, the same three parts become a level switcher that opens on Plants (ADR-0075).
+    // After the guide, the same three parts become a level switcher that opens on Garden (ADR-0075, ADR-0078).
     const levels = within(screen.getByRole("navigation", { name: "Garden Plan levels" }));
-    expect(levels.getByRole("button", { name: "Plants" })).toHaveAttribute("aria-current", "true");
-    await user.click(levels.getByRole("button", { name: "Garden" }));
+    expect(levels.getByRole("button", { name: "Garden" })).toHaveAttribute("aria-current", "true");
     expect(screen.getByLabelText("Garden name")).toHaveValue("Community plot");
     expect(screen.getByLabelText("Garden width (m)")).toHaveValue(4);
     expect(screen.queryByRole("button", { name: "Start guided setup" })).not.toBeInTheDocument();
@@ -1022,6 +1035,7 @@ describe("GardenWorkspace", () => {
     render(<GardenWorkspace />);
     await user.click(await screen.findByRole("link", { name: "Open Community plot" }));
     expect(screen.queryByRole("navigation", { name: "Guided setup" })).not.toBeInTheDocument();
+    goToLevel("Plants");
     await user.click(screen.getByLabelText("Open North bed on Garden Plan"));
     expect(screen.getAllByText("Kale").length).toBeGreaterThan(0);
   });
@@ -1148,6 +1162,10 @@ describe("GardenWorkspace", () => {
     await openSelectedGarden();
     const levels = within(screen.getByRole("navigation", { name: "Garden Plan levels" }));
     const bed = () => screen.getByLabelText("Open Sample raised bed on Garden Plan");
+    // A garden opens on Garden (ADR-0078).
+    expect(levels.getByRole("button", { name: "Garden" })).toHaveAttribute("aria-current", "true");
+    await user.click(levels.getByRole("button", { name: "Plants" }));
+    expect(location.search).toBe("?level=plants");
     // Plants: the beds are locked and nothing adds areas; opening a bed zooms into it.
     expect(levels.getByRole("button", { name: "Plants" })).toHaveAttribute("aria-current", "true");
     expect(bed()).toHaveAttribute("draggable", "false");
@@ -1171,7 +1189,7 @@ describe("GardenWorkspace", () => {
     expect(location.search).toBe("?level=areas");
     // Garden: the name and size fields, with the areas held still and no area list.
     await user.click(levels.getByRole("button", { name: "Garden" }));
-    expect(location.search).toBe("?level=garden");
+    expect(location.search).toBe("");
     expect(screen.getByLabelText("Garden name")).toHaveValue("Demo Garden");
     expect(screen.getByRole("button", { name: "Delete garden" })).toBeInTheDocument();
     // The beds are only drawn here, so they are neither openable nor draggable.
@@ -1181,15 +1199,16 @@ describe("GardenWorkspace", () => {
     expect(screen.queryByRole("group", { name: "Add a planting area" })).not.toBeInTheDocument();
   });
 
-  it("starts a garden with no areas on Planting areas and keeps Plants unavailable until one exists", async () => {
+  it("starts a garden with no areas on Garden and keeps Plants unavailable until one exists", async () => {
     const workspace = createGardenWorkspace("Allotment");
     window.localStorage.setItem(GARDEN_WORKSPACE_STORAGE_KEY, JSON.stringify(workspace));
     resetTestRouter(`/gardens/${workspace.gardens[0].id}/plan`);
     const user = userEvent.setup();
     render(<GardenWorkspace />);
     const levels = within(await screen.findByRole("navigation", { name: "Garden Plan levels" }));
-    expect(levels.getByRole("button", { name: "Planting areas" })).toHaveAttribute("aria-current", "true");
+    expect(levels.getByRole("button", { name: "Garden" })).toHaveAttribute("aria-current", "true");
     expect(levels.getByRole("button", { name: "Plants" })).toBeDisabled();
+    await user.click(levels.getByRole("button", { name: "Planting areas" }));
     expect(levels.getByRole("button", { name: "Plants" })).toHaveAccessibleDescription("Add a planting area first.");
     await user.click(screen.getByRole("button", { name: "Add Raised bed, 1.2 × 2.4 m" }));
     expect(levels.getByRole("button", { name: "Plants" })).toBeEnabled();
@@ -1594,8 +1613,9 @@ describe("GardenWorkspace", () => {
     expect(screen.getByRole("link", { name: "Add garden" })).toBeInTheDocument();
     await openSelectedGarden();
     expect(screen.queryByText("Garden properties")).not.toBeInTheDocument();
+    goToLevel("Plants");
     expect(screen.getByRole("heading", { name: "Planting areas" })).toBeInTheDocument();
-    // The garden opens on Plants, so an area opens with its plants.
+    // On Plants, an area opens with its plants.
     await user.click(screen.getByRole("link", { name: "Edit Sample raised bed" }));
     expect(screen.getByRole("heading", { name: "Plants" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Done" }));
@@ -1643,6 +1663,7 @@ describe("GardenWorkspace", () => {
     const user = userEvent.setup();
     await loadDemo(user);
     await openSelectedGarden();
+    goToLevel("Plants");
     expect(screen.queryByRole("button", { name: "Whole garden" })).not.toBeInTheDocument();
     expect(screen.getByTestId("plant-label-demo-raised-bed:tomato")).toHaveTextContent("Tomato");
     // A planted area is named by its plants until it is opened.
@@ -1672,7 +1693,7 @@ describe("GardenWorkspace", () => {
     expect(screen.getByLabelText("Open Sample in-ground area on Garden Plan")).toHaveAttribute("opacity", "0.35");
     // Escape closes the area and returns to the whole garden.
     fireEvent.keyDown(window, { key: "Escape" });
-    expect(window.location.search).toBe("");
+    expect(window.location.search).toBe("?level=plants");
     expect(screen.queryByRole("button", { name: "Whole garden" })).not.toBeInTheDocument();
     expect(screen.getByLabelText("Open Sample in-ground area on Garden Plan")).toHaveAttribute("opacity", "1");
     await waitFor(() => expect(document.activeElement).toHaveAttribute("id", "area-link-demo-raised-bed"));

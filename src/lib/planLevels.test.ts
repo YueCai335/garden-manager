@@ -2,16 +2,16 @@ import { describe, expect, it } from "vitest";
 import { defaultPlanLevel, isPlanLevel, planLevelFromSearch, setupLevel } from "./planLevels";
 
 describe("plan levels (ADR-0075)", () => {
-  it("starts on Plants, or on Planting areas while there is nothing to plant in", () => {
-    expect(defaultPlanLevel(3)).toBe("plants");
-    expect(defaultPlanLevel(0)).toBe("areas");
+  it("starts on Garden, or on Plants when the address opens an area (ADR-0078)", () => {
+    expect(defaultPlanLevel(false)).toBe("garden");
+    expect(defaultPlanLevel(true)).toBe("plants");
   });
 
   it("reads a known level from the address and ignores anything else", () => {
-    expect(planLevelFromSearch("garden", 2)).toBe("garden");
-    expect(planLevelFromSearch("areas", 2)).toBe("areas");
-    expect(planLevelFromSearch("roots", 2)).toBe("plants");
-    expect(planLevelFromSearch(null, 0)).toBe("areas");
+    expect(planLevelFromSearch("garden", true)).toBe("garden");
+    expect(planLevelFromSearch("areas", false)).toBe("areas");
+    expect(planLevelFromSearch("roots", false)).toBe("garden");
+    expect(planLevelFromSearch(null, true)).toBe("plants");
     expect(isPlanLevel("plants")).toBe(true);
     expect(isPlanLevel(undefined)).toBe(false);
   });

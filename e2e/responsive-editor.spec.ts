@@ -12,12 +12,11 @@ for (const width of [390, 820, 900, 1440]) {
     await openWorkspace(page);
     await page.getByRole("button", { name: "Load demo garden" }).click();
     await page.getByRole("link", { name: "Open Demo Garden" }).click();
-    // The garden opens on Plants; its name, size, and Delete garden sit on the Garden level (ADR-0075).
-    await expect(page.getByLabel("Garden name", { exact: true })).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "Delete garden", exact: true })).toHaveCount(0);
-    await expect(page.getByText("Garden settings", { exact: true })).toHaveCount(0);
-    await goToLevel(page, "Garden");
+    // The garden opens on Garden: its name and size, with Done and Delete garden on the title row (ADR-0078).
+    await expect(page.getByRole("button", { name: "Garden", exact: true })).toHaveAttribute("aria-current", "true");
+    await expect(page.getByRole("button", { name: "Done editing Demo Garden" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Delete garden", exact: true })).toBeVisible();
+    await expect(page.getByText("Garden settings", { exact: true })).toHaveCount(0);
     await page.getByLabel("Garden name", { exact: true }).fill("Kitchen garden");
     await page.getByLabel("Garden name", { exact: true }).press("Enter");
     await expect(page.getByLabel("Garden name", { exact: true })).toHaveValue("Kitchen garden");
@@ -120,6 +119,8 @@ test.describe("touch editing", () => {
     await openWorkspace(page);
     await page.getByRole("button", { name: "Load demo garden" }).tap();
     await page.getByRole("link", { name: "Open Demo Garden" }).tap();
+    // A garden opens on Garden (ADR-0078); a tapped bed opens on Plants.
+    await page.getByRole("navigation", { name: "Garden Plan levels" }).getByRole("button", { name: "Plants", exact: true }).tap();
     const canvas = planCanvas(page);
     await canvas.scrollIntoViewIfNeeded();
     const transform = await planTransform(page, gardenPlanViewport(garden.plan, garden.growingAreas, "growing-areas"));
