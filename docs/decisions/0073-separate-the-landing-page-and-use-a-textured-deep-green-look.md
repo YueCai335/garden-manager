@@ -1,6 +1,6 @@
 # ADR-0073: Separate the Landing Page from the App and Use a Textured Deep-Green Look
 
-- Status: Accepted on 2026-11-14 and implemented: S1 to S3 on 2026-11-14, S4 to S7 on 2026-11-15. Amended on 2026-11-15: the brand link returns to the landing page, the header modules sit in one tray, and the landing page has a fixed header over four feature sections. Amended on 2026-11-15: the app header is sticky. Amended on 2026-11-15: the area panel sits beside the canvas, "Whole garden" only zooms out, Delete garden moves into the garden details form, and the Today strip marks care types with a dot. Amended on 2026-11-16: the area panel's button reads Done, plant names replace area names on planted areas, and the area panel drops the type field and the step buttons. Amended again on 2026-11-16: "Care to do" and AI Garden Notes stack in a column beside the gardens, "Care to do" ticks tasks off in place, and garden thumbnails carry no text. The landing showcases (S6b) remain placeholders; their form is undecided until the app is final.
+- Status: Accepted on 2026-11-14 and implemented: S1 to S3 on 2026-11-14, S4 to S7 on 2026-11-15. Amended on 2026-11-15: the brand link returns to the landing page, the header modules sit in one tray, and the landing page has a fixed header over four feature sections. Amended on 2026-11-15: the app header is sticky. Amended on 2026-11-15: the area panel sits beside the canvas, "Whole garden" only zooms out, Delete garden moves into the garden details form, and the Today strip marks care types with a dot. Amended on 2026-11-16: the area panel's button reads Done, plant names replace area names on planted areas, and the area panel drops the type field and the step buttons. Amended again on 2026-11-16: "Care to do" and AI Garden Notes stack in a column beside the gardens, "Care to do" ticks tasks off in place, and garden thumbnails carry no text. The landing showcases (S6b) remain placeholders; their form is undecided until the app is final. Superseded in part by [ADR-0076](0076-color-each-plant-type-from-a-shared-muted-palette.md) on 2026-11-16: plants take a color per plant type instead of per crop family, and the legend lists plants.
 - Date: 2026-11-14
 - Supersedes in part (all marked in the decision index):
   - [ADR-0051](0051-prioritize-daily-garden-work-on-the-dashboard.md): the dashboard card groups.
@@ -274,7 +274,9 @@ The plan reads as a plain metric planting chart:
 - Each plant is a circle whose diameter is its spacing footprint. The
   allocation already stores this diameter.
 - Fills are muted and strokes are darker. The colors come from the plant's
-  crop family. Plants with no known family use a neutral "Other" color. The
+  crop family. Plants with no known family use a neutral "Other" color.
+  (Superseded by ADR-0076: each plant type takes its own color from a muted
+  palette built on these family colors, and the legend lists plants.) The
   stored per-plant `color` field stays unchanged, and the plant panel hides
   its color picker.
 - Every plant group in an area carries a short label, such as "Tomato ×2". A

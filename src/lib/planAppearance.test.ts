@@ -1,18 +1,20 @@
 import { describe, expect, it } from "vitest";
-import { createRectangularLayout, plantingCropFamilies, type GrowingArea } from "@/lib/gardenWorkspace";
+import { createRectangularLayout, type GrowingArea } from "@/lib/gardenWorkspace";
 import {
   allocationCropFamily,
   areaAppearance,
   areaAppearances,
   areaLabelPosition,
   areaSizeText,
-  cropFamilyColor,
-  cropFamilyColors,
-  cropFamilyLegendLabels,
-  familiesInView,
+  flowerSwatches,
+  gardenPlantColors,
   isRectangularLayout,
   planColors,
+  plantColor,
+  plantColorKey,
   plantingFamilies,
+  plantsInView,
+  plantSwatches,
   ridgeLine,
 } from "@/lib/planAppearance";
 
@@ -25,11 +27,6 @@ const contrast = (first: string, second: string) => {
   const [light, dark] = [luminance(first), luminance(second)].sort((a, b) => b - a);
   return (light + 0.05) / (dark + 0.05);
 };
-const saturation = (hex: string) => {
-  const channels = [1, 3, 5].map((start) => Number.parseInt(hex.slice(start, start + 2), 16));
-  return Math.max(...channels) - Math.min(...channels);
-};
-
 const viewport = { x: 0, y: 0, widthMeters: 10, depthMeters: 8 };
 const area = (overrides: Partial<GrowingArea> = {}): GrowingArea => ({
   id: "bed", name: "Tomato bed", kind: "raised-bed",
@@ -118,13 +115,14 @@ describe("planting-area labels", () => {
   });
 });
 
-describe("crop-family plant colours", () => {
-  it("gives every crop family its own light fill and dark stroke", () => {
-    expect(Object.keys(cropFamilyColors).sort()).toEqual([...plantingCropFamilies].sort());
-    const families = plantingCropFamilies.map(cropFamilyColor);
-    expect(new Set(families.map(({ fill }) => fill)).size).toBe(families.length);
-    expect(new Set(families.map(({ stroke }) => stroke)).size).toBe(families.length);
-    for (const { fill, stroke } of families) {
+describe("plant colours", () => {
+  const swatches = [...Object.values(plantSwatches), ...Object.values(flowerSwatches)];
+  const colorsOf = (...labels: string[]) => gardenPlantColors(labels.map((label) => ({ label })));
+
+  it("gives every swatch a light fill and a dark stroke that stays visible", () => {
+    expect(new Set(swatches.map(({ fill }) => fill)).size).toBe(swatches.length);
+    expect(new Set(swatches.map(({ stroke }) => stroke)).size).toBe(swatches.length);
+    for (const { fill, stroke } of swatches) {
       expect(luminance(fill)).toBeGreaterThan(luminance(stroke));
       // A stroke stays visible against its fill, the soil, and the ground (3:1 for graphics).
       for (const background of [fill, areaAppearances["raised-bed"].fill, areaAppearances["in-ground"].fill, planColors.ground])
@@ -132,26 +130,101 @@ describe("crop-family plant colours", () => {
     }
   });
 
-  it.each([
-    ["nightshade", "#ebc3b4", "#a85a42"],
-    ["brassica", "#c9daea", "#466f9a"],
-    ["cucurbit", "#f0dcae", "#8f6d1f"],
-    ["legume", "#c4ddd4", "#3f7a68"],
-    ["allium", "#dad3ee", "#6656a0"],
-    ["root", "#edcbd9", "#a04a73"],
-    ["leafy", "#d3e4bc", "#5a8236"],
-  ] as const)("colours %s plants", (family, fill, stroke) => {
-    expect(cropFamilyColor(family)).toEqual({ fill, stroke });
+  it("keeps the ADR-0073 crop-family colours in the plant ring", () => {
+    expect(plantSwatches.coral).toEqual({ fill: "#ebc3b4", stroke: "#a85a42" });
+    expect(plantSwatches.blue).toEqual({ fill: "#c9daea", stroke: "#466f9a" });
+    expect(plantSwatches.amber).toEqual({ fill: "#f0dcae", stroke: "#8f6d1f" });
+    expect(plantSwatches.sea).toEqual({ fill: "#c4ddd4", stroke: "#3f7a68" });
+    expect(plantSwatches.lavender).toEqual({ fill: "#dad3ee", stroke: "#6656a0" });
+    expect(plantSwatches.pink).toEqual({ fill: "#edcbd9", stroke: "#a04a73" });
+    expect(plantSwatches.leaf).toEqual({ fill: "#d3e4bc", stroke: "#5a8236" });
   });
 
-  it("draws plants of an unknown family in a neutral Other", () => {
-    const other = cropFamilyColor("other");
-    expect(other).toEqual({ fill: "#e6e6e4", stroke: "#77777b" });
-    expect(saturation(other.fill)).toBeLessThanOrEqual(4);
-    expect(saturation(other.stroke)).toBeLessThanOrEqual(4);
-    expect(cropFamilyLegendLabels.other).toBe("Other");
-    expect(allocationCropFamily({ label: "Basil" })).toBe("other");
-    expect(allocationCropFamily({ label: "Mystery seedling" })).toBe("other");
+  it("gives plants of the same crop family their own colours", () => {
+    const colors = colorsOf("Tomato", "Pepper", "Eggplant");
+    expect(colors.get("tomato")).toEqual(plantSwatches.red);
+    // Pepper prefers coral, which sits next to Tomato's red, so beside a tomato it turns orange.
+    expect(colors.get("pepper")).toEqual(plantSwatches.orange);
+    expect(colors.get("eggplant")).toEqual(plantSwatches.plum);
+    expect(colorsOf("Pepper", "Eggplant").get("pepper")).toEqual(plantSwatches.coral);
+  });
+
+  it("draws flowers in flower colours instead of a shared grey", () => {
+    const colors = colorsOf("Panicle hydrangea", "Sunflower", "Marigold", "Meadow sage");
+    expect(colors.get("panicle hydrangea")).toEqual(flowerSwatches.pink);
+    expect(colors.get("sunflower")).toEqual(flowerSwatches.yellow);
+    expect(colors.get("marigold")).toEqual(flowerSwatches.orange);
+    expect(colors.get("meadow sage")).toEqual(flowerSwatches.violet);
+  });
+
+  it("gives every plant type in a mixed vegetable and flower garden a different colour", () => {
+    const gardens = [
+      ["Meadow sage", "Pepper", "Lettuce", "Carrot", "Eggplant", "Marigold", "Squash", "Sunflower"],
+      ["Eggplant", "Kale", "Cucumber", "Basil", "Bean", "Tomato"],
+      ["Panicle hydrangea", "Sunflower", "Marigold"],
+    ];
+    for (const plants of gardens) {
+      const fills = [...colorsOf(...plants).values()].map(({ fill }) => fill);
+      expect(new Set(fills).size).toBe(plants.length);
+    }
+  });
+
+  it("moves the later of two look-alike plants to a clear swatch", () => {
+    // Bean and Basil both prefer green; Bean comes first in the list, so Basil moves.
+    const colors = colorsOf("Basil", "Bean");
+    expect(colors.get("bean")).toEqual(plantSwatches.green);
+    expect(colors.get("basil")).not.toEqual(plantSwatches.green);
+    // Basil also avoids green's neighbours, which look too close at plant size.
+    expect([plantSwatches.leaf, plantSwatches.sea]).not.toContainEqual(colors.get("basil"));
+    // Alone, Basil keeps its own swatch.
+    expect(colorsOf("Basil").get("basil")).toEqual(plantSwatches.green);
+  });
+
+  it("keeps a vegetable off the hue of a flower in the same garden", () => {
+    // Sunflower yellow shares its hue with Squash amber, so Squash moves.
+    const colors = colorsOf("Squash", "Sunflower");
+    expect(colors.get("sunflower")).toEqual(flowerSwatches.yellow);
+    expect(colors.get("squash")).not.toEqual(plantSwatches.amber);
+    expect(colorsOf("Squash").get("squash")).toEqual(plantSwatches.amber);
+  });
+
+  it("does not depend on the order plants were added", () => {
+    expect(colorsOf("Basil", "Bean", "Tomato")).toEqual(colorsOf("Tomato", "Bean", "Basil"));
+  });
+
+  it("shares one colour across varieties and name spellings of a plant type", () => {
+    const colors = gardenPlantColors([
+      { label: "Tomato", variety: "Sun Gold" },
+      { label: "tomato " },
+      { label: "Bed 1", plantType: "Tomato" },
+    ]);
+    expect(colors.size).toBe(1);
+    expect(plantColorKey({ label: "Bed 1", plantType: " Tomato " })).toBe("tomato");
+  });
+
+  it("uses the crop family colour for a plant the list does not name", () => {
+    expect(colorsOf("Onion").get("onion")).toEqual(plantSwatches.lavender);
+    expect(colorsOf("Broccoli").get("broccoli")).toEqual(plantSwatches.blue);
+    const families = plantingFamilies([{ id: "record", cropFamily: "root" }]);
+    expect(gardenPlantColors([{ label: "Parsnip", plantingRecordId: "record" }], families).get("parsnip")).toEqual(plantSwatches.pink);
+  });
+
+  it("gives an unknown plant a steady colour from the plant ring", () => {
+    const color = colorsOf("Mystery seedling").get("mystery seedling");
+    expect(Object.values(plantSwatches)).toContainEqual(color);
+    expect(colorsOf("Mystery seedling").get("mystery seedling")).toEqual(color);
+  });
+
+  it("shares a swatch only when a ring is full", () => {
+    const flowers = gardenPlantColors(["Marigold", "Sunflower", "Meadow sage", "Panicle hydrangea"].map((label) => ({ label })));
+    expect(new Set([...flowers.values()]).size).toBe(4);
+    const plants = gardenPlantColors(Array.from({ length: 16 }, (_, index) => ({ label: `Seedling ${index}` })));
+    expect(new Set([...plants.values()].map(({ fill }) => fill)).size).toBe(Object.keys(plantSwatches).length);
+  });
+
+  it("falls back to a plant's own swatch when the garden map lacks it", () => {
+    expect(plantColor({ label: "Tomato" }, new Map())).toEqual(plantSwatches.red);
+    expect(plantColor({ label: "Tomato" }, new Map([["tomato", flowerSwatches.blue]]))).toEqual(flowerSwatches.blue);
   });
 
   it("finds a plant's family from its linked planting record, then from its type name", () => {
@@ -162,10 +235,18 @@ describe("crop-family plant colours", () => {
     expect(allocationCropFamily({ label: "Bed 1", plantType: "Bush bean" })).toBe("legume");
     expect(allocationCropFamily({ label: "番茄" })).toBe("nightshade");
     expect(allocationCropFamily({ label: "Cherry", plantType: " ", variety: "Sun Gold" })).toBe("nightshade");
+    expect(allocationCropFamily({ label: "Basil" })).toBe("other");
   });
 
-  it("lists only the families in view, in the standard order", () => {
-    expect(familiesInView(["other", "legume", "nightshade", "legume"])).toEqual(["nightshade", "legume", "other"]);
-    expect(familiesInView([])).toEqual([]);
+  it("lists the plants in view once each, grouped by crop family and then by name", () => {
+    expect(plantsInView([
+      { label: "Marigold" }, { label: "Tomato" }, { label: "Lettuce" }, { label: "tomato" }, { label: "Bed", plantType: "Eggplant" },
+    ])).toEqual([
+      { key: "eggplant", name: "Eggplant" },
+      { key: "tomato", name: "Tomato" },
+      { key: "lettuce", name: "Lettuce" },
+      { key: "marigold", name: "Marigold" },
+    ]);
+    expect(plantsInView([])).toEqual([]);
   });
 });

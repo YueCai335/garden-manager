@@ -66,6 +66,15 @@ export function knownPlantType(name: string | undefined) {
   return plantAppearanceDefaults.find(({ aliases }) => (aliases as readonly string[]).includes(normalized))?.name;
 }
 
+/**
+ * The known plant type a name contains ("Cherry tomato" -> "Tomato"), by the same
+ * substring match defaultPlantColor uses; undefined when no known type matches.
+ */
+export function inferPlantType(plantType: string, variety = "") {
+  const normalized = `${plantType} ${variety}`.trim().toLowerCase();
+  return plantAppearanceDefaults.find(({ aliases }) => aliases.some((alias) => normalized.includes(alias)))?.name;
+}
+
 export function defaultPlantColor(plantType: string, variety = "") {
   const normalized = `${plantType} ${variety}`.trim().toLowerCase();
   return plantAppearanceDefaults.find(({ aliases }) => aliases.some((alias) => normalized.includes(alias)))?.color ?? fallbackPlantColors[colorIndex(normalized)];

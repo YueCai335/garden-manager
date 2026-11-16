@@ -11,7 +11,7 @@ import { useAnimatedViewport } from "@/hooks/useAnimatedViewport";
 import { useCoarsePointer } from "@/hooks/useCoarsePointer";
 import { areaKindDefaults, overlappingAreas, resizedAreaSize } from "@/lib/areaPlacement";
 import { canvasToMetres, canvasGridTicks, fitCanvas, insetViewport, metresToCanvas, noInsets, overlayInsets, type CanvasInsets, type CanvasTransform, type OverlayCorner } from "@/lib/canvasViewport";
-import { allocationCropFamily, areaAppearance, areaLabelPosition, areaSizeText, cropFamilyColor, cropFamilyLegendLabels, familiesInView, isRectangularLayout, planColors, plantingFamilies, ridgeLine } from "@/lib/planAppearance";
+import { areaAppearance, areaLabelPosition, areaSizeText, gardenPlantColors, isRectangularLayout, planColors, plantColor, plantingFamilies, plantsInView, ridgeLine } from "@/lib/planAppearance";
 import { PLANT_LABEL_HEIGHT, placePlantLabels, type Box, type PlantCircle, type PlantGroup } from "@/lib/plantLabels";
 import { areaLocalToPlan, isInsideArea, planToAreaLocal } from "@/lib/planGeometry";
 import { plantCenterInArea, plantWarnings } from "@/lib/plantLayout";
@@ -554,11 +554,16 @@ function GardenPlanCanvas({
   // The area the view zooms to; "Whole garden" keeps the area open but frames everything.
   const focusedArea = frameWholeGarden ? undefined : openArea;
   const measuredAreas = growingAreas.filter((area) => area.layout);
-  // Crop-family colours (ADR-0073 S4): a linked planting record's family, else the family the name implies.
+  // Plant colours (ADR-0076): one per plant type across the whole garden, so the canvas,
+  // its legend, and the thumbnail agree. A plant being placed counts, so its preview
+  // already shows the colour it will keep.
   const recordFamilies = plantingFamilies(plantings);
-  const familyOf = (allocation: Parameters<typeof allocationCropFamily>[0]) => allocationCropFamily(allocation, recordFamilies);
-  // The legend lists the families in view: the zoomed area's, or the whole garden's.
-  const legendFamilies = compact ? [] : familiesInView((focusedArea ? [focusedArea] : measuredAreas).flatMap((area) => area.layout!.allocations.map(familyOf)));
+  const placingPlant = planting && openArea?.id === planting.areaId ? planting.placing : undefined;
+  const gardenAllocations = measuredAreas.flatMap((area) => area.layout!.allocations);
+  const plantColors = gardenPlantColors(placingPlant ? [...gardenAllocations, placingPlant] : gardenAllocations, recordFamilies);
+  const colorOf = (allocation: Parameters<typeof plantColor>[0]) => plantColor(allocation, plantColors, recordFamilies);
+  // The legend lists the plants in view: the zoomed area's, or the whole garden's.
+  const legendPlants = compact ? [] : plantsInView((focusedArea ? [focusedArea] : measuredAreas).flatMap((area) => area.layout!.allocations), recordFamilies);
   const [fontFamily, setFontFamily] = useState<string>();
   useEffect(() => {
     // Konva draws text itself, so it needs the page's font by name once the font has loaded.
@@ -570,7 +575,7 @@ function GardenPlanCanvas({
   }, []);
   // Floating layers reserve bands along the canvas edges; framing keeps the garden or area clear of them.
   const stageRef = useRef<HTMLDivElement>(null);
-  const insets = useOverlayInsets(stageRef, floating && !compact, [overlays?.toolbar, overlays?.zoom, legendFamilies.length]);
+  const insets = useOverlayInsets(stageRef, floating && !compact, [overlays?.toolbar, overlays?.zoom, legendPlants.length]);
   const framePadding = compact ? 12 : 34;
   // The size step frames the whole garden with room past its far edges, so the corner can be dragged outwards.
   const room = Math.max(1, Math.max(plan.widthMeters, plan.depthMeters) * 0.4);
@@ -666,11 +671,11 @@ function GardenPlanCanvas({
     : openArea ? `Viewing ${openArea.name}. Drag it to move it, or drag its corner to resize it. Escape returns to the whole garden.`
     : "Click an area to open it, or drag it to move it. Escape cancels a move.";
 
-  const legend = legendFamilies.length > 0 ? <div className={`${canvasStyles.legend}${floating ? ` ${canvasStyles.glass} ${canvasStyles.layer}` : ""}`} data-corner={floating ? "bottom-left" : undefined} data-testid="plan-legend">
-    <span className={canvasStyles.legendTitle} id="plan-legend-title">Crop family</span>
-    <ul aria-labelledby="plan-legend-title">{legendFamilies.map((family) => {
-      const colors = cropFamilyColor(family);
-      return <li key={family}><span aria-hidden="true" className={canvasStyles.legendDot} style={{ background: colors.fill, borderColor: colors.stroke }} />{cropFamilyLegendLabels[family]}</li>;
+  const legend = legendPlants.length > 0 ? <div className={`${canvasStyles.legend}${floating ? ` ${canvasStyles.glass} ${canvasStyles.layer}` : ""}`} data-corner={floating ? "bottom-left" : undefined} data-testid="plan-legend">
+    <span className={canvasStyles.legendTitle} id="plan-legend-title">Plants</span>
+    <ul aria-labelledby="plan-legend-title">{legendPlants.map((plant) => {
+      const colors = plantColors.get(plant.key);
+      return <li key={plant.key}><span aria-hidden="true" className={canvasStyles.legendDot} style={{ background: colors?.fill, borderColor: colors?.stroke }} />{plant.name}</li>;
     })}</ul>
   </div> : null;
 
@@ -827,7 +832,7 @@ function GardenPlanCanvas({
               const editablePlant = plantingArea?.id === area.id;
               const selectedPlant = editablePlant && planting?.selectedPlantId === allocation.id;
               const warned = editablePlant && (warnings?.crowdedIds.has(allocation.id) || warnings?.pastEdgeIds.has(allocation.id));
-              const colors = cropFamilyColor(familyOf(allocation));
+              const colors = colorOf(allocation);
               // Thumbnails keep every plant visible, however small its spacing is at that scale.
               const radius = Math.max((allocation.diameterMeters * scale) / 2, compact ? THUMBNAIL_PLANT_RADIUS : 0);
               return <Group key={allocation.id}>
@@ -940,7 +945,7 @@ function GardenPlanCanvas({
             {placing && ghost && plantingArea?.id === area.id && <Circle
               data-testid="placement-preview"
               dash={[5, 3]}
-              fill={cropFamilyColor(familyOf({ label: placing.label, plantType: placing.plantType, variety: placing.variety })).fill}
+              fill={colorOf(placing).fill}
               listening={false}
               opacity={0.6}
               radius={(placing.diameterMeters * scale) / 2}

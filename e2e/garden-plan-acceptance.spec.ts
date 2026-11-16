@@ -90,9 +90,9 @@ for (const viewport of viewports) {
       await expectNoSideScroll(page);
 
       // Opening an area zooms the same canvas; plants go straight onto it.
-      // The legend names the crop families in view.
-      await expect(page.getByTestId("plan-legend")).toContainText("Crop family");
-      await expect(page.getByTestId("plan-legend")).toContainText("Nightshade");
+      // The legend names the plants in view (ADR-0076).
+      await expect(page.getByTestId("plan-legend")).toContainText("Plants");
+      await expect(page.getByTestId("plan-legend")).toContainText("Tomato");
       await page.getByRole("link", { name: "Edit Sample raised bed" }).click();
       await expect(surface).toHaveAttribute("data-focused-area", "demo-raised-bed");
       await expect(surface).toHaveAttribute("data-zooming", "false");
@@ -102,8 +102,8 @@ for (const viewport of viewports) {
       await page.getByLabel("Plant type", { exact: true }).fill("Lettuce");
       await page.getByRole("button", { name: "Fill area", exact: true }).click();
       await expect(page.getByText(/^Placed \d+ Lettuce\. Undo removes them\.$/)).toBeVisible();
-      // Lettuce is a leafy green, so the legend gains that family; the area stays clear of the layers.
-      await expect(page.getByTestId("plan-legend")).toContainText("Leafy green");
+      // The legend gains Lettuce; the area stays clear of the layers.
+      await expect(page.getByTestId("plan-legend")).toContainText("Lettuce");
       await expectSelectedAreaClear(page, "Sample raised bed", floating);
       await surface.scrollIntoViewIfNeeded();
       await shot("02-zoomed-area");

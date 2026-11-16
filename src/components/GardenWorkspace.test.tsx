@@ -2,7 +2,7 @@ import { act, fireEvent, render, screen, waitFor, within } from "@testing-librar
 import { resetTestRouter, testRouter } from "@/test/router";
 import { careLocationPath, seasonGardenPath } from "@/lib/workspaceRoutes";
 import { testLayout, testMediaMatches } from "@/test/layout";
-import { cropFamilyColors } from "@/lib/planAppearance";
+import { plantSwatches } from "@/lib/planAppearance";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -1565,12 +1565,12 @@ describe("GardenWorkspace", () => {
     expect(areaInspectorForm().queryByRole("button", { name: "Save" })).not.toBeInTheDocument();
   });
 
-  it("zooms Garden Plan into an opened area, draws plants in their crop family's colours, and zooms out without closing it", async () => {
+  it("zooms Garden Plan into an opened area, draws each plant type in its own colour, and zooms out without closing it", async () => {
     const user = userEvent.setup();
     await loadDemo(user);
     await openSelectedGarden();
     expect(screen.queryByRole("button", { name: "Whole garden" })).not.toBeInTheDocument();
-    expect(screen.getByText("Tomato")).toBeInTheDocument();
+    expect(screen.getByTestId("plant-label-demo-raised-bed:tomato")).toHaveTextContent("Tomato");
     // A planted area is named by its plants until it is opened.
     expect(screen.queryByTestId("area-label-demo-raised-bed")).not.toBeInTheDocument();
     await user.click(screen.getByLabelText("Open Sample raised bed on Garden Plan"));
@@ -1582,12 +1582,12 @@ describe("GardenWorkspace", () => {
     expect(screen.getByLabelText("Open Sample raised bed on Garden Plan")).toHaveAttribute("opacity", "1");
     expect(screen.getByLabelText("Open Sample in-ground area on Garden Plan")).toHaveAttribute("opacity", "0.35");
     expect(screen.queryByTestId("area-label-demo-in-ground-area")).not.toBeInTheDocument();
-    // ADR-0073 S4: the canvas colours plants by crop family, and the plant panel has no colour picker.
-    expect(screen.getByLabelText("Tomato plant on Garden Plan")).toHaveAttribute("fill", cropFamilyColors.nightshade.fill);
+    // ADR-0076: the canvas gives each plant type its own colour, and the plant panel has no colour picker.
+    expect(screen.getByLabelText("Tomato plant on Garden Plan")).toHaveAttribute("fill", plantSwatches.red.fill);
     fireEvent.click(screen.getByLabelText("Tomato plant on Garden Plan"));
     expect(screen.getByLabelText("Plant type")).toHaveValue("Tomato");
     expect(screen.queryByLabelText("Plant color")).not.toBeInTheDocument();
-    expect(within(screen.getByTestId("plan-legend")).getByText("Nightshade")).toBeInTheDocument();
+    expect(within(screen.getByTestId("plan-legend")).getByText("Tomato")).toBeInTheDocument();
     // Whole garden only zooms out: the area and its panel stay open.
     await user.click(screen.getByRole("button", { name: "Whole garden" }));
     expect(window.location.search).toBe("?area=demo-raised-bed");
