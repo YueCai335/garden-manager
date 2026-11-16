@@ -1,6 +1,8 @@
 # ADR-0077: Show Three Real Gardens as the Demo
 
-- Status: Accepted on 2026-11-16 and implemented on 2026-11-16.
+- Status: Accepted on 2026-11-16 and implemented on 2026-11-16. Amended on
+  2026-11-16: a saved workspace swaps the old sample demo for the showcase
+  when it opens.
 - Date: 2026-11-16
 - Related:
   - [ADR-0040](0040-use-vercel-render-and-supabase-for-the-portfolio-demo.md):
@@ -58,8 +60,22 @@ and its evaluations after the site redesign is finished, not now.
     `createSampleGardenWorkspace()` directly, because the variable reaches only
     the app server, not the Playwright process. The showcase has its own unit
     and UI tests.
-- Workspaces that already contain the old "Demo Garden" keep it; it is the
-  user's data now.
+- **Swapping the old demo (amended 2026-11-16).** When a saved workspace
+  opens, from the browser or the server, `replaceLegacyDemoGarden` removes
+  the old sample garden (`demo-garden`):
+  - A workspace that holds only demo gardens becomes the showcase, with its
+    care. It is the old demo, and its visitor would otherwise see only the
+    old garden with no way to load the new one: "Load demo garden" appears
+    only in an empty workspace, and "Demo garden" only beside the user's own
+    gardens.
+  - A workspace with gardens of the user's own loses only the sample garden.
+    "Demo garden" adds the showcase when they want it.
+  - The swap saves like any edit. It does nothing while
+    `NEXT_PUBLIC_DEMO_FIXTURE=sample`.
+
+  The first version kept the old garden as the user's data. In practice,
+  every returning visitor was stuck on the old demo, so the owner chose the
+  automatic swap. Edits a visitor made to the old sample garden are lost.
 
 ## Why This Option
 
@@ -96,6 +112,8 @@ would show as overdue.
   tests check its structure, dates, links, and loading from the demo button.
 - Updating the showcase means editing `demoGardenData.ts`, for example by
   copying the owner's gardens again.
+- After the swap, no workspace holds `demo-garden`, so the public AI paths
+  have no garden to draft for until the AI redo.
 
 ## Reconsideration
 

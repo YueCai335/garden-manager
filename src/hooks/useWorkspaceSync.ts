@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type SetStateAction } from "react";
 
-import { createId, GARDEN_WORKSPACE_STORAGE_KEY, readGardenWorkspace, type GardenWorkspace } from "@/lib/gardenWorkspace";
+import { createId, GARDEN_WORKSPACE_STORAGE_KEY, readGardenWorkspace, replaceLegacyDemoGarden, type GardenWorkspace } from "@/lib/gardenWorkspace";
 import { importServerWorkspace, loadServerWorkspace, saveServerWorkspace, ServerWorkspaceError, type ServerWorkspace } from "@/lib/gardenWorkspaceApi";
 
 export const SERVER_WORKSPACE_STORAGE_KEY = "sun-aware-garden-planner:server-workspace-id:v1";
@@ -89,7 +89,8 @@ export function useWorkspaceSync() {
             serverRevisionRef.current = revision;
             queuedServerWorkspaceRef.current = JSON.stringify(restored);
             setConfirmedSnapshot(queuedServerWorkspaceRef.current);
-            setWorkspace(restored);
+            // A swapped old demo differs from the confirmed copy, so it saves like any edit.
+            setWorkspace(replaceLegacyDemoGarden(restored));
             setStorageError("");
           } catch (error) {
             if (!active) return;
@@ -118,7 +119,7 @@ export function useWorkspaceSync() {
         setStorageSource("browser");
         setServerWorkspaceId(undefined);
         setStorageError("");
-        if (restored) setWorkspace(restored);
+        if (restored) setWorkspace(replaceLegacyDemoGarden(restored));
         else if (saved) setRestoreError("Saved garden data could not be read. Keep this browser's data and try again.");
       } catch {
         if (active) setStorageError("This browser's storage is unavailable. Keep this page open while you work.");
