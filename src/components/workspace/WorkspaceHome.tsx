@@ -6,7 +6,7 @@ import { GardenPlanOverview } from "@/components/GardenPlanOverview";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { careEventForTask, completeCareTask, undoCareTaskCompletion, updateCareOwner } from "@/lib/careViews";
-import { createId, plantDisplayName, todayDate, type Garden } from "@/lib/gardenWorkspace";
+import { createId, isDemoGardenId, plantDisplayName, todayDate, type Garden } from "@/lib/gardenWorkspace";
 import { homeTasks, type HomeCompletion, type HomeTaskRow } from "@/lib/homeTasks";
 import { gardenPath } from "@/lib/workspaceRoutes";
 import { OverviewNoteEntry } from "./AppShell";
@@ -96,8 +96,8 @@ export function WorkspaceHome({ onOpenDemoGarden, onboarding }: { onOpenDemoGard
   // Ticks from this visit; each can be unticked until the page is left (ADR-0073).
   const [completions, setCompletions] = useState<HomeCompletion[]>([]);
   const allGardens = workspace?.gardens ?? [];
-  const hasPersonalGardens = allGardens.some((garden) => garden.id !== "demo-garden");
-  const gardens = hasPersonalGardens ? allGardens.filter((garden) => garden.id !== "demo-garden") : allGardens;
+  const hasPersonalGardens = allGardens.some((garden) => !isDemoGardenId(garden.id));
+  const gardens = hasPersonalGardens ? allGardens.filter((garden) => !isDemoGardenId(garden.id)) : allGardens;
   const tasks = workspace ? homeTasks(workspace, todayDate(), completions) : undefined;
   const tick = (row: HomeTaskRow) => {
     const { task, owner } = row;

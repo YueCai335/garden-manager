@@ -4,7 +4,7 @@ import { careLocationPath, seasonGardenPath } from "@/lib/workspaceRoutes";
 import { testLayout, testMediaMatches } from "@/test/layout";
 import { plantSwatches } from "@/lib/planAppearance";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { GrowingAreaLayoutEditor } from "@/components/GrowingAreaLayoutEditor";
 import { GardenWorkspace } from "@/test/WorkspaceHarness";
@@ -1349,6 +1349,48 @@ describe("GardenWorkspace", () => {
     await user.click(screen.getByRole("link", { name: "All gardens" }));
     expect(screen.getByRole("link", { name: "Open Back garden" })).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Open Demo Garden" })).not.toBeInTheDocument();
+  });
+
+  describe("showcase demo (ADR-0077)", () => {
+    beforeEach(() => vi.stubEnv("NEXT_PUBLIC_DEMO_FIXTURE", ""));
+    afterEach(() => vi.unstubAllEnvs());
+
+    it("loads three gardens with their plants and care", async () => {
+      const user = userEvent.setup();
+      await loadDemo(user);
+      for (const name of ["Backyard", "Community Garden", "Front Yard"])
+        expect(await screen.findByRole("link", { name: `Open ${name}` })).toBeInTheDocument();
+      expect(screen.getByText("Your gardens")).toHaveTextContent("(3)");
+      expect(screen.getByText("Fertilize all gardens")).toBeInTheDocument();
+      await user.click(screen.getByRole("link", { name: "Open Front Yard" }));
+      await screen.findByRole("heading", { name: "Garden Plan" });
+      expect(screen.getAllByLabelText("Marigold plant on Garden Plan")).toHaveLength(18);
+      expect(screen.getAllByLabelText("Panicle hydrangea plant on Garden Plan")).toHaveLength(3);
+    });
+
+    it("adds all three gardens beside a personal garden and opens Backyard", async () => {
+      const user = userEvent.setup();
+      const workspace = createGardenWorkspace("Back garden");
+      window.localStorage.setItem(GARDEN_WORKSPACE_STORAGE_KEY, JSON.stringify(workspace));
+
+      render(<GardenWorkspace />);
+      await user.click(await screen.findByRole("button", { name: "Demo garden" }));
+      expect(screen.getByRole("heading", { name: "Garden Plan" })).toBeInTheDocument();
+      await waitFor(() => expect(JSON.parse(window.localStorage.getItem(GARDEN_WORKSPACE_STORAGE_KEY) ?? "{}")).toMatchObject({
+        selectedGardenId: "demo-backyard",
+        // The demo's workspace-wide care stays out of the user's workspace.
+        careTasks: [],
+        gardens: [
+          expect.objectContaining({ name: "Back garden" }),
+          expect.objectContaining({ id: "demo-backyard" }),
+          expect.objectContaining({ id: "demo-community-garden" }),
+          expect.objectContaining({ id: "demo-front-yard" }),
+        ],
+      }));
+      await user.click(screen.getByRole("link", { name: "All gardens" }));
+      expect(screen.getByRole("link", { name: "Open Back garden" })).toBeInTheDocument();
+      expect(screen.queryByRole("link", { name: "Open Backyard" })).not.toBeInTheDocument();
+    });
   });
 
   it("saves Demo Garden removal from a multi-garden PostgreSQL workspace", async () => {

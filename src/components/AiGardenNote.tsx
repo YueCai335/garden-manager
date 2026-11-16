@@ -7,7 +7,7 @@ import { useGardenNoteDraft, targetValue } from "@/hooks/useGardenNoteDraft";
 import { isCalendarDate } from "@/lib/careRecords";
 
 import { WorkspaceNoteEntry } from "@/components/workspace/WorkspaceNoteEntry";
-import { createDemoGardenWorkspace, type CareEventTargetScope, type CareEventType, type Garden } from "@/lib/gardenWorkspace";
+import { createSampleGardenWorkspace, type CareEventTargetScope, type CareEventType, type Garden } from "@/lib/gardenWorkspace";
 import { AI_CARE_NOTE_MAX_LENGTH, type AiCareNoteDraft } from "@/lib/gardenWorkspaceApi";
 import { PortfolioFeatureLoading, PortfolioFeaturePreview } from "@/components/PortfolioFeaturePreview";
 import { BatchGardenNote } from "@/components/notes/BatchGardenNote";
@@ -279,7 +279,8 @@ export function AiGardenNote({
  * garden: same ID, name, and planting area as the demo snapshot the server used.
  */
 function matchesDemoSnapshot(draft: AiCareNoteDraft, garden: Garden) {
-  const [snapshot] = createDemoGardenWorkspace().gardens;
+  // The public AI path still runs on the sample garden until the AI redo (ADR-0077).
+  const [snapshot] = createSampleGardenWorkspace().gardens;
   if (garden.id !== "demo-garden") return false;
   if (draft.targetScope === "garden") return true;
   if (draft.targetScope === "planting-area") {
