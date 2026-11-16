@@ -596,13 +596,12 @@ function GardenPlanCanvas({
   // An area with plants is named by its plants; only empty areas and the open area show their own name.
   const namedByArea = ({ area }: { area: GrowingArea }) => area.layout!.allocations.length === 0 || area.id === selectedAreaId;
   // While zoomed, only the focused area keeps its name so neighbours' labels never cover its plants.
-  // A thumbnail answers "what is growing": once anything is planted it names plants only.
-  const anyPlanted = measuredAreas.some((area) => area.layout!.allocations.length > 0);
-  const labels = compact ? (anyPlanted ? [] : fitThumbnailLabels(areaLabels, width, height, offsetX, offsetY))
+  // A thumbnail carries no text: its card lists what is growing, and the plan names everything.
+  const labels = compact ? []
     : areaLabels.filter((label) => namedByArea(label) && (!focusedArea || label.area.id === focusedArea.id));
   const dimmed = (area: GrowingArea) => Boolean(focusedArea && area.id !== focusedArea.id);
   const plantingArea = planting && openArea?.id === planting.areaId ? openArea : undefined;
-  const plantLabels = !transform ? [] : groupLabels({
+  const plantLabels = !transform || compact ? [] : groupLabels({
     areas: focusedArea ? [focusedArea] : measuredAreas,
     allAreas: measuredAreas,
     // An area or plant being moved redraws its labels when it lands.
@@ -615,12 +614,9 @@ function GardenPlanCanvas({
         return { left, top: sizeY, right: left + sizeWidth, bottom: sizeY + 16 };
       }),
     ],
-    // Thumbnails draw in a layer shifted by the centring offset, with a 4 px margin.
-    bounds: compact ? { left: 4 - offsetX, top: 4 - offsetY, right: width - offsetX - 4, bottom: height - offsetY - 4 }
-      : { left: insets.left, top: insets.top, right: width - insets.right, bottom: height - insets.bottom },
+    bounds: { left: insets.left, top: insets.top, right: width - insets.right, bottom: height - insets.bottom },
     toCanvas: (point) => ({ x: padding + (point.x - viewport.x) * scale, y: padding + (point.y - viewport.y) * scale }),
     scale,
-    minRadius: compact ? THUMBNAIL_PLANT_RADIUS : 0,
   });
   const warnings = plantingArea?.layout ? plantWarnings(plantingArea.layout) : undefined;
   const placing = plantingArea ? planting?.placing : undefined;
@@ -1123,7 +1119,7 @@ function useOverlayInsets(stageRef: RefObject<HTMLDivElement | null>, enabled: b
  * canvas pixels so it reads upright whatever the area's rotation. Circles of every
  * drawn area count as obstacles, so a label never covers a plant (ADR-0072 G1).
  */
-function groupLabels({ areas, allAreas, hidden, obstacles, bounds, toCanvas, scale, minRadius = 0 }: {
+function groupLabels({ areas, allAreas, hidden, obstacles, bounds, toCanvas, scale }: {
   areas: GrowingArea[];
   allAreas: GrowingArea[];
   hidden: Set<string>;
@@ -1131,11 +1127,10 @@ function groupLabels({ areas, allAreas, hidden, obstacles, bounds, toCanvas, sca
   bounds: Box;
   toCanvas: (point: LayoutPoint) => LayoutPoint;
   scale: number;
-  minRadius?: number;
 }) {
   const circleOf = (area: GrowingArea, allocation: { x: number; y: number; diameterMeters: number }): PlantCircle => ({
     ...toCanvas(areaLocalToPlan(area, allocation)),
-    radius: Math.max((allocation.diameterMeters * scale) / 2, minRadius),
+    radius: (allocation.diameterMeters * scale) / 2,
   });
   const circles = allAreas.flatMap((area) => area.layout!.allocations.map((allocation) => circleOf(area, allocation)));
   const groups: PlantGroup[] = areas.filter((area) => !hidden.has(area.id)).flatMap((area) => {
@@ -1198,29 +1193,4 @@ function isTouchEvent(event: Event | undefined) {
 function setCursor(event: KonvaEventObject<MouseEvent>, cursor: string) {
   const container = event.target?.getStage?.()?.container();
   if (container) container.style.cursor = cursor;
-}
-
-function fitThumbnailLabels(
-  areas: ({ area: GrowingArea } & ReturnType<typeof areaLabelPosition>)[],
-  width: number,
-  height: number,
-  offsetX: number,
-  offsetY: number,
-) {
-  const placed: { area: GrowingArea; x: number; y: number; width: number }[] = [];
-  const occupied = areas.map(({ left, right, top, bottom }) => ({ left, right, top, bottom }));
-  for (const { area, left, right, top, bottom } of areas) {
-    const textWidth = Array.from(area.name).reduce((pixels, character) => pixels + (character.charCodeAt(0) < 128 ? 8 : 12), 4);
-    const labelWidth = Math.min(width - 8, 100, textWidth);
-    const x = Math.max(4 - offsetX, Math.min((left + right - labelWidth) / 2, width - offsetX - labelWidth - 4));
-    const y = [top - 19, bottom + 3, top - 37, bottom + 21].find((candidate) =>
-      candidate + offsetY >= 4 && candidate + offsetY + 16 <= height - 4 &&
-      !occupied.some((box) => x < box.right && x + labelWidth > box.left && candidate < box.bottom && candidate + 16 > box.top),
-    );
-    // Dense thumbnails omit labels that do not fit; the full plan lists all areas.
-    if (y === undefined) continue;
-    occupied.push({ left: x, right: x + labelWidth, top: y, bottom: y + 16 });
-    placed.push({ area, x, y, width: labelWidth });
-  }
-  return placed;
 }

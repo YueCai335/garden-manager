@@ -110,14 +110,14 @@ describe("GardenWorkspace", () => {
     expect(screen.getByRole("navigation", { name: "Workspace sections" })).toBeInTheDocument();
   });
 
-  it("puts a short Today strip above the Overview, keeps the note action, and keeps navigation in the header", async () => {
+  it("puts Care to do before the gardens, keeps the note action, and keeps navigation in the header", async () => {
     const user = userEvent.setup();
     await loadDemo(user);
 
     const gallery = screen.getByRole("region", { name: /Your gardens/ });
-    const today = screen.getByRole("region", { name: "Today" });
+    const today = screen.getByRole("region", { name: "Care to do" });
     expect(today.compareDocumentPosition(gallery) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(within(today).getByRole("link", { name: /Open Care|Add a care task/ })).toHaveAttribute("href", "/care?view=tasks");
+    expect(within(today).getByRole("link", { name: /All tasks|Add a care task/ })).toHaveAttribute("href", "/care?view=tasks");
     expect(screen.queryByRole("complementary", { name: "Care tasks" })).not.toBeInTheDocument();
     expect(within(gallery).getByRole("link", { name: "Open Demo Garden" })).toHaveAccessibleDescription(expect.stringContaining("Growing now:"));
     const card = screen.getByRole("region", { name: "AI Garden Notes" });

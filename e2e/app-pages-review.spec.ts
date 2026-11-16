@@ -73,7 +73,7 @@ for (const [width, height] of [[1440, 900], [390, 844]]) {
     test.setTimeout(120_000);
     await page.setViewportSize({ width, height });
     await openWorkspace(page);
-    await expect(page.getByRole("region", { name: "Today" })).toBeVisible();
+    await expect(page.getByRole("region", { name: "Care to do" })).toBeVisible();
     for (const { path, heading } of pages) {
       await page.goto(path);
       await expect(page.getByRole("heading", { level: 1, name: heading, exact: typeof heading === "string" })).toBeVisible();

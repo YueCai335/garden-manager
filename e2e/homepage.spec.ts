@@ -10,14 +10,17 @@ for (const [width, height, columns] of [[320, 844, 1], [390, 844, 2], [768, 1024
     await page.route("**/ai/**", (route) => route.abort());
     await openWorkspace(page);
     const note = page.getByRole("region", { name: "AI Garden Notes" });
-    await expect(note).toBeInViewport();
+    // From 1024 px the note box sits beside the gardens; narrower screens put it after them.
+    const sideColumn = width >= 1024;
+    if (sideColumn) await expect(note).toBeInViewport();
+    await expect(page.getByRole("banner").getByRole("button", { name: "Note", exact: true })).toBeVisible();
     await expect(page.getByRole("banner").getByRole("textbox", { name: "Quick garden note" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Create garden" })).toBeVisible();
     await page.screenshot({ path: testInfo.outputPath(`home-empty-${width}.png`) });
     await page.getByRole("button", { name: "Load demo garden" }).click();
     const demo = page.getByRole("link", { name: "Open Demo Garden" });
     await expect(demo.locator("canvas").first()).toBeVisible();
-    await expect(note).toBeInViewport();
+    if (sideColumn) await expect(note).toBeInViewport();
     await page.screenshot({ path: testInfo.outputPath(`home-one-${width}.png`), fullPage: true });
 
     const workspace = createDemoGardenWorkspace();
@@ -42,17 +45,29 @@ for (const [width, height, columns] of [[320, 844, 1], [390, 844, 2], [768, 1024
     })).toBe(true);
     await expect(frontCard).toHaveAccessibleDescription(/Growing now:/);
     await expect(gallery.getByText(/1 needs a size/)).toBeVisible();
-    await expect(note).toBeInViewport();
-    // ADR-0073: a short Today strip above the gardens; the full list lives in Care.
-    const todayStrip = page.getByRole("region", { name: "Today" });
+    if (sideColumn) await expect(note).toBeInViewport();
+    // ADR-0073 (amended 2026-11-16): "Care to do" and AI Garden Notes stack in a column right of the gardens;
+    // narrow screens read Care to do, the gardens, then the note box. The full task list lives in Care.
+    const todayStrip = page.getByRole("region", { name: "Care to do" });
     const noteBox = (await note.boundingBox())!;
     const todayBox = (await todayStrip.boundingBox())!;
+    const galleryBox = (await gallery.boundingBox())!;
     expect(noteBox.height).toBeGreaterThanOrEqual(80);
     expect(todayBox.y + todayBox.height).toBeLessThanOrEqual(noteBox.y);
-    expect(todayBox.y + todayBox.height).toBeLessThanOrEqual((await gallery.boundingBox())!.y);
-    await expect(todayStrip.getByText("All gardens", { exact: true })).toHaveCount(3);
-    await expect(todayStrip.getByText("1 overdue · 1 due today · 1 in the next 7 days")).toBeVisible();
-    await expect(todayStrip.getByRole("link", { name: "Open Care" })).toHaveAttribute("href", "/care?view=tasks");
+    if (sideColumn) {
+      expect(todayBox.x).toBeGreaterThanOrEqual(galleryBox.x + galleryBox.width);
+      expect(noteBox.x).toBe(todayBox.x);
+      expect(galleryBox.width).toBeGreaterThan(todayBox.width * 2);
+    } else {
+      expect(todayBox.y + todayBox.height).toBeLessThanOrEqual(galleryBox.y);
+      expect(galleryBox.y + galleryBox.height).toBeLessThanOrEqual(noteBox.y);
+    }
+    for (const [group, count] of [["Overdue", 1], ["Today", 1], ["Coming up", 1]] as const)
+      await expect(todayStrip.getByRole("list", { name: group }).getByText("Water all gardens", { exact: true })).toHaveCount(count);
+    await expect(todayStrip.getByText("Due yesterday")).toBeVisible();
+    await expect(todayStrip.getByRole("checkbox")).toHaveCount(2);
+    await expect(todayStrip.getByText("0 of 2 done")).toBeVisible();
+    await expect(todayStrip.getByRole("link", { name: "All tasks" })).toHaveAttribute("href", "/care?view=tasks");
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     const boxes = await cards.evaluateAll((elements) => elements.map((element) => ({ x: element.getBoundingClientRect().x, y: element.getBoundingClientRect().y })));
     expect(new Set(boxes.map((box) => box.x)).size).toBe(columns);
@@ -101,7 +116,7 @@ test("eight gardens with long names reflow at 320px and remain reachable", async
   const lastCard = gallery.getByRole("link", { name: `Open ${englishName}`, exact: true });
   await lastCard.scrollIntoViewIfNeeded();
   await expect(lastCard).toBeInViewport();
-  await expect(page.getByRole("region", { name: "Today" }).getByText(englishName, { exact: true })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Care to do" }).getByText(`Water ${englishName}`, { exact: true })).toBeVisible();
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
   await page.screenshot({ path: testInfo.outputPath("eight-gardens-320.png"), fullPage: true });
 

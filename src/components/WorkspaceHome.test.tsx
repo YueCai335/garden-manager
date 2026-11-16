@@ -44,6 +44,25 @@ describe("overview garden gallery and note entry", () => {
     expect(within(gallery).getAllByRole("link", { name: /^Open / })).toHaveLength(2);
   });
 
+  it("ticks a task off in Care to do, keeps it struck through, and unticks it (ADR-0073)", async () => {
+    const { workspace } = seed();
+    workspace.careTasks = [];
+    workspace.gardens.forEach((garden) => { garden.careTasks = []; });
+    workspace.gardens[0].careTasks = [{ id: "water-front", type: "watering", dueDate: todayDate(), targetScope: "garden", note: "" }];
+    const user = userEvent.setup();
+    render(<GardenWorkspace />);
+    const box = await screen.findByRole("region", { name: "Care to do" });
+    const tick = within(box).getByRole("checkbox", { name: "Water Front garden" });
+    expect(tick).not.toBeChecked();
+    expect(within(box).getByText("0 of 1 done")).toBeVisible();
+    await user.click(tick);
+    expect(within(box).getByRole("checkbox", { name: "Water Front garden" })).toBeChecked();
+    expect(within(box).getByText("All done")).toBeVisible();
+    await user.click(within(box).getByRole("checkbox", { name: "Water Front garden" }));
+    expect(within(box).getByRole("checkbox", { name: "Water Front garden" })).not.toBeChecked();
+    expect(within(box).getByText("0 of 1 done")).toBeVisible();
+  });
+
   it("opens the note dialog without navigating and restores focus and text after Escape", async () => {
     const api = seed();
     const user = userEvent.setup();
