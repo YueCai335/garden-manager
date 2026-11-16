@@ -1,6 +1,10 @@
 .workbench { min-width: 0; }
-/* The wide layout floats the area panel over a full-width canvas (ADR-0073 S4). */
+/* The wide layout gives the open area's panel its own column beside the canvas, so it never covers the plan. */
 .plan { min-width: 0; }
+.planWithPanel { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px; align-items: stretch; }
+.sideColumn { position: relative; min-width: 0; }
+/* The panel runs the canvas height and scrolls inside it. */
+.sideColumn > .panel[data-mode] { position: absolute; inset: 0; height: 100%; max-height: none; }
 .planToolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 12px; }
 .planToolbar :global(.plan-view-controls) { margin: 0; }
 .summary { border: 1px solid var(--color-line); border-radius: var(--radius-card); background: var(--color-surface); }
@@ -29,14 +33,10 @@
 .panel[data-mode="mobile"] :is(input, select, textarea, button) { scroll-margin-top: 105px; }
 .properties { display: grid; gap: 16px; }
 .inspectorSectionHeading { margin: 0 0 12px; font-size: 16px; }
-.positionSteps { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-.positionSteps button { min-width: 44px; padding-inline: 8px; font-size: 18px; }
-.positionSteps span { color: var(--color-muted); font-size: 13px; }
 .detailsSummary { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
 .detailsSummary p { margin: 0; overflow-wrap: anywhere; }
-.settings { margin-top: 24px; padding: 16px; border: 1px solid var(--color-line); border-radius: var(--radius-card); }
-.settings summary { cursor: pointer; min-height: 44px; display: list-item; align-content: center; font-weight: 600; }
-.danger { border-top: 1px solid var(--color-line); padding-top: 16px; }
+.danger { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; margin-top: 8px; padding-top: 16px; border-top: 1px solid var(--color-line); }
+.danger p { margin: 0; color: var(--color-muted); font-size: 14px; }
 /* The zoomed area's planting controls below the canvas on narrower layouts (ADR-0072, G3). */
 .areaPanel { margin-top: 12px; padding: 12px; border: 1px solid var(--color-line); border-radius: var(--radius-card); background: var(--color-surface); min-width: 0; }
 .areaPanel > header { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 8px; }

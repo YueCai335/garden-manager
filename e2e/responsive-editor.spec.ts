@@ -4,7 +4,7 @@ import { createDemoGardenWorkspace, gardenPlanViewport, type GardenWorkspace } f
 import { openAreaProperties, planCanvas, planSurface, planTransform } from "./areaHelpers";
 import { openWorkspace } from "./workspace";
 
-// 820 px keeps the overlay editor; from 900 px the area panel floats over the canvas (ADR-0073 S4).
+// 820 px keeps the overlay editor; from 900 px the area panel sits in its own column beside the canvas.
 for (const width of [390, 820, 900, 1440]) {
   test(`garden details and area editing preserve context at ${width}px`, async ({ page }, testInfo) => {
     await page.route("**/ai/**", (route) => route.abort());
@@ -13,11 +13,11 @@ for (const width of [390, 820, 900, 1440]) {
     await page.getByRole("button", { name: "Load demo garden" }).click();
     await page.getByRole("link", { name: "Open Demo Garden" }).click();
     await expect(page.getByLabel("Garden name", { exact: true })).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "Delete garden", exact: true })).not.toBeVisible();
-    await page.getByText("Garden settings", { exact: true }).click();
-    await expect(page.getByRole("button", { name: "Delete garden", exact: true })).toBeVisible();
-    await page.getByText("Garden settings", { exact: true }).click();
+    // Delete garden sits at the bottom of the garden details form, not on the page.
+    await expect(page.getByRole("button", { name: "Delete garden", exact: true })).toHaveCount(0);
+    await expect(page.getByText("Garden settings", { exact: true })).toHaveCount(0);
     await page.getByRole("button", { name: "Edit garden details" }).click();
+    await expect(page.getByRole("button", { name: "Delete garden", exact: true })).toBeVisible();
     await page.getByLabel("Garden name", { exact: true }).fill("Kitchen garden");
     await page.getByLabel("Garden name", { exact: true }).press("Enter");
     await page.getByRole("button", { name: "Done", exact: true }).click();
@@ -45,7 +45,7 @@ for (const width of [390, 820, 900, 1440]) {
     } else if (width === 820) {
       await expect(panel).toHaveAttribute("aria-modal", "true");
       expect(await page.evaluate(() => document.body.style.overflow)).toBe("hidden");
-      const close = panel.getByRole("button", { name: "Close", exact: true });
+      const close = panel.getByRole("button", { name: "Done", exact: true });
       await close.focus();
       await page.keyboard.press("Shift+Tab");
       await expect(panel.getByRole("button", { name: "Delete area", exact: true })).toBeFocused();
@@ -57,13 +57,11 @@ for (const width of [390, 820, 900, 1440]) {
       }
     } else {
       await expect(panel).toHaveAttribute("data-mode", "wide");
-      // The panel floats inside the full-width canvas at its top right, 300 px wide.
+      // The panel sits beside the canvas, 320 px wide, and covers none of it.
       const canvasBox = (await planSurface(page).boundingBox())!;
       const panelBox = (await panel.boundingBox())!;
-      expect(Math.round(panelBox.width)).toBe(300);
-      expect(panelBox.x).toBeGreaterThan(canvasBox.x + canvasBox.width / 2);
-      expect(panelBox.x + panelBox.width).toBeLessThanOrEqual(canvasBox.x + canvasBox.width);
-      expect(panelBox.y).toBeGreaterThanOrEqual(canvasBox.y);
+      expect(Math.round(panelBox.width)).toBe(320);
+      expect(panelBox.x).toBeGreaterThanOrEqual(canvasBox.x + canvasBox.width);
     }
     // A valid value applies when focus leaves its field (ADR-0072, phase G5).
     await page.getByLabel("Area X position (m)").fill("2.34");
@@ -75,12 +73,13 @@ for (const width of [390, 820, 900, 1440]) {
     await page.screenshot({ path: testInfo.outputPath(`editor-${width}.png`), fullPage: true });
     await page.setViewportSize({ width: width === 390 ? 1440 : 390, height: 900 });
     await expect(page.getByLabel("Area Y position (m)")).toHaveValue("");
-    const back = panel.getByRole("button", { name: /^(Close|Back to plan)$/ });
+    const back = panel.getByRole("button", { name: "Done", exact: true });
     await back.click();
     await page.getByRole("button", { name: "Keep editing" }).click();
     await page.getByLabel("Area Y position (m)").fill("1.27");
     await page.getByLabel("Area Y position (m)").press("Enter");
-    await page.getByRole("button", { name: "Move right 0.1 m" }).click();
+    await page.getByLabel("Area X position (m)").fill("2.4");
+    await page.getByLabel("Area X position (m)").press("Enter");
     await expect(page.getByLabel("Area X position (m)")).toHaveValue("2.4");
     await expect(panel.getByRole("button", { name: "Save", exact: true })).toHaveCount(0);
     await back.click();
@@ -92,7 +91,8 @@ for (const width of [390, 820, 900, 1440]) {
       // Now a phone: closing the properties page returns to the zoomed area.
       await expect(page.getByRole("link", { name: "Edit area", exact: true })).toBeFocused();
       await expect(page).toHaveURL(/\?area=demo-raised-bed$/);
-      await page.getByRole("button", { name: "Whole garden" }).click();
+      await page.keyboard.press("Escape");
+      await expect(page).toHaveURL(/\/plan$/);
     }
     await expect(page.getByText("All changes saved", { exact: true })).toBeVisible();
     // "All changes saved" can still show from an earlier save; wait for the server copy before reloading.
@@ -131,7 +131,7 @@ test.describe("touch editing", () => {
     const panel = page.getByRole("region", { name: "Edit planting area" });
     await expect(panel).toHaveAttribute("data-mode", "mobile");
     await expect(panel.getByLabel("Planting-area name")).toHaveValue(area.name);
-    await panel.getByRole("button", { name: "Back to plan", exact: true }).tap();
+    await panel.getByRole("button", { name: "Done", exact: true }).tap();
     await expect(page).toHaveURL(/\?area=demo-raised-bed$/);
     await expect(selected).toBeVisible();
   });

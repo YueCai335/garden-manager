@@ -34,7 +34,7 @@ describe("responsive editor", () => {
     view.rerender(<EditorPanel {...props} mode="mobile" />);
     expect(screen.getByRole("region", { name: "Area" })).not.toHaveAttribute("aria-modal");
     expect(screen.getByLabelText("Draft")).toHaveValue("Unsaved bed");
-    expect(screen.getByRole("button", { name: "Back to plan" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Done" })).toBeVisible();
     expect(document.body.style.overflow).not.toBe("hidden");
   });
 
@@ -42,7 +42,7 @@ describe("responsive editor", () => {
     const { getByRole } = render(<EditorPanel mode="overlay" title="Area" headingId="area-title" returnFocusId="area-link" onClose={vi.fn()}>
       <button disabled>Save</button><button>Last action</button>
     </EditorPanel>);
-    const close = getByRole("button", { name: "Close" });
+    const close = getByRole("button", { name: "Done" });
     const last = getByRole("button", { name: "Last action" });
     const visible = [{ width: 44, height: 44 }] as unknown as DOMRectList;
     vi.spyOn(close, "getClientRects").mockReturnValue(visible);
@@ -64,7 +64,7 @@ describe("responsive editor", () => {
     }
     const user = userEvent.setup();
     const view = render(<Harness mode="overlay" />);
-    const close = screen.getByRole("button", { name: "Close" });
+    const close = screen.getByRole("button", { name: "Done" });
     await user.click(close);
     await user.click(screen.getByRole("button", { name: "Cancel" }));
     await waitFor(() => expect(close).toHaveFocus());
@@ -84,17 +84,17 @@ describe("responsive editor", () => {
     resetTestRouter("/gardens/demo-garden/plan?area=demo-raised-bed&edit=area");
     const user = userEvent.setup();
     render(<GardenWorkspace />);
-    expect(await screen.findByRole("button", { name: "Back to plan" })).toBeVisible();
+    expect(await screen.findByRole("button", { name: "Done" })).toBeVisible();
     expect(screen.queryByRole("button", { name: "Move planting areas" })).not.toBeInTheDocument();
     // A blank value cannot apply, so Back asks before discarding it.
     fireEvent.change(screen.getByLabelText("Area X position (m)"), { target: { value: "" } });
-    await user.click(screen.getByRole("button", { name: "Back to plan" }));
+    await user.click(screen.getByRole("button", { name: "Done" }));
     await user.click(screen.getByRole("button", { name: "Keep editing" }));
     expect(screen.getByLabelText("Area X position (m)")).toHaveValue(null);
     fireEvent.change(screen.getByLabelText("Area X position (m)"), { target: { value: "2.34" } });
     fireEvent.keyDown(screen.getByLabelText("Area X position (m)"), { key: "Enter" });
     expect(JSON.parse(localStorage.getItem(GARDEN_WORKSPACE_STORAGE_KEY)!).gardens[0].growingAreas[0].planPlacement.x).toBe(2.3);
-    await user.click(screen.getByRole("button", { name: "Back to plan" }));
+    await user.click(screen.getByRole("button", { name: "Done" }));
     expect(location.search).toBe("?area=demo-raised-bed");
     await waitFor(() => expect(screen.getByRole("link", { name: "Edit area" })).toHaveFocus());
     expect(screen.getByRole("button", { name: "Whole garden" })).toBeVisible();
@@ -116,7 +116,7 @@ describe("responsive editor", () => {
     expect(screen.queryByRole("region", { name: "Edit planting area" })).not.toBeInTheDocument();
     await user.click(screen.getByRole("link", { name: "Edit area" }));
     expect(location.search).toBe("?area=demo-raised-bed&edit=area");
-    expect(screen.getByRole("button", { name: "Back to plan" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Done" })).toBeVisible();
     expect(screen.queryByRole("button", { name: "Add plant" })).not.toBeInTheDocument();
   });
 
@@ -131,7 +131,7 @@ describe("responsive editor", () => {
     await user.click(screen.getByRole("link", { name: "Edit area" }));
     const dialog = screen.getByRole("dialog", { name: "Edit planting area" });
     expect(dialog).not.toContainElement(screen.getByRole("button", { name: "Add plant" }));
-    await user.click(screen.getByRole("button", { name: "Close" }));
+    await user.click(screen.getByRole("button", { name: "Done" }));
     expect(location.search).toBe("?area=demo-raised-bed");
     expect(screen.getByRole("button", { name: "Whole garden" })).toBeInTheDocument();
   });

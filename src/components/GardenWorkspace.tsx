@@ -746,7 +746,7 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
                     onChange={(layout, label) => updateAreaLayout(editingArea.id, layout, label)}
                   />
                 ) : null;
-                // The wide layout floats this panel over the canvas's top right (ADR-0073 S4).
+                // The wide layout shows this panel in its own column beside the canvas.
                 const inspector = editingArea && showInspector ? (
                   <PlantingAreaInspector
                     key={areaDraftKey(garden.id, editingArea.id)}
@@ -792,6 +792,8 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
                           <p>{growingAreaKindLabels[editingArea.kind]}{editingArea.layout ? ` · ${editingArea.layout.widthMeters} × ${editingArea.layout.depthMeters} m` : ""}</p>
                         </div>
                         {setupStep !== "plants" && <Link id="edit-area-properties" className="secondary-button" href={areaEditPath(garden.id, editingArea.id)}>Edit area</Link>}
+                        {/* Touch layouts have no Escape key; "Whole garden" only zooms out. */}
+                        <button aria-label={`Done with ${editingArea.name}`} className="secondary-button" type="button" onClick={closeAreaInspector}>Done</button>
                       </header>
                       {plantEditor}
                     </section>
@@ -806,6 +808,7 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
                   onResizeArea={resizeArea}
                   onEditLayout={openAreaInspector}
                   onExitArea={closeAreaInspector}
+                  onDeleteGarden={deleteGarden}
                   onGardenNameChange={(name) => updateGarden("rename the garden", (current) => ({ ...current, name }))}
                   onPlacementChange={updateAreaPlacement}
                   onPlanChange={updatePlan}
@@ -815,12 +818,6 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
                 {mode !== "wide" && inspector}
               </>;
               }}</EditorWorkbench>
-              <div hidden={Boolean(editingArea)}>
-              <GardenManagement
-                onDeleteGarden={deleteGarden}
-                storageSource={storageSource}
-              />
-              </div>
             </>
             <Status message={message} />
           </section>
@@ -972,30 +969,6 @@ function CareHub({
         })}
       </div>
     </section>
-  );
-}
-
-function GardenManagement({
-  onDeleteGarden,
-  storageSource,
-}: {
-  onDeleteGarden: () => void;
-  storageSource: "browser" | "server";
-}) {
-  return (
-    <details className={editorStyles.settings}>
-      <summary>Garden settings</summary>
-      <div className={editorStyles.danger}><h3>Delete this garden</h3>
-      {storageSource === "browser" ? (
-        <div className="data-settings">
-          <p>You can work on this device. Check the saving status above before closing this page.</p>
-        </div>
-      ) : null}
-      <button className="remove-button" onClick={onDeleteGarden} type="button">
-        Delete garden
-      </button>
-      </div>
-    </details>
   );
 }
 

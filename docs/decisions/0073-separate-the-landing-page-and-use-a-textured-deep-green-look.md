@@ -1,6 +1,6 @@
 # ADR-0073: Separate the Landing Page from the App and Use a Textured Deep-Green Look
 
-- Status: Accepted on 2026-11-14 and implemented: S1 to S3 on 2026-11-14, S4 to S7 on 2026-11-15. Amended on 2026-11-15: the brand link returns to the landing page, the header modules sit in one tray, and the landing page has a fixed header over four feature sections. Amended on 2026-11-15: the app header is sticky. The landing showcases (S6b) remain placeholders; their form is undecided until the app is final.
+- Status: Accepted on 2026-11-14 and implemented: S1 to S3 on 2026-11-14, S4 to S7 on 2026-11-15. Amended on 2026-11-15: the brand link returns to the landing page, the header modules sit in one tray, and the landing page has a fixed header over four feature sections. Amended on 2026-11-15: the app header is sticky. Amended on 2026-11-15: the area panel sits beside the canvas, "Whole garden" only zooms out, Delete garden moves into the garden details form, and the Today strip marks care types with a dot. Amended on 2026-11-16: the area panel's button reads Done, plant names replace area names on planted areas, and the area panel drops the type field and the step buttons. The landing showcases (S6b) remain placeholders; their form is undecided until the app is final.
 - Date: 2026-11-14
 - Supersedes in part (all marked in the decision index):
   - [ADR-0051](0051-prioritize-daily-garden-work-on-the-dashboard.md): the dashboard card groups.
@@ -213,11 +213,20 @@ elements that mean something.
   - the garden boundary
   - page and panel headings
   - the saved-status dot
-- **Frosted glass.** The Garden Plan toolbar, zoom control, legend, and area
-  panel float over the canvas as light glass: white at 40%, 10 px blur, 150%
-  saturation, and a white hairline border. A faint dot grid outside the garden
-  gives the blur something to show. Below 900 px the overlays return to the
-  normal page flow.
+- **Frosted glass.** The Garden Plan toolbar, zoom control, and legend float
+  over the canvas as light glass: white at 40%, 10 px blur, 150% saturation,
+  and a white hairline border. A faint dot grid outside the garden gives the
+  blur something to show. Below 900 px the overlays return to the normal page
+  flow.
+- **Area panel beside the canvas** (amended 2026-11-15). The Edit planting
+  area panel sits in its own 320 px column to the right of the canvas, runs
+  the canvas height, and scrolls inside it. It covers no part of the plan, so
+  the whole canvas stays visible while an area is open. A panel floating over
+  the canvas hid the garden's right side.
+- **Care types on the Today strip** (amended 2026-11-15). A 6 px dot before
+  each task name marks its type in the Care chip colors: watering `#195B70`,
+  fertilizing `#805B17`. The cards stay identical otherwise, so the two types
+  read as related but distinct.
 - **Tokens.** `src/styles/tokens.css` holds every color as a token. Konva
   cannot read CSS variables, so `src/lib/planAppearance.ts` mirrors the canvas
   colors, as it already does.
@@ -250,9 +259,39 @@ The plan reads as a plain metric planting chart:
   its color picker.
 - Every plant group in an area carries a short label, such as "Tomato ×2". A
   legend lists the families in view.
+- **Plant names lead** (amended 2026-11-16). An area with plants is named by
+  its plants; its own name shows only while it is open. Empty areas keep their
+  names. A garden thumbnail on Gardens shows plant names only once anything is
+  planted, and area names only for a garden with no plants yet. Thumbnails draw
+  every plant at least 3 px in radius so small spacings stay visible. Before,
+  both names crowded each planted area, and thumbnails showed area names with
+  plants as specks, so the overview read as a list of containers rather than a
+  garden. A user setting for labels was considered and rejected: one rule
+  answers the question each view asks, and "both" was the cluttered state.
 
 The interactions from ADR-0072 do not change: zooming, placing, dragging,
-filling, undo, and the guided setup.
+filling, undo, and the guided setup, with two amendments from 2026-11-15:
+
+- **"Whole garden" only zooms out.** While an area is open, "Whole garden"
+  frames the whole garden and keeps the area selected, its panel open, and its
+  resize handle active. The button then reads "Zoom to <area>" and zooms back
+  in. Close and Escape close the area. Before, "Whole garden" closed the area,
+  so looking at the garden ended the edit.
+- **The area panel's button reads Done** (amended 2026-11-16). Edits apply as
+  they are made, so leaving the panel ends a finished edit; "Close" read as
+  leaving without saving. Every layout uses Done: the wide panel, the 820 px
+  dialog, the phone properties page (formerly "Back to plan"), and the phone
+  area card. The plant form's own button reads "Done adding" so the two never
+  share a name. A value that cannot apply still asks before Done discards it.
+- **The area panel edits only what the canvas cannot** (amended 2026-11-16).
+  The 0.1 m step buttons are removed: dragging moves an area, and the X and Y
+  position fields stay as the precise, keyboard-friendly alternative. The type
+  field is removed: the type is chosen with the Add button that creates the
+  area, and changing it afterwards read as odd. A wrong type is fixed by
+  deleting the area and adding the right one; the stored `kind` is unchanged.
+- **Delete garden sits in the garden details form.** "Edit garden details"
+  opens the name and size fields with Delete garden at the bottom. The
+  separate "Garden settings" section held only this button, so it is removed.
 
 ## Rationale
 
@@ -332,8 +371,9 @@ without a product reason.
 - Every page restyles with the new tokens. Pages restyle in phases, so the app
   mixes old and new styles between phases.
 - The canvas colors, thumbnails, and their screenshots change. ADR-0072's wide
-  side column becomes a floating glass panel, and the panel's width and
-  scroll behavior need new browser checks.
+  side column first became a floating glass panel; the 2026-11-15 amendment
+  returns it to a column beside the canvas. The panel's width, height, and
+  scroll behavior have browser checks.
 - Plant colors on the canvas stop following per-plant colors. The stored
   `color` field stays, so the change can be reversed in the interface alone.
 

@@ -51,10 +51,10 @@ describe("planting-area draft protection", () => {
   it("asks before discarding a dirty area on close", async () => {
     const user = await openBed();
     fireEvent.change(screen.getByLabelText("Planting-area name"), { target: { value: "Pending" } });
-    await user.click(screen.getByRole("button", { name: "Close" }));
+    await user.click(screen.getByRole("button", { name: "Done" }));
     await user.click(screen.getByRole("button", { name: "Keep editing" }));
     expect(screen.getByLabelText("Planting-area name")).toHaveValue("Pending");
-    await user.click(screen.getByRole("button", { name: "Close" }));
+    await user.click(screen.getByRole("button", { name: "Done" }));
     await user.click(screen.getByRole("button", { name: "Discard changes" }));
     await user.click(screen.getByLabelText("Open Sample raised bed on Garden Plan"));
     expect(screen.getByLabelText("Planting-area name")).toHaveValue("Sample raised bed");
@@ -94,7 +94,7 @@ it("keeps a new plant draft through area property changes and asks before closin
   fireEvent.keyDown(screen.getByLabelText("Planting-area name"), { key: "Enter" });
   expect(saved().gardens[0].growingAreas[0].name).toBe("Renamed bed");
   expect(screen.getByLabelText("Plant type")).toHaveValue("Kale");
-  await user.click(screen.getByRole("button", { name: "Close" }));
+  await user.click(screen.getByRole("button", { name: "Done" }));
   await user.click(screen.getByRole("button", { name: "Keep editing" }));
   expect(screen.getByLabelText("Plant type")).toHaveValue("Kale");
 });
@@ -130,7 +130,7 @@ it("warns before unloading dirty drafts, and stops after explicit discard", asyn
   const dirtyEvent = new Event("beforeunload", { cancelable: true });
   window.dispatchEvent(dirtyEvent);
   expect(dirtyEvent.defaultPrevented).toBe(true);
-  await user.click(screen.getByRole("button", { name: "Close" }));
+  await user.click(screen.getByRole("button", { name: "Done" }));
   await user.click(screen.getByRole("button", { name: "Discard changes" }));
   const cleanEvent = new Event("beforeunload", { cancelable: true });
   window.dispatchEvent(cleanEvent);

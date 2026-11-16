@@ -161,7 +161,14 @@ for (const width of [390, 1440]) {
     expect(zoomed.scale).toBeGreaterThan(whole.scale * 1.5);
     await expect(surface).toHaveAttribute("data-zooming", "false");
     await page.screenshot({ path: testInfo.outputPath(`area-zoom-${width}.png`) });
+    // Whole garden only zooms out: the area stays open until Escape closes it.
     await back.click();
+    await expect(surface).not.toHaveAttribute("data-focused-area", /.+/);
+    await expect(page).toHaveURL(new RegExp(`area=${area.id}$`));
+    const zoomIn = page.getByRole("button", { name: `Zoom to ${area.name}` });
+    await zoomIn.click();
+    await expect(surface).toHaveAttribute("data-focused-area", area.id);
+    await page.keyboard.press("Escape");
     await expect(surface).not.toHaveAttribute("data-focused-area", /.+/);
     await expect(back).toBeHidden();
     await expect(page).toHaveURL(/\/plan$/);

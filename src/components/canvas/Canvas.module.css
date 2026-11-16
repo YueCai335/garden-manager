@@ -41,17 +41,16 @@
 
 /*
  * Glass layers (ADR-0073 S4): white at 40 %, a 10 px blur at 150 % saturation, and a
- * white hairline edge. They only float in the wide layout, where the canvas runs the
- * full width and framing keeps the selected area clear of them.
+ * white hairline edge. They only float in the wide layout; framing keeps the
+ * selected area clear of them. The area panel sits beside the canvas instead.
  */
 .glass { background: rgb(255 255 255 / 40%); -webkit-backdrop-filter: blur(10px) saturate(1.5); backdrop-filter: blur(10px) saturate(1.5); border: 1px solid rgb(255 255 255 / 85%); box-shadow: 0 14px 40px -18px rgb(20 40 28 / 40%), 0 1px 2px rgb(20 40 28 / 6%), inset 0 1px 0 rgb(255 255 255 / 95%); }
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .glass, .side > :global(dialog) { background: #ffffff; }
+  .glass { background: #ffffff; }
 }
 .frame[data-floating="true"] .surface { height: clamp(520px, calc(100dvh - 160px), 760px); }
 .layer { position: absolute; z-index: 3; box-sizing: border-box; }
 .tools { top: 16px; left: 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px; max-width: calc(100% - 32px); padding: 5px; border-radius: 14px; }
-.stage:has(> .side) .tools { max-width: calc(100% - 300px - 48px); }
 .tools :global(button), .zoom :global(button) { min-height: 38px; padding: 6px 10px; border-color: transparent; border-radius: 10px; background: transparent; box-shadow: none; font-weight: 500; }
 .tools :global(button:hover:not(:disabled)), .zoom :global(button:hover:not(:disabled)) { background: rgb(24 24 26 / 6%); }
 .tools .kinds { gap: 2px; }
@@ -59,14 +58,7 @@
 .tools .kindsLabel { padding-inline: 6px 2px; font-size: 13px; }
 .tools .kind { padding-block: 6px; }
 .zoom { right: 16px; bottom: 16px; padding: 4px; border-radius: 12px; }
-/* The area panel runs the canvas height, so zoom sits just left of it. */
-.stage:has(> .side) > .zoom { right: calc(16px + 300px + 12px); }
 .stage > .legend { left: 16px; bottom: 16px; max-width: calc(100% - 32px); border: 1px solid rgb(255 255 255 / 85%); border-radius: 12px; }
 .stage:has(> .zoom) > .legend { max-width: calc(100% - 220px); }
-.stage:has(> .side) > .legend { max-width: calc(100% - 300px - 48px); }
-.stage:has(> .side):has(> .zoom) > .legend { max-width: calc(100% - 300px - 220px); }
-.side { position: absolute; z-index: 3; top: 16px; right: 16px; bottom: 16px; width: 300px; display: flex; flex-direction: column; pointer-events: none; }
-.side > :global(dialog) { position: static; max-height: 100%; width: 100%; pointer-events: auto; border-radius: 18px; background: rgb(255 255 255 / 40%); -webkit-backdrop-filter: blur(10px) saturate(1.5); backdrop-filter: blur(10px) saturate(1.5); border: 1px solid rgb(255 255 255 / 85%); box-shadow: 0 14px 40px -18px rgb(20 40 28 / 40%), 0 1px 2px rgb(20 40 28 / 6%), inset 0 1px 0 rgb(255 255 255 / 95%); }
-.side > :global(dialog) > header { background: transparent; border-bottom-color: rgb(24 24 26 / 8%); }
 /* Below about 1200 px the floating toolbar wraps, and a separator would start a row. */
 @media (max-width: 1199px) { .tools .toolSeparator { display: none; } }

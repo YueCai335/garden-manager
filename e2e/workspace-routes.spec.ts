@@ -16,7 +16,7 @@ test("deep links, browser history, and missing entities keep explicit garden con
   await page.goForward();
   await expect(page).toHaveURL(/\/guide$/);
   await page.goBack();
-  await page.getByRole("button", { name: "Close", exact: true }).click();
+  await page.getByRole("button", { name: "Done", exact: true }).click();
   await page.getByRole("button", { name: "Discard changes" }).click();
   await page.goto("/care?view=history&location=demo-garden");
   await expect(page.getByRole("heading", { name: "History", exact: true })).toBeVisible();

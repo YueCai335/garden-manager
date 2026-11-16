@@ -61,9 +61,13 @@ async function expectSelectedAreaClear(page: Page, areaName: string, floating: b
   expect(area.top).toBeGreaterThanOrEqual(canvas.top);
   expect(area.bottom).toBeLessThanOrEqual(canvas.bottom);
   if (!floating) { expect(layers).toEqual([]); return; }
-  // Toolbar, zoom, legend, and the area panel all float, and none of them covers the area.
-  expect(layers.map(({ corner }) => corner).sort()).toEqual(["bottom-left", "bottom-right", "top-left", "top-right"]);
+  // Toolbar, zoom, and legend float, and none of them covers the area.
+  expect(layers.map(({ corner }) => corner).sort()).toEqual(["bottom-left", "bottom-right", "top-left"]);
   for (const layer of layers) expect(overlaps(area, layer), `${layer.corner} layer covers ${areaName}`).toBe(false);
+  // The area panel sits beside the canvas, not over it.
+  const panel = await page.locator("dialog[open]").filter({ hasText: "Edit planting area" }).boundingBox();
+  expect(panel, "the area panel is open").not.toBeNull();
+  expect(panel!.x).toBeGreaterThanOrEqual(canvas.right);
 }
 
 for (const viewport of viewports) {
@@ -113,6 +117,7 @@ for (const viewport of viewports) {
       await expect(page.getByLabel("Plant type", { exact: true })).toHaveCount(0);
       await page.getByRole("button", { name: "Whole garden" }).click();
       await expect(surface).not.toHaveAttribute("data-focused-area", /.+/);
+      await expect(page.getByRole("button", { name: "Zoom to Sample raised bed" })).toBeVisible();
 
       // A new garden starts the guide on the same canvas.
       await page.getByRole("link", { name: "All gardens", exact: true }).click();

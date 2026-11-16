@@ -49,7 +49,7 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 1440, height: 900 
     await width.press("Enter");
     await expect(page.getByRole("button", { name: "Save", exact: true })).toHaveCount(0);
     if (narrow) {
-      await page.getByRole("button", { name: "Back to plan", exact: true }).click();
+      await page.getByRole("button", { name: "Done", exact: true }).click();
       await page.getByRole("button", { name: "Add plant", exact: true }).click();
       await page.getByLabel("Plant type", { exact: true }).fill("Kale");
       await page.getByRole("button", { name: "Add", exact: true }).click();
