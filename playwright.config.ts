@@ -34,7 +34,8 @@ export default defineConfig({
         WATCHPACK_POLLING: "true",
         NEXT_PUBLIC_API_BASE_URL: "http://127.0.0.1:8100",
         NEXT_DIST_DIR: ".next-e2e",
-        // The specs walk the small sample garden, not the showcase demo (ADR-0077).
+        // "Load demo garden" gives the specs the small sample garden, not the showcase
+        // (ADR-0077). Specs that seed storage call createSampleGardenWorkspace themselves.
         NEXT_PUBLIC_DEMO_FIXTURE: "sample",
       },
     },

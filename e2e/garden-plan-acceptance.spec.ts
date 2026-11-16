@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { createDemoGardenWorkspace } from "../src/lib/gardenWorkspace";
+import { createSampleGardenWorkspace } from "../src/lib/gardenWorkspace";
 import { goToLevel, planSurface } from "./areaHelpers";
 
 /**
@@ -79,7 +79,7 @@ for (const viewport of viewports) {
       await page.route("**/ai/**", (route) => route.abort());
       await page.addInitScript((value) => {
         if (!localStorage.getItem("sun-aware-garden-planner:garden-workspace:v1")) localStorage.setItem("sun-aware-garden-planner:garden-workspace:v1", JSON.stringify(value));
-      }, createDemoGardenWorkspace());
+      }, createSampleGardenWorkspace());
       await page.goto("/gardens/demo-garden/plan");
       await expect(page.getByRole("heading", { name: "Garden Plan" })).toBeVisible();
       await expect(page.getByText("All changes saved", { exact: true })).toBeVisible();

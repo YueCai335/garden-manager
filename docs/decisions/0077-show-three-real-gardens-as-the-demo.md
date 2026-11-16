@@ -54,7 +54,10 @@ and its evaluations after the site redesign is finished, not now.
     therefore do not offer AI drafts on the three demo gardens yet.
   - Unit and end-to-end tests set `NEXT_PUBLIC_DEMO_FIXTURE=sample` and run on
     it, so their steps stay short and do not change whenever the showcase
-    changes. The showcase has its own unit and UI tests.
+    changes. End-to-end specs that seed browser storage call
+    `createSampleGardenWorkspace()` directly, because the variable reaches only
+    the app server, not the Playwright process. The showcase has its own unit
+    and UI tests.
 - Workspaces that already contain the old "Demo Garden" keep it; it is the
   user's data now.
 

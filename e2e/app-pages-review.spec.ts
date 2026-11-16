@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { addDays, createDemoGardenWorkspace, todayDate } from "../src/lib/gardenWorkspace";
+import { addDays, createSampleGardenWorkspace, todayDate } from "../src/lib/gardenWorkspace";
 import { openWorkspace } from "./workspace";
 
 /**
@@ -61,7 +61,7 @@ test.beforeEach(async ({ page }) => {
       document.head.append(style);
     });
   });
-  const workspace = createDemoGardenWorkspace();
+  const workspace = createSampleGardenWorkspace();
   const today = todayDate();
   workspace.careTasks = [-2, 0, 3].map((days) => ({ id: `review-${days}`, type: days ? "watering" : "fertilizing", dueDate: addDays(today, days), targetScope: "all-gardens", note: "" }));
   await page.route("**/workspaces/app-pages-review", (route) => route.fulfill({ json: { ...workspace, workspaceId: "app-pages-review", revision: 0 } }));

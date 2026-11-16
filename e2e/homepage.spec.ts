@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { addDays, createDemoGardenWorkspace, createGarden, todayDate } from "../src/lib/gardenWorkspace";
+import { addDays, createSampleGardenWorkspace, createGarden, todayDate } from "../src/lib/gardenWorkspace";
 import { openWorkspace, workspaceHome } from "./workspace";
 
 for (const [width, height, columns] of [[320, 844, 1], [390, 844, 2], [768, 1024, 2], [1024, 768, 2], [1440, 900, 3]]) {
@@ -23,7 +23,7 @@ for (const [width, height, columns] of [[320, 844, 1], [390, 844, 2], [768, 1024
     if (sideColumn) await expect(note).toBeInViewport();
     await page.screenshot({ path: testInfo.outputPath(`home-one-${width}.png`), fullPage: true });
 
-    const workspace = createDemoGardenWorkspace();
+    const workspace = createSampleGardenWorkspace();
     const front = { ...workspace.gardens[0], id: "front", name: "Front garden" };
     const back = { ...createGarden("Back garden with vegetables and herbs"), growingAreas: [{ ...front.growingAreas[0], layout: undefined }] };
     workspace.gardens = [front, back, createGarden("LongGardenName".repeat(12))];
@@ -95,7 +95,7 @@ for (const [width, height, columns] of [[320, 844, 1], [390, 844, 2], [768, 1024
 }
 
 test("eight gardens with long names reflow at 320px and remain reachable", async ({ page }, testInfo) => {
-  const workspace = createDemoGardenWorkspace();
+  const workspace = createSampleGardenWorkspace();
   const [demo] = workspace.gardens;
   const chineseName = "后院蔬菜和香草种植区".repeat(8);
   const englishName = "LongKitchenGardenName".repeat(8);
@@ -132,7 +132,7 @@ test("eight gardens with long names reflow at 320px and remain reachable", async
 });
 
 test("note dialog generates only on request and reopens the same draft", async ({ page }) => {
-  const workspace = createDemoGardenWorkspace();
+  const workspace = createSampleGardenWorkspace();
   let requests = 0;
   await page.route("**/runtime-config", (route) => route.fulfill({ json: { portfolioDemo: false } }));
   await page.route("**/ai/**", async (route) => {
