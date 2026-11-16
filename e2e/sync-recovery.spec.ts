@@ -143,6 +143,8 @@ test("a sync conflict clears Garden Plan undo history and says why", async ({ pa
     const current = (route.request().postDataJSON() as { revision: number }).revision + 5;
     await route.fulfill({ status: 409, contentType: "application/json", body: JSON.stringify({ detail: { message: "stale", currentRevision: current } }) });
   });
+  // Areas are added on the Planting areas level (ADR-0075).
+  await page.getByRole("navigation", { name: "Garden Plan levels" }).getByRole("button", { name: "Planting areas", exact: true }).click();
   await page.getByRole("button", { name: "Add Container, 0.6 × 0.6 m" }).click();
   await expect(page.getByText("A newer version is available", { exact: true })).toBeVisible();
   await expect(page.getByText("Undo history was cleared because this workspace changed in another tab.", { exact: true })).toBeVisible();

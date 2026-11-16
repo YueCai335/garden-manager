@@ -2,22 +2,14 @@
 import { type FormEvent, type KeyboardEvent, type ReactNode, useRef, useState } from "react";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { areaProperties, areaPropertyErrors, sameAreaProperties, type AreaProperties, type AreaPropertiesDraft } from "@/lib/areaEditorDrafts";
-import { createRectangularLayout, growingAreaKinds, growingAreaKindLabels, snapToGrid, type GardenPlan, type LayoutPoint, type GrowingArea, type GrowingAreaKind, type GrowingAreaLayout } from "@/lib/gardenWorkspace";
-import { Button } from "./ui/Button";
+import { createRectangularLayout, growingAreaKindLabels, snapToGrid, type GardenPlan, type LayoutPoint, type GrowingArea, type GrowingAreaKind, type GrowingAreaLayout } from "@/lib/gardenWorkspace";
 
 import { EditorPanel } from "./editor/EditorPanel";
 import type { EditorMode } from "./editor/EditorWorkbench";
 import styles from "./editor/Editor.module.css";
 
-const positionSteps = [
-  { axis: "x", delta: -0.1, label: "Move left", arrow: "←" },
-  { axis: "y", delta: -0.1, label: "Move up", arrow: "↑" },
-  { axis: "y", delta: 0.1, label: "Move down", arrow: "↓" },
-  { axis: "x", delta: 0.1, label: "Move right", arrow: "→" },
-] as const;
-
 export function PlantingAreaInspector({
-  plan, mode = "wide", gardenName,
+  plan, mode = "wide", gardenName, title = "Edit planting area",
   area,
   returnFocusId,
   draft,
@@ -34,6 +26,8 @@ export function PlantingAreaInspector({
   plan: GardenPlan;
   mode?: EditorMode;
   gardenName?: string;
+  /** The panel heading: "Edit planting area" on Planting areas, "Plants" on Plants (ADR-0075). */
+  title?: string;
   /** Where focus returns on close; defaults to the area's link in the area list. */
   returnFocusId?: string;
   draft?: AreaPropertiesDraft;
@@ -62,7 +56,7 @@ export function PlantingAreaInspector({
   for (const axis of ["x", "y"] as const) {
     if (draft && draft.values[axis] === draft.baseline[axis]) { values[axis] = current[axis]; baseline[axis] = current[axis]; }
   }
-  const { name, kind, length, width, rotation: rotationDegrees } = values;
+  const { name, length, width, rotation: rotationDegrees } = values;
   const changedElsewhere = hasChanges && draft && !sameAreaProperties(current, baseline);
   const [errors, setErrors] = useState<Partial<Record<keyof AreaProperties, string>>>({});
   const [closing, setClosing] = useState(false);
@@ -79,8 +73,9 @@ export function PlantingAreaInspector({
   const setRotationDegrees = (value: string) => change("rotation", value);
 
   /**
-   * Applies the fields when one loses focus, on Enter, and at once for the
-   * type and the step buttons (ADR-0072, phase G5). Invalid values stay in
+   * Applies the fields when one loses focus or on Enter (ADR-0072, phase G5).
+   * The type is chosen when the area is added and is not edited here; moving
+   * is done by dragging or with the position fields. Invalid values stay in
    * the form with their errors and change nothing; the draft protection from
    * ADR-0062 covers them until they are fixed or discarded.
    */
@@ -96,10 +91,6 @@ export function PlantingAreaInspector({
     const layout = createRectangularLayout(snapToGrid(Number(next.width)), snapToGrid(Number(next.length)));
     if (onSave(area.id, next.name.trim(), next.kind, Number(next.rotation), layout, { x: Number(next.x), y: Number(next.y) })) onDraftChange(undefined);
   };
-  const changeAndApply = (key: keyof AreaProperties, value: string) => {
-    change(key, value);
-    apply({ ...values, [key]: value });
-  };
   const submit = (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); apply(values, true); };
   // Without a submit button, Enter in a field does not submit the form on its own.
   const applyOnEnter = (event: KeyboardEvent<HTMLFormElement>) => {
@@ -109,7 +100,7 @@ export function PlantingAreaInspector({
   };
 
   return (
-    <EditorPanel mode={mode} title="Edit planting area" context={`${gardenName ?? "Garden"} / ${area.name}`} headingId="edit-planting-area-heading" returnFocusId={returnFocusId ?? `area-link-${area.id}`} onClose={() => hasChanges || hasPlantChanges ? setClosing(true) : onClose()}>
+    <EditorPanel mode={mode} title={title} context={`${gardenName ?? "Garden"} / ${area.name}`} headingId="edit-planting-area-heading" returnFocusId={returnFocusId ?? `area-link-${area.id}`} onClose={() => hasChanges || hasPlantChanges ? setClosing(true) : onClose()}>
       <div className={styles.properties}>
       {hasChanges && Object.values(errors).some(Boolean) && <p role="status">Not applied yet: fix the highlighted values.</p>}
       {changedElsewhere && <div role="alert">
@@ -118,7 +109,8 @@ export function PlantingAreaInspector({
         <button className="secondary-button" type="button" onClick={() => { onDraftChange(undefined); setErrors({}); }}>Reload properties</button>
       </div>}
       {closing && <ConfirmDialog message="Discard unsaved changes in this planting area?" confirmLabel="Discard changes" cancelLabel="Keep editing" onCancel={() => setClosing(false)} onConfirm={() => { onDraftChange(undefined); onDiscardPlants(); onClose(); }} />}
-      <form hidden={!showProperties} className="planting-area-creation-form" noValidate onSubmit={submit} onKeyDown={applyOnEnter} onBlur={(event) => { if (event.target instanceof HTMLInputElement) apply(); }} ref={formRef}>
+      {/* Rendered only when shown: the form's grid display would override a hidden attribute. */}
+      {showProperties && <form className="planting-area-creation-form" noValidate onSubmit={submit} onKeyDown={applyOnEnter} onBlur={(event) => { if (event.target instanceof HTMLInputElement) apply(); }} ref={formRef}>
         <h3 className={styles.inspectorSectionHeading}>Dimensions and position</h3>
         <div className="field">
           <label htmlFor="editing-planting-area-name">Planting-area name</label>
@@ -129,20 +121,6 @@ export function PlantingAreaInspector({
             value={name}
           />
             {errors.name && <p id="editing-planting-area-name-error" role="alert">{errors.name}</p>}
-        </div>
-        <div className="field">
-          <label htmlFor="editing-planting-area-kind">Planting-area type</label>
-          <select
-            id="editing-planting-area-kind"
-            onChange={(event) => changeAndApply("kind", event.target.value as GrowingAreaKind)}
-            value={kind}
-          >
-            {growingAreaKinds.map((candidate) => (
-              <option key={candidate} value={candidate}>
-                {growingAreaKindLabels[candidate]}
-              </option>
-            ))}
-          </select>
         </div>
         <div className="planting-area-creation-measurements">
           <div className="field">
@@ -191,21 +169,11 @@ export function PlantingAreaInspector({
             {errors[axis] && <p id={`area-position-${axis}-error`} role="alert">{errors[axis]}</p>}
           </div>)}
         </div>
-        <div role="group" aria-label="Move area by 0.1 metres" className={styles.positionSteps}>
-          {positionSteps.map(({ axis, delta, label, arrow }) => {
-            const coordinate = Number(values[axis]);
-            const limit = axis === "x" ? plan.widthMeters : plan.depthMeters;
-            const next = Math.min(limit, Math.max(0, snapToGrid(coordinate + delta)));
-            return <Button key={label} aria-label={`${label} 0.1 m`} disabled={!values[axis].trim() || !Number.isFinite(coordinate) || coordinate < 0 || coordinate > limit || next === coordinate}
-              onClick={() => changeAndApply(axis, String(next))}>{arrow}</Button>;
-          })}
-          <span>0.1 m steps</span>
-        </div>
         <p className={styles.applyHint}>Changes apply when you leave a field or press Enter. Undo reverses them.</p>
         <div className="form-actions">
           <button className="remove-button" onClick={onDelete} type="button">Delete area</button>
         </div>
-      </form>
+      </form>}
       {children}
       </div>
     </EditorPanel>

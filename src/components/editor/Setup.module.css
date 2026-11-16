@@ -41,3 +41,15 @@
 .next li > span { color: var(--color-muted); font-size: 13px; }
 .start { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 0 0 12px; padding: 12px 16px; border: 1px dashed var(--color-input-border); border-radius: var(--radius-card); }
 .start p { margin: 0; flex: 1 1 220px; }
+
+/* The plan's level switcher (ADR-0075): the setup track's look with three parts and no progress fill. */
+.levels { padding-block: 10px; }
+.levels .track { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.levels .track::before { left: calc(100% / 6); right: calc(100% / 6); }
+.levels .track::after { display: none; }
+.levels [data-status="current"] .marker { animation: none; }
+.levels [data-status="current"] .stepButton { font-weight: 700; cursor: default; }
+.levels .stepButton:disabled { cursor: not-allowed; color: var(--color-muted); }
+.levels .stepButton:disabled .marker { border-style: dashed; border-color: var(--color-input-border); color: var(--color-muted); }
+.levelShortLabel { display: none; }
+@media (max-width: 599px) { .levelLabel { display: none; } .levelShortLabel { display: inline; } }

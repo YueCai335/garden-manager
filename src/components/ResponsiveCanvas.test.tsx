@@ -141,20 +141,24 @@ describe("zooming into one planting area", () => {
     expect(screen.getByLabelText("Open Near bed on Garden Plan")).toHaveAttribute("draggable", "false");
   });
 
-  it("returns with Whole garden or Escape, but leaves Escape to text fields and drags", async () => {
+  it("zooms out with Whole garden but keeps the area open, and closes it with Escape outside text fields and drags", async () => {
     const user = userEvent.setup(); const onExitArea = vi.fn();
     render(<><input aria-label="Notes" /><GardenPlanOverview plan={plan} growingAreas={[bed(), near()]} editable selectedAreaId="bed" onExitArea={onExitArea} onPlacementChange={vi.fn()} /></>);
+    expect(screen.getByLabelText("Open Near bed on Garden Plan")).toHaveAttribute("opacity", "0.35");
     await user.click(screen.getByRole("button", { name: "Whole garden" }));
-    expect(onExitArea).toHaveBeenCalledTimes(1);
+    expect(onExitArea).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("Open Near bed on Garden Plan")).toHaveAttribute("opacity", "1");
+    await user.click(screen.getByRole("button", { name: "Zoom to North bed" }));
+    expect(screen.getByLabelText("Open Near bed on Garden Plan")).toHaveAttribute("opacity", "0.35");
     fireEvent.keyDown(window, { key: "Escape" });
-    expect(onExitArea).toHaveBeenCalledTimes(2);
+    expect(onExitArea).toHaveBeenCalledTimes(1);
     fireEvent.keyDown(screen.getByLabelText("Notes"), { key: "Escape" });
-    expect(onExitArea).toHaveBeenCalledTimes(2);
+    expect(onExitArea).toHaveBeenCalledTimes(1);
     const node = screen.getByLabelText("Open North bed on Garden Plan");
     Object.assign(node, { position: vi.fn(), stopDrag: vi.fn() });
     fireEvent.dragStart(node);
     fireEvent.keyDown(window, { key: "Escape" });
-    expect(onExitArea).toHaveBeenCalledTimes(2);
+    expect(onExitArea).toHaveBeenCalledTimes(1);
   });
 
   it("animates between the whole garden and the area, and switches at once with reduced motion", async () => {
@@ -322,12 +326,12 @@ describe("plant panel", () => {
     expect(screen.getByRole("region", { name: "Plant groups" })).toHaveTextContent("Squash × 1");
   });
 
-  it("finishes adding with Done without asking to discard the plant choice", async () => {
+  it("finishes adding with Done adding without asking to discard the plant choice", async () => {
     const user = userEvent.setup();
     panel();
     await user.click(screen.getByRole("button", { name: "Add plant" }));
     await user.type(screen.getByLabelText("Plant type"), "Basil");
-    await user.click(screen.getByRole("button", { name: "Done" }));
+    await user.click(screen.getByRole("button", { name: "Done adding" }));
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Plant type")).not.toBeInTheDocument();
   });

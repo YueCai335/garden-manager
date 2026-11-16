@@ -11,39 +11,39 @@ function openPlan() {
   render(<GardenWorkspace />);
 }
 
-it("starts with a garden summary, guards an unapplied value, and restores the edit action", async () => {
+it("shows the garden fields only on the Garden level and keeps an unapplied value across levels", async () => {
   const user = userEvent.setup(); openPlan();
-  const edit = await screen.findByRole("button", { name: "Edit garden details" });
+  // An existing garden opens on Plants (ADR-0075); the Garden level holds the name and size.
+  const level = await screen.findByRole("button", { name: "Garden" });
+  expect(screen.getByRole("button", { name: "Plants" })).toHaveAttribute("aria-current", "true");
   expect(screen.queryByLabelText("Garden name")).not.toBeInTheDocument();
-  expect(screen.getByRole("region", { name: "Garden properties" })).toHaveTextContent("10 × 6 m");
-  await user.click(edit);
+  expect(screen.queryByRole("button", { name: "Edit garden details" })).not.toBeInTheDocument();
+  await user.click(level);
+  expect(level).toHaveAttribute("aria-current", "true");
+  expect(screen.getByRole("button", { name: "Delete garden" })).toBeInTheDocument();
   // An empty name fails validation, so it stays in the field unapplied.
   fireEvent.change(screen.getByLabelText("Garden name"), { target: { value: " " } });
   fireEvent.keyDown(screen.getByLabelText("Garden name"), { key: "Enter" });
   expect(screen.getByText("Enter garden name.")).toBeInTheDocument();
-  await user.click(screen.getByRole("button", { name: "Done" }));
-  await user.click(screen.getByRole("button", { name: "Keep editing" }));
-  expect(screen.getByLabelText("Garden name")).toHaveValue(" ");
-  await user.click(screen.getByRole("button", { name: "Done" }));
-  await user.click(screen.getByRole("button", { name: "Discard changes" }));
+  await user.click(screen.getByRole("button", { name: "Plants" }));
   expect(screen.queryByLabelText("Garden name")).not.toBeInTheDocument();
-  await waitFor(() => expect(screen.getByRole("button", { name: "Edit garden details" })).toHaveFocus());
+  await user.click(screen.getByRole("button", { name: "Garden" }));
+  expect(screen.getByLabelText("Garden name")).toHaveValue(" ");
   expect(JSON.parse(localStorage.getItem(GARDEN_WORKSPACE_STORAGE_KEY)!).gardens[0].name).toBe("Demo Garden");
 });
 
 it("applies garden details on Enter as one undo step without clearing existing plants", async () => {
   const user = userEvent.setup(); openPlan();
-  await user.click(await screen.findByRole("button", { name: "Edit garden details" }));
-  const previousPlants = JSON.parse(localStorage.getItem(GARDEN_WORKSPACE_STORAGE_KEY)!).gardens[0].growingAreas[0].layout.allocations;
+  await user.click(await screen.findByRole("button", { name: "Garden" }));
+  const stored = () => JSON.parse(localStorage.getItem(GARDEN_WORKSPACE_STORAGE_KEY)!).gardens[0];
+  const previousPlants = stored().growingAreas[0].layout.allocations;
   fireEvent.change(screen.getByLabelText("Garden name"), { target: { value: "Kitchen garden" } });
   fireEvent.change(screen.getByLabelText("Garden width (m)"), { target: { value: "12" } });
   fireEvent.keyDown(screen.getByLabelText("Garden width (m)"), { key: "Enter" });
   expect(screen.queryByRole("button", { name: "Save" })).not.toBeInTheDocument();
-  await user.click(screen.getByRole("button", { name: "Done" }));
-  expect(screen.getByRole("region", { name: "Garden properties" })).toHaveTextContent("Kitchen garden · 12 × 6 m");
-  const garden = JSON.parse(localStorage.getItem(GARDEN_WORKSPACE_STORAGE_KEY)!).gardens[0];
-  expect(garden.growingAreas[0].layout.allocations).toEqual(previousPlants);
+  await waitFor(() => expect(stored()).toMatchObject({ name: "Kitchen garden", plan: { widthMeters: 12, depthMeters: 6 } }));
+  expect(stored().growingAreas[0].layout.allocations).toEqual(previousPlants);
   // The name and the size changed together, so one Undo restores both.
   await user.click(screen.getByRole("button", { name: "Undo" }));
-  expect(screen.getByRole("region", { name: "Garden properties" })).toHaveTextContent("Demo Garden · 10 × 6 m");
+  await waitFor(() => expect(stored()).toMatchObject({ name: "Demo Garden", plan: { widthMeters: 10, depthMeters: 6 } }));
 });

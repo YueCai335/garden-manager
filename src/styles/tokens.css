@@ -17,6 +17,9 @@
   --color-error-surface: #fff1f0;
   --color-warning: #8a4b08;
   --color-warning-surface: #fff7e8;
+  /* Care types: the Care page's watering and fertilizing chip colours (ADR-0073 palette). */
+  --color-care-watering: #195b70;
+  --color-care-fertilizing: #805b17;
   --radius-control: 8px;
   --radius-card: 14px;
   --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;

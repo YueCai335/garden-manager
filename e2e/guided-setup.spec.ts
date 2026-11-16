@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { metresToCanvas } from "../src/lib/canvasViewport";
-import { planCanvas, planSurface, planTransform } from "./areaHelpers";
+import { goToLevel, planCanvas, planSurface, planTransform } from "./areaHelpers";
 import { openWorkspace } from "./workspace";
 
 /**
@@ -73,14 +73,17 @@ for (const width of [1440, 390]) {
     await expect(page.getByRole("button", { name: "Continue to plants" })).toBeDisabled();
     await page.getByRole("button", { name: "Add Raised bed, 1.2 × 2.4 m" }).click();
     await expect(page.getByText("Raised bed 1 added at 0.5, 0.5 m. Drag it to move it, or drag its corner to resize it.", { exact: true })).toBeVisible();
-    await expect(surface).toHaveAttribute("data-focused-area", /.+/);
+    // The new bed is selected but not zoomed, so it can be placed against the garden (ADR-0075).
+    await expect(page).toHaveURL(/\?area=/);
+    await expect(surface).not.toHaveAttribute("data-focused-area", /.+/);
     await expect(page.getByRole("button", { name: "Add plant", exact: true })).toHaveCount(0);
     await page.screenshot({ path: testInfo.outputPath(`areas-${width}.png`) });
     await expectNoSideScroll(page);
     await page.getByRole("button", { name: "Continue to plants" }).click();
 
-    // Step 3: Plants, placed on the zoomed canvas.
+    // Step 3: Plants, placed on the canvas zoomed into the same bed.
     await expect(track).toContainText("Step 3 of 4 · Plants");
+    await expect(surface).toHaveAttribute("data-focused-area", /.+/);
     await expect(page.getByRole("button", { name: "Continue to Ready" })).toBeDisabled();
     await expect(page.getByRole("button", { name: "Skip plants for now" })).toBeEnabled();
     await expect(page.getByRole("group", { name: "Add a planting area" })).toHaveCount(0);
@@ -128,7 +131,11 @@ for (const width of [1440, 390]) {
     // Back returns to this garden's plan, and the finished guide stays closed.
     await page.goBack();
     await expect(page).toHaveURL(new RegExp(`${gardenBase}/plan$`));
-    await expect(page.getByRole("region", { name: "Garden properties" })).toContainText(`${name} · 8 × 5 m`);
     await expect(track).toHaveCount(0);
+    // The finished garden switches levels instead; the Garden level holds its name and size (ADR-0075).
+    await goToLevel(page, "Garden");
+    await expect(page.getByLabel("Garden name")).toHaveValue(name);
+    await expect(page.getByLabel("Garden width (m)")).toHaveValue("8");
+    await expect(page.getByLabel("Garden length (m)")).toHaveValue("5");
   });
 }

@@ -1,7 +1,7 @@
 import { expect, test, type Locator } from "@playwright/test";
 import { metresToCanvas } from "../src/lib/canvasViewport";
 import { areaFocusViewport, createDemoGardenWorkspace, gardenPlanViewport, type GardenWorkspace } from "../src/lib/gardenWorkspace";
-import { planCanvas, planSurface, planTransform } from "./areaHelpers";
+import { goToLevel, planCanvas, planSurface, planTransform } from "./areaHelpers";
 import { openWorkspace } from "./workspace";
 
 // Native canvas, pointer and touch behavior require a real browser run.
@@ -28,12 +28,12 @@ for (const width of [390, 900, 1440]) {
     await expect(page.getByText("All changes saved", { exact: true })).toBeVisible();
     const plan = planCanvas(page);
     await expectFittedCanvas(plan);
-    await page.getByRole("button", { name: "Edit garden details" }).click();
+    await goToLevel(page, "Garden");
     await page.getByLabel("Garden width (m)").fill("10000");
     await page.getByLabel("Garden length (m)").fill("10000");
     await page.getByLabel("Garden length (m)").press("Enter");
-    await page.getByRole("button", { name: "Done", exact: true }).click();
     await expectFittedCanvas(plan);
+    await goToLevel(page, "Plants");
     await page.getByRole("link", { name: "Edit Sample raised bed" }).click();
     // Plants move on the same canvas once it has zoomed into the bed.
     const surface = planSurface(page);
@@ -82,6 +82,8 @@ test("a mouse drags an area without a mode: snapped preview, Escape cancel, and 
   await page.getByRole("button", { name: "Load demo garden" }).click();
   await page.getByRole("link", { name: "Open Demo Garden" }).click();
   await expect(page.getByText("All changes saved", { exact: true })).toBeVisible();
+  // Areas move on the Planting areas level; Plants locks them (ADR-0075).
+  await goToLevel(page, "Planting areas");
   await expect(page.getByRole("region", { name: "Planting areas" })).toContainText("Sample raised bed");
   // A mouse drags an area directly; only touch screens show the Move mode (ADR-0072, G4).
   await expect(page.getByRole("button", { name: "Move planting areas" })).toHaveCount(0);
@@ -116,7 +118,7 @@ test("a mouse drags an area without a mode: snapped preview, Escape cancel, and 
   await drag();
   await page.mouse.up();
   await expect.poll(read).toEqual({ revision: original.revision + 1, position: { x: 1.5, y: 1.3, rotationDegrees: area.planPlacement.rotationDegrees } });
-  await expect(page).toHaveURL(/\/plan$/);
+  await expect(page).toHaveURL(/\/plan\?level=areas$/);
   // Undo puts a mistaken drag back with a new forward revision (ADR-0072, phase G5).
   await page.keyboard.press("ControlOrMeta+z");
   await expect(page.getByText("Undid move Sample raised bed.", { exact: true })).toBeVisible();
@@ -161,7 +163,14 @@ for (const width of [390, 1440]) {
     expect(zoomed.scale).toBeGreaterThan(whole.scale * 1.5);
     await expect(surface).toHaveAttribute("data-zooming", "false");
     await page.screenshot({ path: testInfo.outputPath(`area-zoom-${width}.png`) });
+    // Whole garden only zooms out: the area stays open until Escape closes it.
     await back.click();
+    await expect(surface).not.toHaveAttribute("data-focused-area", /.+/);
+    await expect(page).toHaveURL(new RegExp(`area=${area.id}$`));
+    const zoomIn = page.getByRole("button", { name: `Zoom to ${area.name}` });
+    await zoomIn.click();
+    await expect(surface).toHaveAttribute("data-focused-area", area.id);
+    await page.keyboard.press("Escape");
     await expect(surface).not.toHaveAttribute("data-focused-area", /.+/);
     await expect(back).toBeHidden();
     await expect(page).toHaveURL(/\/plan$/);
@@ -177,16 +186,20 @@ test("a rotated area stays zoomed after reload and Escape returns to the whole g
   await page.getByRole("button", { name: "Load demo garden" }).click();
   await page.getByRole("link", { name: "Open Demo Garden" }).click();
   await expect(page.getByText("All changes saved", { exact: true })).toBeVisible();
+  // Rotate on Planting areas, then open the same bed on Plants, where it zooms (ADR-0075).
+  await goToLevel(page, "Planting areas");
   await page.getByRole("link", { name: "Edit Sample raised bed" }).click();
   await page.getByLabel("Rotation (degrees)").fill("30");
   await page.getByLabel("Rotation (degrees)").press("Enter");
   await expect(page.getByText("All changes saved", { exact: true })).toBeVisible();
+  await goToLevel(page, "Plants");
+  await expect(page).toHaveURL(/\?area=demo-raised-bed$/);
   await page.reload();
   const surface = planSurface(page);
   await expect(surface).toHaveAttribute("data-focused-area", "demo-raised-bed");
-  await expect(page.getByRole("heading", { name: "Edit planting area" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Plants", exact: true })).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath("area-zoom-rotated.png") });
-  await page.getByRole("heading", { name: "Edit planting area" }).focus();
+  await page.getByRole("heading", { name: "Plants", exact: true }).focus();
   await page.keyboard.press("Escape");
   await expect(page).toHaveURL(/\/plan$/);
   await expect(surface).not.toHaveAttribute("data-focused-area", /.+/);

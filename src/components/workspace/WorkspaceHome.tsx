@@ -56,7 +56,7 @@ function TodayStrip({ counts, tasks }: { counts: HomeTasks["counts"]; tasks: Hom
     </div>
     {tasks.length > 0 && <ul className={styles.todayTasks}>{tasks.map(({ key, task, location, gardenId, status }) => <li key={key}>
       <Link href={careLocationPath(gardenId ?? "all-gardens", "tasks")}>
-        <strong>{task.type === "watering" ? "Watering" : "Fertilizing"}</strong>
+        <strong className={styles.careType} data-type={task.type}>{task.type === "watering" ? "Watering" : "Fertilizing"}</strong>
         <span>{location}</span>
         <span className={status === "overdue" ? styles.overdue : undefined}>{taskGroups.find((group) => group.status === status)?.label} · <time dateTime={task.dueDate}>{task.dueDate}</time></span>
       </Link>

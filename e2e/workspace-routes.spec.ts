@@ -6,7 +6,11 @@ test("deep links, browser history, and missing entities keep explicit garden con
   await page.getByRole("button", { name: "Load demo garden" }).click();
   await page.getByRole("link", { name: "Open Demo Garden" }).click();
   await expect(page).toHaveURL(/\/gardens\/demo-garden\/plan$/);
+  // The area's name is edited on the Planting areas level, which the address records (ADR-0075).
+  await page.getByRole("navigation", { name: "Garden Plan levels" }).getByRole("button", { name: "Planting areas", exact: true }).click();
+  await expect(page).toHaveURL(/\/gardens\/demo-garden\/plan\?level=areas$/);
   await page.getByRole("link", { name: "Edit Sample raised bed" }).click();
+  await expect(page).toHaveURL(/\?level=areas&area=demo-raised-bed$/);
   // A blank name cannot apply, so it stays as a draft across history navigation.
   await page.getByLabel("Planting-area name").fill("");
   await page.getByRole("link", { name: "Plant Guide", exact: true }).click();
@@ -16,7 +20,7 @@ test("deep links, browser history, and missing entities keep explicit garden con
   await page.goForward();
   await expect(page).toHaveURL(/\/guide$/);
   await page.goBack();
-  await page.getByRole("button", { name: "Close", exact: true }).click();
+  await page.getByRole("button", { name: "Done", exact: true }).click();
   await page.getByRole("button", { name: "Discard changes" }).click();
   await page.goto("/care?view=history&location=demo-garden");
   await expect(page.getByRole("heading", { name: "History", exact: true })).toBeVisible();

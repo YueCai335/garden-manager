@@ -75,7 +75,8 @@ export function EditorPanel({ mode, title, context, headingId, returnFocusId, on
     <header className={styles.panelHeader}>
       {context && <p>{context}</p>}
       <h2 id={headingId} ref={heading} tabIndex={-1}>{title}</h2>
-      <Button onClick={onClose}>{activeMode === "mobile" ? "Back to plan" : "Close"}</Button>
+      {/* Edits apply as they are made, so leaving the panel means the edit is done. */}
+      <Button onClick={onClose}>Done</Button>
     </header>
     <div className={styles.panelBody}>{children}</div>
   </dialog>;

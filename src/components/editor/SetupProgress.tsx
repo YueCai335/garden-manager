@@ -5,6 +5,7 @@ import { Button, ButtonLink } from "@/components/ui/Button";
 import { useRuntimeConfig } from "@/components/PortfolioFeaturePreview";
 import { useOpenGardenNote } from "@/components/workspace/AppShell";
 import { setupStepLabels, setupSteps, setupTrack, stepIndex, type GuidedSetup, type SetupStep } from "@/lib/guidedSetup";
+import { planLevelLabels, planLevelShortLabels, planLevels, type PlanLevel } from "@/lib/planLevels";
 import styles from "./Setup.module.css";
 
 /**
@@ -26,6 +27,37 @@ export function SetupProgress({ setup, onStep }: { setup: Pick<GuidedSetup, "ste
           {item.clickable
             ? <button type="button" className={styles.stepButton} onClick={() => onStep(item.step)}>{marker}<span aria-hidden="true">{item.label}</span><span className={styles.srOnly}>{item.label}, {state}</span></button>
             : <span className={styles.stepText} aria-current={item.status === "current" ? "step" : undefined}>{marker}<span aria-hidden="true">{item.label}</span><span className={styles.srOnly}>{item.label}, {state}</span></span>}
+        </li>;
+      })}
+    </ol>
+  </nav>;
+}
+
+/**
+ * An existing garden's three levels (ADR-0075): the setup track's look, but a
+ * switcher rather than progress. Every level is a button at any time, the
+ * current one is marked, and there is no step count, Continue, or Ready.
+ */
+export function PlanLevelBar({ level, onLevel, disabled = {} }: {
+  level: PlanLevel;
+  onLevel: (level: PlanLevel) => void;
+  /** Levels that have nothing to work on yet, with the reason shown as a hint. */
+  disabled?: Partial<Record<PlanLevel, string>>;
+}) {
+  return <nav className={`${styles.setup} ${styles.levels}`} aria-label="Garden Plan levels">
+    <ol className={styles.track}>
+      {planLevels.map((item, index) => {
+        const current = item === level;
+        const reason = disabled[item];
+        return <li key={item} data-status={current ? "current" : "available"}>
+          <button type="button" className={styles.stepButton} aria-current={current ? "true" : undefined}
+            aria-label={planLevelLabels[item]} aria-describedby={reason ? `plan-level-${item}-hint` : undefined}
+            disabled={Boolean(reason)} onClick={() => { if (!current) onLevel(item); }}>
+            <span className={styles.marker} aria-hidden="true">{index + 1}</span>
+            <span className={styles.levelLabel} aria-hidden="true">{planLevelLabels[item]}</span>
+            <span className={styles.levelShortLabel} aria-hidden="true">{planLevelShortLabels[item]}</span>
+          </button>
+          {reason && <span id={`plan-level-${item}-hint`} className={styles.srOnly}>{reason}</span>}
         </li>;
       })}
     </ol>

@@ -78,16 +78,19 @@ it("follows a drag for untouched positions but preserves an explicitly typed pos
   expect(screen.getByText(/These properties changed elsewhere/)).toBeInTheDocument();
 });
 
-it("applies a 0.1 m nudge to only the selected coordinate at once", () => {
+it("moves an area with its position fields, with no step buttons or type field", () => {
   const area = createDemoGardenWorkspace().gardens[0].growingAreas[0];
   const save = vi.fn(() => true);
   render(<Inspector area={{ ...area, planPlacement: { ...area.planPlacement, x: 0 } }} save={save} />);
-  expect(screen.getByRole("button", { name: "Move left 0.1 m" })).toBeDisabled();
-  fireEvent.click(screen.getByRole("button", { name: "Move right 0.1 m" }));
+  // Dragging on the canvas moves areas; the type is chosen when the area is added.
+  expect(screen.queryByRole("group", { name: "Move area by 0.1 metres" })).not.toBeInTheDocument();
+  expect(screen.queryByLabelText("Planting-area type")).not.toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText("Area X position (m)"), { target: { value: "0.1" } });
+  fireEvent.keyDown(screen.getByLabelText("Area X position (m)"), { key: "Enter" });
   expect(save).toHaveBeenCalledExactlyOnceWith(area.id, area.name, area.kind, 0, expect.any(Object), { x: 0.1, y: area.planPlacement.y });
 });
 
-it("has no Save button, ignores a blur that changes nothing, and applies the type at once", () => {
+it("has no Save button, ignores a blur that changes nothing, and keeps the area's type", () => {
   const area = createDemoGardenWorkspace().gardens[0].growingAreas[0];
   const save = vi.fn(() => true);
   render(<Inspector area={area} save={save} />);
@@ -95,6 +98,7 @@ it("has no Save button, ignores a blur that changes nothing, and applies the typ
   expect(screen.getByText("Changes apply when you leave a field or press Enter. Undo reverses them.")).toBeInTheDocument();
   fireEvent.blur(screen.getByLabelText("Width (m)"));
   expect(save).not.toHaveBeenCalled();
-  fireEvent.change(screen.getByLabelText("Planting-area type"), { target: { value: "greenhouse" } });
-  expect(save).toHaveBeenCalledExactlyOnceWith(area.id, area.name, "greenhouse", 0, expect.any(Object), area.planPlacement && { x: area.planPlacement.x, y: area.planPlacement.y });
+  fireEvent.change(screen.getByLabelText("Rotation (degrees)"), { target: { value: "90" } });
+  fireEvent.blur(screen.getByLabelText("Rotation (degrees)"));
+  expect(save).toHaveBeenCalledExactlyOnceWith(area.id, area.name, area.kind, 90, expect.any(Object), { x: area.planPlacement.x, y: area.planPlacement.y });
 });

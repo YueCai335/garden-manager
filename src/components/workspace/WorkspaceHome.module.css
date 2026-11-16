@@ -65,6 +65,10 @@
 .todayTasks a { display: grid; gap: 0; min-height: 44px; padding: 6px 12px; border: 1px solid var(--color-line); border-radius: var(--radius-control); color: var(--color-text); font-size: 13px; line-height: 1.35; text-decoration: none; overflow-wrap: anywhere; }
 .todayTasks a:hover { border-color: var(--color-input-border); background: var(--color-page); }
 .todayTasks strong { font-size: 14px; font-weight: 600; }
+/* A small dot tells watering and fertilizing apart without changing the card. */
+.careType { display: inline-flex; align-items: center; gap: 6px; }
+.careType::before { content: ""; flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--color-care-watering); }
+.careType[data-type="fertilizing"]::before { background: var(--color-care-fertilizing); }
 .todayTasks span { color: var(--color-muted); }
 .todayTasks span.overdue { color: var(--color-error); }
 .todayLink { margin-left: auto; }

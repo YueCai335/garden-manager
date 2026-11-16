@@ -1,11 +1,12 @@
 import { expect, test } from "@playwright/test";
 import { openWorkspace } from "./workspace";
+import { goToLevel } from "./areaHelpers";
 
 test("invalid garden properties keep input, describe each error, and focus the first field", async ({ page }) => {
   await openWorkspace(page);
   await page.getByRole("button", { name: "Load demo garden" }).click();
   await page.getByRole("link", { name: "Open Demo Garden" }).click();
-  await page.getByRole("button", { name: "Edit garden details" }).click();
+  await goToLevel(page, "Garden");
   const name = page.getByLabel("Garden name", { exact: true });
   await name.fill("   ");
   const width = page.getByLabel("Garden width (m)");
@@ -26,8 +27,7 @@ test("invalid garden properties keep input, describe each error, and focus the f
   await width.fill("9");
   await width.press("Enter");
   await expect(width).toHaveAttribute("aria-invalid", "false");
-  await page.getByRole("button", { name: "Done", exact: true }).click();
-  await expect(page.getByRole("region", { name: "Garden properties" })).toContainText("Valid garden · 9 × 6 m");
+  await expect(name).toHaveValue("Valid garden");
   // Wait for the server copy before reloading, so the reload reads what was saved.
   const id = await page.evaluate(() => localStorage.getItem("sun-aware-garden-planner:server-workspace-id:v1"));
   await expect.poll(async () => {
@@ -35,8 +35,9 @@ test("invalid garden properties keep input, describe each error, and focus the f
     const garden = (await response.json()).gardens[0];
     return `${garden.name} ${garden.plan.widthMeters}`;
   }).toBe("Valid garden 9");
+  // The Garden level is in the address, so the reload returns to it.
   await page.reload();
-  await page.getByRole("button", { name: "Edit garden details" }).click();
+  await expect(page).toHaveURL(/level=garden$/);
   await expect(name).toHaveValue("Valid garden");
   await expect(width).toHaveValue("9");
 });

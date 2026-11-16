@@ -16,6 +16,7 @@ import { PLANT_LABEL_HEIGHT, placePlantLabels, type Box, type PlantCircle, type 
 import { areaLocalToPlan, isInsideArea, planToAreaLocal } from "@/lib/planGeometry";
 import { plantCenterInArea, plantWarnings } from "@/lib/plantLayout";
 import { minimumGardenSize, resizedGardenSize, type SetupStep } from "@/lib/guidedSetup";
+import type { PlanLevel } from "@/lib/planLevels";
 import { GardenDetailsFields, type GardenDetailsChange } from "./editor/GardenDetailsFields";
 import { Button } from "./ui/Button";
 import { useConfirmation } from "./ConfirmDialog";
@@ -38,6 +39,9 @@ import {
 } from "@/lib/gardenWorkspace";
 
 type AreaSize = { widthMeters: number; depthMeters: number };
+
+/** The smallest plant radius a garden thumbnail draws, in pixels, so every plant stays visible. */
+const THUMBNAIL_PLANT_RADIUS = 3;
 
 /** Undo and Redo for Garden Plan edits in this tab (ADR-0072, phase G5). */
 export type PlanHistoryControls = {
@@ -74,12 +78,12 @@ type GardenPlanOverviewProps = {
   compact?: boolean;
   editable?: boolean;
   /**
-   * The wide layout (ADR-0073 S4): the toolbar, zoom, legend, and `sidePanel`
-   * float over a full-width canvas as glass layers. Otherwise they sit in the
-   * page flow above and below the canvas.
+   * The wide layout (ADR-0073 S4): the toolbar, zoom, and legend float over the
+   * canvas as glass layers. Otherwise they sit in the page flow above and below
+   * the canvas.
    */
   floating?: boolean;
-  /** The zoomed area's panel, floating at the canvas's top right in the wide layout. */
+  /** The open area's panel, in its own column beside the canvas in the wide layout. */
   sidePanel?: ReactNode;
   headingRef?: RefObject<HTMLHeadingElement | null>;
   isAreaInspectorOpen?: boolean;
@@ -97,8 +101,10 @@ type GardenPlanOverviewProps = {
   onPlanChange?: (plan: GardenPlan) => void;
   onPlacementChange?: (areaId: string, placement: PlanPlacement) => void;
   onEditLayout?: (areaId: string) => void;
-  /** Leaves the zoomed area and returns the canvas to the whole garden. */
+  /** Closes the open area (Escape); the canvas returns to the whole garden. */
   onExitArea?: () => void;
+  /** Deletes the garden; offered at the bottom of the garden details form. */
+  onDeleteGarden?: () => void;
   /**
    * The guided setup step on screen (ADR-0072, phase G6). Each step shows only
    * its own controls: Garden size shows a draggable boundary corner, Planting
@@ -106,8 +112,16 @@ type GardenPlanOverviewProps = {
    * Ready keep the canvas for viewing.
    */
   setupStep?: SetupStep;
-  /** The setup track and the current step's panel, shown above the canvas. */
+  /** The setup track and the current step's panel, or the level bar, shown above the canvas. */
   setupPanel?: ReactNode;
+  /**
+   * The level on screen (ADR-0075). Garden edits the garden's size and leaves
+   * areas still; Planting areas adds, moves, and resizes areas without zooming;
+   * Plants zooms into an area and locks the areas. Undefined shows every tool.
+   */
+  level?: PlanLevel;
+  /** The area list's link for an area; defaults to opening it on Plants. */
+  areaHref?: (areaId: string) => string;
   /** Shown for a garden with no planting areas outside the guide. */
   onStartSetup?: () => void;
 };
@@ -137,8 +151,11 @@ export function GardenPlanOverview({
   onPlacementChange,
   onEditLayout,
   onExitArea,
+  onDeleteGarden,
   setupStep,
   setupPanel,
+  level,
+  areaHref,
   onStartSetup,
 }: GardenPlanOverviewProps) {
   const [message, setMessage] = useState("");
@@ -158,23 +175,29 @@ export function GardenPlanOverview({
     if (nextPlan) onPlanChange?.(nextPlan);
     setMessage(nextPlan ? `Garden size set to ${nextPlan.widthMeters} × ${nextPlan.depthMeters} m.` : `Garden renamed to ${name}.`);
   };
-  // Viewing steps keep the canvas still; the size step only drags the garden's corner.
-  const viewOnly = setupStep === "size" || setupStep === "ready";
+  // Viewing steps and the Garden level keep the areas still; they only drag the garden's corner.
+  const viewOnly = setupStep === "size" || setupStep === "ready" || level === "garden";
   const selectedArea = growingAreas.find((area) => area.id === selectedAreaId);
-  // A selected area with a size zooms the canvas; one without a size has nothing to frame.
-  const focusedArea = !compact && selectedArea?.layout ? selectedArea : undefined;
+  // The selected area's panel needs a size to sit beside or below the plan.
+  const panelArea = !compact && selectedArea?.layout ? selectedArea : undefined;
+  // Plants zooms into the open area; Planting areas keeps the whole garden in view to place it.
+  const focusedArea = level === "areas" ? undefined : panelArea;
   const exitArea = () => {
-    if (!focusedArea || !onExitArea) return;
-    const id = focusedArea.id;
+    if (!panelArea || !onExitArea) return;
+    const id = panelArea.id;
     onExitArea();
     requestAnimationFrame(() => {
       if (document.querySelector('dialog[open][aria-modal="true"]')) return;
       document.getElementById(`area-link-${id}`)?.focus({ preventScroll: true });
     });
   };
+  // "Whole garden" only zooms out: the area stays open, and the button zooms back in.
+  // Keyed by area, so opening another area zooms to it again.
+  const [wholeGardenFor, setWholeGardenFor] = useState<string>();
+  const showingWholeGarden = Boolean(focusedArea && wholeGardenFor === focusedArea.id);
   const exitAreaRef = useRef(exitArea);
   useEffect(() => { exitAreaRef.current = exitArea; });
-  const canExitArea = Boolean(focusedArea && onExitArea);
+  const canExitArea = Boolean(panelArea && onExitArea && !viewOnly);
   useEffect(() => {
     if (!canExitArea) return;
     const escape = (event: KeyboardEvent) => {
@@ -247,8 +270,11 @@ export function GardenPlanOverview({
     setMessage(`Garden size set to ${size.widthMeters} × ${size.depthMeters} m.`);
   };
   // The plan's tools: in the page flow on narrower layouts, a floating glass toolbar on wide ones.
-  const wholeGarden = canExitArea ? <Button id="plan-whole-garden" onClick={exitArea}><span aria-hidden="true">← </span>Whole garden</Button> : null;
-  const addButtons = editable && onAddArea && (!setupStep || setupStep === "areas") ? <AddAreaButtons onAdd={onAddArea} /> : null;
+  const wholeGarden = focusedArea ? showingWholeGarden
+    ? <Button id="plan-whole-garden" onClick={() => setWholeGardenFor(undefined)}>Zoom to {focusedArea.name}</Button>
+    : <Button id="plan-whole-garden" onClick={() => setWholeGardenFor(focusedArea.id)}>Whole garden</Button> : null;
+  const canAddAreas = setupStep ? setupStep === "areas" : !level || level === "areas";
+  const addButtons = editable && onAddArea && canAddAreas ? <AddAreaButtons onAdd={onAddArea} /> : null;
   const historyButtons = editable && history ? <div className={editorStyles.history} role="group" aria-label="Plan history">
     <Button aria-keyshortcuts="Control+Z Meta+Z" disabled={!history.canUndo} title={history.undoLabel ? `Undo ${history.undoLabel}` : "Nothing to undo"} onClick={history.onUndo}>
       <span aria-hidden="true">↶ </span>Undo
@@ -281,16 +307,23 @@ export function GardenPlanOverview({
       </div>
       {editable && history?.notice && <p className={editorStyles.historyNotice} role="status">{history.notice}</p>}
       {setupPanel}
-      {editable && !setupStep ? (
+      {editable && !setupStep && (level ? level === "garden" : true) ? (
         <section
           aria-label="Garden properties"
           className={`plan-boundary-settings${isAreaInspectorOpen ? " is-compact" : ""}`}
         >
-          {editingDetails || detailsDraft !== undefined ? <GardenDetailsFields gardenId={gardenId} name={gardenNameFromProps} plan={plan} minimum={gardenMinimum} autoFocus onApply={applyDetails}>
-            <p className={`${editorStyles.applyHint} plan-apply-hint`}>Changes apply when you leave a field or press Enter. Undo reverses them.</p>
-            <div className="form-actions">
+          {/* The Garden level always shows the fields; without levels they open from "Edit garden details". */}
+          {level === "garden" || editingDetails || detailsDraft !== undefined ? <GardenDetailsFields gardenId={gardenId} name={gardenNameFromProps} plan={plan} minimum={gardenMinimum} autoFocus={level !== "garden"} onApply={applyDetails}>
+            <p className={`${editorStyles.applyHint} plan-apply-hint`}>{level === "garden"
+              ? "Changes apply when you leave a field or press Enter. You can also drag the garden's corner on the plan. Undo reverses them."
+              : "Changes apply when you leave a field or press Enter. Undo reverses them."}</p>
+            {level !== "garden" && <div className="form-actions">
               <Button onClick={() => confirmDiscard(detailsDraft !== undefined, closeDetails, "edit-garden-details")}>Done</Button>
-            </div>
+            </div>}
+            {onDeleteGarden && <div className={editorStyles.danger}>
+              <p>Deleting removes this garden with its planting areas, plants, and care records.</p>
+              <Button className="remove-button" onClick={onDeleteGarden}>Delete garden</Button>
+            </div>}
           </GardenDetailsFields> : <div className={editorStyles.detailsSummary}>
             <p><strong>{gardenNameFromProps}</strong> · {plan.widthMeters} × {plan.depthMeters} m</p>
             <Button id="edit-garden-details" ref={detailsButton} onClick={() => setEditingDetails(true)}>Edit garden details</Button>
@@ -307,12 +340,14 @@ export function GardenPlanOverview({
             {wholeGarden}
             {tools}
           </div>}
-          <div>
+          <div className={floating && panelArea && sidePanel ? editorStyles.planWithPanel : undefined}>
             <GardenPlanCanvas
               compact={false}
               floating={floating}
-              overlays={floating ? { toolbar: tools, zoom: wholeGarden, side: focusedArea ? sidePanel : undefined } : undefined}
+              overlays={floating ? { toolbar: tools, zoom: wholeGarden } : undefined}
+              frameWholeGarden={showingWholeGarden}
               selectedAreaId={selectedAreaId}
+              level={level}
               growingAreas={growingAreas}
               plantings={plantings}
               interactive={editable && !viewOnly}
@@ -323,16 +358,17 @@ export function GardenPlanOverview({
               planting={planting}
               overlapIds={overlaps.ids}
               onResize={onResizeArea ? resizeArea : undefined}
-              boundary={editable && setupStep === "size" && onPlanChange ? { minimum: gardenMinimum, onResize: resizeGarden } : undefined}
+              boundary={editable && (setupStep === "size" || (!setupStep && level === "garden")) && onPlanChange ? { minimum: gardenMinimum, onResize: resizeGarden } : undefined}
             />
+            {floating && panelArea && sidePanel && <div className={editorStyles.sideColumn}>{sidePanel}</div>}
           </div>
           {editable && overlaps.pairs.length > 0 && <div className={canvasStyles.warning} role="note" aria-label="Overlapping planting areas">
             {overlaps.pairs.map(([first, second]) => <p key={`${first.id}:${second.id}`}>{first.name} and {second.name} overlap. Move one if they are separate spaces on the ground.</p>)}
           </div>}
         </div>
       </div>
-      {focusedArea && areaPanel}
-      {editable && !viewOnly && !areaListInSidebar && growingAreas.length > 0 && <GardenAreaList gardenId={gardenId} areas={growingAreas} selectedAreaId={selectedAreaId} onEditLayout={onEditLayout} onPlaceArea={onPlaceArea} />}
+      {panelArea && areaPanel}
+      {editable && !viewOnly && !areaListInSidebar && growingAreas.length > 0 && <GardenAreaList gardenId={gardenId} areas={growingAreas} selectedAreaId={selectedAreaId} areaHref={areaHref} onEditLayout={onEditLayout} onPlaceArea={level === "plants" ? undefined : onPlaceArea} />}
       {editable ? (
         <p aria-live="polite" className="workspace-message" role="status">
           {message}
@@ -365,13 +401,13 @@ function AddAreaButtons({ onAdd }: { onAdd: (kind: GrowingAreaKind) => void }) {
   </div>;
 }
 
-export function GardenAreaList({ gardenId, areas, selectedAreaId, onEditLayout, onPlaceArea }: { gardenId?: string; areas: GrowingArea[]; selectedAreaId?: string; onEditLayout?: (areaId: string) => void; onPlaceArea?: (areaId: string) => void }) {
+export function GardenAreaList({ gardenId, areas, selectedAreaId, areaHref, onEditLayout, onPlaceArea }: { gardenId?: string; areas: GrowingArea[]; selectedAreaId?: string; areaHref?: (areaId: string) => string; onEditLayout?: (areaId: string) => void; onPlaceArea?: (areaId: string) => void }) {
   const sized = areas.filter((area) => area.layout);
   const unsized = areas.filter((area) => !area.layout);
   const entry = (area: GrowingArea) => {
     const content = <><strong>{area.name}</strong><span>{growingAreaKindLabels[area.kind]} · {areaSizeLabel(area)}</span></>;
     return gardenId
-      ? <Link id={`area-link-${area.id}`} aria-current={selectedAreaId === area.id ? "true" : undefined} href={areaPath(gardenId, area.id)} aria-label={`Edit ${area.name}`}>{content}</Link>
+      ? <Link id={`area-link-${area.id}`} aria-current={selectedAreaId === area.id ? "true" : undefined} href={areaHref ? areaHref(area.id) : areaPath(gardenId, area.id)} aria-label={`Edit ${area.name}`}>{content}</Link>
       : <Button onClick={() => onEditLayout?.(area.id)}>{content}</Button>;
   };
   return <section className={editorStyles.areaList} aria-labelledby="plan-area-shortcuts-heading">
@@ -392,7 +428,7 @@ export function GardenAreaList({ gardenId, areas, selectedAreaId, onEditLayout, 
   </section>;
 }
 
-type CanvasOverlays = { toolbar?: ReactNode; zoom?: ReactNode; side?: ReactNode };
+type CanvasOverlays = { toolbar?: ReactNode; zoom?: ReactNode };
 
 type GardenPlanCanvasProps = {
   plan: GardenPlan;
@@ -406,8 +442,12 @@ type GardenPlanCanvasProps = {
   selectedAreaId?: string;
   onMove: (areaId: string, point: LayoutPoint) => void;
   onEditLayout?: (areaId: string) => void;
-  /** The area the canvas zooms to; other areas dim. Undefined frames the whole garden. */
+  /** The open area: the canvas zooms to it and dims the others. Undefined frames the whole garden. */
   focusedAreaId?: string;
+  /** Frames the whole garden while an area stays open for planting and editing. */
+  frameWholeGarden?: boolean;
+  /** The plan level (ADR-0075): Plants locks the areas; each level has its own hint. */
+  level?: PlanLevel;
   planting?: CanvasPlanting;
   /** Areas whose outlines overlap another area: drawn with a warning outline. */
   overlapIds?: Set<string>;
@@ -428,6 +468,8 @@ function GardenPlanCanvas({
   onMove,
   onEditLayout,
   focusedAreaId,
+  frameWholeGarden = false,
+  level,
   planting,
   overlapIds,
   onResize,
@@ -508,7 +550,9 @@ function GardenPlanCanvas({
     window.addEventListener("keydown", escape, true);
     return () => window.removeEventListener("keydown", escape, true);
   }, []);
-  const focusedArea = growingAreas.find((area) => area.id === focusedAreaId && area.layout);
+  const openArea = growingAreas.find((area) => area.id === focusedAreaId && area.layout);
+  // The area the view zooms to; "Whole garden" keeps the area open but frames everything.
+  const focusedArea = frameWholeGarden ? undefined : openArea;
   const measuredAreas = growingAreas.filter((area) => area.layout);
   // Crop-family colours (ADR-0073 S4): a linked planting record's family, else the family the name implies.
   const recordFamilies = plantingFamilies(plantings);
@@ -526,7 +570,7 @@ function GardenPlanCanvas({
   }, []);
   // Floating layers reserve bands along the canvas edges; framing keeps the garden or area clear of them.
   const stageRef = useRef<HTMLDivElement>(null);
-  const insets = useOverlayInsets(stageRef, floating && !compact, [overlays?.toolbar, overlays?.zoom, overlays?.side, legendFamilies.length]);
+  const insets = useOverlayInsets(stageRef, floating && !compact, [overlays?.toolbar, overlays?.zoom, legendFamilies.length]);
   const framePadding = compact ? 12 : 34;
   // The size step frames the whole garden with room past its far edges, so the corner can be dragged outwards.
   const room = Math.max(1, Math.max(plan.widthMeters, plan.depthMeters) * 0.4);
@@ -549,11 +593,16 @@ function GardenPlanCanvas({
   const horizontalGrid = compact ? [] : canvasGridTicks(Math.max(0, viewport.y), Math.min(drawnPlan.depthMeters, viewport.y + viewport.depthMeters), scale);
   const draggedArea = measuredAreas.find((area) => area.id === drag?.id);
   const areaLabels = measuredAreas.map((area) => ({ area, ...areaLabelPosition(area, scale, padding, viewport) }));
+  // An area with plants is named by its plants; only empty areas and the open area show their own name.
+  const namedByArea = ({ area }: { area: GrowingArea }) => area.layout!.allocations.length === 0 || area.id === selectedAreaId;
   // While zoomed, only the focused area keeps its name so neighbours' labels never cover its plants.
-  const labels = compact ? fitThumbnailLabels(areaLabels, width, height, offsetX, offsetY) : areaLabels.filter(({ area }) => !focusedArea || area.id === focusedArea.id);
+  // A thumbnail answers "what is growing": once anything is planted it names plants only.
+  const anyPlanted = measuredAreas.some((area) => area.layout!.allocations.length > 0);
+  const labels = compact ? (anyPlanted ? [] : fitThumbnailLabels(areaLabels, width, height, offsetX, offsetY))
+    : areaLabels.filter((label) => namedByArea(label) && (!focusedArea || label.area.id === focusedArea.id));
   const dimmed = (area: GrowingArea) => Boolean(focusedArea && area.id !== focusedArea.id);
-  const plantingArea = planting && focusedArea?.id === planting.areaId ? focusedArea : undefined;
-  const plantLabels = compact || !transform ? [] : groupLabels({
+  const plantingArea = planting && openArea?.id === planting.areaId ? openArea : undefined;
+  const plantLabels = !transform ? [] : groupLabels({
     areas: focusedArea ? [focusedArea] : measuredAreas,
     allAreas: measuredAreas,
     // An area or plant being moved redraws its labels when it lands.
@@ -566,14 +615,19 @@ function GardenPlanCanvas({
         return { left, top: sizeY, right: left + sizeWidth, bottom: sizeY + 16 };
       }),
     ],
-    bounds: { left: insets.left, top: insets.top, right: width - insets.right, bottom: height - insets.bottom },
+    // Thumbnails draw in a layer shifted by the centring offset, with a 4 px margin.
+    bounds: compact ? { left: 4 - offsetX, top: 4 - offsetY, right: width - offsetX - 4, bottom: height - offsetY - 4 }
+      : { left: insets.left, top: insets.top, right: width - insets.right, bottom: height - insets.bottom },
     toCanvas: (point) => ({ x: padding + (point.x - viewport.x) * scale, y: padding + (point.y - viewport.y) * scale }),
     scale,
+    minRadius: compact ? THUMBNAIL_PLANT_RADIUS : 0,
   });
   const warnings = plantingArea?.layout ? plantWarnings(plantingArea.layout) : undefined;
   const placing = plantingArea ? planting?.placing : undefined;
   // Areas drag directly with a mouse or pen, and only in Move mode on touch screens.
-  const canDragAreas = interactive && !compact && !placing && (!coarse || moveMode);
+  // The Plants level locks them, so placing or dragging a plant never moves a bed.
+  const areasLocked = level === "plants";
+  const canDragAreas = interactive && !compact && !placing && !areasLocked && (!coarse || moveMode);
   const resizedArea = measuredAreas.find((area) => area.id === resize?.id);
   // The pointer in the zoomed area's own metres.
   const pointerInArea = (event: KonvaEventObject<MouseEvent | TouchEvent>) => {
@@ -600,13 +654,20 @@ function GardenPlanCanvas({
     : plantDrag ? `${plantDrag.label} · ${plantDrag.point.x.toFixed(1)}, ${plantDrag.point.y.toFixed(1)} m`
     : gardenResize ? `Garden · ${gardenResize.size.widthMeters} × ${gardenResize.size.depthMeters} m`
     : undefined;
-  const hint = moveMode ? "Drag an area. Escape cancels a move."
+  const selectedName = measuredAreas.find((area) => area.id === selectedAreaId)?.name;
+  const hint = level === "areas" && !moveMode ? (selectedName
+      ? `${selectedName} selected. ${coarse ? "Turn on Move to drag it, or tap Done to clear the selection." : "Drag it to move it, or drag its corner to resize it. Escape clears the selection."}`
+      : coarse ? "Tap an area to select it, or turn on Move to drag it." : "Click an area to select it, or drag it to move it. Escape cancels a move.")
+    : level === "plants" && !(placing && plantingArea) ? (plantingArea
+      ? `Viewing ${plantingArea.name}. Choose a plant to add, or drag a plant to move it. Escape returns to the whole garden.`
+      : `${coarse ? "Tap" : "Click"} an area to plant in it.`)
+    : moveMode ? "Drag an area. Escape cancels a move."
     : placing && plantingArea ? placeHint || `Click inside ${plantingArea.name} to place ${placing.label}. Escape stops.`
     : coarse ? (plantingArea ? `Viewing ${plantingArea.name}. Drag a plant to move it, or choose a plant to add. Escape returns to the whole garden.`
-      : focusedArea ? `Viewing ${focusedArea.name}. Escape returns to the whole garden.`
+      : openArea ? `Viewing ${openArea.name}. Escape returns to the whole garden.`
       : "Tap an area to open it, or turn on Move to drag it.")
     : plantingArea ? `Viewing ${plantingArea.name}. Drag a plant or the area to move it, or drag the corner to resize. Escape returns to the whole garden.`
-    : focusedArea ? `Viewing ${focusedArea.name}. Drag it to move it, or drag its corner to resize it. Escape returns to the whole garden.`
+    : openArea ? `Viewing ${openArea.name}. Drag it to move it, or drag its corner to resize it. Escape returns to the whole garden.`
     : "Click an area to open it, or drag it to move it. Escape cancels a move.";
 
   const legend = legendFamilies.length > 0 ? <div className={`${canvasStyles.legend}${floating ? ` ${canvasStyles.glass} ${canvasStyles.layer}` : ""}`} data-corner={floating ? "bottom-left" : undefined} data-testid="plan-legend">
@@ -619,7 +680,7 @@ function GardenPlanCanvas({
 
   return <div className={compact ? undefined : canvasStyles.frame} data-floating={compact ? undefined : floating}>
     {interactive && !compact && measuredAreas.length > 0 && <div className={canvasStyles.toolbar}>
-      {coarse && <Button aria-pressed={moveMode} onClick={() => { cancelDrag(); cancelResize(); setMoveMode((value) => !value); }}>Move planting areas</Button>}
+      {coarse && !areasLocked && <Button aria-pressed={moveMode} onClick={() => { cancelDrag(); cancelResize(); setMoveMode((value) => !value); }}>Move planting areas</Button>}
       <p>{hint}</p>
     </div>}
     <div ref={stageRef} className={compact ? canvasStyles.thumbnailStage : canvasStyles.stage}>
@@ -771,7 +832,8 @@ function GardenPlanCanvas({
               const selectedPlant = editablePlant && planting?.selectedPlantId === allocation.id;
               const warned = editablePlant && (warnings?.crowdedIds.has(allocation.id) || warnings?.pastEdgeIds.has(allocation.id));
               const colors = cropFamilyColor(familyOf(allocation));
-              const radius = (allocation.diameterMeters * scale) / 2;
+              // Thumbnails keep every plant visible, however small its spacing is at that scale.
+              const radius = Math.max((allocation.diameterMeters * scale) / 2, compact ? THUMBNAIL_PLANT_RADIUS : 0);
               return <Group key={allocation.id}>
                 <Circle
                   aria-label={`${allocation.label} plant on Garden Plan`}
@@ -834,7 +896,7 @@ function GardenPlanCanvas({
               strokeWidth={2}
               width={resize.size.widthMeters * scale}
             />}
-            {onResize && canDragAreas && focusedArea?.id === area.id && isRectangularLayout(area.layout!) && <Rect
+            {onResize && canDragAreas && selectedAreaId === area.id && isRectangularLayout(area.layout!) && <Rect
               aria-label={`Resize ${area.name}`}
               data-testid="resize-handle"
               draggable
@@ -1023,7 +1085,6 @@ function GardenPlanCanvas({
     {floating && overlays?.toolbar && <div className={`${canvasStyles.glass} ${canvasStyles.layer} ${canvasStyles.tools}`} data-corner="top-left" role="toolbar" aria-label="Plan tools">{overlays.toolbar}</div>}
     {floating && overlays?.zoom && <div className={`${canvasStyles.glass} ${canvasStyles.layer} ${canvasStyles.zoom}`} data-corner="bottom-right">{overlays.zoom}</div>}
     {floating && legend}
-    {floating && overlays?.side && <div className={canvasStyles.side} data-corner="top-right">{overlays.side}</div>}
     </div>
     {!floating && !compact && legend}
   </div>;
@@ -1062,7 +1123,7 @@ function useOverlayInsets(stageRef: RefObject<HTMLDivElement | null>, enabled: b
  * canvas pixels so it reads upright whatever the area's rotation. Circles of every
  * drawn area count as obstacles, so a label never covers a plant (ADR-0072 G1).
  */
-function groupLabels({ areas, allAreas, hidden, obstacles, bounds, toCanvas, scale }: {
+function groupLabels({ areas, allAreas, hidden, obstacles, bounds, toCanvas, scale, minRadius = 0 }: {
   areas: GrowingArea[];
   allAreas: GrowingArea[];
   hidden: Set<string>;
@@ -1070,10 +1131,11 @@ function groupLabels({ areas, allAreas, hidden, obstacles, bounds, toCanvas, sca
   bounds: Box;
   toCanvas: (point: LayoutPoint) => LayoutPoint;
   scale: number;
+  minRadius?: number;
 }) {
   const circleOf = (area: GrowingArea, allocation: { x: number; y: number; diameterMeters: number }): PlantCircle => ({
     ...toCanvas(areaLocalToPlan(area, allocation)),
-    radius: (allocation.diameterMeters * scale) / 2,
+    radius: Math.max((allocation.diameterMeters * scale) / 2, minRadius),
   });
   const circles = allAreas.flatMap((area) => area.layout!.allocations.map((allocation) => circleOf(area, allocation)));
   const groups: PlantGroup[] = areas.filter((area) => !hidden.has(area.id)).flatMap((area) => {

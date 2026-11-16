@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { openAreaProperties } from "./areaHelpers";
+import { goToLevel, openAreaProperties } from "./areaHelpers";
 import { openWorkspace, workspaceHome } from "./workspace";
 
 // Area properties apply on blur or Enter (ADR-0072, phase G5). A value that
@@ -20,16 +20,20 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 1440, height: 900 
     await name.focus();
     await expect(page.getByText("Not applied yet: fix the highlighted values.", { exact: true })).toBeVisible();
     if (narrow) {
-      // On a phone the properties page covers the plan; plants are added below the zoomed plan.
+      // On a phone the properties page covers the plan; plants are added on the Plants level later.
       await page.getByRole("link", { name: "All gardens", exact: true }).click();
       await page.getByRole("link", { name: "Open Demo Garden" }).click();
+      await goToLevel(page, "Planting areas");
       await page.getByRole("link", { name: "Edit Draft kitchen bed" }).click();
       // The draft that could not apply reopens its editor with the area.
       await expect(width).toHaveValue("");
     } else {
+      // Plants are added on the Plants level; the area's draft waits on Planting areas (ADR-0075).
+      await goToLevel(page, "Plants");
       await page.getByRole("button", { name: "Add plant", exact: true }).click();
       await page.getByLabel("Plant type", { exact: true }).fill("Kale");
       await page.getByRole("button", { name: "Add", exact: true }).click();
+      await goToLevel(page, "Planting areas");
       await expect(width).toHaveValue("");
     }
     await page.getByRole("link", { name: "All gardens", exact: true }).click();
@@ -42,6 +46,7 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 1440, height: 900 
     await page.getByRole("navigation", { name: "Workspace sections" }).getByRole("link", { name: "Gardens", exact: true }).click();
     await expect(page).toHaveURL(workspaceHome);
     await page.getByRole("link", { name: "Open Demo Garden" }).click();
+    await goToLevel(page, "Planting areas");
     await page.getByRole("link", { name: "Edit Draft kitchen bed" }).click();
     await expect(name).toHaveValue("Draft kitchen bed");
     await expect(width).toHaveValue("");
@@ -49,7 +54,8 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 1440, height: 900 
     await width.press("Enter");
     await expect(page.getByRole("button", { name: "Save", exact: true })).toHaveCount(0);
     if (narrow) {
-      await page.getByRole("button", { name: "Back to plan", exact: true }).click();
+      await page.getByRole("button", { name: "Done", exact: true }).click();
+      await goToLevel(page, "Plants");
       await page.getByRole("button", { name: "Add plant", exact: true }).click();
       await page.getByLabel("Plant type", { exact: true }).fill("Kale");
       await page.getByRole("button", { name: "Add", exact: true }).click();
@@ -62,6 +68,7 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 1440, height: 900 
       const area = workspace.gardens[0].growingAreas[0];
       return { name: area.name, width: area.layout.widthMeters, hasKale: area.layout.allocations.some((plant: { plantType: string }) => plant.plantType === "Kale") };
     }).toEqual({ name: "Draft kitchen bed", width: 3, hasKale: true });
+    if (!narrow) await goToLevel(page, "Plants");
     await page.reload();
     await expect(page).toHaveURL(/\/gardens\/demo-garden\/plan\?area=/);
     await expect(page.getByRole("button", { name: "Edit Kale", exact: true })).toBeVisible();

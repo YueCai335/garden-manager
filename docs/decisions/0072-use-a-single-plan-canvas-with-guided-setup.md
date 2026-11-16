@@ -48,10 +48,13 @@ interaction change and needs no API or database migration.
 
 Garden Plan has one metric canvas. Selecting an area to plant zooms the same
 canvas to frame that area, dims the other areas, and shows a "Whole garden"
-control. Plants are placed, selected, moved, and removed directly on this
+control. (Amended by ADR-0073 on 2026-11-15: "Whole garden" only zooms out and
+keeps the area open; Close and Escape close it.) Plants are placed, selected, moved, and removed directly on this
 canvas. The second plant canvas in the inspector is removed. The side panel
 holds controls and text: the area properties, the plant picker, warnings, and
-the area's plant groups.
+the area's plant groups. (Superseded in part by ADR-0075 on 2026-11-16: an existing
+garden edits the area properties on the Planting areas level and the plants on
+the Plants level.)
 
 Pointer positions convert to area-local coordinates through the inverse of the
 area's plan placement and rotation. The saved model keeps metres and the
@@ -91,6 +94,8 @@ both tables have no suggestion.
 - With touch, the explicit Move mode remains, so page scrolling over the canvas
   still works. Tap selects an area.
 - Coordinate fields and step buttons remain as the non-drag alternative.
+  (Amended by ADR-0073 on 2026-11-16: the step buttons are removed; the
+  coordinate fields remain the non-drag alternative.)
 - A selected plant type shows a spacing ring that follows the pointer. A click
   inside the area places one plant. "Fill" places that plant on a grid at its
   spacing and skips occupied positions.
@@ -158,6 +163,8 @@ clears on a garden change, a reload, or a sync conflict.
   is open.
 - Area properties and the selected plant's fields apply when a field loses
   focus or on Enter; the area type and the 0.1 m step buttons apply at once.
+  (Amended by ADR-0073 on 2026-11-16: the panel no longer edits the type or
+  shows step buttons.)
   A value that fails validation stays in the field with its error and changes
   nothing. Undo replaces G3's "Undo fill" button. Undoing the step that added
   the zoomed area returns the plan to the whole garden.
