@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gardens home mockup (ADR-0081)</title>
+<!-- The mockup loads fonts from Google; the app self-hosts them with next/font. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..600&family=Instrument+Sans:wght@400..700&display=swap">
+<link rel="stylesheet" href="gardens.css">
+</head>
+<body>
+
+<header class="appbar">
+  <div class="appbar-inner">
+    <a class="brand" href="#">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21c-4.2-2.2-6.5-5.6-6.5-9.6C5.5 7.2 8.2 4.3 12 3c3.8 1.3 6.5 4.2 6.5 8.4 0 4-2.3 7.4-6.5 9.6z"/><path d="M12 21V9"/></svg>
+      Garden Manager
+    </a>
+    <nav class="nav" aria-label="Workspace sections">
+      <a href="#" aria-current="page">Gardens</a>
+      <a href="#">Care</a>
+      <a href="#">Next Season</a>
+      <span class="divider"></span>
+      <a href="#">Plant Doctor</a>
+      <a href="#">Plant Guide</a>
+    </nav>
+    <span class="menu-button">Menu</span>
+    <span class="note-button">+ Note</span>
+    <span class="sync">All changes saved</span>
+  </div>
+</header>
+
+<main class="page">
+
+  <!-- 1. Gardens: the band carries the title; the first row of cards stands half on it. -->
+  <section class="gardens" aria-labelledby="gardens-heading">
+    <div class="band tex-ridges gardens-band">
+      <div class="band-intro">
+        <p class="band-kicker">Monday, Nov 16</p>
+        <h2 class="band-headline" id="gardens-heading">Your gardens</h2>
+        <p class="band-summary" id="summary"></p>
+      </div>
+      <a class="button-ghost" id="demo-link" href="#">Demo garden</a>
+    </div>
+    <div class="garden-grid" id="garden-grid"></div>
+  </section>
+
+  <!-- 2. Today and the AI Garden Notes: two separate blocks. -->
+  <div class="lower">
+    <section class="today-card" aria-labelledby="today-heading">
+      <div class="band tex-ridges date-tile">
+        <p class="band-kicker">Monday</p>
+        <p class="date-big">16</p>
+        <p class="date-month">November</p>
+        <div class="progress" id="progress">
+          <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+          <span class="progress-label" id="progress-label"></span>
+        </div>
+      </div>
+      <div class="today-body">
+        <div class="today-head">
+          <div class="today-heading">
+            <p class="kicker">Care today</p>
+            <h2 class="today-title" id="today-heading"></h2>
+          </div>
+          <a class="text-link" id="care-link" href="#">Open Care →</a>
+        </div>
+        <ul id="today-list"></ul>
+        <p class="today-empty" id="today-empty"></p>
+      </div>
+    </section>
+
+    <section class="band tex-veins note" aria-labelledby="note-heading">
+      <div class="note-head">
+        <span class="note-icon" aria-hidden="true">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l1-4L16.5 4.5a2.1 2.1 0 0 1 3 3L8 19l-4 1z"/><path d="M14.5 6.5l3 3"/></svg>
+        </span>
+        <h2 class="note-title" id="note-heading">AI Garden Notes</h2>
+        <span class="note-hint">Becomes care records</span>
+      </div>
+      <div class="paper">
+        <textarea class="ruled" id="note-text" aria-label="Quick garden note" placeholder="Watered the front beds and fertilized the back garden."></textarea>
+      </div>
+      <div class="note-foot">
+        <span class="note-foot-hint">Write it your way. You review before anything is saved.</span>
+        <span class="note-actions">
+          <a class="text-link" href="#">Open note editor</a>
+          <button class="button-white" id="note-submit" type="button" disabled>Generate draft</button>
+        </span>
+      </div>
+    </section>
+  </div>
+
+</main>
+
+<!-- Mockup only: switches the sample data so every state can be seen. -->
+<div class="switch" role="group" aria-label="Mockup states">
+  <button type="button" data-gardens="3">3 gardens</button>
+  <button type="button" data-gardens="5">5 gardens</button>
+  <button type="button" data-gardens="0">No gardens</button>
+  <span class="switch-gap"></span>
+  <button type="button" data-care="open">Tasks due</button>
+  <button type="button" data-care="done">All done</button>
+  <button type="button" data-care="none">Nothing due</button>
+</div>
+
+<script>
+// Sample data for the mockup only. "Today" is Monday 2026-11-16.
+const ICON = {
+  watering: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5c3 3.6 5.5 6.3 5.5 9.6a5.5 5.5 0 0 1-11 0c0-3.3 2.5-6 5.5-9.6z"/></svg>',
+  fertilizing: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20v-8"/><path d="M12 12c0-3-2-5-6-5 0 3 2 5 6 5z"/><path d="M12 14.5c0-2.5 2-4.5 6-4.5 0 2.5-2 4.5-6 4.5z"/></svg>',
+  check: '<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 6.5l2.5 2.5 4.5-5.5"/></svg>',
+  plus: '<svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg>',
+};
+// Rows keep their place when ticked. `earlier` rows were done before this visit (in Care or from a note) and cannot be unticked here.
+const TASKS = [
+  { id: 't1', type: 'watering', g: 'backyard', title: 'Water Backyard', sub: 'Raised bed A · Pepper', late: 'Due yesterday' },
+  { id: 't2', type: 'watering', g: 'front', title: 'Water Front Yard', sub: 'Border · Panicle hydrangea' },
+  { id: 't3', type: 'fertilizing', g: 'community', title: 'Fertilize Community Garden', sub: 'Bed 2 · Eggplant' },
+  { id: 't4', type: 'watering', g: 'backyard', title: 'Water Backyard', sub: 'Salad bed · Lettuce' },
+  { id: 't5', type: 'watering', g: 'community', title: 'Water Community Garden', sub: 'Whole garden', earlier: true },
+  { id: 't6', type: 'watering', g: 'backyard', title: 'Water Backyard', sub: 'Herb pots · Meadow sage', earlier: true },
+];
+const GARDENS = [
+  { key: 'backyard', name: 'Backyard', img: 'assets/backyard.png', areas: 10, more: 5,
+    plants: [['Pepper', '#f1ceb0', '#9f632f'], ['Meadow sage', '#cdc4f4', '#5f5aa8'], ['Lettuce', '#c6e2ca', '#438054']] },
+  { key: 'community', name: 'Community Garden', img: 'assets/community-garden.png', areas: 6, more: 3,
+    plants: [['Eggplant', '#dad3ee', '#6656a0'], ['Kale', '#c0dde2', '#1a7888'], ['Cucumber', '#e1e1b3', '#777923']] },
+  { key: 'front', name: 'Front Yard', img: 'assets/front-yard.png', areas: 3, more: 0,
+    plants: [['Panicle hydrangea', '#f3b8d4', '#a44374'], ['Sunflower', '#ecd08e', '#7b6310'], ['Marigold', '#f6c39a', '#93571f']] },
+  { key: 'balcony', name: 'Balcony', img: 'assets/front-yard.png', areas: 3, more: 0,
+    plants: [['Basil', '#c6e2ca', '#438054'], ['Cherry tomato', '#f0c6c7', '#ab4e59']] },
+  { key: 'plot', name: 'Riverside Plot', img: '', areas: 0, more: 0, plants: [] },
+];
+const params = new URLSearchParams(location.search);
+const state = { gardens: params.get('gardens') || '3', care: params.get('care') || 'open' };
+const ticked = new Set();
+
+const isDone = (t) => state.care === 'done' || t.earlier || ticked.has(t.id);
+const tasks = () => (state.care === 'none' ? [] : TASKS);
+
+function gardenCard(g) {
+  const mine = tasks().filter((t) => t.g === g.key);
+  const left = mine.filter((t) => !isDone(t)).length;
+  const kinds = g.plants.length + g.more;
+  const chip = !mine.length ? '' : `<span class="g-chip${left ? ' open' : ''}">${left ? `${left} to do today` : 'All done today'}</span>`;
+  const map = g.img ? `<img src="${g.img}" alt="">` : '<span class="g-map-empty">No planting areas yet</span>';
+  const meta = !g.areas ? 'Nothing planted yet' : `${g.areas} planting ${g.areas === 1 ? 'area' : 'areas'} · ${kinds ? `${kinds} ${kinds === 1 ? 'plant' : 'plants'}` : 'no plants yet'}`;
+  const plants = g.plants.map(([n, f, s]) => `<span class="g-plant"><i style="background:${f};border-color:${s}"></i>${n}</span>`).join('');
+  return `<a class="g-card" href="#" aria-label="Open ${g.name}">
+    <span class="g-map">${map}</span>
+    <span class="g-body">${chip}<span class="g-name">${g.name}</span><span class="g-meta">${meta}</span>
+      ${plants ? `<span class="g-plants">${plants}${g.more ? `<span class="g-more">+${g.more} more</span>` : ''}</span>` : ''}</span>
+  </a>`;
+}
+const NEW_TILE = `<a class="new-tile" href="#"><span class="new-mark">${ICON.plus}</span><span class="new-title">New garden</span><span class="new-sub">Draw the outline, then add planting areas</span></a>`;
+const FIRST_GARDEN = `<div class="first-garden"><h2>Create your garden</h2>
+  <label>Garden name<input type="text" placeholder="e.g. Home garden"></label>
+  <div class="first-actions"><button class="button-primary" type="button">Create garden</button><button class="button-text" type="button">Load demo garden</button></div></div>`;
+
+function taskRow(t) {
+  const done = isDone(t);
+  const circle = `<span class="tick-circle">${ICON.check}</span>`;
+  const tick = t.earlier || state.care === 'done'
+    ? `<span class="tick" role="img" aria-label="Done">${circle}</span>`
+    : `<button class="tick" type="button" role="checkbox" aria-checked="${done}" aria-label="${t.title}, ${t.sub}" data-toggle="${t.id}">${circle}</button>`;
+  const late = t.late && !done;
+  return `<li class="row${done ? ' done' : ''}">${tick}
+    <span class="care-icon ${t.type}">${ICON[t.type]}</span>
+    <span class="row-text"><span class="row-title">${t.title}</span><span class="row-sub">${t.sub}</span>${late ? `<span class="late-inline">${t.late}</span>` : ''}</span>
+    ${late ? `<span class="late-chip">${t.late}</span>` : ''}
+  </li>`;
+}
+
+function render() {
+  const gardens = GARDENS.slice(0, Number(state.gardens));
+  const areas = gardens.reduce((sum, g) => sum + g.areas, 0);
+  const plants = gardens.reduce((sum, g) => sum + g.plants.length + g.more, 0);
+  document.getElementById('summary').textContent = gardens.length
+    ? `${gardens.length} ${gardens.length === 1 ? 'garden' : 'gardens'} · ${areas} planting areas · ${plants} plants growing`
+    : 'Start with one garden. You can add more later.';
+  document.getElementById('demo-link').hidden = !gardens.length;
+  document.getElementById('garden-grid').innerHTML = gardens.length ? gardens.map(gardenCard).join('') + NEW_TILE : FIRST_GARDEN;
+
+  const list = tasks();
+  const left = list.filter((t) => !isDone(t)).length;
+  const finished = list.length - left;
+  document.getElementById('today-heading').textContent = !list.length ? 'Nothing due today' : left === 0 ? 'All done for today' : left === 1 ? '1 thing left' : `${left} things left`;
+  document.getElementById('progress').hidden = !list.length;
+  document.getElementById('progress-fill').style.width = list.length ? `${Math.round((finished / list.length) * 100)}%` : '0';
+  document.getElementById('progress-label').textContent = `${finished} of ${list.length} done`;
+  document.getElementById('today-list').innerHTML = list.map(taskRow).join('');
+  const empty = document.getElementById('today-empty');
+  empty.hidden = list.length > 0;
+  empty.textContent = gardens.length ? 'No watering or fertilizing is due today.' : 'Care tasks appear here on the day they are due.';
+
+  document.querySelectorAll('.switch button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.gardens === state.gardens || b.dataset.care === state.care));
+  history.replaceState(null, '', `?gardens=${state.gardens}&care=${state.care}${params.has('shot') ? '&shot' : ''}`);
+}
+document.addEventListener('click', (event) => {
+  const toggle = event.target.closest('[data-toggle]');
+  if (toggle) { const id = toggle.dataset.toggle; ticked.has(id) ? ticked.delete(id) : ticked.add(id); render(); document.querySelector(`[data-toggle="${id}"]`)?.focus(); return; }
+  const button = event.target.closest('.switch button');
+  if (button) { Object.assign(state, button.dataset); ticked.clear(); render(); }
+  if (event.target.closest('a[href="#"]')) event.preventDefault();
+});
+document.getElementById('note-text').addEventListener('input', (event) => { document.getElementById('note-submit').disabled = !event.target.value.trim(); });
+if (params.has('shot')) document.body.classList.add('shot');
+render();
+</script>
+</body>
+</html>

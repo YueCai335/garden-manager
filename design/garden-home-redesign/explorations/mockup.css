@@ -1,0 +1,337 @@
+/*
+ * Gardens home redesign mockup: three directions in one page (index.html).
+ * Colour values match src/styles/tokens.css and design/care-redesign/mockup.css (ADR-0080).
+ * No new colours: the band tokens below are the ones the Care redesign already adds.
+ */
+:root {
+  --page: #f4f4f3;          /* --color-page */
+  --surface: #ffffff;       /* --color-surface */
+  --soft: #f2f2f1;          /* --color-soft */
+  --line: #e3e3e1;          /* --color-line */
+  --ink: #18181a;           /* --color-text */
+  --muted: #5f5f63;         /* --color-muted */
+  --subtle: #8d8d91;        /* --color-ink-subtle (borders only) */
+  --brand: #1f4230;         /* --color-brand */
+  --brand-hover: #285239;   /* --color-brand-hover */
+  --heading: #173322;       /* --color-heading */
+  --error: #b42318;
+  --error-surface: #fff1f0;
+  --water: #195b70;         /* --color-care-watering */
+  --feed: #805b17;          /* --color-care-fertilizing */
+  --app-bar: #264a33;
+  --band-base: #14281d;     /* Care redesign token */
+  --band-ink: #0e1d14;
+  --lime: #d6ff5c;          /* progress bar only */
+  --water-on-dark: #b4e1ee;
+  --feed-on-dark: #edd08f;
+  --done-ink: #6b6b6f;
+  --gutter: 20px;
+}
+@media (min-width: 768px) { :root { --gutter: 48px; } }
+@media (min-width: 1024px) { :root { --gutter: 64px; } }
+
+* { box-sizing: border-box; }
+body { margin: 0; font-family: "Instrument Sans", ui-sans-serif, system-ui, sans-serif; background: var(--page); color: var(--ink); -webkit-font-smoothing: antialiased; }
+h1, h2, h3, p, ul { margin: 0; padding: 0; }
+ul { list-style: none; }
+button { font: inherit; color: inherit; }
+svg { display: block; }
+a { color: inherit; }
+
+/* ---------- App bar (exists in the app; shown for context) ---------- */
+.appbar { position: relative; isolation: isolate; background: var(--app-bar); color: #fff; }
+.appbar::before { content: ""; position: absolute; inset: 0; z-index: -1; background: url("../../../public/textures/leaf-ridges-gray.webp") center 40% / cover no-repeat; filter: contrast(1.7) brightness(1.05); mix-blend-mode: overlay; opacity: 0.75; pointer-events: none; }
+.appbar-inner { max-width: 1440px; margin: 0 auto; padding: 12px var(--gutter); min-height: 68px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 24px; }
+.brand { display: flex; align-items: center; gap: 10px; color: #fff; font-size: 18px; font-weight: 600; text-decoration: none; white-space: nowrap; }
+.nav { flex: 1 1 auto; display: flex; align-items: center; gap: 4px; min-width: 0; }
+.nav a { display: inline-flex; align-items: center; min-height: 40px; padding: 8px 16px; border-radius: 999px; color: #fff; font-size: 15.5px; font-weight: 500; text-decoration: none; white-space: nowrap; text-shadow: 0 1px 8px rgb(0 0 0 / 35%); }
+.nav a[aria-current] { background: #fff; color: #0b1a11; font-weight: 600; text-shadow: none; }
+.nav .divider { flex: none; width: 1px; height: 18px; margin: 0 8px; background: rgb(255 255 255 / 25%); }
+.note-button { display: inline-flex; align-items: center; min-height: 40px; padding: 0 16px; border-radius: 999px; border: 1px solid rgb(255 255 255 / 28%); background: rgb(255 255 255 / 10%); font-size: 15px; font-weight: 600; }
+.sync { font-size: 13px; }
+
+/* ---------- Page frame and the variant switcher ---------- */
+.page { display: none; max-width: 1440px; margin: 0 auto; padding: 32px var(--gutter) 96px; flex-direction: column; gap: 32px; }
+body[data-v="a"] .page[data-variant="a"], body[data-v="b"] .page[data-variant="b"], body[data-v="c"] .page[data-variant="c"] { display: flex; }
+.page[data-variant="c"] { gap: 56px; }
+.switch { position: fixed; left: 50%; bottom: 20px; z-index: 20; transform: translateX(-50%); display: flex; gap: 4px; padding: 5px; border-radius: 999px; background: rgb(24 24 26 / 92%); box-shadow: 0 16px 40px -12px rgb(0 0 0 / 55%); }
+.switch button { min-height: 40px; padding: 0 18px; border: 0; border-radius: 999px; background: none; color: #fff; font-size: 14.5px; font-weight: 500; cursor: pointer; white-space: nowrap; }
+.switch button[aria-pressed="true"] { background: #fff; color: var(--ink); font-weight: 600; }
+body.shot .switch { display: none; }
+body.shot .page { padding-bottom: 56px; }
+
+/* ---------- Section heads ---------- */
+.block { display: flex; flex-direction: column; gap: 24px; }
+.block-head { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.kicker { font-size: 12.5px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: var(--brand); }
+.block-title { font-size: clamp(1.5rem, 2.6vw, 2rem); font-weight: 500; line-height: 1.1; letter-spacing: -0.02em; color: var(--heading); }
+.title-count { margin-left: 6px; color: var(--subtle); font-weight: 400; }
+.head-row { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px 24px; }
+.head-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+
+/* ---------- Dark textured bands ---------- */
+.band { position: relative; isolation: isolate; overflow: hidden; border-radius: 20px; color: #fff; background-color: var(--band-base); background-size: cover; background-repeat: no-repeat; }
+.band::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; }
+/* The hero's leaf ridges: the same photo the landing hero and the Care band use. */
+.tex-ridges { background-image: url("../../../public/landing/hero-still.webp"); background-position: center; }
+.tex-ridges::before { background: linear-gradient(100deg, rgb(9 24 15 / 78%), rgb(9 24 15 / 46%) 55%, rgb(9 24 15 / 58%)); }
+/* The landing footer's leaf veins, for the note entry: a second texture, same greens. */
+.tex-veins { background-image: url("../../../public/landing/footer-still.webp"); background-position: 78% 50%; }
+.tex-veins::before { background: linear-gradient(100deg, rgb(9 24 15 / 86%), rgb(9 24 15 / 62%) 50%, rgb(9 24 15 / 30%)); }
+.band-intro { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.band-intro.tight { gap: 12px; }
+.band-kicker { font-size: 12.5px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; }
+.band-headline { font-family: "Bricolage Grotesque", "Instrument Sans", sans-serif; font-size: clamp(2.25rem, 4.2vw, 3.5rem); font-weight: 500; line-height: 1; letter-spacing: -0.035em; }
+.band-summary { font-size: 17px; line-height: 1.55; color: rgb(255 255 255 / 88%); max-width: 44ch; }
+.band-summary.small { font-size: 15.5px; }
+.band-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+.progress { display: flex; flex-direction: column; gap: 10px; max-width: 420px; padding-top: 6px; }
+.progress-track { height: 6px; border-radius: 999px; background: rgb(255 255 255 / 20%); }
+.progress-fill { height: 6px; border-radius: 999px; background: var(--lime); box-shadow: 0 0 14px rgb(214 255 92 / 45%); transition: width 0.35s ease; }
+.progress-label { font-size: 14px; font-weight: 500; }
+.glass { background: rgb(10 26 17 / 38%); -webkit-backdrop-filter: blur(22px) saturate(1.1); backdrop-filter: blur(22px) saturate(1.1); border: 1px solid rgb(255 255 255 / 16%); box-shadow: 0 40px 80px -40px rgb(0 0 0 / 75%), inset 0 1px 0 rgb(255 255 255 / 14%); }
+.glass-input { padding: 13px 16px; border-radius: 12px; border: 1px solid rgb(255 255 255 / 24%); background: rgb(8 20 13 / 46%); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); color: rgb(255 255 255 / 80%); font-size: 15px; line-height: 1.5; min-height: 78px; }
+.glass-input.tall { min-height: 112px; }
+.glass-input.line { flex: 1 1 320px; min-height: 48px; border-radius: 999px; padding: 11px 22px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ---------- Buttons ---------- */
+.button-white, .button-primary, .button-secondary, .button-ghost { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 46px; padding: 0 22px; border-radius: 999px; font-size: 15px; font-weight: 600; text-decoration: none; white-space: nowrap; cursor: pointer; }
+.button-white { border: 0; background: #fff; color: var(--band-ink); }
+.button-white:hover { background: #ececea; }
+.button-white.wide { width: 100%; }
+.button-primary { border: 0; background: var(--brand); color: #fff; }
+.button-primary:hover { background: var(--brand-hover); }
+.button-secondary { border: 1.5px solid var(--brand); background: none; color: var(--brand); }
+.button-secondary:hover { background: var(--brand); color: #fff; }
+.button-ghost { border: 1px solid rgb(255 255 255 / 20%); background: rgb(255 255 255 / 7%); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); color: #fff; font-weight: 500; }
+.button-ghost:hover { background: rgb(255 255 255 / 14%); }
+.button-white:active, .button-primary:active { transform: translateY(1px); }
+.band :focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.page :focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.band :focus-visible { outline-color: #fff; }
+
+/* ---------- Task rows (same as the Care redesign) ---------- */
+.group-label { font-size: 13px; font-weight: 600; color: var(--muted); padding: 14px 0 2px; }
+.row { display: flex; align-items: center; gap: 12px; min-height: 58px; border-top: 1px solid var(--line); }
+.row:first-child { border-top: 0; }
+.row-empty { padding: 14px 0 18px; font-size: 15px; }
+.tick { flex: none; display: grid; place-items: center; width: 44px; height: 44px; margin: 0 -8px 0 -11px; padding: 0; border: 0; background: none; cursor: pointer; }
+.tick-circle { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--subtle); color: transparent; transition: background-color 0.14s, border-color 0.14s; }
+.tick:hover .tick-circle { border-color: var(--brand); color: var(--brand); }
+.row.done .tick-circle { background: var(--brand); border-color: var(--brand); color: #fff; }
+.tick:focus-visible { outline: none; }
+.tick:focus-visible .tick-circle { outline: 2px solid var(--brand); outline-offset: 2px; }
+.care-icon { flex: none; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--soft); }
+.care-icon.watering { color: var(--water); }
+.care-icon.fertilizing { color: var(--feed); }
+.row-text { flex: 1; min-width: 0; display: grid; gap: 1px; padding: 8px 0; overflow-wrap: anywhere; }
+.row-title { font-size: 15px; font-weight: 600; line-height: 1.35; }
+.row-sub { font-size: 13px; line-height: 1.4; color: var(--muted); }
+.row.done .row-title { text-decoration: line-through; font-weight: 500; color: var(--done-ink); }
+.row.done .care-icon { opacity: 0.55; }
+.late-chip { flex: none; padding: 3px 10px; border-radius: 999px; background: var(--error-surface); color: var(--error); font-size: 12.5px; font-weight: 600; white-space: nowrap; }
+.late-inline { font-size: 13px; font-weight: 600; color: var(--error); }
+.date-col { flex: none; display: grid; justify-items: center; width: 36px; }
+.date-col-name { font-size: 11.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.date-col-number { font-size: 19px; font-weight: 500; letter-spacing: -0.02em; line-height: 1.15; color: var(--heading); }
+.date-badge { flex: none; display: grid; place-items: center; align-content: center; gap: 2px; width: 46px; height: 48px; border-radius: 11px; background: var(--brand); color: #fff; box-shadow: 0 8px 18px -10px rgb(20 40 29 / 70%); }
+.date-badge-number { font-size: 19px; font-weight: 600; line-height: 1; letter-spacing: -0.02em; }
+.date-badge-month { font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; }
+/* Rows on a dark band or a glass card. */
+.on-dark .group-label { color: rgb(255 255 255 / 82%); }
+.on-dark .row { border-top-color: rgb(255 255 255 / 14%); }
+.on-dark .tick-circle { border-color: rgb(255 255 255 / 72%); }
+.on-dark .tick:hover .tick-circle { border-color: #fff; color: #fff; }
+.on-dark .row.done .tick-circle { background: #fff; border-color: #fff; color: var(--band-base); }
+.on-dark .tick:focus-visible .tick-circle { outline-color: #fff; }
+.on-dark .care-icon { background: rgb(255 255 255 / 12%); }
+.on-dark .care-icon.watering { color: var(--water-on-dark); }
+.on-dark .care-icon.fertilizing { color: var(--feed-on-dark); }
+.on-dark .row-sub { color: rgb(255 255 255 / 82%); }
+.on-dark .row.done .row-title { color: rgb(255 255 255 / 74%); }
+.on-dark .late-inline { color: #ffc9c2; }
+.on-dark .date-col-name { color: rgb(255 255 255 / 82%); }
+.on-dark .date-col-number { color: #fff; }
+.rail-sep { margin-top: 8px; padding-top: 16px; border-top: 1px solid rgb(255 255 255 / 14%); }
+
+/* ---------- Garden cards ---------- */
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; min-width: 0; overflow: hidden; }
+.g-card { display: flex; flex-direction: column; min-width: 0; overflow: hidden; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); color: var(--ink); text-decoration: none; transition: border-color 0.14s, box-shadow 0.14s, transform 0.14s; }
+.g-card:hover { border-color: var(--brand); box-shadow: 0 22px 44px -26px rgb(20 40 29 / 55%); transform: translateY(-2px); }
+.g-map { position: relative; flex: 1 1 auto; min-height: 196px; background-color: var(--surface); background-image: radial-gradient(#d4d4d2 1px, transparent 1.2px); background-size: 14px 14px; border-bottom: 1px solid var(--line); }
+.g-map img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.g-body { display: grid; gap: 6px; padding: 18px 20px 20px; }
+.g-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.g-name { font-size: 18px; font-weight: 650; line-height: 1.3; color: var(--heading); }
+.g-meta { font-size: 13.5px; line-height: 1.4; color: var(--muted); }
+.g-plants { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin-top: 8px; font-size: 13.5px; }
+.g-plant { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
+.g-plant i { flex: none; width: 11px; height: 11px; border-radius: 50%; border: 1.5px solid; }
+.g-more { color: var(--muted); }
+.count-chip { flex: none; padding: 4px 11px; border-radius: 999px; font-size: 12.5px; font-weight: 600; white-space: nowrap; background: var(--soft); color: var(--muted); }
+.count-chip.open { background: var(--brand); color: #fff; }
+.g-card.float { border: 0; box-shadow: 0 40px 70px -36px rgb(0 0 0 / 80%), 0 0 0 1px rgb(255 255 255 / 12%); }
+.g-card.float:hover { box-shadow: 0 46px 80px -34px rgb(0 0 0 / 85%), 0 0 0 2px rgb(255 255 255 / 70%); }
+.garden-link { font-size: 14px; font-weight: 600; text-decoration: none; color: var(--brand); white-space: nowrap; }
+.garden-link:hover { text-decoration: underline; }
+
+/* ---------- A · Side rail ---------- */
+.a-grid { display: grid; grid-template-columns: minmax(0, 1fr) 408px; gap: 24px; align-items: stretch; }
+.a-gardens { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: 1fr; gap: 20px; }
+.new-tile { display: grid; place-content: center; justify-items: center; gap: 10px; min-height: 280px; padding: 24px; border: 1.5px dashed #bdbdba; border-radius: 16px; text-decoration: none; text-align: center; transition: border-color 0.14s, background-color 0.14s; }
+.new-tile:hover { border-color: var(--brand); background: var(--surface); }
+.new-mark { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 50%; background: var(--brand); color: #fff; box-shadow: 0 10px 20px -10px rgb(20 40 29 / 70%); }
+.new-title { margin-top: 4px; font-size: 17px; font-weight: 650; color: var(--heading); }
+.new-sub { font-size: 13.5px; color: var(--muted); max-width: 22ch; line-height: 1.45; }
+.rail { display: flex; flex-direction: column; gap: 20px; padding: 30px 28px 28px; background-position: 62% 50%; }
+.rail.tex-ridges::before { background: linear-gradient(180deg, rgb(9 24 15 / 74%), rgb(9 24 15 / 50%) 45%, rgb(9 24 15 / 70%)); }
+.rail-top { display: flex; flex-direction: column; gap: 12px; }
+.rail-headline { font-family: "Bricolage Grotesque", "Instrument Sans", sans-serif; font-size: 40px; font-weight: 500; line-height: 1; letter-spacing: -0.035em; }
+.rail-list { display: flex; flex-direction: column; }
+.rail-list .row { min-height: 60px; }
+.rail-link { display: flex; align-items: center; gap: 10px; min-height: 52px; border-top: 1px solid rgb(255 255 255 / 14%); font-size: 14.5px; font-weight: 600; text-decoration: none; }
+.rail-link-note { margin-left: auto; font-weight: 500; color: rgb(255 255 255 / 82%); }
+.rail-link:hover > span:first-child { text-decoration: underline; }
+.rail-note { margin-top: auto; display: flex; flex-direction: column; gap: 10px; padding: 20px; border-radius: 18px; }
+.note-title { font-size: 17px; font-weight: 650; line-height: 1.3; }
+.note-sub { font-size: 13.5px; line-height: 1.45; color: rgb(255 255 255 / 84%); }
+.rail-note .glass-input { margin-top: 4px; min-height: 70px; font-size: 14.5px; }
+
+/* ---------- B · Gardens on the green ---------- */
+.stage { display: flex; flex-direction: column; gap: 36px; padding: 44px 48px 48px; }
+.stage-top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 20px 32px; }
+.stage-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+.b-lower { display: grid; grid-template-columns: minmax(0, 1.75fr) minmax(0, 1fr); gap: 24px; align-items: stretch; }
+.care-card { padding: 28px 32px 22px; }
+.care-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 24px; padding-bottom: 12px; }
+.care-head-right { display: flex; align-items: center; gap: 18px; }
+.card-title { font-size: 26px; font-weight: 500; line-height: 1.1; letter-spacing: -0.02em; color: var(--heading); }
+.care-cols { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 0 44px; border-top: 1px solid var(--line); }
+.care-cols .row { min-height: 60px; }
+.note-card { display: flex; flex-direction: column; justify-content: space-between; gap: 28px; padding: 32px; background-position: 30% 62%; }
+.note-card.tex-veins::before { background: linear-gradient(165deg, rgb(9 24 15 / 84%), rgb(9 24 15 / 58%) 55%, rgb(9 24 15 / 34%)); }
+.note-headline { font-family: "Bricolage Grotesque", "Instrument Sans", sans-serif; font-size: 32px; font-weight: 500; line-height: 1.05; letter-spacing: -0.03em; max-width: 13ch; }
+.note-form { display: flex; flex-direction: column; align-items: flex-start; gap: 14px; }
+.note-form .glass-input { width: 100%; }
+
+/* ---------- C · Today band + note strip ---------- */
+.band.today { display: flex; flex-wrap: wrap; gap: 40px; align-items: stretch; padding: 44px 48px; }
+.band-main { flex: 1 1 360px; min-width: 0; display: flex; flex-direction: column; justify-content: space-between; gap: 32px; }
+.todo { flex: 1 1 480px; min-width: 0; border-radius: 24px; padding: 10px 28px 14px; }
+.todo .late-chip { margin-right: 2px; }
+.c-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+.strip { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 20px 48px; padding: 30px 40px; }
+.strip-text { flex: 0 1 auto; display: flex; flex-direction: column; gap: 6px; }
+.strip-headline { font-family: "Bricolage Grotesque", "Instrument Sans", sans-serif; font-size: 30px; font-weight: 500; line-height: 1.05; letter-spacing: -0.03em; }
+.strip-form { flex: 1 1 520px; max-width: 760px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+
+/* ---------- Narrow screens (direction check only; each variant gets a real phone layout once chosen) ---------- */
+@media (max-width: 1099px) {
+  .a-grid, .b-lower { grid-template-columns: minmax(0, 1fr); }
+  .stage-grid, .c-grid { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+}
+@media (max-width: 699px) {
+  .a-gardens, .care-cols { grid-template-columns: minmax(0, 1fr); }
+  .stage, .band.today { padding: 28px 20px; }
+  .strip, .note-card, .care-card { padding: 24px 20px; }
+  .nav { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+/* =====================================================================
+ * Round 2 (round-2.html): the green supports the gardens without boxing them in;
+ * Care shows today only; the AI Garden Note is its own writing block.
+ * ===================================================================== */
+body[data-v="1"] .page[data-variant="1"], body[data-v="2"] .page[data-variant="2"], body[data-v="3"] .page[data-variant="3"] { display: flex; }
+.switch-gap { flex: none; width: 1px; margin: 8px 6px; background: rgb(255 255 255 / 25%); }
+[data-garden] { display: contents; }
+.g4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; }
+.g2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: 1fr; gap: 20px; }
+.g4 .g-map { min-height: 168px; }
+.g4 .new-tile, .g2 .new-tile { min-height: 0; }
+.g-body { position: relative; }
+.g-chip { position: absolute; top: -13px; right: 16px; box-shadow: 0 0 0 3px var(--surface); }
+.new-tile.solid { background: var(--surface); }
+
+/* 1 · Step out: the cards stand half on the band, half on the page. */
+.step { display: flex; flex-direction: column; }
+.step-band { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 20px 32px; padding: 44px 48px 204px; }
+.step-cards { position: relative; z-index: 1; margin: -164px 48px 0; }
+.g-card.lift { box-shadow: 0 34px 54px -34px rgb(10 26 17 / 70%); }
+.g-card.lift:hover { box-shadow: 0 38px 60px -32px rgb(10 26 17 / 80%); }
+
+/* 2 · Green plates: each garden card carries the texture as its name plate. */
+.g-card.plate { border-color: transparent; background: none; }
+.g-card.plate .g-map { border: 1px solid var(--line); border-bottom: 0; border-radius: 16px 16px 0 0; }
+.g-card.plate .g-body { isolation: isolate; border-radius: 0 0 16px 16px; color: #fff; background: var(--band-base) url("../../../public/landing/hero-still.webp") 30% 40% / 1200px auto no-repeat; }
+.g-card.plate .g-body::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: linear-gradient(100deg, rgb(9 24 15 / 72%), rgb(9 24 15 / 42%)); }
+[data-garden="community"] .g-card.plate .g-body { background-position: 62% 55%; }
+[data-garden="front"] .g-card.plate .g-body { background-position: 85% 30%; }
+.g-card.plate .g-name { color: #fff; }
+.g-card.plate .g-meta, .g-card.plate .g-more { color: rgb(255 255 255 / 86%); }
+.g-card.plate .g-plant i { border-color: rgb(255 255 255 / 75%) !important; }
+.g-card.plate .count-chip { box-shadow: 0 6px 14px -6px rgb(0 0 0 / 60%); }
+.g-card.plate .count-chip.open { background: #fff; color: var(--band-ink); }
+.g-card.plate:hover { border-color: transparent; }
+
+/* 3 · Cover: a title panel beside the gardens. */
+.cover-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 24px; align-items: stretch; }
+.cover { display: flex; flex-direction: column; justify-content: space-between; gap: 40px; padding: 40px 36px 36px; background-position: 58% 50%; }
+.cover.tex-ridges::before { background: linear-gradient(170deg, rgb(9 24 15 / 76%), rgb(9 24 15 / 44%) 50%, rgb(9 24 15 / 68%)); }
+.cover-bottom { display: flex; flex-direction: column; align-items: flex-start; gap: 24px; }
+.stats { align-self: stretch; }
+.stats li { display: flex; align-items: baseline; gap: 12px; padding: 12px 0; border-top: 1px solid rgb(255 255 255 / 16%); font-size: 15.5px; color: rgb(255 255 255 / 88%); }
+.stats b { min-width: 44px; font-family: "Bricolage Grotesque", "Instrument Sans", sans-serif; font-size: 30px; font-weight: 500; letter-spacing: -0.03em; line-height: 1; color: #fff; }
+
+/* Lower row: Today (care due today only) beside the AI Garden Note. */
+.lower { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); gap: 24px; align-items: stretch; }
+.today-card { display: flex; gap: 8px; padding: 14px; }
+.date-tile { flex: 0 0 172px; display: flex; flex-direction: column; padding: 22px 20px 20px; border-radius: 14px; background-size: 1300px auto; background-position: 46% 42%; }
+.date-big { margin: 10px 0 2px; font-family: "Bricolage Grotesque", "Instrument Sans", sans-serif; font-size: 76px; font-weight: 500; line-height: 0.9; letter-spacing: -0.04em; }
+.date-month { font-size: 15.5px; font-weight: 500; color: rgb(255 255 255 / 88%); }
+.date-tile .progress { margin-top: auto; padding-top: 24px; }
+.today-body { flex: 1 1 auto; min-width: 0; padding: 12px 14px 2px 18px; }
+.today-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+.compact .row { min-height: 50px; }
+.compact .row-text { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 10px; }
+.compact .row-sub { font-size: 13.5px; }
+
+.bind-icon { flex: none; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: rgb(255 255 255 / 14%); border: 1px solid rgb(255 255 255 / 20%); }
+.paper { padding: 8px 26px 4px; background: var(--surface); }
+.ruled { display: block; width: 100%; height: 170px; padding: 0 2px; border: 0; outline: 0; resize: none; font: inherit; font-size: 16px; line-height: 34px; color: var(--ink); background: transparent repeating-linear-gradient(to bottom, transparent 0 33px, var(--line) 33px 34px) local; }
+.ruled::placeholder { color: var(--muted); opacity: 1; }
+.foot-hint { font-size: 13.5px; line-height: 1.45; color: var(--muted); }
+.foot-actions { flex: none; display: flex; align-items: center; gap: 18px; margin-left: auto; }
+/* Note style 1 · Notepad: a green binding over ruled paper. */
+.notepad { display: flex; flex-direction: column; }
+.notepad-bind { flex: none; display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 0 24px; border-radius: 0; background-size: 1500px auto; background-position: 8% 30%; }
+.notepad-bind.tex-veins::before { background: linear-gradient(100deg, rgb(9 24 15 / 62%), rgb(9 24 15 / 46%) 50%, rgb(9 24 15 / 66%)); }
+.notepad-bind h2 { font-size: 18px; font-weight: 650; line-height: 1.2; }
+.bind-hint { margin-left: auto; font-size: 13.5px; font-weight: 500; color: rgb(255 255 255 / 88%); }
+.notepad .paper { flex: 1 1 auto; display: flex; }
+.notepad .ruled { height: auto; min-height: 170px; }
+.notepad-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding: 14px 24px 18px; border-top: 1px solid var(--line); }
+/* Note style 2 · Paper on green: a ruled sheet lying on the leaf-vein band. */
+.note-dark { display: flex; flex-direction: column; gap: 18px; padding: 26px 28px 24px; background-position: 30% 60%; }
+.note-dark.tex-veins::before { background: linear-gradient(165deg, rgb(9 24 15 / 84%), rgb(9 24 15 / 56%) 55%, rgb(9 24 15 / 34%)); }
+.note-dark-head { display: flex; align-items: center; gap: 14px; }
+.note-title-lg { font-family: "Bricolage Grotesque", "Instrument Sans", sans-serif; font-size: 28px; font-weight: 500; line-height: 1.05; letter-spacing: -0.03em; }
+.note-dark .paper { flex: 1 1 auto; display: flex; border-radius: 12px; box-shadow: 0 30px 50px -30px rgb(0 0 0 / 85%); }
+.note-dark .ruled { height: auto; min-height: 136px; }
+.note-dark-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; }
+.note-dark-foot .foot-hint { color: rgb(255 255 255 / 88%); max-width: 30ch; }
+.link-on-dark { font-size: 14px; font-weight: 600; text-decoration: none; white-space: nowrap; }
+.link-on-dark:hover { text-decoration: underline; }
+body[data-note="n1"] [data-note-style="n2"], body[data-note="n2"] [data-note-style="n1"] { display: none; }
+
+@media (max-width: 1099px) {
+  .lower, .cover-grid { grid-template-columns: minmax(0, 1fr); }
+  .g4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 699px) {
+  .g4, .g2 { grid-template-columns: minmax(0, 1fr); }
+  .step-band { padding: 28px 20px 190px; }
+  .step-cards { margin-inline: 20px; }
+  .today-card { flex-direction: column; }
+  .date-tile { flex-basis: auto; }
+}
