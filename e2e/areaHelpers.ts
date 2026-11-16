@@ -2,14 +2,22 @@ import { expect, type Page } from "@playwright/test";
 import { fitCanvas, insetViewport, overlayInsets, type CanvasTransform, type OverlayCorner } from "../src/lib/canvasViewport";
 import type { GardenPlanViewport } from "../src/lib/gardenWorkspace";
 
+/** Switches the Garden Plan to a level (ADR-0075), keeping the open or selected area. */
+export async function goToLevel(page: Page, name: "Garden" | "Planting areas" | "Plants") {
+  const level = page.getByRole("navigation", { name: "Garden Plan levels" }).getByRole("button", { name, exact: true });
+  await level.click();
+  await expect(level).toHaveAttribute("aria-current", "true");
+}
+
 /**
- * Opens a planting area from the area list and shows its properties. Wide
- * layouts show properties beside the plan; narrower layouts zoom the plan,
- * show plants below it, and open properties from "Edit area" (ADR-0072, G3).
+ * Selects a planting area on the Planting areas level and shows its
+ * properties. Wide layouts show them beside the plan; narrower layouts show
+ * the area's card below it and open properties from "Edit area" (ADR-0075).
  */
 export async function openAreaProperties(page: Page, areaName: string) {
+  await goToLevel(page, "Planting areas");
   await page.getByRole("link", { name: `Edit ${areaName}` }).click();
-  await expect(page.getByRole("button", { name: "Whole garden" })).toBeVisible();
+  await expect(page).toHaveURL(/level=areas&area=/);
   const editArea = page.getByRole("link", { name: "Edit area", exact: true });
   if (await editArea.count()) await editArea.click();
   await expect(page.getByLabel("Planting-area name")).toBeVisible();

@@ -40,7 +40,7 @@ describe("local form validation", () => {
   it("reports invalid garden name and dimensions together and keeps the original workspace", async () => {
     localRoute("/gardens/demo-garden/plan");
     const user = userEvent.setup();
-    await user.click(await screen.findByRole("button", { name: "Edit garden details" }));
+    await user.click(await screen.findByRole("button", { name: "Garden" }));
     fireEvent.change(await screen.findByLabelText("Garden name"), { target: { value: "   " } });
     fireEvent.change(screen.getByLabelText("Garden width (m)"), { target: { value: "-1" } });
     fireEvent.keyDown(screen.getByLabelText("Garden width (m)"), { key: "Enter" });
@@ -96,7 +96,6 @@ describe("local form validation", () => {
   it("validates Add and duplicate through the same plant form", async () => {
     localRoute("/gardens/demo-garden/plan");
     const user = userEvent.setup();
-    await user.click(await screen.findByRole("button", { name: "Edit garden details" }));
     await user.click(await screen.findByRole("link", { name: "Edit Sample raised bed" }));
     await user.click(await screen.findByRole("button", { name: "Add plant" }));
     fireEvent.change(screen.getByLabelText("Plant spacing (m)"), { target: { value: "0" } });

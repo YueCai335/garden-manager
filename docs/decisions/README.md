@@ -114,8 +114,9 @@ changes, mark the old record as superseded and add a new record.
 | [ADR-0069](0069-open-garden-notes-in-place-from-overview.md) | Open Garden Notes in place from Overview | Accepted; entry superseded in part by ADR-0073 (S2): the header "+ Note" opens the dialog from any app page |
 | [ADR-0070](0070-preview-and-position-planting-areas-on-the-plan.md) | Preview and position planting areas on the plan | Superseded in part by ADR-0072 (G2, G3, G4) |
 | [ADR-0071](0071-recover-missing-workspaces-from-browser-copies.md) | Recover missing workspaces from browser copies | Accepted |
-| [ADR-0072](0072-use-a-single-plan-canvas-with-guided-setup.md) | Use a single plan canvas with guided setup | Accepted; implemented (G1–G7); the G1 presentation and the wide side column superseded in part by ADR-0073 (S4): a pale planting chart, and from 900 px the toolbar, zoom, and legend float over the canvas; amended 2026-11-15: the area panel sits in a column beside the canvas, and "Whole garden" only zooms out while the area stays open |
+| [ADR-0072](0072-use-a-single-plan-canvas-with-guided-setup.md) | Use a single plan canvas with guided setup | Accepted; implemented (G1–G7); the G1 presentation and the wide side column superseded in part by ADR-0073 (S4): a pale planting chart, and from 900 px the toolbar, zoom, and legend float over the canvas; amended 2026-11-15: the area panel sits in a column beside the canvas, and "Whole garden" only zooms out while the area stays open; the single panel for area properties and plants superseded in part by ADR-0075: Planting areas and Plants are separate levels |
 | [ADR-0073](0073-separate-the-landing-page-and-use-a-textured-deep-green-look.md) | Separate the landing page from the app and use a textured deep-green look | Accepted; implemented (S1–S7); the landing showcases (S6b) are placeholders until their form is decided |
+| [ADR-0075](0075-edit-an-existing-garden-in-three-levels.md) | Edit an existing garden in three levels | Accepted; implemented 2026-11-16 |
 
 ## Interview Use
 

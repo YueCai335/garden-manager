@@ -1,8 +1,8 @@
 import { expect, test } from "@playwright/test";
 import { metresToCanvas } from "../src/lib/canvasViewport";
 import { areaKindDefaults, findFreeAreaSpot } from "../src/lib/areaPlacement";
-import { areaFocusViewport, createDemoGardenWorkspace, createRectangularLayout, type GardenWorkspace, type GrowingArea } from "../src/lib/gardenWorkspace";
-import { planCanvas, planSurface, planTransform } from "./areaHelpers";
+import { createDemoGardenWorkspace, createRectangularLayout, gardenPlanViewport, type GardenWorkspace, type GrowingArea } from "../src/lib/gardenWorkspace";
+import { goToLevel, planCanvas, planSurface, planTransform } from "./areaHelpers";
 import { openWorkspace, workspaceHome } from "./workspace";
 
 /**
@@ -24,20 +24,23 @@ test("create a garden, save an edit, add and arrange an area, plan next season, 
   // Rename the garden and save.
   await page.getByRole("link", { name: "Open Demo Garden" }).click();
   await expect(page.getByRole("heading", { name: "Garden Plan" })).toBeVisible();
-  await page.getByRole("button", { name: "Edit garden details" }).click();
+  // The Garden level holds the name and size (ADR-0075).
+  await goToLevel(page, "Garden");
   await page.getByLabel("Garden name").fill("E2E Kitchen Garden");
   // Garden details apply on Enter or when a field loses focus; there is no Save button (ADR-0072, G6).
   await page.getByLabel("Garden name").press("Enter");
-  await page.getByRole("button", { name: "Done", exact: true }).click();
   await expect(page.getByText("All changes saved")).toBeVisible();
 
-  // One click adds a standard raised bed in the first free spot and zooms into it (ADR-0072, G4).
+  // On Planting areas, one click adds a standard raised bed in the first free spot and selects it
+  // without zooming, so it can be placed against its neighbours (ADR-0072 G4, ADR-0075).
+  await goToLevel(page, "Planting areas");
   const [demo] = createDemoGardenWorkspace().gardens;
   const spot = findFreeAreaSpot(demo.plan, demo.growingAreas, areaKindDefaults["raised-bed"]);
   await page.getByRole("button", { name: "Add Raised bed, 1.2 × 2.4 m" }).click();
   await expect(page.getByText(`Raised bed 1 added at ${spot.x.toFixed(1)}, ${spot.y.toFixed(1)} m. Drag it to move it, or drag its corner to resize it.`)).toBeVisible();
   const surface = planSurface(page);
-  await expect(surface).toHaveAttribute("data-focused-area", /.+/);
+  await expect(page).toHaveURL(/level=areas&area=/);
+  await expect(surface).not.toHaveAttribute("data-focused-area", /.+/);
   await expect(surface).toHaveAttribute("data-zooming", "false");
   const canvas = planCanvas(page);
   await canvas.scrollIntoViewIfNeeded();
@@ -54,8 +57,10 @@ test("create a garden, save an edit, add and arrange an area, plan next season, 
     await expect(surface).toHaveAttribute("data-dragging", "false");
   };
 
+  // The whole garden stays framed; the frame follows the areas it holds.
+  const wholeGarden = (area: GrowingArea) => gardenPlanViewport(demo.plan, [...demo.growingAreas, area], "growing-areas");
   // A mouse drags the body to move it, with no Move mode.
-  let view = await planTransform(page, areaFocusViewport(added(spot.x, spot.y, 1.2, 2.4))!);
+  let view = await planTransform(page, wholeGarden(added(spot.x, spot.y, 1.2, 2.4)));
   const moved = { x: Math.round((spot.x - 0.5) * 10) / 10, y: Math.round((spot.y + 0.3) * 10) / 10 };
   await drag(
     metresToCanvas({ x: spot.x + 0.6, y: spot.y + 1.2 }, view),
@@ -63,8 +68,9 @@ test("create a garden, save an edit, add and arrange an area, plan next season, 
     `Raised bed 1 · ${moved.x.toFixed(1)}, ${moved.y.toFixed(1)} m`,
   );
 
-  // Dragging the bottom-right corner handle resizes it on the re-centred view.
-  view = await planTransform(page, areaFocusViewport(added(moved.x, moved.y, 1.2, 2.4))!);
+  // Dragging the bottom-right corner handle resizes it on the re-framed view.
+  await expect(surface).toHaveAttribute("data-zooming", "false");
+  view = await planTransform(page, wholeGarden(added(moved.x, moved.y, 1.2, 2.4)));
   await drag(
     metresToCanvas({ x: moved.x + 1.2, y: moved.y + 2.4 }, view),
     metresToCanvas({ x: moved.x + 1.5, y: moved.y + 2.6 }, view),

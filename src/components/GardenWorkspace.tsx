@@ -12,7 +12,7 @@ import { useWorkspace, useWorkspaceDraft, useUnsavedDraft } from "@/components/w
 import { WorkspaceHome, WorkspaceHomeLoading } from "@/components/workspace/WorkspaceHome";
 import { ServerWorkspaceUnavailable } from "@/components/workspace/ServerWorkspaceUnavailable";
 import homeStyles from "@/components/workspace/WorkspaceHome.module.css";
-import { gardenPath, areaPath, areaEditPath, careLocationPath, careView, seasonGardenPath, workspaceHomePath, type WorkspaceRoute } from "@/lib/workspaceRoutes";
+import { gardenPath, areaPath, areaEditPath, planLevelPath, careLocationPath, careView, seasonGardenPath, workspaceHomePath, type WorkspaceRoute } from "@/lib/workspaceRoutes";
 
 import { PlantingAreaInspector } from "@/components/PlantingAreaInspector";
 import { areaKindDefaults, defaultAreaName, findFreeAreaSpot, resizeLayout, type AreaSpot } from "@/lib/areaPlacement";
@@ -63,7 +63,8 @@ import type { AllocationConfirmOutcome } from "@/components/AllocationAssistant"
 
 import { EditorWorkbench } from "./editor/EditorWorkbench";
 import { GardenDetailsFields } from "./editor/GardenDetailsFields";
-import { SetupProgress, SetupReady, SetupStepPanel } from "./editor/SetupProgress";
+import { PlanLevelBar, SetupProgress, SetupReady, SetupStepPanel } from "./editor/SetupProgress";
+import { planLevelFromSearch, setupLevel, type PlanLevel } from "@/lib/planLevels";
 import setupStyles from "./editor/Setup.module.css";
 import { useGuidedSetup } from "@/hooks/useGuidedSetup";
 import { advanceSetup, gardenSizePresets, goToStep, minimumGardenSize, setupSummary, startSetup, type SetupStep } from "@/lib/guidedSetup";
@@ -94,8 +95,11 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
   // properties editor where the editor does not sit beside the plan.
   const editingLayoutId = route.module === "plan" ? search.get("area") ?? undefined : undefined;
   const editingAreaProperties = route.module === "plan" && search.get("edit") === "area";
+  // Selecting or closing an area keeps the level: open on Plants, selected on Planting areas (ADR-0075).
   const setEditingLayoutId = (id?: string) => {
-    if (route.gardenId) navigate(id ? areaPath(route.gardenId, id) : gardenPath(route.gardenId));
+    if (!route.gardenId) return;
+    if (guide || !planLevel) { navigate(id ? areaPath(route.gardenId, id) : gardenPath(route.gardenId)); return; }
+    navigate(planLevelPath(route.gardenId, planLevel === "areas" ? "areas" : "plants", id));
   };
   useEffect(() => {
     if (route.module !== "care" || !search.has("view") || ["tasks", "history"].includes(search.get("view") ?? "")) return;
@@ -126,6 +130,19 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
     (area) => area.id === editingLayoutId,
   );
   const guide = route.module === "plan" && garden && setup?.gardenId === garden.id ? setup : undefined;
+  /**
+   * The plan level (ADR-0075): the guided setup's step decides it while the
+   * guide runs; otherwise ?level= does, defaulting to Plants (or Planting
+   * areas while the garden has none). Ready views the plan without a level.
+   */
+  const planLevel: PlanLevel | undefined = route.module !== "plan" || !garden ? undefined
+    : guide ? setupLevel(guide.step)
+    : planLevelFromSearch(search.get("level"), garden.growingAreas.length);
+  const changePlanLevel = (next: PlanLevel) => {
+    if (!garden) return;
+    // The open or selected area carries over to the other area-based level.
+    navigate(planLevelPath(garden.id, next, next === "garden" ? undefined : editingLayoutId));
+  };
   // Leaving Ready ends the guide; so does deleting the garden it belongs to.
   useEffect(() => {
     if (!setup || !isLoaded) return;
@@ -492,7 +509,7 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
   const continueSetup = () => { if (guide) changeSetupStep(guide.step === "size" ? "areas" : guide.step === "areas" ? "plants" : "ready", true); };
   const finishSetup = () => {
     setSetup(undefined);
-    setMessage("Setup finished. Garden Plan now shows every editing tool.");
+    setMessage("Setup finished. Switch between Garden, Planting areas, and Plants above the plan to keep editing.");
     requestAnimationFrame(() => gardenPlanHeadingRef.current?.focus());
   };
   const setupPanel = guide && garden ? (() => {
@@ -534,6 +551,9 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
     return <><SetupProgress setup={guide} onStep={(step) => changeSetupStep(step)} />{panel}</>;
   })() : undefined;
   const setupStep = guide?.step;
+  const hasSizedArea = Boolean(garden?.growingAreas.some((area) => area.layout));
+  const levelBar = !guide && planLevel ? <PlanLevelBar level={planLevel} onLevel={changePlanLevel}
+    disabled={hasSizedArea ? {} : { plants: "Add a planting area first." }} /> : undefined;
 
   const archivePlantingRecord = (plantingRecordId: string) => {
     updateGarden("archive a planting record", (current) => archivePlanting(current, plantingRecordId));
@@ -730,13 +750,16 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
           <section className="operations-content management-content">
             <>
               {editingLayoutId && !editingArea && <p role="alert">Planting area not found in this garden. <Link href={gardenPath(garden.id)}>Back to plan</Link></p>}
-              <EditorWorkbench single={setupStep === "size" || setupStep === "ready"}>{(mode) => {
+              <EditorWorkbench single={setupStep === "size" || setupStep === "ready" || planLevel === "garden"}>{(mode) => {
                 // An unsaved properties draft keeps its editor open when the layout narrows.
                 const areaPropertiesDraft = editingArea ? areaDrafts[areaDraftKey(garden.id, editingArea.id)] : undefined;
                 const hasAreaPropertiesDraft = Boolean(areaPropertiesDraft && !sameAreaProperties(areaPropertiesDraft.values, areaPropertiesDraft.baseline));
-                const showInspector = Boolean(editingArea) && (mode === "wide" || editingAreaProperties || hasAreaPropertiesDraft);
-                // The Planting areas step leaves plants for the next step.
-                const plantEditor = editingArea && plantDraftKey && setupStep !== "areas" ? (
+                // Planting areas edits the area's properties; Plants shows its plants beside the plan when wide.
+                const showInspector = Boolean(editingArea) && (planLevel === "areas"
+                  ? mode === "wide" || editingAreaProperties || hasAreaPropertiesDraft
+                  : planLevel === "plants" && mode === "wide");
+                // Only the Plants level edits plants (ADR-0075).
+                const plantEditor = editingArea && plantDraftKey && planLevel === "plants" ? (
                   <GrowingAreaLayoutEditor
                     area={editingArea}
                     inInspector
@@ -759,17 +782,21 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
                     onDraftChange={(draft) => setAreaDraft(areaDraftKey(garden.id, editingArea.id), draft)}
                     hasPlantChanges={mode === "wide" && plantDraftIsDirty(plantDrafts[areaDraftKey(garden.id, editingArea.id)])}
                     onDiscardPlants={() => discardDrafts(areaDraftKey(garden.id, editingArea.id))}
-                    onClose={() => mode === "wide" ? setEditingLayoutId(undefined) : navigate(areaPath(garden.id, editingArea.id))}
+                    onClose={() => mode === "wide" ? setEditingLayoutId(undefined) : navigate(planLevelPath(garden.id, "areas", editingArea.id))}
                     onDelete={() => deleteArea(editingArea)}
                     onSave={saveAreaEditor}
-                    showProperties={setupStep !== "plants"}
+                    showProperties={planLevel === "areas"}
+                    title={planLevel === "plants" ? "Plants" : undefined}
                   >
-                    {mode === "wide" ? plantEditor : null}
+                    {mode === "wide" && planLevel === "plants" && <>
+                      {!guide && <p className={editorStyles.levelLink}><Link href={planLevelPath(garden.id, "areas", editingArea.id)}>Edit area size and position</Link></p>}
+                      {plantEditor}
+                    </>}
                   </PlantingAreaInspector>
                 ) : null;
                 return <>
                 {/* Record a draft-opened editor in the URL so it stays open after Save. */}
-                {mode !== "wide" && editingArea && hasAreaPropertiesDraft && !editingAreaProperties && (
+                {mode !== "wide" && planLevel === "areas" && editingArea && hasAreaPropertiesDraft && !editingAreaProperties && (
                   <ReplaceRoute href={areaEditPath(garden.id, editingArea.id)} onReplace={(href) => navigate(href, true)} />
                 )}
                 <div className={editorStyles.plan} hidden={mode === "mobile" && showInspector}>
@@ -791,17 +818,21 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
                           <h3 id="area-panel-heading">{editingArea.name}</h3>
                           <p>{growingAreaKindLabels[editingArea.kind]}{editingArea.layout ? ` · ${editingArea.layout.widthMeters} × ${editingArea.layout.depthMeters} m` : ""}</p>
                         </div>
-                        {setupStep !== "plants" && <Link id="edit-area-properties" className="secondary-button" href={areaEditPath(garden.id, editingArea.id)}>Edit area</Link>}
+                        {planLevel === "areas" && <Link id="edit-area-properties" className="secondary-button" href={areaEditPath(garden.id, editingArea.id)}>Edit area</Link>}
+                        {/* From Plants, the area's properties open on Planting areas in one tap. */}
+                        {planLevel === "plants" && !guide && <Link className="secondary-button" href={areaEditPath(garden.id, editingArea.id)}>Edit area</Link>}
                         {/* Touch layouts have no Escape key; "Whole garden" only zooms out. */}
                         <button aria-label={`Done with ${editingArea.name}`} className="secondary-button" type="button" onClick={closeAreaInspector}>Done</button>
                       </header>
                       {plantEditor}
                     </section>
                   ) : undefined}
-                  planting={setupStep === "areas" ? undefined : canvasPlanting}
+                  planting={planLevel === "plants" ? canvasPlanting : undefined}
                   history={historyControls}
                   setupStep={setupStep}
-                  setupPanel={setupPanel}
+                  setupPanel={setupPanel ?? levelBar}
+                  level={planLevel}
+                  areaHref={(areaId) => guide ? areaPath(garden.id, areaId) : planLevelPath(garden.id, planLevel === "areas" ? "areas" : "plants", areaId)}
                   onStartSetup={() => { setSetup(startSetup(garden.id)); setMessage("Guided setup started. Start with the garden size."); }}
                   onAddArea={addArea}
                   onPlaceArea={placeUnsizedArea}

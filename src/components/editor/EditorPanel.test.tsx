@@ -81,7 +81,7 @@ describe("responsive editor", () => {
   it("opens a phone area-properties link as a full editor, guards Back, and returns to the zoomed area", async () => {
     mockNarrowViewport();
     localStorage.setItem(GARDEN_WORKSPACE_STORAGE_KEY, JSON.stringify(createDemoGardenWorkspace()));
-    resetTestRouter("/gardens/demo-garden/plan?area=demo-raised-bed&edit=area");
+    resetTestRouter("/gardens/demo-garden/plan?level=areas&area=demo-raised-bed&edit=area");
     const user = userEvent.setup();
     render(<GardenWorkspace />);
     expect(await screen.findByRole("button", { name: "Done" })).toBeVisible();
@@ -95,10 +95,12 @@ describe("responsive editor", () => {
     fireEvent.keyDown(screen.getByLabelText("Area X position (m)"), { key: "Enter" });
     expect(JSON.parse(localStorage.getItem(GARDEN_WORKSPACE_STORAGE_KEY)!).gardens[0].growingAreas[0].planPlacement.x).toBe(2.3);
     await user.click(screen.getByRole("button", { name: "Done" }));
-    expect(location.search).toBe("?area=demo-raised-bed");
+    // Done returns to the area selected on Planting areas: no zoom and no plants there (ADR-0075).
+    expect(location.search).toBe("?level=areas&area=demo-raised-bed");
     await waitFor(() => expect(screen.getByRole("link", { name: "Edit area" })).toHaveFocus());
-    expect(screen.getByRole("button", { name: "Whole garden" })).toBeVisible();
-    expect(screen.getByRole("region", { name: "Sample raised bed" })).toContainElement(screen.getByRole("button", { name: "Edit Tomato" }));
+    expect(screen.queryByRole("button", { name: "Whole garden" })).not.toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Sample raised bed" })).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Edit Tomato" })).not.toBeInTheDocument();
   });
 
   it("zooms a tapped bed on the phone and shows its planting panel below the plan", async () => {
@@ -109,13 +111,15 @@ describe("responsive editor", () => {
     render(<GardenWorkspace />);
     await user.click(await screen.findByLabelText("Open Sample raised bed on Garden Plan"));
     expect(location.search).toBe("?area=demo-raised-bed");
-    expect(screen.getByRole("button", { name: "Move planting areas" })).toBeVisible();
+    // The Plants level locks the beds, so it offers no Move mode.
+    expect(screen.queryByRole("button", { name: "Move planting areas" })).not.toBeInTheDocument();
     const panel = screen.getByRole("region", { name: "Sample raised bed" });
     expect(panel).toHaveTextContent("Raised bed · 3 × 1.2 m");
+    expect(panel).toContainElement(screen.getByRole("button", { name: "Add plant" }));
     expect(screen.getByRole("link", { name: "Edit Sample raised bed" })).toHaveAttribute("aria-current", "true");
     expect(screen.queryByRole("region", { name: "Edit planting area" })).not.toBeInTheDocument();
     await user.click(screen.getByRole("link", { name: "Edit area" }));
-    expect(location.search).toBe("?area=demo-raised-bed&edit=area");
+    expect(location.search).toBe("?level=areas&area=demo-raised-bed&edit=area");
     expect(screen.getByRole("button", { name: "Done" })).toBeVisible();
     expect(screen.queryByRole("button", { name: "Add plant" })).not.toBeInTheDocument();
   });
@@ -129,10 +133,10 @@ describe("responsive editor", () => {
     expect(screen.queryByRole("dialog", { name: "Edit planting area" })).not.toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Sample raised bed" })).toContainElement(screen.getByRole("button", { name: "Add plant" }));
     await user.click(screen.getByRole("link", { name: "Edit area" }));
-    const dialog = screen.getByRole("dialog", { name: "Edit planting area" });
-    expect(dialog).not.toContainElement(screen.getByRole("button", { name: "Add plant" }));
+    expect(screen.getByRole("dialog", { name: "Edit planting area" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Add plant" })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Done" }));
-    expect(location.search).toBe("?area=demo-raised-bed");
-    expect(screen.getByRole("button", { name: "Whole garden" })).toBeInTheDocument();
+    expect(location.search).toBe("?level=areas&area=demo-raised-bed");
+    expect(screen.queryByRole("button", { name: "Whole garden" })).not.toBeInTheDocument();
   });
 });

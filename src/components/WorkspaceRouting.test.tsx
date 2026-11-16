@@ -30,7 +30,7 @@ describe("workspace routes and persistent provider", () => {
     const target = workspace.gardens[1];
     resetTestRouter(gardenPath(target.id));
     render(<GardenWorkspace />);
-    fireEvent.click(await screen.findByRole("button", { name: "Edit garden details" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Garden" }));
     expect(await screen.findByLabelText("Garden name")).toHaveValue("Back garden");
     fireEvent.change(screen.getByLabelText("Garden name"), { target: { value: "URL garden updated" } });
     fireEvent.keyDown(screen.getByLabelText("Garden name"), { key: "Enter" });
@@ -50,7 +50,7 @@ describe("workspace routes and persistent provider", () => {
     expect(screen.getByText("Loading garden workspace...")).toBeInTheDocument();
     expect(screen.queryByText("Garden not found in this workspace")).not.toBeInTheDocument();
     await act(async () => resolve({ ok: true, json: async () => ({ ...workspace, workspaceId: "routing", revision: 2 }) }));
-    fireEvent.click(await screen.findByRole("button", { name: "Edit garden details" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Garden" }));
     expect(await screen.findByLabelText("Garden name")).toHaveValue("Demo Garden");
   });
 
@@ -62,12 +62,12 @@ describe("workspace routes and persistent provider", () => {
     expect(await screen.findByText("Garden not found in this workspace")).toBeInTheDocument();
     act(() => testRouter.push(areaPath(workspace.gardens[0].id, "missing-area")));
     expect(screen.getByRole("alert")).toHaveTextContent("Planting area not found");
-    fireEvent.click(screen.getByRole("button", { name: "Edit garden details" }));
+    fireEvent.click(screen.getByRole("button", { name: "Garden" }));
     expect(screen.getByLabelText("Garden name")).toHaveValue("Demo Garden");
     await user.selectOptions(screen.getByLabelText("Garden", { selector: "select" }), workspace.gardens[1].id);
     expect(location.pathname).toBe(gardenPath(workspace.gardens[1].id));
     expect(location.search).toBe("");
-    fireEvent.click(screen.getByRole("button", { name: "Edit garden details" }));
+    fireEvent.click(screen.getByRole("button", { name: "Garden" }));
     expect(screen.getByLabelText("Garden name")).toHaveValue("Back garden");
   });
 

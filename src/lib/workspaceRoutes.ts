@@ -4,9 +4,17 @@ export type WorkspaceRoute = { module: WorkspaceModule; gardenId?: string };
 export const workspaceHomePath = "/gardens";
 /** A garden's own page, the Garden Plan; it is the only garden-level (L2) route. */
 export const gardenPath = (gardenId: string) => `/gardens/${encodeURIComponent(gardenId)}/plan`;
+/** An area open on the Plants level, zoomed in for planting (ADR-0075). */
 export const areaPath = (gardenId: string, areaId: string) => `${gardenPath(gardenId)}?${new URLSearchParams({ area: areaId })}`;
-/** The area's properties editor; on narrower layouts it opens over the zoomed plan. */
-export const areaEditPath = (gardenId: string, areaId: string) => `${gardenPath(gardenId)}?${new URLSearchParams({ area: areaId, edit: "area" })}`;
+/**
+ * A plan level, with an optional area: open on Plants, selected on Planting
+ * areas. Plants with no area is the bare plan address, its default level.
+ */
+export const planLevelPath = (gardenId: string, level: "garden" | "areas" | "plants", areaId?: string) =>
+  level === "plants" ? areaId ? areaPath(gardenId, areaId) : gardenPath(gardenId)
+    : `${gardenPath(gardenId)}?${new URLSearchParams({ level, ...(areaId ? { area: areaId } : {}) })}`;
+/** The area's properties editor on Planting areas; on narrower layouts it opens over the plan. */
+export const areaEditPath = (gardenId: string, areaId: string) => `${gardenPath(gardenId)}?${new URLSearchParams({ level: "areas", area: areaId, edit: "area" })}`;
 export const careView = (value: string | null): "tasks" | "history" => value === "history" ? "history" : "tasks";
 /** Care filtered to one location: a garden ID, or "all-gardens" for workspace-wide records. */
 export const careLocationPath = (location: string, view?: "tasks" | "history") =>

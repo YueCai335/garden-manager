@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { metresToCanvas } from "../src/lib/canvasViewport";
 import { createDemoGardenWorkspace, gardenPlanViewport, type GardenWorkspace } from "../src/lib/gardenWorkspace";
-import { openAreaProperties, planCanvas, planSurface, planTransform } from "./areaHelpers";
+import { goToLevel, openAreaProperties, planCanvas, planSurface, planTransform } from "./areaHelpers";
 import { openWorkspace } from "./workspace";
 
 // 820 px keeps the overlay editor; from 900 px the area panel sits in its own column beside the canvas.
@@ -12,17 +12,18 @@ for (const width of [390, 820, 900, 1440]) {
     await openWorkspace(page);
     await page.getByRole("button", { name: "Load demo garden" }).click();
     await page.getByRole("link", { name: "Open Demo Garden" }).click();
+    // The garden opens on Plants; its name, size, and Delete garden sit on the Garden level (ADR-0075).
     await expect(page.getByLabel("Garden name", { exact: true })).toHaveCount(0);
-    // Delete garden sits at the bottom of the garden details form, not on the page.
     await expect(page.getByRole("button", { name: "Delete garden", exact: true })).toHaveCount(0);
     await expect(page.getByText("Garden settings", { exact: true })).toHaveCount(0);
-    await page.getByRole("button", { name: "Edit garden details" }).click();
+    await goToLevel(page, "Garden");
     await expect(page.getByRole("button", { name: "Delete garden", exact: true })).toBeVisible();
     await page.getByLabel("Garden name", { exact: true }).fill("Kitchen garden");
     await page.getByLabel("Garden name", { exact: true }).press("Enter");
-    await page.getByRole("button", { name: "Done", exact: true }).click();
-    await expect(page.getByRole("region", { name: "Garden properties" })).toContainText("Kitchen garden");
+    await expect(page.getByLabel("Garden name", { exact: true })).toHaveValue("Kitchen garden");
     if (width === 390) {
+      // On a phone, a tapped bed opens on Plants; its card's "Edit area" opens the properties page.
+      await goToLevel(page, "Plants");
       const canvas = planCanvas(page);
       await expect(canvas).toBeVisible();
       const [garden] = createDemoGardenWorkspace().gardens;
@@ -84,15 +85,15 @@ for (const width of [390, 820, 900, 1440]) {
     await expect(panel.getByRole("button", { name: "Save", exact: true })).toHaveCount(0);
     await back.click();
     if (width === 390) {
-      // Now wide: closing the side panel returns to the whole garden.
+      // Now wide: Done closes the side panel and keeps the Planting areas level.
       await expect(page.getByRole("link", { name: "Edit Sample raised bed" })).toBeFocused();
-      await expect(page).toHaveURL(/\/plan$/);
+      await expect(page).toHaveURL(/\/plan\?level=areas$/);
     } else {
-      // Now a phone: closing the properties page returns to the zoomed area.
+      // Now a phone: closing the properties page returns to the area selected on Planting areas.
       await expect(page.getByRole("link", { name: "Edit area", exact: true })).toBeFocused();
-      await expect(page).toHaveURL(/\?area=demo-raised-bed$/);
+      await expect(page).toHaveURL(/\?level=areas&area=demo-raised-bed$/);
       await page.keyboard.press("Escape");
-      await expect(page).toHaveURL(/\/plan$/);
+      await expect(page).toHaveURL(/\/plan\?level=areas$/);
     }
     await expect(page.getByText("All changes saved", { exact: true })).toBeVisible();
     // "All changes saved" can still show from an earlier save; wait for the server copy before reloading.
@@ -132,8 +133,10 @@ test.describe("touch editing", () => {
     await expect(panel).toHaveAttribute("data-mode", "mobile");
     await expect(panel.getByLabel("Planting-area name")).toHaveValue(area.name);
     await panel.getByRole("button", { name: "Done", exact: true }).tap();
-    await expect(page).toHaveURL(/\?area=demo-raised-bed$/);
+    // Done returns to the bed selected on Planting areas, where its properties live (ADR-0075).
+    await expect(page).toHaveURL(/\?level=areas&area=demo-raised-bed$/);
     await expect(selected).toBeVisible();
+    await expect(selected.getByRole("button", { name: "Edit Tomato" })).toHaveCount(0);
   });
 
   test("a swipe over the canvas scrolls the page, and Move still moves an area", async ({ page }, testInfo) => {
@@ -143,6 +146,9 @@ test.describe("touch editing", () => {
     await page.getByRole("button", { name: "Load demo garden" }).tap();
     await page.getByRole("link", { name: "Open Demo Garden" }).tap();
     await expect(page.getByText("All changes saved", { exact: true })).toBeVisible();
+    // Plants locks the beds and offers no Move mode; Planting areas does (ADR-0075).
+    await expect(page.getByRole("button", { name: "Move planting areas" })).toHaveCount(0);
+    await goToLevel(page, "Planting areas");
     // Touch screens keep the explicit Move mode (ADR-0072, phase G4).
     const move = page.getByRole("button", { name: "Move planting areas" });
     await expect(move).toBeVisible();
@@ -183,7 +189,7 @@ test.describe("touch editing", () => {
     await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(scrollBefore + 40);
     // A swipe that ends over the bed it started on is still a scroll, not a tap that opens the bed.
     await settle();
-    await expect(page).toHaveURL(/\/plan$/);
+    await expect(page).toHaveURL(/\/plan\?level=areas$/);
     expect(await placement()).toEqual(original);
 
     // Move is on: the same gesture drags the bed and saves one position.

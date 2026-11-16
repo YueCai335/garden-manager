@@ -10,10 +10,15 @@ async function openBed() {
   render(<GardenWorkspace />);
   await user.click(await screen.findByRole("button", { name: "Load demo garden" }));
   await user.click(await screen.findByRole("link", { name: "Open Demo Garden" }));
+  // Area properties are edited on the Planting areas level (ADR-0075).
+  await user.click(screen.getByRole("button", { name: "Planting areas" }));
   await user.click(screen.getByLabelText("Open Sample raised bed on Garden Plan"));
   return user;
 }
-// These journeys use the side-column layout, where area properties and plants share one panel.
+/** Plants are edited on the Plants level; the selected area stays open there. */
+const goToPlants = (user: ReturnType<typeof userEvent.setup>) => user.click(screen.getByRole("button", { name: "Plants" }));
+const goToAreas = (user: ReturnType<typeof userEvent.setup>) => user.click(screen.getByRole("button", { name: "Planting areas" }));
+// These journeys use the side-column layout, where the open area's panel sits beside the plan.
 beforeEach(() => { testLayout.width = 1280; testLayout.viewportWidth = 1280; });
 const properties = () => within(screen.getByLabelText("Planting-area name").closest("form")!);
 const saved = () => JSON.parse(window.localStorage.getItem(GARDEN_WORKSPACE_STORAGE_KEY)!);
@@ -24,10 +29,14 @@ describe("planting-area draft protection", () => {
     await user.clear(screen.getByLabelText("Planting-area name"));
     await user.type(screen.getByLabelText("Planting-area name"), "Kitchen bed");
     expect(saved().gardens[0].growingAreas[0].name).toBe("Sample raised bed");
-    await user.click(screen.getByRole("button", { name: "Add plant" }));
+    // Leaving the field for the Plants level applies the name; the area stays open there.
+    await goToPlants(user);
     expect(saved().gardens[0].growingAreas[0].name).toBe("Kitchen bed");
+    expect(screen.queryByLabelText("Planting-area name")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Add plant" }));
     await user.type(screen.getByLabelText("Plant type"), "Kale");
     await user.click(screen.getByRole("button", { name: "Add" }));
+    await goToAreas(user);
     expect(screen.getByLabelText("Planting-area name")).toHaveValue("Kitchen bed");
     expect(properties().queryByRole("button", { name: "Save" })).not.toBeInTheDocument();
     const area = saved().gardens[0].growingAreas[0];
@@ -42,6 +51,7 @@ describe("planting-area draft protection", () => {
     await user.click(screen.getByRole("link", { name: "Next Season" }));
     await user.click(within(screen.getByRole("navigation", { name: "Workspace sections" })).getByRole("link", { name: "Gardens" }));
     await user.click(screen.getByRole("link", { name: "Open Demo Garden" }));
+    await goToAreas(user);
     await user.click(screen.getByLabelText("Open Sample raised bed on Garden Plan"));
     // A value still being typed (never blurred) is a draft that survives navigation.
     expect(screen.getByLabelText("Planting-area name")).toHaveValue("Unsaved bed");
@@ -63,11 +73,15 @@ describe("planting-area draft protection", () => {
 
 it("keeps a plant coordinate draft through resizing and navigation, then validates before applying", async () => {
   const user = await openBed();
+  await goToPlants(user);
   await user.click(screen.getByLabelText("Tomato plant on Garden Plan"));
   fireEvent.change(screen.getByLabelText("X position (m)"), { target: { value: "1.8" } });
+  // Resizing happens on the Planting areas level; the plant draft waits on Plants.
+  await goToAreas(user);
   fireEvent.change(screen.getByLabelText("Width (m)"), { target: { value: "1" } });
   fireEvent.keyDown(screen.getByLabelText("Width (m)"), { key: "Enter" });
   expect(saved().gardens[0].growingAreas[0].layout.widthMeters).toBe(1);
+  await goToPlants(user);
   expect(screen.getByLabelText("X position (m)")).toHaveValue(1.8);
   expect(screen.getByText(/outside this area's current dimensions/)).toBeInTheDocument();
   const before = saved();
@@ -88,11 +102,14 @@ it("keeps a plant coordinate draft through resizing and navigation, then validat
 
 it("keeps a new plant draft through area property changes and asks before closing", async () => {
   const user = await openBed();
+  await goToPlants(user);
   await user.click(screen.getByRole("button", { name: "Add plant" }));
   fireEvent.change(screen.getByLabelText("Plant type"), { target: { value: "Kale" } });
+  await goToAreas(user);
   fireEvent.change(screen.getByLabelText("Planting-area name"), { target: { value: "Renamed bed" } });
   fireEvent.keyDown(screen.getByLabelText("Planting-area name"), { key: "Enter" });
   expect(saved().gardens[0].growingAreas[0].name).toBe("Renamed bed");
+  await goToPlants(user);
   expect(screen.getByLabelText("Plant type")).toHaveValue("Kale");
   await user.click(screen.getByRole("button", { name: "Done" }));
   await user.click(screen.getByRole("button", { name: "Keep editing" }));

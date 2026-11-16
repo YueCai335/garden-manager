@@ -134,7 +134,7 @@ describe("shared save feedback", () => {
     resetTestRouter("/gardens/demo-garden/plan");
     const user = userEvent.setup();
     render(<GardenWorkspace />);
-    await user.click(await screen.findByRole("button", { name: "Edit garden details" }));
+    await user.click(await screen.findByRole("button", { name: "Garden" }));
     fireEvent.change(await screen.findByLabelText("Garden name"), { target: { value: "My local name" } });
     fireEvent.keyDown(screen.getByLabelText("Garden name"), { key: "Enter" });
     await screen.findByText("A newer version is available");

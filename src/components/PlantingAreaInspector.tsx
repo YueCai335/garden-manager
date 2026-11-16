@@ -9,7 +9,7 @@ import type { EditorMode } from "./editor/EditorWorkbench";
 import styles from "./editor/Editor.module.css";
 
 export function PlantingAreaInspector({
-  plan, mode = "wide", gardenName,
+  plan, mode = "wide", gardenName, title = "Edit planting area",
   area,
   returnFocusId,
   draft,
@@ -26,6 +26,8 @@ export function PlantingAreaInspector({
   plan: GardenPlan;
   mode?: EditorMode;
   gardenName?: string;
+  /** The panel heading: "Edit planting area" on Planting areas, "Plants" on Plants (ADR-0075). */
+  title?: string;
   /** Where focus returns on close; defaults to the area's link in the area list. */
   returnFocusId?: string;
   draft?: AreaPropertiesDraft;
@@ -98,7 +100,7 @@ export function PlantingAreaInspector({
   };
 
   return (
-    <EditorPanel mode={mode} title="Edit planting area" context={`${gardenName ?? "Garden"} / ${area.name}`} headingId="edit-planting-area-heading" returnFocusId={returnFocusId ?? `area-link-${area.id}`} onClose={() => hasChanges || hasPlantChanges ? setClosing(true) : onClose()}>
+    <EditorPanel mode={mode} title={title} context={`${gardenName ?? "Garden"} / ${area.name}`} headingId="edit-planting-area-heading" returnFocusId={returnFocusId ?? `area-link-${area.id}`} onClose={() => hasChanges || hasPlantChanges ? setClosing(true) : onClose()}>
       <div className={styles.properties}>
       {hasChanges && Object.values(errors).some(Boolean) && <p role="status">Not applied yet: fix the highlighted values.</p>}
       {changedElsewhere && <div role="alert">
@@ -107,7 +109,8 @@ export function PlantingAreaInspector({
         <button className="secondary-button" type="button" onClick={() => { onDraftChange(undefined); setErrors({}); }}>Reload properties</button>
       </div>}
       {closing && <ConfirmDialog message="Discard unsaved changes in this planting area?" confirmLabel="Discard changes" cancelLabel="Keep editing" onCancel={() => setClosing(false)} onConfirm={() => { onDraftChange(undefined); onDiscardPlants(); onClose(); }} />}
-      <form hidden={!showProperties} className="planting-area-creation-form" noValidate onSubmit={submit} onKeyDown={applyOnEnter} onBlur={(event) => { if (event.target instanceof HTMLInputElement) apply(); }} ref={formRef}>
+      {/* Rendered only when shown: the form's grid display would override a hidden attribute. */}
+      {showProperties && <form className="planting-area-creation-form" noValidate onSubmit={submit} onKeyDown={applyOnEnter} onBlur={(event) => { if (event.target instanceof HTMLInputElement) apply(); }} ref={formRef}>
         <h3 className={styles.inspectorSectionHeading}>Dimensions and position</h3>
         <div className="field">
           <label htmlFor="editing-planting-area-name">Planting-area name</label>
@@ -170,7 +173,7 @@ export function PlantingAreaInspector({
         <div className="form-actions">
           <button className="remove-button" onClick={onDelete} type="button">Delete area</button>
         </div>
-      </form>
+      </form>}
       {children}
       </div>
     </EditorPanel>

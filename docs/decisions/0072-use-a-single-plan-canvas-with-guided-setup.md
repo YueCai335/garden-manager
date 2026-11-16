@@ -52,7 +52,9 @@ control. (Amended by ADR-0073 on 2026-11-15: "Whole garden" only zooms out and
 keeps the area open; Close and Escape close it.) Plants are placed, selected, moved, and removed directly on this
 canvas. The second plant canvas in the inspector is removed. The side panel
 holds controls and text: the area properties, the plant picker, warnings, and
-the area's plant groups.
+the area's plant groups. (Superseded in part by ADR-0075 on 2026-11-16: an existing
+garden edits the area properties on the Planting areas level and the plants on
+the Plants level.)
 
 Pointer positions convert to area-local coordinates through the inverse of the
 area's plan placement and rotation. The saved model keeps metres and the
