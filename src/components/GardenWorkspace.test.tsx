@@ -15,6 +15,7 @@ import {
   areaFocusViewport,
   createDemoGardenWorkspace,
   createGarden,
+  createSampleGardenWorkspace,
   createGardenWorkspace,
   GARDEN_WORKSPACE_STORAGE_KEY,
   readGardenWorkspace,
@@ -1385,6 +1386,37 @@ describe("GardenWorkspace", () => {
       await screen.findByRole("heading", { name: "Garden Plan" });
       expect(screen.getAllByLabelText("Marigold plant on Garden Plan")).toHaveLength(18);
       expect(screen.getAllByLabelText("Panicle hydrangea plant on Garden Plan")).toHaveLength(3);
+    });
+
+    it("opens a browser workspace that held only the old demo on the three gardens", async () => {
+      window.localStorage.setItem(GARDEN_WORKSPACE_STORAGE_KEY, JSON.stringify(createSampleGardenWorkspace()));
+      render(<GardenWorkspace />);
+      for (const name of ["Backyard", "Community Garden", "Front Yard"])
+        expect(await screen.findByRole("link", { name: `Open ${name}` })).toBeInTheDocument();
+      expect(screen.queryByRole("link", { name: "Open Demo Garden" })).not.toBeInTheDocument();
+      await waitFor(() => expect(JSON.parse(window.localStorage.getItem(GARDEN_WORKSPACE_STORAGE_KEY) ?? "{}").gardens.map((garden: { id: string }) => garden.id))
+        .toEqual(["demo-backyard", "demo-community-garden", "demo-front-yard"]));
+    });
+
+    it("saves the swap when a server workspace held only the old demo", async () => {
+      const fetch = vi.fn(async (_url: string, init?: RequestInit) => ({
+        ok: true,
+        json: async () => init?.body
+          ? { workspaceId: "server-workspace", revision: 2, ...JSON.parse(String(init.body)).workspace ?? JSON.parse(String(init.body)) }
+          : { workspaceId: "server-workspace", revision: 1, ...createSampleGardenWorkspace() },
+      }));
+      vi.stubGlobal("fetch", fetch);
+      window.localStorage.setItem(SERVER_WORKSPACE_STORAGE_KEY, "server-workspace");
+
+      render(<GardenWorkspace />);
+      expect(await screen.findByRole("link", { name: "Open Backyard" })).toBeInTheDocument();
+      await waitFor(() => expect(fetch.mock.calls).toContainEqual([
+        expect.stringMatching(/\/workspaces\/server-workspace$/),
+        expect.objectContaining({ method: "PUT" }),
+      ]));
+      const saved = JSON.parse(String(fetch.mock.calls.find(([, init]) => init?.method === "PUT")?.[1]?.body));
+      expect(JSON.stringify(saved)).not.toContain('"demo-garden"');
+      expect(JSON.stringify(saved)).toContain('"demo-front-yard"');
     });
 
     it("adds all three gardens beside a personal garden and opens Backyard", async () => {

@@ -564,6 +564,26 @@ export function createShowcaseWorkspace(today = todayDate()): GardenWorkspace {
   return { version: 10, selectedGardenId: gardens[0].id, gardens, careEvents: [], careTasks };
 }
 
+/**
+ * Swaps the old sample demo for the showcase when a saved workspace opens
+ * (ADR-0077, amended 2026-11-16). A workspace that holds only demo gardens is
+ * the old demo, so it becomes the showcase. A workspace with gardens of the
+ * user's own loses only the sample garden; "Demo garden" adds the showcase
+ * when they want it. Other workspaces come back unchanged, as does every
+ * workspace while tests use the sample fixture.
+ */
+export function replaceLegacyDemoGarden(workspace: GardenWorkspace, today = todayDate()): GardenWorkspace {
+  if (process.env.NEXT_PUBLIC_DEMO_FIXTURE === "sample") return workspace;
+  if (!workspace.gardens.some((garden) => garden.id === SAMPLE_GARDEN_ID)) return workspace;
+  const gardens = workspace.gardens.filter((garden) => garden.id !== SAMPLE_GARDEN_ID);
+  if (gardens.every((garden) => isDemoGardenId(garden.id))) return createShowcaseWorkspace(today);
+  return {
+    ...workspace,
+    selectedGardenId: workspace.selectedGardenId === SAMPLE_GARDEN_ID ? gardens[0].id : workspace.selectedGardenId,
+    gardens,
+  };
+}
+
 const SAMPLE_GARDEN_ID = "demo-garden";
 
 /**

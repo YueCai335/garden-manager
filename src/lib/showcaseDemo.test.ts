@@ -1,10 +1,13 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   createDemoGardenWorkspace,
   createShowcaseWorkspace,
   isDemoGardenId,
+  createGarden,
+  createSampleGardenWorkspace,
   readGardenWorkspace,
+  replaceLegacyDemoGarden,
   todayDate,
 } from "@/lib/gardenWorkspace";
 
@@ -93,5 +96,39 @@ describe("showcase demo (ADR-0077)", () => {
     expect(createDemoGardenWorkspace(today).gardens.map((garden) => garden.id)).toEqual(["demo-garden"]);
     vi.stubEnv("NEXT_PUBLIC_DEMO_FIXTURE", "");
     expect(createDemoGardenWorkspace(today)).toEqual(createShowcaseWorkspace(today));
+  });
+
+  describe("swapping the old sample demo", () => {
+    beforeEach(() => vi.stubEnv("NEXT_PUBLIC_DEMO_FIXTURE", ""));
+
+    it("turns a workspace holding only the old demo into the showcase", () => {
+      expect(replaceLegacyDemoGarden(createSampleGardenWorkspace(), today)).toEqual(createShowcaseWorkspace(today));
+    });
+
+    it("also replaces an old demo that sits beside showcase gardens and nothing else", () => {
+      const sample = createSampleGardenWorkspace();
+      const mixed = { ...sample, gardens: [...sample.gardens, ...createShowcaseWorkspace("2026-01-01").gardens] };
+      expect(replaceLegacyDemoGarden(mixed, today)).toEqual(createShowcaseWorkspace(today));
+    });
+
+    it("removes only the old demo when the user has gardens of their own", () => {
+      const sample = createSampleGardenWorkspace();
+      const own = createGarden("Back garden");
+      const workspace = { ...sample, careTasks: [], gardens: [...sample.gardens, own] };
+      expect(replaceLegacyDemoGarden(workspace, today)).toEqual({ ...workspace, selectedGardenId: own.id, gardens: [own] });
+      const selectedOwn = { ...workspace, selectedGardenId: own.id };
+      expect(replaceLegacyDemoGarden(selectedOwn, today).selectedGardenId).toBe(own.id);
+    });
+
+    it("leaves a workspace without the old demo untouched", () => {
+      const showcase = createShowcaseWorkspace(today);
+      expect(replaceLegacyDemoGarden(showcase, "2030-01-01")).toBe(showcase);
+    });
+
+    it("does nothing while tests use the sample fixture", () => {
+      vi.stubEnv("NEXT_PUBLIC_DEMO_FIXTURE", "sample");
+      const sample = createSampleGardenWorkspace();
+      expect(replaceLegacyDemoGarden(sample, today)).toBe(sample);
+    });
   });
 });
