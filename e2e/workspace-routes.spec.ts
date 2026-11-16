@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { goToLevel } from "./areaHelpers";
 import { openWorkspace, workspaceHome } from "./workspace";
 
 test("deep links, browser history, and missing entities keep explicit garden context", async ({ page }) => {
@@ -127,6 +128,7 @@ test("garden pages show one set of modules, a breadcrumb, and All gardens; the h
   await expect(breadcrumb.getByText("Demo Garden", { exact: true })).toHaveAttribute("aria-current", "page");
 
   // L3 adds the area; the garden becomes the way back to the whole plan.
+  await goToLevel(page, "Plants");
   await page.getByRole("link", { name: "Edit Sample raised bed" }).click();
   await expect(breadcrumb.getByText("Sample raised bed", { exact: true })).toHaveAttribute("aria-current", "page");
   await page.screenshot({ path: test.info().outputPath("garden-area-1440.png") });

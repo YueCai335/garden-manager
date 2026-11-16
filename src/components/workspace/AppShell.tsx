@@ -22,6 +22,15 @@ const OverviewNoteEntryContext = createContext<ReactNode>(null);
 type OpenGardenNote = (opener: HTMLButtonElement | null, options: { batchAvailable: boolean; gardenId?: string }) => void;
 const OpenGardenNoteContext = createContext<OpenGardenNote | null>(null);
 
+/**
+ * The page title row's right side. A garden's page puts Done and Delete
+ * garden there (ADR-0078); pages render nothing into it otherwise.
+ */
+const PageActionsSlotContext = createContext<HTMLElement | null>(null);
+export function usePageActionsSlot() {
+  return useContext(PageActionsSlotContext);
+}
+
 export function OverviewNoteEntry() {
   return useContext(OverviewNoteEntryContext);
 }
@@ -57,6 +66,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const navigation = useRef<HTMLElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   const header = useRef<HTMLElement>(null);
+  const [actionsSlot, setActionsSlot] = useState<HTMLDivElement | null>(null);
   // The header is sticky; its height (which grows with the open menu or a saving warning) offsets other sticky parts and scroll-into-view.
   useEffect(() => {
     const node = header.current;
@@ -138,13 +148,16 @@ export function AppShell({ children }: { children: ReactNode }) {
             <select id="workspace-garden" value={garden.id} onChange={(event) => router.push(gardenPath(event.target.value))}>{workspace?.gardens.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select>
           </div>}
         </div>}
-        <PageHeader title={title} description={description} headingRef={heading} />
+        <PageHeader title={title} description={description} headingRef={heading}
+          actions={route.module === "plan" ? <div ref={setActionsSlot} className={styles.pageActions} /> : undefined} />
       </div>
+      <PageActionsSlotContext.Provider value={route.module === "plan" ? actionsSlot : null}>
       <OpenGardenNoteContext.Provider value={openNote}>
       {route.module === "home" ? <OverviewNoteEntryContext.Provider value={
         <OverviewGardenNote primaryButton={noteButton} expanded={showNote} onOpen={(opener, batchAvailable) => openNote(opener, { batchAvailable })} />
       }>{children}</OverviewNoteEntryContext.Provider> : children}
       </OpenGardenNoteContext.Provider>
+      </PageActionsSlotContext.Provider>
     </main>
     </div>
     {showNote && <GardenNoteDialog opener={noteOpener} fallbackOpener={route.module === "home" ? noteButton : headerNoteButton} batchAvailable={noteMode === "batch"} initialGardenId={noteGardenId} onClose={() => setNoteMode(null)} />}

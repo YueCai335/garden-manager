@@ -1,6 +1,9 @@
 # ADR-0075: Edit an Existing Garden in Three Levels
 
-- Status: Accepted on 2026-11-16 and implemented on 2026-11-16.
+- Status: Accepted on 2026-11-16 and implemented on 2026-11-16. Superseded in
+  part by [ADR-0078](0078-finish-a-garden-with-done-and-open-it-on-the-garden-level.md):
+  a garden opens on Garden, Done and Delete garden sit on the title row, and
+  the level bar is a strip of joined arrows.
 - Date: 2026-11-16
 - Supersedes in part: [ADR-0072](0072-use-a-single-plan-canvas-with-guided-setup.md):
   one side panel that holds both the area properties and the plants of the

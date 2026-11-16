@@ -117,9 +117,10 @@ changes, mark the old record as superseded and add a new record.
 | [ADR-0072](0072-use-a-single-plan-canvas-with-guided-setup.md) | Use a single plan canvas with guided setup | Accepted; implemented (G1–G7); the G1 presentation and the wide side column superseded in part by ADR-0073 (S4): a pale planting chart, and from 900 px the toolbar, zoom, and legend float over the canvas; amended 2026-11-15: the area panel sits in a column beside the canvas, and "Whole garden" only zooms out while the area stays open; the single panel for area properties and plants superseded in part by ADR-0075: Planting areas and Plants are separate levels |
 | [ADR-0073](0073-separate-the-landing-page-and-use-a-textured-deep-green-look.md) | Separate the landing page from the app and use a textured deep-green look | Accepted; implemented (S1–S7); amended 2026-11-16: "Care to do" and AI Garden Notes sit beside the gardens, tasks tick off in place, and garden thumbnails carry no text; the landing showcases (S6b) are placeholders until their form is decided; plant colors superseded in part by ADR-0076 |
 | [ADR-0074](0074-keep-the-portfolio-demo-awake-with-a-scheduled-check.md) | Keep the portfolio demo awake with a scheduled check | Accepted |
-| [ADR-0075](0075-edit-an-existing-garden-in-three-levels.md) | Edit an existing garden in three levels | Accepted; implemented 2026-11-16 |
+| [ADR-0075](0075-edit-an-existing-garden-in-three-levels.md) | Edit an existing garden in three levels | Accepted; implemented 2026-11-16; superseded in part by ADR-0078: a garden opens on Garden, Delete garden moves to the title row, and the level bar is a strip of joined arrows |
 | [ADR-0076](0076-color-each-plant-type-from-a-shared-muted-palette.md) | Color each plant type from a shared muted palette | Accepted; implemented 2026-11-16 |
 | [ADR-0077](0077-show-three-real-gardens-as-the-demo.md) | Show three real gardens as the demo | Accepted; implemented 2026-11-16; the public AI features keep the sample garden until the AI redo |
+| [ADR-0078](0078-finish-a-garden-with-done-and-open-it-on-the-garden-level.md) | Finish a garden with Done and open it on the Garden level | Accepted; implemented 2026-11-16 |
 
 ## Interview Use
 

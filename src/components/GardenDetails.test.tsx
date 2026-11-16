@@ -13,13 +13,10 @@ function openPlan() {
 
 it("shows the garden fields only on the Garden level and keeps an unapplied value across levels", async () => {
   const user = userEvent.setup(); openPlan();
-  // An existing garden opens on Plants (ADR-0075); the Garden level holds the name and size.
+  // An existing garden opens on Garden (ADR-0078), which holds the name and size.
   const level = await screen.findByRole("button", { name: "Garden" });
-  expect(screen.getByRole("button", { name: "Plants" })).toHaveAttribute("aria-current", "true");
-  expect(screen.queryByLabelText("Garden name")).not.toBeInTheDocument();
-  expect(screen.queryByRole("button", { name: "Edit garden details" })).not.toBeInTheDocument();
-  await user.click(level);
   expect(level).toHaveAttribute("aria-current", "true");
+  expect(screen.queryByRole("button", { name: "Edit garden details" })).not.toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Delete garden" })).toBeInTheDocument();
   // An empty name fails validation, so it stays in the field unapplied.
   fireEvent.change(screen.getByLabelText("Garden name"), { target: { value: " " } });
