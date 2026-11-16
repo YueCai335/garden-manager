@@ -56,6 +56,16 @@ export function AppShell({ children }: { children: ReactNode }) {
   const menuButton = useRef<HTMLButtonElement>(null);
   const navigation = useRef<HTMLElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
+  const header = useRef<HTMLElement>(null);
+  // The header is sticky; its height (which grows with the open menu or a saving warning) offsets other sticky parts and scroll-into-view.
+  useEffect(() => {
+    const node = header.current;
+    if (!node || typeof ResizeObserver === "undefined") return;
+    const root = document.documentElement;
+    const observer = new ResizeObserver(() => root.style.setProperty("--app-header-height", `${node.offsetHeight}px`));
+    observer.observe(node);
+    return () => { observer.disconnect(); root.style.removeProperty("--app-header-height"); };
+  }, []);
   const title = {
     home: "Gardens", new: "Add garden", plan: garden?.name ?? "Garden Plan", care: "Care",
     season: `Next Season · ${nextSeasonYear()}`, notes: "AI Garden Note", guide: "Plant Guide", doctor: "Plant Doctor",
@@ -86,7 +96,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   return <>
     <div className="operations-shell operations-app-shell" inert={showNote} aria-hidden={showNote || undefined}>
     <a className={styles.skip} href="#workspace-content">Skip to content</a>
-    <header className={styles.header}>
+    <header ref={header} className={styles.header}>
       <div className={styles.headerInner}>
         {/* The brand names the whole site, so it always returns to the landing page; Gardens is the app's home (ADR-0073). */}
         <Link className={styles.brand} href="/" onClick={closeMenu}>

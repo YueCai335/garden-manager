@@ -1,6 +1,7 @@
 /* The app bar (ADR-0073): deep green with a grayscale banana-leaf ridge texture in overlay blend.
    It must read clearly green, never black, so the texture only modulates the green. */
-.header { position: relative; isolation: isolate; background: var(--color-app-bar); color: var(--color-app-bar-text); }
+/* It stays at the top while the page scrolls, like the landing header; z-index keeps it above the canvas layers. */
+.header { position: sticky; top: 0; z-index: 10; isolation: isolate; background: var(--color-app-bar); color: var(--color-app-bar-text); }
 .header::before {
   content: "";
   position: absolute;

@@ -1,6 +1,6 @@
 # ADR-0073: Separate the Landing Page from the App and Use a Textured Deep-Green Look
 
-- Status: Accepted on 2026-11-14 and implemented: S1 to S3 on 2026-11-14, S4 to S7 on 2026-11-15. Amended on 2026-11-15: the brand link returns to the landing page, the header modules sit in one tray, and the landing page has a fixed header over four feature sections. The landing showcases (S6b) remain placeholders; their form is undecided until the app is final.
+- Status: Accepted on 2026-11-14 and implemented: S1 to S3 on 2026-11-14, S4 to S7 on 2026-11-15. Amended on 2026-11-15: the brand link returns to the landing page, the header modules sit in one tray, and the landing page has a fixed header over four feature sections. Amended on 2026-11-15: the app header is sticky. The landing showcases (S6b) remain placeholders; their form is undecided until the app is final.
 - Date: 2026-11-14
 - Supersedes in part (all marked in the decision index):
   - [ADR-0051](0051-prioritize-daily-garden-work-on-the-dashboard.md): the dashboard card groups.
@@ -198,6 +198,12 @@ elements that mean something.
   five modules sit in one capsule tray (white 9%, a white 18% hairline), and
   the brand stands outside it. The tray separates the site's brand from the
   app's modules. Below 1024 px the modules fold into Menu without the tray.
+  The bar is sticky: it stays at the top of the window while the page
+  scrolls, like the landing header, so the modules stay one click away on
+  long pages. It is a solid bar, so it needs no transparent state. The bar
+  publishes its live height as `--app-header-height`; the area panel's sticky
+  parts sit below it, and `scroll-padding-top` keeps a focused field from
+  scrolling under it.
 - **Neutrals.** The neutrals have no hue: page `#F4F4F3`, surface `#FFFFFF`,
   lines `#E3E3E1`, and ink `#18181A`, `#5F5F63`, and `#8D8D91`. Neutrals are
   never tinted green.
