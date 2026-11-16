@@ -119,7 +119,7 @@ changes, mark the old record as superseded and add a new record.
 | [ADR-0074](0074-keep-the-portfolio-demo-awake-with-a-scheduled-check.md) | Keep the portfolio demo awake with a scheduled check | Accepted |
 | [ADR-0075](0075-edit-an-existing-garden-in-three-levels.md) | Edit an existing garden in three levels | Accepted; implemented 2026-11-16 |
 | [ADR-0076](0076-color-each-plant-type-from-a-shared-muted-palette.md) | Color each plant type from a shared muted palette | Accepted; implemented 2026-11-16 |
-| [ADR-0077](0077-show-three-real-gardens-as-the-demo.md) | Show three real gardens as the demo | Accepted; implemented 2026-11-16; the public AI features keep the sample garden until the AI redo |
+| [ADR-0077](0077-show-three-real-gardens-as-the-demo.md) | Show three real gardens as the demo | Accepted; implemented 2026-11-16; amended 2026-11-16: saved workspaces swap the old sample demo for the showcase; the public AI features keep the sample garden until the AI redo |
 
 ## Interview Use
 
