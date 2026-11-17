@@ -1,6 +1,6 @@
 # ADR-0081: Stage the Gardens on a Textured Band on the Gardens Home
 
-- Status: Accepted on 2026-11-16. Not implemented yet.
+- Status: Accepted on 2026-11-16. Implemented on 2026-11-17 (H1–H4 of the plan).
 - Date: 2026-11-16
 - Supersedes in part:
   - [ADR-0073](0073-separate-the-landing-page-and-use-a-textured-deep-green-look.md):
