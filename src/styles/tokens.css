@@ -47,6 +47,18 @@
   --color-plan-ground: #fafafa;
   --color-plan-bed: #f1ece4;
   --color-plan-bed-edge: #8c6a48;
+  /*
+   * Textured deep-green bands (ADR-0080 Care, ADR-0081 Gardens home). The band photos sit on
+   * --color-band-base; lime marks today's care progress and nothing else.
+   */
+  --color-band-base: #14281d;
+  --color-band-ink: #0e1d14;
+  --color-accent-lime: #d6ff5c;
+  --color-error-on-dark: #ffc9c2;
+  --color-done-ink: #6b6b6f;
+  /* The New garden card's dashed outline: a neutral between --color-line and --color-ink-subtle. */
+  --color-neutral-dash: #bdbdba;
+  --font-display: var(--font-bricolage), var(--font-body);
   --font-body: var(--font-instrument-sans), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   /* Compatibility for modules migrated in T05–T07. */
   --ops-ink: var(--color-text); --ops-ink-soft: var(--color-muted);
