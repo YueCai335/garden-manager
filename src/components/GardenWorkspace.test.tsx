@@ -111,20 +111,25 @@ describe("GardenWorkspace", () => {
     expect(screen.getByRole("navigation", { name: "Workspace sections" })).toBeInTheDocument();
   });
 
-  it("puts Care to do before the gardens, keeps the note action, and keeps navigation in the header", async () => {
+  it("puts the gardens before Care today and the note block, and keeps navigation in the header (ADR-0081)", async () => {
     const user = userEvent.setup();
     await loadDemo(user);
 
-    const gallery = screen.getByRole("region", { name: /Your gardens/ });
-    const today = screen.getByRole("region", { name: "Care to do" });
-    expect(today.compareDocumentPosition(gallery) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(within(today).getByRole("link", { name: /All tasks|Add a care task/ })).toHaveAttribute("href", "/care?view=tasks");
-    expect(screen.queryByRole("complementary", { name: "Care tasks" })).not.toBeInTheDocument();
-    expect(within(gallery).getByRole("link", { name: "Open Demo Garden" })).toHaveAccessibleDescription(expect.stringContaining("Growing now:"));
+    const gallery = screen.getByRole("region", { name: "Your gardens" });
+    const today = screen.getByRole("region", { name: "Care today" });
     const card = screen.getByRole("region", { name: "AI Garden Notes" });
+    expect(gallery.compareDocumentPosition(today) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(today.compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(within(today).getByRole("link", { name: /Open Care|Add a care task/ })).toHaveAttribute("href", "/care?view=tasks");
+    expect(screen.queryByRole("complementary", { name: "Care tasks" })).not.toBeInTheDocument();
+    expect(within(gallery).getByRole("link", { name: "Open Demo Garden" })).toHaveAccessibleDescription(expect.stringContaining("planting area"));
     const note = within(card).getByRole("button", { name: "Open note editor" });
     expect(note).toHaveAttribute("aria-haspopup", "dialog");
-    expect(within(gallery).getByRole("heading", { name: /Your gardens/ }).nextElementSibling).toBe(within(gallery).getByRole("link", { name: "Add garden" }));
+    // The dashed New garden card is the last grid cell and the page's only way to add a garden.
+    const links = within(gallery).getAllByRole("link");
+    expect(links.at(-1)).toBe(within(gallery).getByRole("link", { name: "New garden" }));
+    expect(links.at(-1)).toHaveAttribute("href", "/gardens/new");
+    expect(screen.getByRole("heading", { name: "Gardens", level: 1 })).toBeInTheDocument();
     expect(within(screen.getByRole("banner")).queryByText("Record Garden Note")).not.toBeInTheDocument();
     const gardenTools = screen.getByRole("navigation", { name: "Workspace sections" });
     for (const name of ["Plant Doctor", "Plant Guide", "Next Season"]) {
@@ -962,7 +967,7 @@ describe("GardenWorkspace", () => {
     const user = userEvent.setup();
     const firstRender = render(<GardenWorkspace />);
     await user.click(await screen.findByRole("button", { name: "Load demo garden" }));
-    await user.click(screen.getByRole("link", { name: "Add garden" }));
+    await user.click(screen.getByRole("link", { name: "New garden" }));
     expect(screen.getByRole("heading", { name: "Add garden", level: 1 })).toBeInTheDocument();
     await user.type(screen.getByLabelText("Garden name"), "Community plot");
     await user.click(screen.getByRole("button", { name: "Continue setup" }));
@@ -1044,7 +1049,7 @@ describe("GardenWorkspace", () => {
     const user = userEvent.setup();
     const firstRender = render(<GardenWorkspace />);
     await user.click(await screen.findByRole("button", { name: "Load demo garden" }));
-    await user.click(screen.getByRole("link", { name: "Add garden" }));
+    await user.click(screen.getByRole("link", { name: "New garden" }));
     await user.type(screen.getByLabelText("Garden name"), "Balcony");
     await user.click(screen.getByRole("button", { name: "Continue setup" }));
     await user.click(screen.getByRole("button", { name: "Continue to planting areas" }));
@@ -1380,8 +1385,9 @@ describe("GardenWorkspace", () => {
       await loadDemo(user);
       for (const name of ["Backyard", "Community Garden", "Front Yard"])
         expect(await screen.findByRole("link", { name: `Open ${name}` })).toBeInTheDocument();
-      expect(screen.getByText("Your gardens")).toHaveTextContent("(3)");
-      expect(screen.getByText("Fertilize all gardens")).toBeInTheDocument();
+      expect(screen.getByRole("region", { name: "Your gardens" })).toHaveTextContent("3 gardens · ");
+      // The workspace-wide feeding is due in four days: Care shows it, the Gardens home shows today only (ADR-0081).
+      expect(screen.getByRole("region", { name: "Care today" })).not.toHaveTextContent("Fertilize all gardens");
       await user.click(screen.getByRole("link", { name: "Open Front Yard" }));
       await screen.findByRole("heading", { name: "Garden Plan" });
       expect(screen.getAllByLabelText("Marigold plant on Garden Plan")).toHaveLength(18);
@@ -1610,7 +1616,7 @@ describe("GardenWorkspace", () => {
   it("keeps the dashboard compact and opens a planting area from Garden Plan", async () => {
     const user = userEvent.setup();
     await loadDemo(user);
-    expect(screen.getByRole("link", { name: "Add garden" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "New garden" })).toBeInTheDocument();
     await openSelectedGarden();
     expect(screen.queryByText("Garden properties")).not.toBeInTheDocument();
     goToLevel("Plants");

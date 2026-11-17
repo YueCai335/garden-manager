@@ -20,7 +20,7 @@ for (const width of [1440, 390]) {
     await openWorkspace(page);
     await page.getByRole("button", { name: "Load demo garden" }).click();
     await expect(page.getByRole("link", { name: "Open Demo Garden" })).toBeVisible();
-    await page.getByRole("link", { name: "Add garden" }).click();
+    await page.getByRole("link", { name: "New garden" }).click();
     const name = `Guided ${width}`;
     await page.getByLabel("Garden name").fill(name);
     await page.getByRole("button", { name: "Continue setup" }).click();

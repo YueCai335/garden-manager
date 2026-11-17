@@ -16,6 +16,9 @@ const allowedHues = new Set([
   "11,26,17", // app bar active text #0B1A11
   "180,35,24", "255,241,240", // error and its surface
   "138,75,8", "255,247,232", // warning and its surface
+  "20,40,29", "14,29,20", // textured band base and the ink on its white buttons (ADR-0080, ADR-0081)
+  "214,255,92", // lime: today's care progress only
+  "255,201,194", // error text on a dark band
   "25,91,112", "219,238,244", // watering chip
   "128,91,23", "247,231,191", // fertilizing chip
 ]);
@@ -25,7 +28,8 @@ async function huedColours(page: Page) {
     const found = new Set<string>();
     const properties = ["color", "background-color", "border-top-color", "border-right-color", "border-bottom-color", "border-left-color"] as const;
     for (const element of document.querySelectorAll<HTMLElement>("body *")) {
-      if (element.closest("canvas, svg, nextjs-portal")) continue;
+      // Plant colour dots repeat the plan's own plant palette (ADR-0076), like the canvas.
+      if (element.closest("canvas, svg, nextjs-portal, [data-plant-swatch]")) continue;
       const style = getComputedStyle(element);
       if (style.display === "none" || style.visibility === "hidden") continue;
       for (const property of properties) {
@@ -73,7 +77,7 @@ for (const [width, height] of [[1440, 900], [390, 844]]) {
     test.setTimeout(120_000);
     await page.setViewportSize({ width, height });
     await openWorkspace(page);
-    await expect(page.getByRole("region", { name: "Care to do" })).toBeVisible();
+    await expect(page.getByRole("region", { name: "Care today" })).toBeVisible();
     for (const { path, heading } of pages) {
       await page.goto(path);
       await expect(page.getByRole("heading", { level: 1, name: heading, exact: typeof heading === "string" })).toBeVisible();
