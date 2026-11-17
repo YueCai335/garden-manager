@@ -81,8 +81,10 @@
   padding: 44px 48px calc(40px + var(--overlap));
 }
 .bandIntro { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
-.bandHeadline {
+/* .band raises these above the app shell's heading and field colours (globals.css, legacy-workspace.css). */
+.band .bandHeadline {
   margin: 0;
+  color: #fff;
   font-family: var(--font-display);
   font-size: clamp(2.25rem, 4.2vw, 3.5rem);
   font-weight: 500;
@@ -234,12 +236,12 @@ button.tick:hover .tickCircle { border-color: var(--color-brand); color: var(--c
 .noteBlock { display: flex; flex-direction: column; gap: 18px; min-width: 0; padding: 26px 28px 24px; }
 .noteHead { display: flex; align-items: center; gap: 14px; }
 .noteIcon { flex: none; display: grid; place-items: center; width: 34px; height: 34px; border: 1px solid rgb(255 255 255 / 20%); border-radius: 50%; background: rgb(255 255 255 / 14%); }
-.noteTitle { margin: 0; font-family: var(--font-display); font-size: 28px; font-weight: 500; line-height: 1.05; letter-spacing: -0.03em; }
+.band .noteTitle { margin: 0; color: #fff; font-family: var(--font-display); font-size: 28px; font-weight: 500; line-height: 1.05; letter-spacing: -0.03em; }
 .noteHint { margin-left: auto; font-size: 13.5px; font-weight: 500; color: rgb(255 255 255 / 88%); text-align: right; }
 .noteForm { flex: 1 1 auto; display: flex; flex-direction: column; gap: 18px; min-width: 0; }
 .paper { flex: 1 1 auto; display: flex; padding: 8px 26px 4px; border-radius: 12px; background: var(--color-surface); box-shadow: 0 30px 50px -30px rgb(0 0 0 / 85%); }
 .paper:focus-within { outline: 2px solid #fff; outline-offset: 2px; }
-.ruled {
+.paper .ruled {
   display: block;
   width: 100%;
   min-height: 136px;
@@ -251,9 +253,11 @@ button.tick:hover .tickCircle { border-color: var(--color-brand); color: var(--c
   font-size: 16px;
   line-height: 34px;
   color: var(--color-text);
+  border-radius: 0;
+  box-shadow: none;
   background: transparent repeating-linear-gradient(to bottom, transparent 0 33px, var(--color-line) 33px 34px) local;
 }
-.ruled:focus-visible { outline: 0; }
+.paper .ruled:focus-visible { outline: 0; }
 .ruled::placeholder { color: var(--color-muted); opacity: 1; }
 .noteError { margin: -6px 0 0; font-size: 13.5px; font-weight: 600; color: var(--color-error-on-dark); }
 .noteFoot { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; }
@@ -300,7 +304,7 @@ button.tick:hover .tickCircle { border-color: var(--color-brand); color: var(--c
   .lateInline { display: block; }
   .noteBlock { padding: 22px 18px 18px; }
   .noteHead { flex-wrap: wrap; }
-  .noteTitle { font-size: 24px; }
+  .band .noteTitle { font-size: 24px; }
   .noteHint { flex-basis: 100%; margin-left: 0; text-align: left; }
   .paper { padding: 6px 16px 2px; }
   .noteActions { margin-left: 0; }
