@@ -122,6 +122,7 @@ changes, mark the old record as superseded and add a new record.
 | [ADR-0077](0077-show-three-real-gardens-as-the-demo.md) | Show three real gardens as the demo | Accepted; implemented 2026-11-16; amended 2026-11-16: saved workspaces swap the old sample demo for the showcase; the public AI features keep the sample garden until the AI redo |
 | [ADR-0080](0080-show-care-as-a-today-board-with-a-separate-history-log.md) | Show Care as a Today board with a separate History log | Accepted 2026-11-16; not implemented yet. The numbers 0078 and 0079 belong to decisions on other branches (`garden-plan-levels`, `demo-prewarm`) |
 | [ADR-0081](0081-stage-the-gardens-on-a-textured-band-on-the-gardens-home.md) | Stage the gardens on a textured band on the Gardens home | Accepted 2026-11-16; not implemented yet |
+| [ADR-0082](0082-show-next-season-as-a-rotation-sheet-with-a-dark-plan-lane.md) | Show Next Season as a rotation sheet with a dark plan lane | Accepted 2026-11-16; not implemented yet |
 
 ## Interview Use
 
