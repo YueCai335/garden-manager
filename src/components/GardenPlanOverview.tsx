@@ -103,8 +103,6 @@ type GardenPlanOverviewProps = {
   onEditLayout?: (areaId: string) => void;
   /** Closes the open area (Escape); the canvas returns to the whole garden. */
   onExitArea?: () => void;
-  /** Deletes the garden; offered at the bottom of the garden details form. */
-  onDeleteGarden?: () => void;
   /**
    * The guided setup step on screen (ADR-0072, phase G6). Each step shows only
    * its own controls: Garden size shows a draggable boundary corner, Planting
@@ -151,7 +149,6 @@ export function GardenPlanOverview({
   onPlacementChange,
   onEditLayout,
   onExitArea,
-  onDeleteGarden,
   setupStep,
   setupPanel,
   level,
@@ -319,10 +316,6 @@ export function GardenPlanOverview({
               : "Changes apply when you leave a field or press Enter. Undo reverses them."}</p>
             {level !== "garden" && <div className="form-actions">
               <Button onClick={() => confirmDiscard(detailsDraft !== undefined, closeDetails, "edit-garden-details")}>Done</Button>
-            </div>}
-            {onDeleteGarden && <div className={editorStyles.danger}>
-              <p>Deleting removes this garden with its planting areas, plants, and care records.</p>
-              <Button className="remove-button" onClick={onDeleteGarden}>Delete garden</Button>
             </div>}
           </GardenDetailsFields> : <div className={editorStyles.detailsSummary}>
             <p><strong>{gardenNameFromProps}</strong> · {plan.widthMeters} × {plan.depthMeters} m</p>

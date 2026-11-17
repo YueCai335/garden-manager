@@ -90,6 +90,8 @@ it("keeps a plant coordinate draft through resizing and navigation, then validat
   expect(screen.queryByRole("button", { name: "Save plant" })).not.toBeInTheDocument();
   await user.click(screen.getByRole("link", { name: "All gardens" }));
   await user.click(screen.getByRole("link", { name: "Open Demo Garden" }));
+  // The garden reopens on Garden (ADR-0078); the plant draft waits on Plants.
+  await user.click(screen.getByRole("button", { name: "Plants" }));
   await user.click(screen.getByLabelText("Open Sample raised bed on Garden Plan"));
   expect(screen.getByLabelText("X position (m)")).toHaveValue(1.8);
   await user.clear(screen.getByLabelText("X position (m)"));

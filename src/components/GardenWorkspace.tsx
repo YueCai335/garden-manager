@@ -4,6 +4,8 @@ import { FeedbackForm, FormField } from "@/components/forms/FormFeedback";
 import { Button, ButtonLink } from "@/components/ui/Button";
 
 import { FormEvent, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { usePageActionsSlot } from "@/components/workspace/AppShell";
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -79,8 +81,9 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
   const {
     workspace, setWorkspace, message, setMessage, isSynced, isLoaded, storageSource,
     serverWorkspaceId, serverLoadFailed, clearBrowserWorkspace,
-    areaDrafts, plantDrafts, setPlantDrafts, setAreaDraft, discardDrafts, planHistory,
+    areaDrafts, plantDrafts, setPlantDrafts, setAreaDraft, discardDrafts, planHistory, syncState,
   } = useWorkspace();
+  const pageActionsSlot = usePageActionsSlot();
   // The guided first-run setup in progress, if any (ADR-0072, phase G6).
   const [setup, setSetup] = useGuidedSetup();
   const page = {
@@ -132,12 +135,12 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
   const guide = route.module === "plan" && garden && setup?.gardenId === garden.id ? setup : undefined;
   /**
    * The plan level (ADR-0075): the guided setup's step decides it while the
-   * guide runs; otherwise ?level= does, defaulting to Plants (or Planting
-   * areas while the garden has none). Ready views the plan without a level.
+   * guide runs; otherwise ?level= does, defaulting to Garden, or to Plants
+   * when the address opens an area (ADR-0078). Ready views the plan without a level.
    */
   const planLevel: PlanLevel | undefined = route.module !== "plan" || !garden ? undefined
     : guide ? setupLevel(guide.step)
-    : planLevelFromSearch(search.get("level"), garden.growingAreas.length);
+    : planLevelFromSearch(search.get("level"), search.has("area"));
   const changePlanLevel = (next: PlanLevel) => {
     if (!garden) return;
     // The open or selected area carries over to the other area-based level.
@@ -250,6 +253,26 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
   const confirmDiscard = (dirty: boolean, onConfirm: () => void) => {
     if (!dirty) { onConfirm(); return; }
     setPendingConfirmation({ message: "Your changes have not been submitted. Discard them or keep editing.", confirmLabel: "Discard changes", cancelLabel: "Keep editing", onConfirm });
+  };
+
+  /**
+   * Done ends editing the whole garden, on any level (ADR-0078). Plan edits
+   * already save as they happen, so Done only checks for unsubmitted drafts,
+   * then returns to Gardens and reports the save state honestly.
+   */
+  const finishEditing = () => {
+    if (!garden) return;
+    const keys = garden.growingAreas.map((area) => areaDraftKey(garden.id, area.id));
+    const dirty = keys.some((key) => {
+      const draft = areaDrafts[key];
+      return Boolean(draft && !sameAreaProperties(draft.values, draft.baseline)) || plantDraftIsDirty(plantDrafts[key]);
+    });
+    confirmDiscard(dirty, () => {
+      if (dirty) keys.forEach((key) => discardDrafts(key));
+      const failed = syncState === "error" || syncState === "local-error" || syncState === "conflict";
+      setMessage(failed ? `Some changes to ${garden.name} are not saved yet. Check the status at the top of the page.` : `${garden.name} saved.`);
+      navigate(workspaceHomePath);
+    });
   };
   const loadDemo = () => {
     const applyDemo = () => {
@@ -554,6 +577,12 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
   const hasSizedArea = Boolean(garden?.growingAreas.some((area) => area.layout));
   const levelBar = !guide && planLevel ? <PlanLevelBar level={planLevel} onLevel={changePlanLevel}
     disabled={hasSizedArea ? {} : { plants: "Add a planting area first." }} /> : undefined;
+  // The title row's actions (ADR-0078): Done on every level, Delete garden on the Garden level.
+  // The guided setup keeps its own Continue and Finish instead.
+  const gardenActions = garden && route.module === "plan" && !guide ? <>
+    {planLevel === "garden" && <Button variant="danger" shape="pill" onClick={deleteGarden}>Delete garden</Button>}
+    <Button variant="primary" shape="pill" aria-label={`Done editing ${garden.name}`} onClick={finishEditing}>Done</Button>
+  </> : null;
 
   const archivePlantingRecord = (plantingRecordId: string) => {
     updateGarden("archive a planting record", (current) => archivePlanting(current, plantingRecordId));
@@ -749,6 +778,7 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
         ) : garden ? (
           <section className="operations-content management-content">
             <>
+              {gardenActions && (pageActionsSlot ? createPortal(gardenActions, pageActionsSlot) : <div className="plan-page-actions">{gardenActions}</div>)}
               {editingLayoutId && !editingArea && <p role="alert">Planting area not found in this garden. <Link href={gardenPath(garden.id)}>Back to plan</Link></p>}
               <EditorWorkbench single={setupStep === "size" || setupStep === "ready" || planLevel === "garden"}>{(mode) => {
                 // An unsaved properties draft keeps its editor open when the layout narrows.
@@ -839,7 +869,6 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
                   onResizeArea={resizeArea}
                   onEditLayout={openAreaInspector}
                   onExitArea={closeAreaInspector}
-                  onDeleteGarden={deleteGarden}
                   onGardenNameChange={(name) => updateGarden("rename the garden", (current) => ({ ...current, name }))}
                   onPlacementChange={updateAreaPlacement}
                   onPlanChange={updatePlan}

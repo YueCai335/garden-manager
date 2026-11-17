@@ -21,6 +21,13 @@ export const planLevelShortLabels: Record<PlanLevel, string> = {
   plants: "Plants",
 };
 
+/** One line under each level's label: what that level edits (ADR-0078). */
+export const planLevelHints: Record<PlanLevel, string> = {
+  garden: "Name and size",
+  areas: "Add and place beds",
+  plants: "What grows where",
+};
+
 export const isPlanLevel = (value: unknown): value is PlanLevel => planLevels.includes(value as PlanLevel);
 
 /** The guided setup's steps use the same canvas rules as the matching level; Ready only views. */
@@ -29,14 +36,15 @@ export function setupLevel(step: SetupStep): PlanLevel | undefined {
 }
 
 /**
- * The level shown when the address names none: Plants, the most frequent
- * daily task, or Planting areas while the garden has no area to plant in.
+ * The level shown when the address names none (ADR-0078): an address with an
+ * area opens that area on Plants; a garden opened from its card starts on
+ * Garden, the top level, and the bar shows where to go next.
  */
-export function defaultPlanLevel(areaCount: number): PlanLevel {
-  return areaCount > 0 ? "plants" : "areas";
+export function defaultPlanLevel(hasArea: boolean): PlanLevel {
+  return hasArea ? "plants" : "garden";
 }
 
 /** Reads `?level=`; an unknown or missing value falls back to the default. */
-export function planLevelFromSearch(value: string | null, areaCount: number): PlanLevel {
-  return isPlanLevel(value) ? value : defaultPlanLevel(areaCount);
+export function planLevelFromSearch(value: string | null, hasArea: boolean): PlanLevel {
+  return isPlanLevel(value) ? value : defaultPlanLevel(hasArea);
 }

@@ -94,7 +94,7 @@ describe("local form validation", () => {
   });
 
   it("validates Add and duplicate through the same plant form", async () => {
-    localRoute("/gardens/demo-garden/plan");
+    localRoute("/gardens/demo-garden/plan?level=plants");
     const user = userEvent.setup();
     await user.click(await screen.findByRole("link", { name: "Edit Sample raised bed" }));
     await user.click(await screen.findByRole("button", { name: "Add plant" }));

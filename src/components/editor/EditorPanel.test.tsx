@@ -106,7 +106,7 @@ describe("responsive editor", () => {
   it("zooms a tapped bed on the phone and shows its planting panel below the plan", async () => {
     mockNarrowViewport();
     localStorage.setItem(GARDEN_WORKSPACE_STORAGE_KEY, JSON.stringify(createDemoGardenWorkspace()));
-    resetTestRouter("/gardens/demo-garden/plan");
+    resetTestRouter("/gardens/demo-garden/plan?level=plants");
     const user = userEvent.setup();
     render(<GardenWorkspace />);
     await user.click(await screen.findByLabelText("Open Sample raised bed on Garden Plan"));
@@ -126,7 +126,7 @@ describe("responsive editor", () => {
 
   it("keeps the overlay layout's plants below the plan and opens area properties as a dialog", async () => {
     localStorage.setItem(GARDEN_WORKSPACE_STORAGE_KEY, JSON.stringify(createDemoGardenWorkspace()));
-    resetTestRouter("/gardens/demo-garden/plan");
+    resetTestRouter("/gardens/demo-garden/plan?level=plants");
     const user = userEvent.setup();
     render(<GardenWorkspace />);
     await user.click(await screen.findByLabelText("Open Sample raised bed on Garden Plan"));
