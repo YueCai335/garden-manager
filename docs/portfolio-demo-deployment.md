@@ -55,15 +55,37 @@ contains `{ "status": "ok" }`.
 4. Refresh the page and confirm the browser keeps the demonstration workspace.
 5. Open the three local AI feature previews and inspect their sample review states.
 
-The first API request after Render idles can take about a minute. Wait for the
-page request to finish, then refresh once when necessary.
+The first API request after Render idles can take about a minute. After five
+seconds the loading text says the server is starting, and a workspace load
+waits up to 90 seconds (ADR-0079).
 
 ## 5. Keep the Demo Awake
 
 Free Render services sleep after about 15 idle minutes, and free Supabase
-projects pause after about 7 days without database activity. The
-`Demo Keep-Alive` workflow (ADR-0074) calls `/health/db` every 10 minutes,
-which wakes the API and runs one read-only `SELECT 1`.
+projects pause after about 7 days without database activity. Three layers keep
+the demo ready (ADR-0074, ADR-0079):
+
+- **External scheduler (primary).** A free scheduled HTTP check calls
+  `/health/db` every 5 to 10 minutes. GitHub's own schedule is best effort and
+  ran only every 7 to 10 hours in practice.
+- **`Demo Keep-Alive` workflow (backup).** It calls `/health/db` on GitHub's
+  schedule and emails the owner when a run fails.
+- **Landing-page prewarm.** The landing page sends one `GET /health` when it
+  loads, so the API starts while the visitor reads.
+
+Set up the external scheduler once, for example with cron-job.org:
+
+1. Create a free account and add a cron job.
+2. URL: `https://your-render-service.onrender.com/health/db`, method `GET`.
+3. Schedule: every 10 minutes (every 5 minutes also fits the free hours).
+4. Turn on failure notifications by email.
+5. Save, run it once, and confirm the response is `200` with
+   `{ "status": "ok" }`.
+
+UptimeRobot works the same way: add an HTTP(s) monitor for the same URL with a
+5-minute interval.
+
+Set up the GitHub workflow:
 
 1. In GitHub, open **Settings > Secrets and variables > Actions > Variables**
    and add `DEMO_API_URL` with the Render API URL, such as

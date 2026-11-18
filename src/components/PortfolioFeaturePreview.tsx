@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 import { loadRuntimeConfig, type RuntimeConfig } from "@/lib/gardenWorkspaceApi";
 import { Button } from "@/components/ui/Button";
+import { SLOW_LOAD_HINT, useSlowLoadHint } from "@/hooks/useSlowLoadHint";
 
 type Feature = "care-note" | "plant-health" | "plant-knowledge";
 
@@ -70,10 +71,11 @@ export function PortfolioFeaturePreview({ feature }: { feature: Feature }) {
 
 export function PortfolioFeatureLoading({ feature }: { feature: Feature }) {
   const featureName = featureNames[feature];
+  const slow = useSlowLoadHint();
   return (
     <section className="operations-content season-planner portfolio-feature-preview" aria-labelledby={`${feature}-loading-heading`}>
       <h2 id={`${feature}-loading-heading`}>Loading {featureName}</h2>
-      <p className="section-context" role="status">Checking feature availability…</p>
+      <p className="section-context" role="status">{slow ? SLOW_LOAD_HINT : "Checking feature availability…"}</p>
     </section>
   );
 }

@@ -4,7 +4,7 @@ import { workspaceHome } from "./workspace";
 const hero = (page: Page) => page.locator("#landing-content section").first().locator("[data-render]");
 const footer = (page: Page) => page.getByRole("contentinfo").locator("[data-render]");
 
-test("the landing page loads without the API and every entry point opens the app", async ({ page }) => {
+test("the landing page waits on no API request and every entry point opens the app", async ({ page }) => {
   const apiRequests: string[] = [];
   page.on("request", (request) => { if (request.url().startsWith("http://127.0.0.1:8100")) apiRequests.push(request.url()); });
   for (const width of [1440, 390]) {
@@ -16,7 +16,9 @@ test("the landing page loads without the API and every entry point opens the app
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   }
   await page.waitForLoadState("networkidle");
-  expect(apiRequests).toEqual([]);
+  // The only API traffic is the fire-and-forget prewarm that wakes the server (ADR-0079).
+  expect(apiRequests.length).toBeGreaterThan(0);
+  expect(new Set(apiRequests)).toEqual(new Set(["http://127.0.0.1:8100/health"]));
 
   await page.getByRole("banner").getByRole("link", { name: "Open app" }).click();
   await expect(page).toHaveURL(workspaceHome);

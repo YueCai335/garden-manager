@@ -6,6 +6,7 @@ import { GardenPlanOverview } from "@/components/GardenPlanOverview";
 import { CareIcon, PlusIcon, Tick } from "@/components/care/CareMarks";
 import { ButtonLink } from "@/components/ui/Button";
 import { useCareTicks } from "@/hooks/useCareTicks";
+import { SLOW_LOAD_HINT, useSlowLoadHint } from "@/hooks/useSlowLoadHint";
 import { updateCareOwner } from "@/lib/careViews";
 import { isDemoGardenId, todayDate, type Garden } from "@/lib/gardenWorkspace";
 import { gardenCardSummary, gardenPlants, gardensSummary } from "@/lib/homeGardens";
@@ -138,10 +139,12 @@ function TodayCard({ board, hasGardens, focusKey, onTick, onUntick }: {
 }
 
 export function WorkspaceHomeLoading() {
+  // After five seconds the band's summary line explains a sleeping demo server (ADR-0079).
+  const slow = useSlowLoadHint();
   return <div className={styles.home} role="status">
-    <span className={styles.visuallyHidden}>Loading your gardens…</span>
+    <span className={styles.visuallyHidden}>{slow ? SLOW_LOAD_HINT : "Loading your gardens…"}</span>
     <section className={styles.gardens} aria-hidden="true">
-      <GardensBand />
+      <GardensBand summary={slow ? SLOW_LOAD_HINT : undefined} />
       <div className={styles.gardenGrid}><div className={styles.skeleton} /><div className={styles.skeleton} /></div>
     </section>
   </div>;

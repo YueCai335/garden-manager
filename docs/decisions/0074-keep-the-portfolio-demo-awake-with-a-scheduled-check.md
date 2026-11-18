@@ -3,6 +3,9 @@
 - Status: Accepted
 - Date: 2026-11-15
 - Related: [ADR-0040](0040-use-vercel-render-and-supabase-for-the-portfolio-demo.md)
+- Amended by: [ADR-0079](0079-wake-the-demo-from-an-external-scheduler-and-the-landing-page.md)
+  (GitHub ran the schedule only every 7 to 10 hours; an external scheduler is
+  now primary and this workflow is the backup)
 
 ## Context
 

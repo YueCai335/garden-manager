@@ -69,11 +69,17 @@ import { PlanLevelBar, SetupProgress, SetupReady, SetupStepPanel } from "./edito
 import { planLevelFromSearch, setupLevel, type PlanLevel } from "@/lib/planLevels";
 import setupStyles from "./editor/Setup.module.css";
 import { useGuidedSetup } from "@/hooks/useGuidedSetup";
+import { SLOW_LOAD_HINT, useSlowLoadHint } from "@/hooks/useSlowLoadHint";
 import { advanceSetup, gardenSizePresets, goToStep, minimumGardenSize, setupSummary, startSetup, type SetupStep } from "@/lib/guidedSetup";
 import { updateCareOwner, workspaceCareGarden, type CareOwner } from "@/lib/careViews";
 import editorStyles from "./editor/Editor.module.css";
 
 export { SERVER_WORKSPACE_STORAGE_KEY };
+
+function WorkspaceLoading() {
+  const slow = useSlowLoadHint();
+  return <p className="loading-state" role="status">{slow ? SLOW_LOAD_HINT : "Loading garden workspace..."}</p>;
+}
 
 export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
   const router = useRouter();
@@ -688,9 +694,7 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
   };
 
   if (!isLoaded)
-    return route.module === "home" ? <WorkspaceHomeLoading /> : (
-      <p className="loading-state">Loading garden workspace...</p>
-    );
+    return route.module === "home" ? <WorkspaceHomeLoading /> : <WorkspaceLoading />;
   if (serverLoadFailed)
     return <ServerWorkspaceUnavailable />;
   if (route.gardenId && !garden) return <div className={homeStyles.home}>
