@@ -14,18 +14,19 @@ and [ADR-0057](decisions/0057-keep-live-allocation-runs-closed-after-evaluation.
 | Part | Status |
 | --- | --- |
 | Agent, tools, loop, and HTTP endpoint | Implemented and tested |
-| Allocation Assistant panel in the Season Planner | Implemented and tested |
+| Plan with AI drawer on Next Season ([ADR-0082](decisions/0082-show-next-season-as-a-rotation-sheet-with-a-dark-plan-lane.md)) | Implemented and tested |
 | Live runs in the local app (with an OpenAI key) | Available |
 | Live runs in the public demo | **Closed.** The run limit is `0` ([ADR-0057](decisions/0057-keep-live-allocation-runs-closed-after-evaluation.md)) |
 | Example run in the public demo | Shown: one recorded, labelled, successful run |
 
 ## What the gardener does
 
-1. Open **Next season plan**. Each garden has its own Allocation Assistant.
+1. Open **Next Season**, pick a garden, and select **Plan with AI**. The
+   assistant opens in a drawer; each garden keeps its own choices and draft.
 2. Tick crops from a fixed list: tomato, bean, lettuce, cucumber, carrot.
 3. Optionally write one preference, such as "Put the lettuce in the
    containers". Pick areas only when more than three are eligible.
-4. Select **Plan with AI**. After the run, the panel shows the draft, the
+4. Select **Plan with AI** at the drawer's foot. After the run, the drawer shows the draft, the
    rotation warnings, the model's explanation, and every tool call in order.
 5. Select **Add to 2027 plan** to append the draft to next season's plan. The
    existing automatic sync saves it. Nothing is saved before this step.

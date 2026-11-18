@@ -1,6 +1,6 @@
 # ADR-0082: Show Next Season as a Rotation Sheet with a Dark Plan Lane
 
-- Status: Accepted on 2026-11-16. Not implemented yet.
+- Status: Accepted on 2026-11-16. Implemented on 2026-11-18.
 - Date: 2026-11-16
 - Supersedes in part:
   - [ADR-0039](0039-use-separate-season-plans-for-future-planting.md): the
@@ -151,3 +151,18 @@ when the chosen plants produce one.
 - The AI features are redone for the three demo gardens. Then revisit where
   the assistant lives.
 - The landing hero changes its texture or color. The lane follows it.
+
+## Implementation Notes (2026-11-18)
+
+- The garden switch sits in the page title row through the app shell's
+  actions slot, the same slot the Garden Plan uses for Done and Delete garden.
+- The drawer's submit button keeps the assistant's existing label, Plan with
+  AI. The mockup's "Draft a plan" was not adopted because the plan keeps the
+  assistant's wording unchanged.
+- The drawer foot does not repeat "Nothing is added until you confirm." The
+  drawer header already says it.
+- Submitting an empty plant field marks the field invalid and shows "Enter a
+  plant type." in the error colour for dark surfaces.
+- The map draws each area's real boundary, so round containers and odd shapes
+  keep their outline.
+- The rotation helpers moved to `src/lib/seasonPlanner.ts` with unit tests.
