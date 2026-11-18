@@ -1,3 +1,7 @@
+/* Header, page, footer: a short page still puts the footer at the bottom of the window (ADR-0083). */
+.shell { display: flex; flex-direction: column; }
+.shell > main { flex: 1 0 auto; }
+
 /* The app bar (ADR-0073): deep green with a grayscale banana-leaf ridge texture in overlay blend.
    It must read clearly green, never black, so the texture only modulates the green. */
 /* It stays at the top while the page scrolls, like the landing header; z-index keeps it above the canvas layers. */

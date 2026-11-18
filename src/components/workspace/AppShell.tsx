@@ -11,6 +11,7 @@ import { Button, ButtonLink } from "@/components/ui/Button";
 import { GardenNoteDialog } from "@/components/notes/GardenNoteDialog";
 import { useRuntimeConfig } from "@/components/PortfolioFeaturePreview";
 import { OverviewGardenNote } from "./OverviewGardenNote";
+import { AppFooter } from "./AppFooter";
 import styles from "./AppShell.module.css";
 
 // The L1 modules (ADR-0073): the garden modules, a divider, then the AI helpers.
@@ -105,7 +106,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     setNoteMode(batchAvailable ? "batch" : "default");
   };
   return <>
-    <div className="operations-shell operations-app-shell" inert={showNote} aria-hidden={showNote || undefined}>
+    <div className={`operations-shell operations-app-shell ${styles.shell}`} inert={showNote} aria-hidden={showNote || undefined}>
     <a className={styles.skip} href="#workspace-content">Skip to content</a>
     <header ref={header} className={styles.header}>
       <div className={styles.headerInner}>
@@ -161,6 +162,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </OpenGardenNoteContext.Provider>
       </PageActionsSlotContext.Provider>
     </main>
+    <AppFooter />
     </div>
     {showNote && <GardenNoteDialog opener={noteOpener} fallbackOpener={route.module === "home" ? noteButton : headerNoteButton} batchAvailable={noteMode === "batch"} initialGardenId={noteGardenId} onClose={() => setNoteMode(null)} />}
   </>;

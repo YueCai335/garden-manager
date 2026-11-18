@@ -238,11 +238,14 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
           if (JSON.stringify(latest) !== JSON.stringify(workspace)) throw new Error("Your workspace changed. Cancel and review the deletion again.");
           if (!clearBrowserWorkspace()) throw new Error("The workspace could not be removed from this device. Keep this page open and try again.");
           garden.growingAreas.forEach((area) => discardDrafts(areaDraftKey(garden.id, area.id)));
+          if (setup?.gardenId === garden.id) setSetup(undefined);
           navigate(workspaceHomePath);
           setMessage("Create a garden when you are ready.");
           return;
         }
         setWorkspace(next);
+        // A garden deleted during its guided setup ends that setup too.
+        if (setup?.gardenId === garden.id) setSetup(undefined);
         navigate(workspaceHomePath);
         garden.growingAreas.forEach((area) => discardDrafts(areaDraftKey(garden.id, area.id)));
         setMessage(`${garden.name} deleted.`);
@@ -578,11 +581,15 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
   const levelBar = !guide && planLevel ? <PlanLevelBar level={planLevel} onLevel={changePlanLevel}
     disabled={hasSizedArea ? {} : { plants: "Add a planting area first." }} /> : undefined;
   // The title row's actions (ADR-0078): Done on every level, Delete garden on the Garden level.
-  // The guided setup keeps its own Continue and Finish instead.
-  const gardenActions = garden && route.module === "plan" && !guide ? <>
-    {planLevel === "garden" && <Button variant="danger" shape="pill" onClick={deleteGarden}>Delete garden</Button>}
-    <Button variant="primary" shape="pill" aria-label={`Done editing ${garden.name}`} onClick={finishEditing}>Done</Button>
-  </> : null;
+  // The guided setup keeps its own Continue and Finish instead of Done, and its Garden size
+  // step, the setup's Garden level, keeps Delete garden so an unfinished garden can go (ADR-0078, amended).
+  const deleteGardenButton = <Button variant="danger" shape="pill" onClick={deleteGarden}>Delete garden</Button>;
+  const gardenActions = !garden || route.module !== "plan" ? null
+    : guide ? (guide.step === "size" ? deleteGardenButton : null)
+    : <>
+      {planLevel === "garden" && deleteGardenButton}
+      <Button variant="primary" shape="pill" aria-label={`Done editing ${garden.name}`} onClick={finishEditing}>Done</Button>
+    </>;
 
   const archivePlantingRecord = (plantingRecordId: string) => {
     updateGarden("archive a planting record", (current) => archivePlanting(current, plantingRecordId));
