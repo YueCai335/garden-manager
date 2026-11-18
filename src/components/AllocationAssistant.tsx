@@ -66,6 +66,8 @@ type AllocationAssistantProps = {
   exampleRun?: ExampleAllocationRun | null;
   /** The drawer title that names this panel (ADR-0082). Without it the panel is named "Plan with AI". */
   labelledBy?: string;
+  /** The page's plant colours, so the drawer reuses them instead of working them out again. */
+  plantColors?: ColorOf;
 };
 
 /**
@@ -85,6 +87,7 @@ function AllocationAssistantPanel({
   onConfirm,
   exampleRun = defaultExampleRun,
   labelledBy,
+  plantColors,
 }: AllocationAssistantProps) {
   const [crops, setCrops] = useWorkspaceDraft<AllocationCropKey[]>(`allocation:${workspaceId ?? "local"}:${garden.id}:crops`, []);
   const [preference, setPreference] = useWorkspaceDraft(`allocation:${workspaceId ?? "local"}:${garden.id}:preference`, "");
@@ -108,7 +111,8 @@ function AllocationAssistantPanel({
   }, []);
 
   const headingId = `allocation-assistant-${garden.id}`;
-  const colorOf = useMemo(() => seasonPlantColors(garden), [garden]);
+  const ownColors = useMemo(() => (plantColors ? undefined : seasonPlantColors(garden)), [plantColors, garden]);
+  const colorOf = plantColors ?? ownColors!;
   const input: AllocationInput = { crops, preference, chosenAreaIds };
   const eligibleAreas = eligibleAllocationAreas(garden);
   const choosesAreas = needsAreaChoice(garden);
@@ -355,27 +359,37 @@ function AllocationAssistantPanel({
 
 type ColorOf = ReturnType<typeof seasonPlantColors>;
 
-/** One line per placement, "crop → area", with any rotation warning under it. Areas left empty say so. */
+/**
+ * One line per placement, "crop → area", with its rotation warning under it. A warning that
+ * matches no placement and an area left empty still get a line of their own.
+ */
 function DraftAreas({ draft, colorOf }: { draft: SeasonAllocationResult; colorOf: ColorOf }) {
   const areas = draft.scope?.areas ?? [];
   const areaName = (id: string) => areas.find((area) => area.id === id)?.name ?? id;
   const empty = areas.filter((area) => !draft.allocation.some((assignment) => assignment.growingAreaId === area.id));
+  const placed = (warning: SeasonAllocationResult["warnings"][number]) =>
+    draft.allocation.some((assignment) => assignment.growingAreaId === warning.growingAreaId && assignment.crop === warning.crop);
+  const warningText = (warning: SeasonAllocationResult["warnings"][number]) =>
+    `Rotation warning: ${cropLabel(warning.crop)} is ${warning.rotationGroup}, grown here in ${warning.repeatedYears.join(", ")}.`;
   return (
     <>
       <ul className={styles.draftList}>
-        {draft.allocation.map((assignment) => (
-          <li key={`${assignment.growingAreaId}:${assignment.crop}`}>
+        {draft.allocation.map((assignment, index) => (
+          <li key={`${assignment.growingAreaId}:${assignment.crop}:${index}`}>
             <PlantChip name={cropLabel(assignment.crop)} colors={colorOf({ commonName: cropLabel(assignment.crop) })} />
             <span aria-hidden="true">→</span>
             <strong>{areaName(assignment.growingAreaId)}</strong>
             {draft.warnings
               .filter((warning) => warning.growingAreaId === assignment.growingAreaId && warning.crop === assignment.crop)
-              .map((warning) => (
-                <span className={styles.warning} key={warning.crop}>
-                  Rotation warning: {cropLabel(warning.crop)} is {warning.rotationGroup}, grown here in{" "}
-                  {warning.repeatedYears.join(", ")}.
-                </span>
+              .map((warning, warningIndex) => (
+                <span className={styles.warning} key={warningIndex}>{warningText(warning)}</span>
               ))}
+          </li>
+        ))}
+        {draft.warnings.filter((warning) => !placed(warning)).map((warning, index) => (
+          <li key={`unplaced:${warning.growingAreaId}:${warning.crop}:${index}`}>
+            <strong>{areaName(warning.growingAreaId)}</strong>
+            <span className={styles.warning}>{warningText(warning)}</span>
           </li>
         ))}
         {empty.map((area) => (

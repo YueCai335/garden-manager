@@ -166,3 +166,9 @@ when the chosen plants produce one.
 - The map draws each area's real boundary, so round containers and odd shapes
   keep their outline.
 - The rotation helpers moved to `src/lib/seasonPlanner.ts` with unit tests.
+- The breakpoints moved up: the map sits beside the sheet from 1360px (not
+  1200px) and rows become cards below 900px (not 860px). The sheet's fixed
+  columns left the history column too narrow at the planned widths, for
+  example 1280px.
+- The drawer header names the garden above its title, since the assistant
+  plans one garden at a time.

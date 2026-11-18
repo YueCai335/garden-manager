@@ -19,23 +19,12 @@
 .home > .hint { margin: 0; }
 .visuallyHidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
-/* ---------- Dark textured bands: real photos on --color-band-base, never a flat block ---------- */
-.band {
-  position: relative;
-  isolation: isolate;
-  overflow: hidden;
-  border-radius: 20px;
-  color: #fff;
-  background-color: var(--color-band-base);
-  background-repeat: no-repeat;
-  background-size: cover;
-}
-.band::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; }
-/* Leaf ridges: the landing hero's photo. */
-.ridges { background-image: url("/landing/hero-still.webp"); background-position: center; }
+/* ---------- Dark textured bands: the shared photos (src/styles/bands.module.css) and this page's overlays ---------- */
+.band { composes: band from "../../styles/bands.module.css"; border-radius: 20px; }
+.ridges { composes: ridges from "../../styles/bands.module.css"; }
 .ridges::before { background: linear-gradient(100deg, rgb(9 24 15 / 78%), rgb(9 24 15 / 46%) 55%, rgb(9 24 15 / 58%)); }
-/* Leaf veins: the landing footer's photo. Only the note block uses it. */
-.veins { background-image: url("/landing/footer-still.webp"); background-position: 30% 60%; }
+/* Leaf veins: only the note block uses it. */
+.veins { composes: veins from "../../styles/bands.module.css"; }
 .veins::before { background: linear-gradient(165deg, rgb(9 24 15 / 84%), rgb(9 24 15 / 56%) 55%, rgb(9 24 15 / 34%)); }
 .bandKicker { margin: 0; font-size: 12.5px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; }
 

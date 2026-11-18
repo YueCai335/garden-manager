@@ -13,7 +13,7 @@ import { useWorkspaceDraft, useUnsavedDraft } from "@/components/workspace/Works
 import { usePageActionsSlot } from "@/components/workspace/AppShell";
 import { AllocationAssistant, type AllocationConfirmOutcome } from "@/components/AllocationAssistant";
 import { PortfolioFeatureSettingsError, useRuntimeConfig } from "@/components/PortfolioFeaturePreview";
-import { lockBodyScroll } from "@/lib/modalScrollLock";
+import { openModalDialog } from "@/lib/modalDialog";
 import {
   gardenPlanViewport,
   growingAreaKindLabels,
@@ -90,7 +90,9 @@ export function SeasonPlanner({ gardens, gardenId, workspaceId, isSynced, notice
           <ButtonLink href={gardenPath(garden.id)}>Open Garden Plan for {garden.name}</ButtonLink>
         </Blank>
       ) : (
+        // Keyed by garden: the drawer, highlight, and dialogs never carry over to another garden.
         <GardenSeason
+          key={garden.id}
           garden={garden}
           planningYear={planningYear}
           workspaceId={workspaceId}
@@ -151,7 +153,10 @@ function GardenSeason({
   const [choosingAreaKey, setChoosingAreaKey] = useWorkspaceDraft<string | undefined>("season:all:choosingAreaKey", undefined);
   const [choices, setChoices] = useWorkspaceDraft<Record<string, PlantChoice>>("season:all:choices", {});
   useUnsavedDraft("season:all:choices", Boolean(choosingAreaKey));
-  const [hotAreaId, setHotAreaId] = useState<string>();
+  // A row is lit while it is pointed at (in the sheet or on the map) or holds keyboard focus.
+  const [pointedAreaId, setPointedAreaId] = useState<string>();
+  const [focusedAreaId, setFocusedAreaId] = useState<string>();
+  const isHot = (areaId: string) => areaId === pointedAreaId || areaId === focusedAreaId;
   const [aiOpen, setAiOpen] = useState(false);
   const aiButton = useRef<HTMLButtonElement>(null);
   const colorOf = useMemo(() => seasonPlantColors(garden), [garden]);
@@ -215,8 +220,9 @@ function GardenSeason({
               garden={garden}
               planningYear={planningYear}
               colorOf={colorOf}
-              isHot={hotAreaId === area.id}
-              onHot={(hot) => setHotAreaId(hot ? area.id : undefined)}
+              isHot={isHot(area.id)}
+              onPoint={(pointed) => setPointedAreaId(pointed ? area.id : undefined)}
+              onFocusChange={(focused) => setFocusedAreaId((current) => focused ? area.id : current === area.id ? undefined : current)}
               isChoosing={choosingAreaKey === key}
               choice={choices[key] ?? emptyChoice()}
               onChoose={() => setChoosingAreaKey(key)}
@@ -240,19 +246,19 @@ function GardenSeason({
         })}
       </section>
 
-      <SeasonMap garden={garden} planningYear={planningYear} colorOf={colorOf} hotAreaId={hotAreaId} onHot={setHotAreaId} onOpenArea={openFromMap} />
+      <SeasonMap garden={garden} planningYear={planningYear} colorOf={colorOf} isHot={isHot} onPoint={setPointedAreaId} onOpenArea={openFromMap} />
 
-      <PlanWithAiDrawer open={aiOpen} opener={aiButton} onClose={() => setAiOpen(false)}>
-        <AssistantBody garden={garden} workspaceId={workspaceId} isSynced={isSynced} onConfirm={onConfirmAllocation} />
+      <PlanWithAiDrawer gardenName={garden.name} open={aiOpen} opener={aiButton} onClose={() => setAiOpen(false)}>
+        <AssistantBody garden={garden} colorOf={colorOf} workspaceId={workspaceId} isSynced={isSynced} onConfirm={onConfirmAllocation} />
       </PlanWithAiDrawer>
     </div>
   );
 }
 
-function AssistantBody({ garden, workspaceId, isSynced, onConfirm }: { garden: Garden; workspaceId?: string; isSynced: boolean; onConfirm: SeasonPlannerProps["onConfirmAllocation"] }) {
+function AssistantBody({ garden, colorOf, workspaceId, isSynced, onConfirm }: { garden: Garden; colorOf: ColorOf; workspaceId?: string; isSynced: boolean; onConfirm: SeasonPlannerProps["onConfirmAllocation"] }) {
   const { config, failed, retry } = useRuntimeConfig();
   if (failed) return <PortfolioFeatureSettingsError featureName="Allocation Assistant" onRetry={retry} />;
-  return <AllocationAssistant garden={garden} isPortfolioDemo={config?.portfolioDemo} isSynced={isSynced} onConfirm={onConfirm} workspaceId={workspaceId} labelledBy={drawerTitleId} />;
+  return <AllocationAssistant garden={garden} isPortfolioDemo={config?.portfolioDemo} isSynced={isSynced} onConfirm={onConfirm} workspaceId={workspaceId} labelledBy={drawerTitleId} plantColors={colorOf} />;
 }
 
 type SeasonRowProps = {
@@ -263,7 +269,8 @@ type SeasonRowProps = {
   planningYear: number;
   colorOf: ColorOf;
   isHot: boolean;
-  onHot: (hot: boolean) => void;
+  onPoint: (pointed: boolean) => void;
+  onFocusChange: (focused: boolean) => void;
   isChoosing: boolean;
   choice: PlantChoice;
   onChoose: () => void;
@@ -273,7 +280,7 @@ type SeasonRowProps = {
   onRemove: (planting: PlannedPlanting) => void;
 };
 
-function SeasonRow({ areaKey, area, number, garden, planningYear, colorOf, isHot, onHot, isChoosing, choice, onChoose, onChoiceChange, onSubmit, onCancel, onRemove }: SeasonRowProps) {
+function SeasonRow({ areaKey, area, number, garden, planningYear, colorOf, isHot, onPoint, onFocusChange, isChoosing, choice, onChoose, onChoiceChange, onSubmit, onCancel, onRemove }: SeasonRowProps) {
   const history = recentHistory(garden, area.id, planningYear);
   const seasons = historyBySeason(history);
   const restFrom = recentFamilies(history);
@@ -287,10 +294,10 @@ function SeasonRow({ areaKey, area, number, garden, planningYear, colorOf, isHot
       data-hot={isHot || undefined}
       role="group"
       aria-label={area.name}
-      onMouseEnter={() => onHot(true)}
-      onMouseLeave={() => onHot(false)}
-      onFocus={() => onHot(true)}
-      onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) onHot(false); }}
+      onMouseEnter={() => onPoint(true)}
+      onMouseLeave={() => onPoint(false)}
+      onFocus={() => onFocusChange(true)}
+      onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) onFocusChange(false); }}
     >
       <div className={styles.areaCell}>
         <span className={styles.number} aria-hidden="true">{number}</span>
@@ -397,7 +404,8 @@ function PlantChooser({ areaKey, planningYear, choice, history, restFrom, onChan
         else { setInvalid(true); input.current?.focus(); }
       }}
       onKeyDown={(event) => {
-        if (event.key !== "Escape" || event.defaultPrevented) return;
+        // Escape on the family select only closes the select's own list.
+        if (event.key !== "Escape" || event.defaultPrevented || event.target instanceof HTMLSelectElement) return;
         event.preventDefault();
         onCancel();
       }}
@@ -446,12 +454,12 @@ function PlantChooser({ areaKey, planningYear, choice, history, restFrom, onChan
   );
 }
 
-function SeasonMap({ garden, planningYear, colorOf, hotAreaId, onHot, onOpenArea }: {
+function SeasonMap({ garden, planningYear, colorOf, isHot, onPoint, onOpenArea }: {
   garden: Garden;
   planningYear: number;
   colorOf: ColorOf;
-  hotAreaId?: string;
-  onHot: (areaId: string | undefined) => void;
+  isHot: (areaId: string) => boolean;
+  onPoint: (areaId: string | undefined) => void;
   onOpenArea: (area: GrowingArea) => void;
 }) {
   const titleId = `season-map-${garden.id}`;
@@ -486,14 +494,14 @@ function SeasonMap({ garden, planningYear, colorOf, hotAreaId, onHot, onOpenArea
                 const plants = uniquePlanPlants(plannedForArea(garden, area.id, planningYear));
                 const tokens = planTokens(plants, layout.widthMeters, layout.depthMeters);
                 const label = numberPosition(area, fontSize);
-                const hot = hotAreaId === area.id;
+                const hot = isHot(area.id);
                 return (
                   <g
                     key={area.id}
                     className={styles.bedGroup}
                     data-hot={hot || undefined}
-                    onMouseEnter={() => onHot(area.id)}
-                    onMouseLeave={() => onHot(undefined)}
+                    onMouseEnter={() => onPoint(area.id)}
+                    onMouseLeave={() => onPoint(undefined)}
                     onClick={() => onOpenArea(area)}
                   >
                     <title>{area.name}</title>
@@ -545,20 +553,17 @@ const drawerTitleId = "season-plan-with-ai-title";
  * Plan with AI: a native modal dialog that slides in from the right. Closing only hides it;
  * the Allocation Assistant inside stays mounted, so chosen crops and a draft survive.
  */
-function PlanWithAiDrawer({ open, opener, onClose, children }: { open: boolean; opener: RefObject<HTMLButtonElement | null>; onClose: () => void; children: ReactNode }) {
+function PlanWithAiDrawer({ gardenName, open, opener, onClose, children }: { gardenName: string; open: boolean; opener: RefObject<HTMLButtonElement | null>; onClose: () => void; children: ReactNode }) {
   const dialog = useRef<HTMLDialogElement>(null);
+  // A press that starts inside the drawer and ends on the backdrop (a text selection) is not a backdrop click.
+  const pressedBackdrop = useRef(false);
   useEffect(() => {
     const node = dialog.current;
     if (!open || !node) return;
     const trigger = opener.current;
-    const unlock = lockBodyScroll();
-    node.showModal();
+    const close = openModalDialog(node, () => trigger);
     node.querySelector<HTMLElement>("[data-drawer-close]")?.focus();
-    return () => {
-      node.close();
-      unlock();
-      trigger?.focus();
-    };
+    return close;
   }, [open, opener]);
   return (
     <dialog
@@ -571,10 +576,16 @@ function PlanWithAiDrawer({ open, opener, onClose, children }: { open: boolean; 
         event.preventDefault();
         onClose();
       }}
-      // The dialog box fills the drawer, so a click that lands on the dialog itself is on the backdrop.
-      onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}
+      // The drawer's content fills the dialog box, so a press on the dialog itself is on the backdrop.
+      onPointerDown={(event) => { pressedBackdrop.current = event.target === event.currentTarget; }}
+      onClick={(event) => {
+        const onBackdrop = pressedBackdrop.current && event.target === event.currentTarget;
+        pressedBackdrop.current = false;
+        if (onBackdrop) onClose();
+      }}
     >
       <div className={`${styles.band} ${styles.veins} ${styles.drawerHead} ${styles.onDark}`}>
+        <p className={styles.drawerKicker}>{gardenName}</p>
         <div className={styles.drawerTop}>
           <h2 id={drawerTitleId}>Plan with AI</h2>
           <button className={styles.drawerClose} type="button" aria-label="Close" data-drawer-close onClick={onClose}><CrossIcon /></button>

@@ -87,6 +87,9 @@ describe("Next Season rotation sheet (ADR-0082)", () => {
     expect(within(bed).getByText("Nightshade grew here in 2026")).toBeVisible();
     await user.click(within(bed).getByRole("button", { name: "Change" }));
     await user.selectOptions(within(bed).getByLabelText("Crop family"), "brassica");
+    // Escape on the family select closes only the select's list, not the chooser.
+    fireEvent.keyDown(within(bed).getByLabelText("Crop family"), { key: "Escape" });
+    expect(within(bed).getByLabelText("Plant type")).toBeInTheDocument();
     expect(within(bed).queryByText("Nightshade grew here in 2026")).not.toBeInTheDocument();
     await user.click(field);
     await user.keyboard("{Enter}");
@@ -163,6 +166,20 @@ describe("Next Season rotation sheet (ADR-0082)", () => {
     expect(bedOnMap).not.toHaveAttribute("data-hot");
     fireEvent.mouseEnter(bedOnMap);
     expect(row).toHaveAttribute("data-hot");
+    fireEvent.mouseLeave(bedOnMap);
+
+    // Keyboard focus keeps its row lit while the pointer passes over and leaves another row.
+    fireEvent.focus(within(row).getByRole("button", { name: "Choose a plant for Sample raised bed" }));
+    const other = screen.getByRole("group", { name: "Sample container group" });
+    fireEvent.mouseEnter(other);
+    expect(other).toHaveAttribute("data-hot");
+    expect(row).toHaveAttribute("data-hot");
+    fireEvent.mouseLeave(other);
+    expect(other).not.toHaveAttribute("data-hot");
+    expect(row).toHaveAttribute("data-hot");
+    expect(bedOnMap).toHaveAttribute("data-hot");
+    fireEvent.blur(within(row).getByRole("button", { name: "Choose a plant for Sample raised bed" }));
+    expect(row).not.toHaveAttribute("data-hot");
 
     // Clicking an unplanned area on the map opens its chooser.
     await user.click(bedOnMap);
@@ -187,15 +204,42 @@ describe("Next Season rotation sheet (ADR-0082)", () => {
     const tomato = await within(drawer).findByRole("checkbox", { name: "Tomato" });
     await user.click(tomato);
 
+    // The drawer names the garden it plans.
+    expect(within(drawer).getByText("Demo Garden")).toBeVisible();
+
     await user.click(within(drawer).getByRole("button", { name: "Close" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    expect(opener).toHaveFocus();
+    await waitFor(() => expect(opener).toHaveFocus());
 
     await user.click(opener);
-    expect(within(screen.getByRole("dialog", { name: "Plan with AI" })).getByRole("checkbox", { name: "Tomato" })).toBeChecked();
+    const reopened = screen.getByRole("dialog", { name: "Plan with AI" });
+    expect(within(reopened).getByRole("checkbox", { name: "Tomato" })).toBeChecked();
+    // A press that starts inside the drawer and is released on the backdrop (a drag) keeps it open.
+    fireEvent.pointerDown(within(reopened).getByLabelText("Preference (optional)"));
+    fireEvent.click(reopened);
+    expect(screen.getByRole("dialog", { name: "Plan with AI" })).toBeInTheDocument();
+    // A real backdrop press closes it.
+    fireEvent.pointerDown(reopened);
+    fireEvent.click(reopened);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    await waitFor(() => expect(opener).toHaveFocus());
+
+    await user.click(opener);
     fireEvent(screen.getByRole("dialog", { name: "Plan with AI" }), new Event("cancel", { cancelable: true }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    expect(opener).toHaveFocus();
+    await waitFor(() => expect(opener).toHaveFocus());
+  });
+
+  it("closes the drawer when the page moves to another garden", async () => {
+    const user = userEvent.setup();
+    const first = sampleGarden();
+    const second: Garden = { ...sampleGarden(), id: "back", name: "Back garden" };
+    const { rerender } = render(<SeasonPlanner gardens={[first, second]} gardenId="demo-garden" {...actions()} />);
+    await user.click(screen.getByRole("button", { name: "Plan with AI" }));
+    expect(screen.getByRole("dialog", { name: "Plan with AI" })).toBeInTheDocument();
+    rerender(<SeasonPlanner gardens={[first, second]} gardenId="back" {...actions()} />);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "2027 rotation sheet for Back garden" })).toBeVisible();
   });
 
   it("offers the recorded run for the demo garden in the public demo without any AI request", async () => {

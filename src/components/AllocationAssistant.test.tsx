@@ -140,6 +140,25 @@ describe("AllocationAssistant", () => {
     expect(confirmButton()).toBeDisabled();
   });
 
+  it("keeps a rotation warning that matches no placement on a line of its own", async () => {
+    const user = userEvent.setup();
+    respondWith(draftResponse({
+      warnings: [
+        { growingAreaId: "bed", crop: "tomato", rotationGroup: "nightshade", warning: true, repeatedYears: [lastYear], rotationFriendlyGroups: [] },
+        { growingAreaId: "ground", crop: "tomato", rotationGroup: "nightshade", warning: true, repeatedYears: [lastYear - 1], rotationFriendlyGroups: [] },
+      ],
+    }));
+    renderPanel();
+    await fillAndPlan(user);
+    const draft = await screen.findByRole("region", { name: "Draft allocation" });
+    const lines = within(within(draft).getAllByRole("list")[0]).getAllByRole("listitem").map((line) => line.textContent);
+    expect(lines).toEqual([
+      `Tomato→North bedRotation warning: Tomato is nightshade, grown here in ${lastYear}.`,
+      "Bean→Back plot",
+      `Back plotRotation warning: Tomato is nightshade, grown here in ${lastYear - 1}.`,
+    ]);
+  });
+
   it("sends growingAreaIds only when more than three eligible areas require a choice", async () => {
     const user = userEvent.setup();
     const fetch = respondWith(draftResponse({ status: "needs_input", scope: null }));

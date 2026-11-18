@@ -19,12 +19,11 @@
 .planner :focus-visible { outline: 2px solid var(--color-brand); outline-offset: 2px; }
 .planner .onDark :focus-visible { outline-color: #fff; }
 
-/* ---------- Dark textured surfaces: real photos on --color-band-base ---------- */
-.band { position: relative; isolation: isolate; overflow: hidden; color: #fff; background-color: var(--color-band-base); background-repeat: no-repeat; background-size: cover; }
-.band::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; }
-.ridges { background-image: url("/landing/hero-still.webp"); background-position: center; }
+/* ---------- Dark textured surfaces: the shared photos (src/styles/bands.module.css) and this page's overlays ---------- */
+.band { composes: band from "../../styles/bands.module.css"; }
+.ridges { composes: ridges from "../../styles/bands.module.css"; }
 .ridges::before { background: linear-gradient(170deg, rgb(9 24 15 / 62%), rgb(9 24 15 / 40%) 45%, rgb(9 24 15 / 66%)); }
-.veins { background-image: url("/landing/footer-still.webp"); background-position: 30% 60%; }
+.veins { composes: veins from "../../styles/bands.module.css"; }
 .veins::before { background: linear-gradient(165deg, rgb(9 24 15 / 62%), rgb(9 24 15 / 44%) 55%, rgb(9 24 15 / 30%)); }
 
 /* ---------- Garden switch (in the page title row) ---------- */
@@ -104,7 +103,8 @@
 /* The 28px circles reach a 44px target through an invisible ring. */
 .remove::after, .addMore::after { content: ""; position: absolute; inset: -8px; }
 /* Remove shows when the row is pointed at or focused; touch screens always show it. */
-.remove { margin: 0 6px 0 -4px; opacity: 0; }
+/* 10px after the remove circle keeps its 44px ring clear of the next button's ring. */
+.remove { margin: 0 10px 0 -4px; opacity: 0; }
 .row:hover .remove, .row:focus-within .remove { opacity: 0.6; }
 .row .remove:hover, .row .remove:focus-visible { opacity: 1; background: rgb(255 255 255 / 14%); }
 @media (hover: none) { .remove { opacity: 0.6; } }
@@ -159,6 +159,7 @@
 .drawer .onDark :focus-visible { outline-color: #fff; }
 @keyframes drawer-in { from { transform: translateX(32px); opacity: 0; } }
 .drawerHead { flex: none; display: flex; flex-direction: column; gap: 10px; padding: 26px 28px 24px; }
+.drawerKicker { font-size: 12.5px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; overflow-wrap: anywhere; }
 .drawerTop { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .drawerTop h2 { margin: 0; font-family: var(--font-display); font-size: 30px; font-weight: 500; line-height: 1.05; letter-spacing: -0.03em; color: #fff; }
 .drawerHead p { margin: 0; max-width: 40ch; font-size: 14.5px; line-height: 1.5; color: rgb(255 255 255 / 90%); }
@@ -172,12 +173,16 @@
 .blank p { max-width: 48ch; font-size: 15px; line-height: 1.55; color: var(--color-muted); }
 
 /* ---------- Responsive ---------- */
-@media (max-width: 1199px) {
+/*
+ * The sheet's fixed columns (212 + 148 + 356px) plus the 372px map need about 1360px before the
+ * history column has room, so the map moves below the sheet until then.
+ */
+@media (max-width: 1359px) {
   .layout { grid-template-columns: minmax(0, 1fr); }
   .side { position: static; margin-top: 0; }
 }
 /* Narrow screens: the lane cannot run down the side. Its head becomes a dark tile and each area becomes a short card. */
-@media (max-width: 859px) {
+@media (max-width: 899px) {
   .planner { margin-top: 24px; }
   .gardenSwitch { flex-wrap: nowrap; overflow-x: auto; }
   .sheet { display: flex; flex-direction: column; gap: 12px; margin: 0; border: 0; background: none; }
