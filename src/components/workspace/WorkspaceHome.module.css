@@ -186,6 +186,9 @@
 }
 .firstGarden .onboarding { max-width: none; padding: 0; border: 0; border-radius: 0; background: none; }
 .firstGarden .onboarding h2 { font-size: 20px; color: var(--color-heading); }
+.firstGarden .onboarding form { margin-top: 20px; }
+/* The status line stays in the page so later messages are announced; empty, it takes no space. */
+.firstGarden .onboarding > p:empty { min-height: 0; margin: 0; }
 .firstText { margin: 0; font-size: 15px; line-height: 1.5; color: var(--color-muted); }
 .skeleton { min-height: 280px; border: 1px solid var(--color-line); border-radius: 16px; background: var(--color-soft); }
 
@@ -218,7 +221,7 @@
 .tick { flex: none; display: grid; place-items: center; width: 44px; height: 44px; margin: 0 -8px 0 -11px; padding: 0; border: 0; background: none; cursor: pointer; }
 span.tick { cursor: default; }
 .tickCircle { display: grid; place-items: center; width: 22px; height: 22px; border: 1.5px solid var(--color-ink-subtle); border-radius: 50%; color: transparent; transition: background-color 140ms, border-color 140ms; }
-button.tick:hover .tickCircle { border-color: var(--color-brand); color: var(--color-brand); }
+.row:not([data-done]) button.tick:hover .tickCircle { border-color: var(--color-brand); color: var(--color-brand); }
 .row[data-done] .tickCircle { border-color: var(--color-brand); background: var(--color-brand); color: #fff; }
 .tick:focus-visible { outline: none; }
 .tick:focus-visible .tickCircle { outline: 2px solid var(--color-brand); outline-offset: 2px; }
@@ -319,7 +322,7 @@ button.tick:hover .tickCircle { border-color: var(--color-brand); color: var(--c
 .onboarding { max-width: 720px; padding: 24px; border: 1px solid var(--color-line); border-radius: var(--radius-card); background: var(--color-surface); }
 .onboarding h2 { margin: 0 0 16px; font-size: 20px; line-height: 1.3; font-weight: 650; }
 .onboarding .setupForm { margin-top: 0; }
-.onboardingActions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.onboardingActions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; margin-top: 16px; }
 
 /* ---------- The /notes page's single-note entry (WorkspaceNoteEntry.tsx) ---------- */
 .note { min-width: 0; padding: 24px; border: 1px solid var(--color-line); border-radius: var(--radius-card); background: var(--color-surface); }

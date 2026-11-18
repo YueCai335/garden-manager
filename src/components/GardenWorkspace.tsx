@@ -922,8 +922,7 @@ function Onboarding({
           <h2 id="create-garden-heading">Create your garden</h2>
         </div>
         <FeedbackForm className="garden-form" onSubmit={onCreate}>
-          <label htmlFor="garden-name">Garden name</label>
-          <FormField id="garden-name" className="inline-form-row">
+          <FormField id="garden-name" label="Garden name">
             <input
               id="garden-name"
               onChange={(event) => onChangeName(event.target.value)}
@@ -931,14 +930,16 @@ function Onboarding({
               required
               value={newGardenName}
             />
+          </FormField>
+          <div className={homeStyles.onboardingActions}>
             <button className="primary-button" type="submit">
               Create garden
             </button>
-          </FormField>
+            <button className="text-button" onClick={onLoadDemo} type="button">
+              Load demo garden
+            </button>
+          </div>
         </FeedbackForm>
-        <button className="text-button" onClick={onLoadDemo} type="button">
-          Load demo garden
-        </button>
         <Status message={message} />
       </section>
   );
