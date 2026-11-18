@@ -1,6 +1,7 @@
 # ADR-0078: Finish a Garden with Done and Open It on the Garden Level
 
-- Status: Accepted on 2026-11-16 and implemented on 2026-11-16.
+- Status: Accepted on 2026-11-16 and implemented on 2026-11-16. Amended on
+  2026-11-17: the guided setup's Garden size step shows Delete garden.
 - Date: 2026-11-16
 - Supersedes in part: [ADR-0075](0075-edit-an-existing-garden-in-three-levels.md):
   the default level (Plants), Delete garden in the Garden level's panel, and
@@ -126,3 +127,18 @@ sections. The owner chose the arrows.
 - Users press Done expecting to stay on the page, or look for a per-level
   Done, in usability checks.
 - A fourth level makes the arrow strip too narrow on phones.
+
+## Amendment 2026-11-17: Delete an Unfinished Garden
+
+The owner started a new garden, stopped halfway, and found no way to delete
+it. The guided setup showed neither title-row button, so the only path was to
+finish the setup first.
+
+The guided setup's **Garden size** step now shows **Delete garden** on the
+title row, the same danger pill in the same place as on the Garden level.
+Garden size is the setup's Garden level, so the rule "each level deletes its
+own things" still holds. The other setup steps do not show it, and the setup
+still shows no Done. Completed steps stay clickable, so a user on a later step
+reaches Delete garden with one click on Garden size. Deleting uses the same
+confirmation and checks as before, and it also ends the guided setup for that
+garden.

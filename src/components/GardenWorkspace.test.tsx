@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { resetTestRouter, testRouter } from "@/test/router";
 import { careLocationPath, seasonGardenPath } from "@/lib/workspaceRoutes";
+import { GUIDED_SETUP_STORAGE_KEY } from "@/lib/guidedSetup";
 import { testLayout, testMediaMatches } from "@/test/layout";
 import { plantSwatches } from "@/lib/planAppearance";
 import userEvent from "@testing-library/user-event";
@@ -979,6 +980,9 @@ describe("GardenWorkspace", () => {
     expect(screen.queryByRole("group", { name: "Add a planting area" })).not.toBeInTheDocument();
     expect(screen.queryByRole("region", { name: "Garden properties" })).not.toBeInTheDocument();
     expect(screen.getByLabelText("Resize the garden")).toBeInTheDocument();
+    // Garden size is the setup's Garden level: Delete garden sits on the title row, Done does not (ADR-0078, amended).
+    expect(screen.getByRole("button", { name: "Delete garden" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Done editing Community plot" })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "6 × 4 m" }));
     expect(screen.getByRole("button", { name: "6 × 4 m" })).toHaveAttribute("aria-pressed", "true");
     fireEvent.change(screen.getByLabelText("Garden width (m)"), { target: { value: "4" } });
@@ -990,6 +994,7 @@ describe("GardenWorkspace", () => {
 
     // Step 2: Planting areas. Continue waits for one area; the 2 m long garden shrinks the bed to fit.
     expect(track().getByText("Step 2 of 4 · Planting areas")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Delete garden" })).not.toBeInTheDocument();
     expect(track().getByRole("button", { name: "Garden size, completed" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Continue to plants" })).toBeDisabled();
     await user.click(within(screen.getByRole("group", { name: "Add a planting area" })).getByRole("button", { name: "Add Raised bed, 1.2 × 2.4 m" }));
@@ -1043,6 +1048,26 @@ describe("GardenWorkspace", () => {
     goToLevel("Plants");
     await user.click(screen.getByLabelText("Open North bed on Garden Plan"));
     expect(screen.getAllByText("Kale").length).toBeGreaterThan(0);
+  });
+
+  it("deletes an unfinished garden from the guided setup's Garden size step and ends the setup", async () => {
+    const user = userEvent.setup();
+    render(<GardenWorkspace />);
+    await user.click(await screen.findByRole("button", { name: "Load demo garden" }));
+    await user.click(screen.getByRole("link", { name: "New garden" }));
+    await user.type(screen.getByLabelText("Garden name"), "Half plot");
+    await user.click(screen.getByRole("button", { name: "Continue setup" }));
+    await user.click(screen.getByRole("button", { name: "Continue to planting areas" }));
+    // Leaving partway keeps the garden; going back to Garden size offers Delete garden.
+    const track = within(screen.getByRole("navigation", { name: "Guided setup" }));
+    await user.click(track.getByRole("button", { name: "Garden size, completed" }));
+    await user.click(screen.getByRole("button", { name: "Delete garden" }));
+    await confirmDialog(user, "Delete “Half plot”?");
+
+    expect(screen.getByText("Half plot deleted.")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Open Half plot" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open Demo Garden" })).toBeInTheDocument();
+    expect(window.sessionStorage.getItem(GUIDED_SETUP_STORAGE_KEY)).toBeNull();
   });
 
   it("returns to the same guide step after a reload, and offers the guide again for a garden with no areas", async () => {
