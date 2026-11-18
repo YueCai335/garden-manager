@@ -1833,46 +1833,40 @@ describe("GardenWorkspace", () => {
     render(<GardenWorkspace />);
     await screen.findByRole("link", { name: "Next Season" });
     await user.click(screen.getByRole("link", { name: "Next Season" }));
-    await screen.findByRole("heading", { name: /Next Season ·/ });
-    await user.click(screen.getByText("Plan preview · Demo Garden", { selector: "summary" }));
-    expect(screen.getByRole("button", { name: "Planting areas" })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
-    await user.click(screen.getByRole("button", { name: "Full garden" }));
-    expect(screen.getByRole("button", { name: "Full garden" })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
+    await screen.findByRole("heading", { level: 1, name: "Next Season" });
+    const year = new Date().getFullYear() + 1;
+    const sheet = screen.getByRole("region", { name: `${year} rotation sheet for Demo Garden` });
+    expect(within(sheet).getByText(`Grown ${year - 3}–${year - 1}`)).toBeInTheDocument();
+    expect(within(sheet).getByText("0 of 3 areas planned")).toBeInTheDocument();
+    // No folds: the map, history, and Rest from tags are on the page from the start.
+    expect(screen.queryByText("Rotation details")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Full garden" })).not.toBeInTheDocument();
 
-    const raisedBed = screen.getByRole("heading", { name: "Sample raised bed" }).closest("article")!;
-    expect(within(raisedBed).getByText("Last season")).toBeInTheDocument();
-    await user.click(within(raisedBed).getByText("Rotation details", { selector: "summary" }));
-    expect(within(raisedBed).getByText("Avoid if possible")).toBeInTheDocument();
-    expect(within(raisedBed).getByText("Good rotation fit")).toBeInTheDocument();
-    await user.click(within(raisedBed).getByRole("button", { name: "Choose a plant" }));
+    const raisedBed = within(sheet).getByRole("group", { name: "Sample raised bed" });
+    expect(within(raisedBed).getByText("Tomato · Sun Gold")).toBeInTheDocument();
+    expect(within(raisedBed).getByTitle("Nightshade (tomato, pepper, eggplant)")).toHaveTextContent("Nightshade");
+    await user.click(within(raisedBed).getByRole("button", { name: "Choose a plant for Sample raised bed" }));
+    expect(within(raisedBed).getByText("Good fit here: Brassica, Cucurbit, Legume, Allium.")).toBeInTheDocument();
     await user.type(within(raisedBed).getByLabelText("Plant type"), "Tomato");
     expect(within(raisedBed).getByText(/Crop family:/)).toHaveTextContent("Nightshade");
-    expect(within(raisedBed).getByText(/automatic/)).toBeInTheDocument();
-    await user.click(within(raisedBed).getByRole("button", { name: `Add to ${new Date().getFullYear() + 1} plan` }));
+    expect(within(raisedBed).getByText(`Nightshade grew here in ${year - 3}`)).toBeInTheDocument();
+    await user.click(within(raisedBed).getByRole("button", { name: `Add to ${year} plan` }));
 
-    const updatedRaisedBed = screen.getByRole("heading", { name: "Sample raised bed" }).closest("article")!;
-    expect(within(updatedRaisedBed).getByText(`${new Date().getFullYear() + 1} plan`)).toBeInTheDocument();
-    expect(within(updatedRaisedBed).getByText("Tomato")).toBeInTheDocument();
-    expect(
-      screen.getByRole("img", {
-        name: `${new Date().getFullYear() + 1} plan preview for Demo Garden`,
-      }),
-    ).toBeInTheDocument();
-    const areaLabel = screen.getByTestId("season-area-label-demo-raised-bed");
-    expect(Number(areaLabel.getAttribute("y"))).toBeLessThan(1);
+    expect(within(raisedBed).getByText("Tomato", { selector: "span" })).toBeInTheDocument();
+    expect(within(raisedBed).getByText("Nightshade again")).toBeInTheDocument();
+    expect(within(sheet).getByText("1 of 3 areas planned")).toBeInTheDocument();
+    expect(within(sheet).getByText("1 to check")).toBeInTheDocument();
+    await waitFor(() => expect(within(raisedBed).getByRole("button", { name: "Add a plant to Sample raised bed" })).toHaveFocus());
+    expect(screen.getByRole("img", { name: `${year} plan preview for Demo Garden` })).toBeInTheDocument();
+    // The map numbers each area like its row.
+    expect(screen.getByTestId("season-area-label-demo-raised-bed")).toHaveTextContent("1");
     expect(screen.queryByRole("heading", { name: "Add plant" })).not.toBeInTheDocument();
-    await user.click(within(updatedRaisedBed).getByRole("button", { name: "Add a plant" }));
-    await user.type(within(updatedRaisedBed).getByLabelText("Plant type"), "Basil");
-    await user.click(within(updatedRaisedBed).getByRole("button", { name: `Add to ${new Date().getFullYear() + 1} plan` }));
+    await user.click(within(raisedBed).getByRole("button", { name: "Add a plant to Sample raised bed" }));
+    await user.type(within(raisedBed).getByLabelText("Plant type"), "Basil");
+    await user.click(within(raisedBed).getByRole("button", { name: `Add to ${year} plan` }));
 
-    const pairedRaisedBed = (await screen.findByRole("heading", { name: "Sample raised bed" })).closest("article")!;
-    expect(within(pairedRaisedBed).getByText(/Tomato \+ basil/)).toBeInTheDocument();
+    expect(await within(raisedBed).findByText("Basil may reduce some tomato pests.")).toBeInTheDocument();
+    expect(within(raisedBed).getByRole("link", { name: "University of Minnesota Extension" })).toHaveAttribute("target", "_blank");
   });
 
   it("uses current layout plants as last-season history without waiting for a server request", async () => {
@@ -1885,9 +1879,9 @@ describe("GardenWorkspace", () => {
     render(<GardenWorkspace />);
     await user.click(await screen.findByRole("link", { name: "Next Season" }));
 
-    const raisedBed = screen.getByRole("heading", { name: "Sample raised bed" }).closest("article")!;
+    const raisedBed = await screen.findByRole("group", { name: "Sample raised bed" });
     expect(within(raisedBed).getByText("Tomato · Sun Gold")).toBeInTheDocument();
-    expect(within(raisedBed).getByText("Nightshade (tomato, pepper, eggplant)")).toBeInTheDocument();
+    expect(within(raisedBed).getByTitle("Nightshade (tomato, pepper, eggplant)")).toBeInTheDocument();
   });
 
   it("collapses repeated historical aliases into clear last-season labels", async () => {
@@ -1906,9 +1900,12 @@ describe("GardenWorkspace", () => {
     render(<GardenWorkspace />);
     await user.click(await screen.findByRole("link", { name: "Next Season" }));
 
-    const raisedBed = screen.getByRole("heading", { name: "Sample raised bed" }).closest("article")!;
-    expect(within(raisedBed).getByText("Tomato · Sun Gold · Basil")).toBeInTheDocument();
-    expect(within(raisedBed).getByText(/sungoldtomato/i)).not.toBeVisible();
+    const raisedBed = await screen.findByRole("group", { name: "Sample raised bed" });
+    // One season line, each plant named once: no repeated aliases and no raw record names.
+    expect(within(raisedBed).getAllByText(String(new Date().getFullYear()))).toHaveLength(1);
+    expect(within(raisedBed).getByText("Tomato · Sun Gold")).toBeInTheDocument();
+    expect(within(raisedBed).getByText("Basil")).toBeInTheDocument();
+    expect(within(raisedBed).queryByText(/sungold(tomato)?$/i)).not.toBeInTheDocument();
   });
 
   it("supports direct plant selection, editing, duplication, and confirmed panel removal", async () => {
@@ -2015,8 +2012,8 @@ describe("Garden Plan undo and redo (ADR-0072, phase G5)", () => {
     // A next-season choice changes the garden without a plan step.
     const modules = () => within(screen.getByRole("navigation", { name: "Workspace sections" }));
     await user.click(modules().getByRole("link", { name: "Next Season" }));
-    const area = screen.getByRole("heading", { name: "Sample raised bed" }).closest("article")!;
-    await user.click(within(area as HTMLElement).getByRole("button", { name: "Choose a plant" }));
+    const area = screen.getByRole("group", { name: "Sample raised bed" });
+    await user.click(within(area as HTMLElement).getByRole("button", { name: "Choose a plant for Sample raised bed" }));
     await user.type(within(area as HTMLElement).getByLabelText("Plant type"), "Kale");
     await user.click(within(area as HTMLElement).getByRole("button", { name: /^Add to \d+ plan$/ }));
     await user.click(modules().getByRole("link", { name: "Gardens" }));

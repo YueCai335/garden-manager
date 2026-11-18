@@ -80,7 +80,7 @@ describe("workspace routes and persistent provider", () => {
     await user.click(modules().getByRole("link", { name: "Care" }));
     expect(screen.getByRole("heading", { level: 1, name: "Care" })).toBeInTheDocument();
     await user.click(modules().getByRole("link", { name: "Next Season" }));
-    expect(screen.getByRole("heading", { level: 1, name: `Next Season · ${new Date().getFullYear() + 1}` })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "Next Season" })).toBeInTheDocument();
     await user.click(modules().getByRole("link", { name: "Gardens" }));
     expect(screen.getByRole("heading", { level: 1, name: "Gardens" })).toBeInTheDocument();
     expect(fetch.mock.calls.filter(([url]) => url.endsWith("/workspaces/routing"))).toHaveLength(1);
@@ -119,31 +119,40 @@ describe("workspace routes and persistent provider", () => {
     expect(location.pathname).toBe("/gardens");
   });
 
-  it("filters Next Season by the URL garden, offers Show all, and keeps a garden's links on the L1 modules", async () => {
+  it("shows one garden at a time from the URL, switches by link, and keeps a garden's links on the L1 modules (ADR-0082)", async () => {
     const workspace = seedLocal();
     const back = workspace.gardens[1];
     resetTestRouter(seasonGardenPath(back.id));
     const user = userEvent.setup();
     render(<GardenWorkspace />);
-    expect(await screen.findByRole("heading", { name: "Back garden", level: 2 })).toBeVisible();
+    // Back garden has no planting area yet, so it shows the next step instead of a sheet.
+    expect(await screen.findByRole("heading", { name: "Add a planting area first", level: 2 })).toBeVisible();
+    expect(screen.getByRole("link", { name: "Open Garden Plan for Back garden" })).toBeVisible();
     expect(screen.queryByRole("heading", { name: "Demo Garden", level: 2 })).not.toBeInTheDocument();
-    expect(screen.getByLabelText("Garden")).toHaveValue(back.id);
-    expect(screen.getByText(/Only Back garden/)).toBeVisible();
+    const switcher = () => within(screen.getByRole("navigation", { name: "Garden" }));
+    expect(switcher().getByRole("link", { name: /^Back garden, / })).toHaveAttribute("aria-current", "page");
+    expect(switcher().getByRole("link", { name: /^Demo Garden, / })).not.toHaveAttribute("aria-current");
+    expect(screen.queryByRole("combobox", { name: "Garden" })).not.toBeInTheDocument();
     // An L1 page: no breadcrumb, and the header marks Next Season as the page.
     expect(screen.queryByRole("navigation", { name: "Breadcrumb" })).not.toBeInTheDocument();
     expect(within(screen.getByRole("navigation", { name: "Workspace sections" })).getByRole("link", { name: "Next Season" })).toHaveAttribute("aria-current", "page");
 
-    await user.click(screen.getByRole("link", { name: "Show all" }));
-    expect(location.search).toBe("");
-    expect(await screen.findByRole("heading", { name: "Demo Garden", level: 2 })).toBeVisible();
-    expect(screen.queryByText(/Only Back garden/)).not.toBeInTheDocument();
-
-    await user.selectOptions(screen.getByLabelText("Garden"), workspace.selectedGardenId);
+    await user.click(switcher().getByRole("link", { name: /^Demo Garden, / }));
     expect(location.search).toBe(`?garden=${workspace.selectedGardenId}`);
-    expect(screen.getByText(/Only Demo Garden/)).toBeVisible();
+    expect(await screen.findByRole("heading", { name: "Demo Garden", level: 2 })).toBeVisible();
+    expect(screen.queryByRole("heading", { name: "Add a planting area first" })).not.toBeInTheDocument();
     act(() => testRouter.back());
-    await waitFor(() => expect(location.search).toBe(""));
-    expect(screen.getByLabelText("Garden")).toHaveValue("all");
+    await waitFor(() => expect(location.search).toBe(`?garden=${back.id}`));
+    expect(await screen.findByRole("heading", { name: "Add a planting area first", level: 2 })).toBeVisible();
+  });
+
+  it("shows the first garden on /season without changing the address", async () => {
+    const workspace = seedLocal();
+    resetTestRouter("/season");
+    render(<GardenWorkspace />);
+    expect(await screen.findByRole("heading", { name: workspace.gardens[0].name, level: 2 })).toBeVisible();
+    expect(within(screen.getByRole("navigation", { name: "Garden" })).getByRole("link", { name: new RegExp(`^${workspace.gardens[0].name}, `) })).toHaveAttribute("aria-current", "page");
+    expect(location.search).toBe("");
   });
 
   it("opens the Garden Note from the header on any page and returns focus on Escape", async () => {

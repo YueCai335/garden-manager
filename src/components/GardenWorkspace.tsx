@@ -735,8 +735,7 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
           <SeasonPlanner
             notice={message}
             gardens={workspace?.gardens ?? []}
-            gardenFilter={search.get("garden") ?? "all"}
-            onGardenFilterChange={(id) => navigate(id === "all" ? "/season" : seasonGardenPath(id))}
+            gardenId={search.get("garden") ?? undefined}
             isSynced={isSynced}
             onConfirmAllocation={confirmSeasonAllocation}
             onRemovePlan={removeSeasonPlanPlant}

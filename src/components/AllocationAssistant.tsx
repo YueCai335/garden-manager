@@ -4,11 +4,14 @@ import { FeedbackForm, FormField } from "@/components/forms/FormFeedback";
 
 import { useWorkspaceDraft, useUnsavedDraft } from "@/components/workspace/WorkspaceProvider";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import recordedExampleRun from "@/data/exampleAllocationRun.json";
 import { createSeasonAllocation, SeasonAllocationError } from "@/lib/gardenWorkspaceApi";
 import type { Garden } from "@/lib/gardenWorkspace";
+import { seasonPlantColors } from "@/lib/seasonPlanner";
+import { PlantChip } from "@/components/season/PlantChip";
+import styles from "@/components/season/PlanWithAi.module.css";
 import {
   allocationCrops,
   allocationRequestBody,
@@ -61,6 +64,8 @@ type AllocationAssistantProps = {
   isSynced: boolean;
   onConfirm: (gardenId: string, draft: SeasonAllocationResult, input: AllocationInput) => AllocationConfirmOutcome;
   exampleRun?: ExampleAllocationRun | null;
+  /** The drawer title that names this panel (ADR-0082). Without it the panel is named "Plan with AI". */
+  labelledBy?: string;
 };
 
 /**
@@ -79,6 +84,7 @@ function AllocationAssistantPanel({
   isSynced,
   onConfirm,
   exampleRun = defaultExampleRun,
+  labelledBy,
 }: AllocationAssistantProps) {
   const [crops, setCrops] = useWorkspaceDraft<AllocationCropKey[]>(`allocation:${workspaceId ?? "local"}:${garden.id}:crops`, []);
   const [preference, setPreference] = useWorkspaceDraft(`allocation:${workspaceId ?? "local"}:${garden.id}:preference`, "");
@@ -102,6 +108,7 @@ function AllocationAssistantPanel({
   }, []);
 
   const headingId = `allocation-assistant-${garden.id}`;
+  const colorOf = useMemo(() => seasonPlantColors(garden), [garden]);
   const input: AllocationInput = { crops, preference, chosenAreaIds };
   const eligibleAreas = eligibleAllocationAreas(garden);
   const choosesAreas = needsAreaChoice(garden);
@@ -134,7 +141,7 @@ function AllocationAssistantPanel({
   // offered up front instead of only after a request that cannot succeed.
   const offersDemoExample = Boolean(isPortfolioDemo && !blocker && exampleRun);
   const exampleToggle = (
-    <button className="text-button" onClick={() => setShowExample((shown) => !shown)} type="button">
+    <button className={styles.textButton} onClick={() => setShowExample((shown) => !shown)} type="button">
       {showExample ? "Hide example run" : "View example run"}
     </button>
   );
@@ -181,27 +188,19 @@ function AllocationAssistantPanel({
     );
 
   return (
-    <section aria-labelledby={headingId} className="allocation-assistant">
-      <div>
-        <p className="section-eyebrow">AI planning · {garden.name}</p>
-        <h3 id={headingId}>Allocation Assistant</h3>
-        <p className="allocation-context">
-          Choose crops for next season. The assistant checks each placement against this garden&apos;s crop
-          rotation history and returns a draft. Nothing is added until you confirm.
-        </p>
-        {offersDemoExample ? (
-          <div className="allocation-demo-note">
-            <p className="allocation-notice">
-              Live AI runs are closed in the public demo. A real run recorded on this garden shows how the
-              assistant works.
-            </p>
-            {exampleToggle}
-          </div>
-        ) : null}
-      </div>
+    <section aria-labelledby={labelledBy} aria-label={labelledBy ? undefined : "Plan with AI"} className={styles.assistant}>
+      {offersDemoExample ? (
+        <div className={styles.demoNote}>
+          <p className={styles.notice}>
+            Live AI runs are closed in the public demo. A real run recorded on this garden shows how the
+            assistant works.
+          </p>
+          {exampleToggle}
+        </div>
+      ) : null}
 
       {blocker ? (
-        <p className="allocation-notice">{blocker}</p>
+        <p className={styles.notice}>{blocker}</p>
       ) : (
         <FeedbackForm
           error={requestError}
@@ -210,53 +209,61 @@ function AllocationAssistantPanel({
             [`${headingId}-crop-${allocationCrops[0].key}`]: !crops.length ? "Choose at least one crop." : undefined,
             [`${headingId}-area-${eligibleAreas[0]?.id}`]: choosesAreas && (!selectedAreaIds.length || selectedAreaIds.length > MAX_ALLOCATION_AREAS) ? `Choose between 1 and ${MAX_ALLOCATION_AREAS} planting areas.` : undefined,
           })}
-          className="allocation-form"
+          className={styles.form}
           onSubmit={(event) => {
             event.preventDefault();
             void plan();
           }}
         >
-          <fieldset className="allocation-choices" aria-describedby={`${headingId}-crop-help`} aria-invalid={!crops.length}>
+          <fieldset className={styles.choices} aria-describedby={`${headingId}-crop-help`} aria-invalid={!crops.length}>
             <legend>Crops</legend>
-            {!crops.length && <p id={`${headingId}-crop-help`}>Choose at least one crop before planning.</p>}
-            {allocationCrops.map((crop) => (
-              <label key={crop.key}>
-                <input
-                  id={`${headingId}-crop-${crop.key}`}
-                  checked={crops.includes(crop.key)}
-                  onChange={() => toggleCrop(crop.key)}
-                  type="checkbox"
-                />
-                {crop.label}
-              </label>
-            ))}
+            {!crops.length && <p className={styles.help} id={`${headingId}-crop-help`}>Choose at least one crop before planning.</p>}
+            <div className={styles.pills}>
+              {allocationCrops.map((crop) => {
+                const colors = colorOf({ commonName: crop.label });
+                return (
+                  <label className={styles.pill} key={crop.key}>
+                    <input
+                      id={`${headingId}-crop-${crop.key}`}
+                      checked={crops.includes(crop.key)}
+                      onChange={() => toggleCrop(crop.key)}
+                      type="checkbox"
+                    />
+                    <i data-plant-swatch style={{ background: colors.fill, borderColor: colors.stroke }} aria-hidden="true" />
+                    {crop.label}
+                  </label>
+                );
+              })}
+            </div>
           </fieldset>
 
           {choosesAreas ? (
-            <fieldset className="allocation-choices" aria-describedby={`${headingId}-area-help`} aria-invalid={!selectedAreaIds.length}>
+            <fieldset className={styles.choices} aria-describedby={`${headingId}-area-help`} aria-invalid={!selectedAreaIds.length}>
               <legend>Planting areas (up to {MAX_ALLOCATION_AREAS})</legend>
-              {!selectedAreaIds.length && <p id={`${headingId}-area-help`}>Choose at least one planting area before planning.</p>}
-              {eligibleAreas.map((area) => (
-                <label key={area.id}>
-                  <input
-                    id={`${headingId}-area-${area.id}`}
-                    checked={chosenAreaIds.includes(area.id)}
-                    disabled={!chosenAreaIds.includes(area.id) && chosenAreaIds.length >= MAX_ALLOCATION_AREAS}
-                    onChange={() => toggleArea(area.id)}
-                    type="checkbox"
-                  />
-                  {area.name}
-                </label>
-              ))}
+              {!selectedAreaIds.length && <p className={styles.help} id={`${headingId}-area-help`}>Choose at least one planting area before planning.</p>}
+              <div className={styles.pills}>
+                {eligibleAreas.map((area) => (
+                  <label className={styles.pill} key={area.id}>
+                    <input
+                      id={`${headingId}-area-${area.id}`}
+                      checked={chosenAreaIds.includes(area.id)}
+                      disabled={!chosenAreaIds.includes(area.id) && chosenAreaIds.length >= MAX_ALLOCATION_AREAS}
+                      onChange={() => toggleArea(area.id)}
+                      type="checkbox"
+                    />
+                    {area.name}
+                  </label>
+                ))}
+              </div>
             </fieldset>
           ) : (
-            <p className="allocation-areas">
+            <p className={styles.areasAll}>
               <strong>Planting areas</strong>
               <span>{eligibleAreas.map((area) => area.name).join(" · ")}</span>
             </p>
           )}
 
-          <FormField id={`${headingId}-preference`}>
+          <FormField id={`${headingId}-preference`} className={`field ${styles.preference}`}>
             <label htmlFor={`${headingId}-preference`}>Preference (optional)</label>
             <textarea
               aria-describedby={`${headingId}-preference-count`}
@@ -267,30 +274,30 @@ function AllocationAssistantPanel({
               rows={2}
               value={preference}
             />
-            <span className="allocation-count" id={`${headingId}-preference-count`}>
+            <span className={styles.count} id={`${headingId}-preference-count`}>
               {preference.length}/{MAX_ALLOCATION_PREFERENCE} characters
             </span>
           </FormField>
 
-          <div className="form-actions">
-            <button className="primary-button" disabled={!canPlan} type="submit">
-              {isPlanning ? "Planning…" : "Plan with AI"}
-            </button>
-          </div>
           {waitingForSave ? (
-            <p className="allocation-notice">Waiting for your latest changes to save before planning.</p>
+            <p className={styles.notice}>Waiting for your latest changes to save before planning.</p>
           ) : null}
           {isPlanning ? (
-            <p className="allocation-notice" role="status">
+            <p className={styles.notice} role="status">
               Planning can take up to two minutes. The steps appear when the plan is ready.
             </p>
           ) : null}
+          <div className={styles.actions}>
+            <button className={styles.primary} disabled={!canPlan} type="submit">
+              {isPlanning ? "Planning…" : "Plan with AI"}
+            </button>
+          </div>
         </FeedbackForm>
       )}
 
 
       {result && result.status === "needs_input" ? (
-        <div className="allocation-error" role="alert">
+        <div className={styles.error} role="alert">
           <strong>More input needed</strong>
           <ul>
             {result.missingInputs.map((item) => (
@@ -302,11 +309,11 @@ function AllocationAssistantPanel({
 
       {result && result.status !== "draft" && result.status !== "needs_input" ? (
         offersDemoExample ? (
-          <p className="allocation-notice" role="status">
+          <p className={styles.notice} role="status">
             Live AI runs are closed in the public demo, so no plan was created. View the example run to see a recorded one.
           </p>
         ) : (
-          <div className="allocation-error" role="alert">
+          <div className={styles.error} role="alert">
             <p>{statusMessages[result.status]}</p>
             {result.failureReason ? <p>{failureReasons[result.failureReason] ?? result.failureReason}</p> : null}
             {exampleRun ? exampleToggle : null}
@@ -314,30 +321,30 @@ function AllocationAssistantPanel({
         )
       ) : null}
 
-      {showExample && exampleRun ? <ExampleRun run={exampleRun} /> : null}
+      {showExample && exampleRun ? <ExampleRun run={exampleRun} colorOf={colorOf} /> : null}
 
       {draft?.scope ? (
-        <section aria-label="Draft allocation" className="allocation-draft">
-          <strong>Draft for {draft.scope.seasonYear}</strong>
-          <DraftAreas draft={draft} />
-          <div className="form-actions">
-            <button className="primary-button" disabled={isStale || isConfirmed} onClick={confirm} type="button">
-              Add to {draft.scope.seasonYear} plan
-            </button>
-          </div>
+        <section aria-label="Draft allocation" className={styles.draft}>
+          <strong className={styles.fieldTitle}>Draft for {draft.scope.seasonYear}</strong>
+          <DraftAreas draft={draft} colorOf={colorOf} />
           {isStale && !isConfirmed ? (
-            <p className="allocation-notice">
+            <p className={styles.notice}>
               The garden or your choices changed after this draft was made. Plan again to use them.
             </p>
           ) : null}
           {confirmation?.status === "stale" ? (
-            <p className="allocation-notice">This draft is out of date. Plan again before adding it.</p>
+            <p className={styles.notice}>This draft is out of date. Plan again before adding it.</p>
           ) : null}
           {confirmation?.status === "added" ? (
-            <p className="allocation-confirmed" role="status">
+            <p className={styles.confirmed} role="status">
               Added {confirmation.added}, skipped {confirmation.skipped} already in the {confirmation.seasonYear} plan.
             </p>
           ) : null}
+          <div className={styles.actions}>
+            <button className={styles.primary} disabled={isStale || isConfirmed} onClick={confirm} type="button">
+              Add to {draft.scope.seasonYear} plan
+            </button>
+          </div>
         </section>
       ) : null}
 
@@ -346,30 +353,40 @@ function AllocationAssistantPanel({
   );
 }
 
-function DraftAreas({ draft }: { draft: SeasonAllocationResult }) {
+type ColorOf = ReturnType<typeof seasonPlantColors>;
+
+/** One line per placement, "crop → area", with any rotation warning under it. Areas left empty say so. */
+function DraftAreas({ draft, colorOf }: { draft: SeasonAllocationResult; colorOf: ColorOf }) {
+  const areas = draft.scope?.areas ?? [];
+  const areaName = (id: string) => areas.find((area) => area.id === id)?.name ?? id;
+  const empty = areas.filter((area) => !draft.allocation.some((assignment) => assignment.growingAreaId === area.id));
   return (
     <>
-      <ul className="allocation-draft-areas">
-        {draft.scope?.areas.map((area) => {
-          const assigned = draft.allocation.filter((assignment) => assignment.growingAreaId === area.id);
-          return (
-            <li key={area.id}>
-              <strong>{area.name}</strong>
-              <span>{assigned.length ? assigned.map((item) => cropLabel(item.crop)).join(" · ") : "Nothing planned"}</span>
-              {draft.warnings
-                .filter((warning) => warning.growingAreaId === area.id)
-                .map((warning) => (
-                  <span className="allocation-warning" key={warning.crop}>
-                    Rotation warning: {cropLabel(warning.crop)} is {warning.rotationGroup}, grown here in{" "}
-                    {warning.repeatedYears.join(", ")}.
-                  </span>
-                ))}
-            </li>
-          );
-        })}
+      <ul className={styles.draftList}>
+        {draft.allocation.map((assignment) => (
+          <li key={`${assignment.growingAreaId}:${assignment.crop}`}>
+            <PlantChip name={cropLabel(assignment.crop)} colors={colorOf({ commonName: cropLabel(assignment.crop) })} />
+            <span aria-hidden="true">→</span>
+            <strong>{areaName(assignment.growingAreaId)}</strong>
+            {draft.warnings
+              .filter((warning) => warning.growingAreaId === assignment.growingAreaId && warning.crop === assignment.crop)
+              .map((warning) => (
+                <span className={styles.warning} key={warning.crop}>
+                  Rotation warning: {cropLabel(warning.crop)} is {warning.rotationGroup}, grown here in{" "}
+                  {warning.repeatedYears.join(", ")}.
+                </span>
+              ))}
+          </li>
+        ))}
+        {empty.map((area) => (
+          <li key={area.id}>
+            <strong>{area.name}</strong>
+            <span className={styles.why}>Nothing planned</span>
+          </li>
+        ))}
       </ul>
       {draft.explanation ? (
-        <p className="allocation-explanation">
+        <p className={styles.explanation}>
           <strong>AI explanation</strong>
           <span>{draft.explanation}</span>
         </p>
@@ -380,12 +397,12 @@ function DraftAreas({ draft }: { draft: SeasonAllocationResult }) {
 
 function AgentSteps({ label, trace }: { label: string; trace: AllocationTraceStep[] }) {
   return (
-    <section aria-label={label} className="allocation-trace">
-      <strong>{label}</strong>
+    <section aria-label={label} className={styles.trace}>
+      <strong className={styles.fieldTitle}>{label}</strong>
       <ol>
         {trace.map((step) => (
           <li key={step.step}>
-            <span className="allocation-trace-tool">
+            <span className={styles.traceTool}>
               Step {step.step} · {step.tool}
             </span>
             <code>{typeof step.args === "string" ? step.args : JSON.stringify(step.args)}</code>
@@ -398,16 +415,16 @@ function AgentSteps({ label, trace }: { label: string; trace: AllocationTraceSte
 }
 
 /** A recorded run, clearly labelled, read-only: it is not a plan for this garden. */
-function ExampleRun({ run }: { run: ExampleAllocationRun }) {
+function ExampleRun({ run, colorOf }: { run: ExampleAllocationRun; colorOf: ColorOf }) {
   const recordedOn = run.recordedAt.slice(0, 10);
   return (
-    <section aria-label="Example run" className="allocation-example">
-      <p className="section-eyebrow">Example run record</p>
-      <p className="allocation-notice">
+    <section aria-label="Example run" className={styles.example}>
+      <p className={styles.fieldTitle}>Example run record</p>
+      <p className={styles.notice}>
         Recorded on {recordedOn} with {run.model} on the {run.gardenName}. This shows how the assistant works. It is
         not a plan for your garden and cannot be added.
       </p>
-      <p className="allocation-areas">
+      <p className={styles.areasAll}>
         <strong>Request</strong>
         <span>
           {run.request.crops.map(cropLabel).join(" · ")}
@@ -415,18 +432,18 @@ function ExampleRun({ run }: { run: ExampleAllocationRun }) {
         </span>
       </p>
       {run.result.scope ? (
-        <div className="allocation-draft">
-          <strong>Recorded draft for {run.result.scope.seasonYear}</strong>
-          <DraftAreas draft={run.result} />
+        <div className={styles.draft}>
+          <strong className={styles.fieldTitle}>Recorded draft for {run.result.scope.seasonYear}</strong>
+          <DraftAreas draft={run.result} colorOf={colorOf} />
         </div>
       ) : null}
       {run.result.trace.length ? <AgentSteps label="Recorded agent steps" trace={run.result.trace} /> : null}
-      <details className="allocation-tool-results">
+      <details className={styles.toolResults}>
         <summary>Full tool results</summary>
         <ol>
           {run.toolResults.map((item, index) => (
             <li key={index}>
-              <span className="allocation-trace-tool">{item.tool}</span>
+              <span className={styles.traceTool}>{item.tool}</span>
               <code>{JSON.stringify(item.output)}</code>
             </li>
           ))}
