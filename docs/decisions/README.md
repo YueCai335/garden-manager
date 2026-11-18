@@ -121,7 +121,7 @@ changes, mark the old record as superseded and add a new record.
 | [ADR-0076](0076-color-each-plant-type-from-a-shared-muted-palette.md) | Color each plant type from a shared muted palette | Accepted; implemented 2026-11-16 |
 | [ADR-0077](0077-show-three-real-gardens-as-the-demo.md) | Show three real gardens as the demo | Accepted; implemented 2026-11-16; amended 2026-11-16: saved workspaces swap the old sample demo for the showcase; the public AI features keep the sample garden until the AI redo |
 | [ADR-0078](0078-finish-a-garden-with-done-and-open-it-on-the-garden-level.md) | Finish a garden with Done and open it on the Garden level | Accepted; implemented 2026-11-16 |
-| [ADR-0080](0080-show-care-as-a-today-board-with-a-separate-history-log.md) | Show Care as a Today board with a separate History log | Accepted 2026-11-16; not implemented yet. The number 0079 belongs to a decision on another branch (`demo-prewarm`) |
+| [ADR-0080](0080-show-care-as-a-today-board-with-a-separate-history-log.md) | Show Care as a Today board with a separate History log | Accepted 2026-11-16; implemented 2026-11-17. The number 0079 belongs to a decision on another branch (`demo-prewarm`) |
 | [ADR-0081](0081-stage-the-gardens-on-a-textured-band-on-the-gardens-home.md) | Stage the gardens on a textured band on the Gardens home | Accepted 2026-11-16; implemented 2026-11-17 |
 
 ## Interview Use

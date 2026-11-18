@@ -1,6 +1,6 @@
 # ADR-0080: Show Care as a Today Board with a Separate History Log
 
-- Status: Accepted on 2026-11-16. Not implemented yet.
+- Status: Accepted on 2026-11-16. Implemented on 2026-11-17 (C0–C6 of the plan).
 - Date: 2026-11-16
 - Supersedes in part:
   - [ADR-0067](0067-project-care-across-locations-with-explicit-ownership.md):
@@ -109,6 +109,36 @@ is done or deleted, so History does not need to repeat it.
   a shader.
 - Existing unit and end-to-end tests that use the Location filter, the tabs,
   and the Complete button need rewriting. Owner-specific write checks stay.
+
+## Implementation notes (2026-11-17)
+
+These choices were made while building the plan. They keep the approved look
+and rules; they only settle details the plan left open or that met existing
+app rules.
+
+- The app shell keeps its `h1` ("Care") for focus after navigation, visually
+  hidden, as the Gardens home does (ADR-0081). The band headline and the
+  History title are therefore `h2`, the To do and Done today labels, garden
+  names, and History days are `h3`. The page has one `h1`.
+- The page width follows the app's content width (the same as Gardens), so
+  the band lines up with the other pages instead of the mockup's 64 px inset.
+- The page's status line sits directly under the band or the History strip,
+  so a message such as "Task added. It will appear here 7 days before …" is
+  seen where the change was made.
+- A tick made in a garden card stays in its place in that card; in the band it
+  moves from To do to Done today. Keyboard focus follows the row in the list
+  where the tick was made.
+- History orders records within one day by the order they were stored, root
+  records first and then each garden in turn, newest first. Records do not
+  store a time, so the exact order across owners is not known.
+- The row menu opens upwards when the band or the History card would clip it.
+- History filters update the address with `replace`, and Clear filters resets
+  both in one change.
+- The app shell now focuses its page title with `preventScroll`, so a
+  `?location=` link can scroll to its garden card on load.
+- Shared code: `src/lib/careBoard.ts`, `src/lib/careHistory.ts`, and
+  `src/lib/careLabels.ts` (the words Gardens and Care share), and
+  `src/hooks/useCareTicks.ts` (ticking, used by Gardens and Care).
 
 ## Reconsideration
 

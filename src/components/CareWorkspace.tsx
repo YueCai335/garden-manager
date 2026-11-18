@@ -1,26 +1,27 @@
 "use client";
 
-import { FeedbackForm, FormField } from "@/components/forms/FormFeedback";
-
 import { useWorkspaceDraft, useUnsavedDraft } from "@/components/workspace/WorkspaceProvider";
+import { useCareTicks } from "@/hooks/useCareTicks";
 
 import { useConfirmation } from "./ConfirmDialog";
-import Link from "next/link";
-import { startTransition, type FormEvent, type ReactNode, useOptimistic, useRef, useState } from "react";
+import { startTransition, type FormEvent, useOptimistic, useRef, useState } from "react";
+import { CareBoard, type CareBoardActions } from "./care/CareBoard";
+import { CareHistory } from "./care/CareHistory";
+import { CareCompletionForm, CareLocation, CareRecordFormFields, CareTaskFormFields } from "./care/CareForms";
+import { CareDialog } from "./care/CareParts";
+import { careBoard, CARE_WINDOW_DAYS } from "@/lib/careBoard";
+import { careHistory, HISTORY_PAGE, type HistoryType } from "@/lib/careHistory";
+import { calendarLabel } from "@/lib/careLabels";
 
 import {
-  careTaskStatus,
+  addDays,
   createId,
   todayDate,
   type CareEvent,
-  type CareEventTargetScope,
-  type CareEventType,
   type CareTask,
   type Garden,
 } from "@/lib/gardenWorkspace";
 import {
-  careFertilizerDetails,
-  careTargetLabel,
   emptyCareForm,
   emptyCareTaskForm,
   isCalendarDate,
@@ -33,28 +34,38 @@ export type CareView = "tasks" | "history";
 
 /** The two record lists the care screen edits. */
 export type { CareRecords } from "@/lib/careViews";
-import { careEventForTask, careRows, careOwner, careLocationKey, completeCareTask as applyTaskCompletion, type CareOwner, type CareRecords, type CareRow } from "@/lib/careViews";
+import { careEventForTask, careRows, careOwner, completeCareTask as applyTaskCompletion, workspaceCareGarden, type CareOwner, type CareRecords, type CareRow } from "@/lib/careViews";
 import styles from "./care/Care.module.css";
 
 /**
- * Care lists project their owners; each open form keeps its own owner even
- * when the browsing filter changes. The parent updates that source collection.
+ * Care (ADR-0080): the Today board and the History log. Rows project their owners; each open
+ * form keeps its own owner even when a filter changes. The parent updates that source collection.
  */
 export function CareWorkspace({
   garden: scopeGarden,
   gardens = [],
   locationFilter, onLocationChange,
+  typeFilter, onTypeChange, onClearFilters,
   initialView = "tasks",
   viewHref,
+  message = "",
   onMessage,
   onUpdateRecords,
 }: {
   garden: Garden;
   gardens?: Garden[];
+  /** On Tasks, the garden card to scroll to; on History, the garden filter (ADR-0080 D6, D10). */
   locationFilter?: string;
   onLocationChange?: (location: string) => void;
+  typeFilter?: HistoryType;
+  onTypeChange?: (type: HistoryType) => void;
+  /** Resets both History filters in one address change. */
+  onClearFilters?: () => void;
   initialView?: CareView;
+  /** The Care route: views become links (`?view=`) instead of local state. */
   viewHref?: string;
+  /** The page's status line (role="status"). */
+  message?: string;
   onMessage: (message: string) => void;
   onUpdateRecords: (update: (records: CareRecords) => CareRecords, owner?: CareOwner) => void;
 }) {
@@ -69,7 +80,7 @@ export function CareWorkspace({
       setSavedLocation(nextLocation);
       return;
     }
-    // The view links need the new filter while the URL transition is still pending.
+    // The filter buttons show the new choice while the address change is still pending.
     startTransition(() => {
       setPendingLocation(nextLocation);
       onLocationChange(nextLocation);
@@ -81,11 +92,34 @@ export function CareWorkspace({
   const eventGarden = sources.find((item) => item.id === eventOwnerId);
   const taskGarden = sources.find((item) => item.id === taskOwnerId);
   const completionGarden = sources.find((item) => item.id === completionOwnerId);
-  const eventRows = careRows(sources, "careEvents").filter((row) => !allGardens || location === "all" || careLocationKey(row.owner) === location);
-  const taskRows = careRows(sources, "careTasks").filter((row) => !allGardens || location === "all" || careLocationKey(row.owner) === location);
+  const [localType, setLocalType] = useState<HistoryType>("all");
+  const [type, setPendingType] = useOptimistic<HistoryType>(typeFilter ?? localType);
+  const [limit, setLimit] = useState(HISTORY_PAGE);
+  const changeType = (nextType: HistoryType) => {
+    setLimit(HISTORY_PAGE);
+    if (!onTypeChange) { setLocalType(nextType); return; }
+    startTransition(() => {
+      setPendingType(nextType);
+      onTypeChange(nextType);
+    });
+  };
+  const clearFilters = () => {
+    setLimit(HISTORY_PAGE);
+    if (!onClearFilters) { changeLocation("all"); changeType("all"); return; }
+    startTransition(() => {
+      setPendingLocation("all");
+      setPendingType("all");
+      onClearFilters();
+    });
+  };
+  // A filter for a garden that no longer exists falls back to All (ADR-0080, 6.1).
+  const knownLocation = location === "all" || sources.some((item) => item.id === location);
+  const activeLocation = allGardens && knownLocation ? location : "all";
   const [actionError, setActionError] = useState("");
   const defaultScope = allGardens ? "all-gardens" : "garden";
   const { requestConfirmation, confirmation, confirmDiscard } = useConfirmation();
+  const today = todayDate();
+  const { completions, focus, tick, untick } = useCareTicks((owner, change) => onUpdateRecords(change, owner));
   const [localView, setView] = useState<CareView>(initialView);
   const view = viewHref ? initialView : localView;
   const [isFormOpen, setIsFormOpen] = useWorkspaceDraft(`care:${garden.id}:isFormOpen`, false);
@@ -109,7 +143,7 @@ export function CareWorkspace({
   useUnsavedDraft(`care:${garden.id}`, careDirty || taskDirty || Boolean(completingCareTaskId && completionDate !== completionBaseline));
 
   const openAddCare = () => {
-    const owner = allGardens ? (location === "all" ? "" : location) : garden.id;
+    const owner = allGardens ? (activeLocation === "all" ? "" : activeLocation) : garden.id;
     setEventOwnerId(owner); setActionError("");
     startCareForm(emptyCareForm(owner === "all-gardens" ? "all-gardens" : "garden"));
     setEditingCareEventId(undefined);
@@ -243,7 +277,7 @@ export function CareWorkspace({
   };
 
   const openAddCareTask = () => {
-    const owner = allGardens ? (location === "all" ? "" : location) : garden.id;
+    const owner = allGardens ? (activeLocation === "all" ? "" : activeLocation) : garden.id;
     setTaskOwnerId(owner); setActionError("");
     startTaskForm(emptyCareTaskForm(owner === "all-gardens" ? "all-gardens" : "garden"));
     setEditingCareTaskId(undefined);
@@ -340,6 +374,7 @@ export function CareWorkspace({
       ...(hasRepeatInterval ? { repeatIntervalDays } : {}),
     };
     const action = editingCareTaskId ? "updated" : "added";
+    const later = task.dueDate > addDays(todayDate(), CARE_WINDOW_DAYS);
     onUpdateRecords((records) => ({
       ...records,
       careTasks: editingCareTaskId
@@ -347,7 +382,10 @@ export function CareWorkspace({
         : [...records.careTasks, task],
     }), careOwner(garden));
     cancelCareTask();
-    onMessage(`${task.type === "watering" ? "Watering" : "Fertilizing"} task ${action}.`);
+    // Care shows seven days ahead (ADR-0080 D5), so say when a later task will appear.
+    onMessage(later
+      ? `Task ${action}. It will appear here 7 days before ${calendarLabel(task.dueDate, { month: "long", day: "numeric", year: "numeric" })}.`
+      : `${task.type === "watering" ? "Watering" : "Fertilizing"} task ${action}.`);
   };
 
   const openCompleteCareTask = (row: CareRow<CareTask>) => {
@@ -387,7 +425,7 @@ export function CareWorkspace({
   const removeCareTask = (row: CareRow<CareTask>) => {
     const task = row.record;
     requestConfirmation({
-      confirmLabel: "Delete task", tone: "danger", fallbackFocusId: "care-tasks-heading",
+      confirmLabel: "Delete task", tone: "danger", fallbackFocusId: "care-today-heading",
       message: `Delete the ${task.type} task for ${row.targetLabel} due ${task.dueDate}? This removes the pending task, including its repeat schedule. Completed care history stays available.`,
       onConfirm: () => {
         const latest = sourcesRef.current.find((item) => item.id === row.garden.id)?.careTasks.find((item) => item.id === task.id);
@@ -401,567 +439,106 @@ export function CareWorkspace({
     });
   };
 
+  // The board and History read the same records as the forms: the root first, then each garden.
+  const root = allGardens ? garden : workspaceCareGarden({ careEvents: [], careTasks: [] });
+  const records = { careEvents: root.careEvents, careTasks: root.careTasks, gardens: allGardens ? gardens : [garden] };
+  const taskRow = (ownerId?: string, taskId?: string) => careRows(sources, "careTasks").find((row) => row.garden.id === ownerId && row.record.id === taskId);
+  const editingTaskRow = taskRow(taskOwnerId, editingCareTaskId);
+  const completionTask = completionGarden?.careTasks.find((task) => task.id === completingCareTaskId);
+  const careTypeLabel = (type: "watering" | "fertilizing") => type === "watering" ? "watering" : "fertilizing";
+
+  const actions: CareBoardActions = {
+    onTick: (row, region) => {
+      tick({ key: row.key, owner: row.owner, task: row.source?.record }, region);
+      onMessage(`${row.title} ticked off for today.`);
+    },
+    onUntick: (row, region) => {
+      untick(row.completion, region);
+      onMessage(`${row.title} moved back to To do.`);
+    },
+    onEdit: (row) => confirmDiscard(taskDirty, () => openEditCareTask(row)),
+    onCompleteOn: (row) => confirmDiscard(Boolean(completingCareTaskId && completionDate !== completionBaseline), () => openCompleteCareTask(row)),
+    onDelete: removeCareTask,
+  };
+  const locationControl = (id: string, label: string, value: string, editing: boolean, onChange: (id: string) => void) =>
+    allGardens ? <CareLocation id={id} label={label} gardens={sources} value={value} editing={editing} onChange={onChange} /> : undefined;
+  // The missing-location notice comes first, so an earlier message cannot hide it.
+  const statusText = [view === "history" && !knownLocation ? "That location no longer exists. Showing all records." : "", message].filter(Boolean).join(" ");
+
+  // The status line sits under the band or strip, where a saved change is seen.
+  const status = <p aria-live="polite" className={styles.status} role="status">{statusText}</p>;
+
   return (
-    <section className="management-section care-workspace" id="care-workspace-heading" aria-label="Care records">
+    <div className={styles.page} data-view={view} id="care-workspace-heading">
       {confirmation}
-      <div className={styles.toolbar}>
-        <div aria-label="Care views" className={styles.views} role={viewHref ? "navigation" : "tablist"} onKeyDown={viewHref ? undefined : (event) => {
-          if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
-          event.preventDefault();
-          const next = event.key === "Home" ? "tasks" : event.key === "End" ? "history" : view === "tasks" ? "history" : "tasks";
-          setView(next);
-          document.getElementById(`care-tab-${next}`)?.focus();
-        }}>
-          {viewHref ? <>{(["tasks", "history"] as const).map((item) => <Link key={item} className="text-button" href={`${viewHref}?view=${item}${allGardens && location !== "all" ? `&location=${encodeURIComponent(location)}` : ""}`} aria-current={view === item ? "page" : undefined}>{item === "tasks" ? "Tasks" : "History"}</Link>)}</> : <>
-          <button
-            aria-selected={view === "tasks"}
-            id="care-tab-tasks" aria-controls="care-panel-tasks" tabIndex={view === "tasks" ? 0 : -1}
-            className="text-button"
-            onClick={() => setView("tasks")}
-            role="tab"
-            type="button"
-          >
-            Tasks
-          </button>
-          <button
-            aria-selected={view === "history"}
-            id="care-tab-history" aria-controls="care-panel-history" tabIndex={view === "history" ? 0 : -1}
-            className="text-button"
-            onClick={() => setView("history")}
-            role="tab"
-            type="button"
-          >
-            History
-          </button>
-          </>}
-        </div>
-        {allGardens && <div className={styles.filter}>
-          <label htmlFor="care-location-filter">Location</label>
-          <select id="care-location-filter" value={location} onChange={(event) => changeLocation(event.target.value)}>
-            <option value="all">All locations</option>
-            {location !== "all" && !sources.some((item) => item.id === location) && <option value={location}>Location no longer available</option>}
-            <option value="all-gardens">All gardens records</option>
-            {gardens.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-          </select>
-          <p>{view === "tasks" ? `${taskRows.length} ${taskRows.length === 1 ? "task" : "tasks"}` : `${eventRows.length} ${eventRows.length === 1 ? "record" : "records"}`}</p>
-        </div>}
-      </div>
-      {actionError && <p role="alert">{actionError}</p>}
-      <div id="care-panel-tasks" role={viewHref ? undefined : "tabpanel"} aria-labelledby={viewHref ? undefined : "care-tab-tasks"} hidden={view !== "tasks"}>
-      {view === "tasks" && <CareTasks
-          garden={taskGarden ?? garden}
-          rows={taskRows}
-          locationControl={allGardens && <CareLocation id="task-location" label="Task location" gardens={sources} value={taskOwnerId} editing={Boolean(editingCareTaskId)} onChange={(id) => {
-            setTaskOwnerId(id); setTaskForm({ ...taskForm, targetScope: id === "all-gardens" ? "all-gardens" : "garden", growingAreaId: "", plantingRecordId: "" }); setActionError("");
-          }} />}
-          completionRequested={Boolean(completingCareTaskId)}
-          completionTask={completionGarden?.careTasks.find((task) => task.id === completingCareTaskId)}
-          completionLocation={completionGarden?.name}
-          form={taskForm}
-          completionDate={completionDate}
-          editingCareTaskId={editingCareTaskId}
-          isFormOpen={isTaskFormOpen}
-          onAdd={() => confirmDiscard(taskDirty, openAddCareTask)}
-          onCancel={() => confirmDiscard(taskDirty, cancelCareTask, "care-tasks-heading")}
-          onCancelCompletion={() => confirmDiscard(completionDate !== completionBaseline, cancelCompletion, "care-tasks-heading")}
-          onComplete={(task) => confirmDiscard(Boolean(completingCareTaskId && completionDate !== completionBaseline), () => openCompleteCareTask(task))}
-          onEdit={(task) => confirmDiscard(taskDirty, () => openEditCareTask(task))}
-          onRemove={removeCareTask}
-          onSave={saveCareTask}
-          onSaveCompletion={completeCareTask}
-          onSetCompletionDate={setCompletionDate}
-          onSetForm={setTaskForm}
-        />}
-      </div>
-      <div id="care-panel-history" role={viewHref ? undefined : "tabpanel"} aria-labelledby={viewHref ? undefined : "care-tab-history"} hidden={view !== "history"}>
-      {view === "history" && <CareLog
-          garden={eventGarden ?? garden}
-          rows={eventRows}
-          locationControl={allGardens && <CareLocation id="record-location" label="Record location" gardens={sources} value={eventOwnerId} editing={Boolean(editingCareEventId)} onChange={(id) => {
-            setEventOwnerId(id); setForm({ ...form, targetScope: id === "all-gardens" ? "all-gardens" : "garden", growingAreaId: "", plantingRecordId: "" }); setActionError("");
-          }} />}
-          editingCareEventId={editingCareEventId}
-          form={form}
-          isFormOpen={isFormOpen}
-          onAdd={() => confirmDiscard(careDirty, openAddCare)}
-          onCancel={() => confirmDiscard(careDirty, cancelCare, "care-history-heading")}
-          onEdit={(event) => confirmDiscard(careDirty, () => openEditCare(event))}
-          onRemove={removeCare}
-          onSave={saveCare}
-          onSetForm={setForm}
-        />}
-      </div>
-    </section>
-  );
-}
-
-function CareTasks({
-  garden,
-  rows, locationControl, completionTask: completingTask, completionLocation, completionRequested,
-  form,
-  completionDate,
-  editingCareTaskId,
-  isFormOpen,
-  onAdd,
-  onCancel,
-  onCancelCompletion,
-  onComplete,
-  onEdit,
-  onRemove,
-  onSave,
-  onSaveCompletion,
-  onSetCompletionDate,
-  onSetForm,
-}: {
-  garden: Garden;
-  form: CareTaskForm;
-  rows: CareRow<CareTask>[];
-  locationControl?: ReactNode;
-  completionTask?: CareTask;
-  completionRequested: boolean;
-  completionLocation?: string;
-  completionDate: string;
-  editingCareTaskId?: string;
-  isFormOpen: boolean;
-  onAdd: () => void;
-  onCancel: () => void;
-  onCancelCompletion: () => void;
-  onComplete: (task: CareRow<CareTask>) => void;
-  onEdit: (task: CareRow<CareTask>) => void;
-  onRemove: (task: CareRow<CareTask>) => void;
-  onSave: (event: FormEvent<HTMLFormElement>) => void;
-  onSaveCompletion: (event: FormEvent<HTMLFormElement>) => void;
-  onSetCompletionDate: (date: string) => void;
-  onSetForm: (form: CareTaskForm) => void;
-}) {
-  const historicalTarget = garden.careTasks.find(
-    (task) => task.id === editingCareTaskId,
-  );
-  const hasTaskChanges = Boolean(
-    historicalTarget && (
-      form.type !== historicalTarget.type ||
-      form.dueDate !== historicalTarget.dueDate ||
-      form.note !== historicalTarget.note ||
-      form.targetScope !== historicalTarget.targetScope ||
-      form.growingAreaId !== (historicalTarget.growingAreaId ?? "") ||
-      form.plantingRecordId !== (historicalTarget.plantingRecordId ?? "") ||
-      form.repeatIntervalDays !== String(historicalTarget.repeatIntervalDays ?? "")
-    ),
-  );
-  const today = todayDate();
-  const groups = [
-    ["overdue", "Overdue"],
-    ["due-today", "Due today"],
-    ["upcoming", "Upcoming"],
-  ] as const;
-
-  return (
-    <section className="care-view" aria-labelledby="care-tasks-heading">
-      <div className="care-view-header">
-        <h2 id="care-tasks-heading" tabIndex={-1}>Tasks</h2>
-        <button className="primary-button" onClick={onAdd} type="button">Add task</button>
-      </div>
-      {isFormOpen ? (
-        <FeedbackForm className="care-form" onSubmit={onSave} validate={() => ({
-          "care-task-due-date": !isCalendarDate(form.dueDate) ? "Enter a valid due date." : undefined,
-          "care-task-target": careTargetError(garden, form, historicalTarget),
-        })}>
-          <h3>{editingCareTaskId ? "Edit care task" : "Add care task"}</h3>
-          {locationControl}
-          <div className="field">
-            <label htmlFor="care-task-type">Care type</label>
-            <select
-              id="care-task-type"
-              onChange={(event) => onSetForm({ ...form, type: event.target.value as CareEventType })}
-              value={form.type}
-            >
-              <option value="watering">Watering</option>
-              <option value="fertilizing">Fertilizing</option>
-            </select>
-          </div>
-          <FormField id="care-task-due-date" className="field">
-            <label htmlFor="care-task-due-date">Due date</label>
-            <input
-              autoFocus
-              id="care-task-due-date"
-              onChange={(event) => onSetForm({ ...form, dueDate: event.target.value })}
-              required
-              type="date"
-              value={form.dueDate}
-            />
-          </FormField>
-          <CareTargetSelect
-            form={form}
-            garden={garden}
-            historicalTarget={historicalTarget}
-            onSetForm={onSetForm}
+      {actionError && <p className={styles.alert} role="alert">{actionError}</p>}
+      {view === "tasks" ? <>
+        <CareBoard
+          board={careBoard(records, today, completions)}
+          today={today}
+          focus={focus}
+          scrollTo={allGardens && locationFilter && locationFilter !== "all" ? locationFilter : undefined}
+          onAddTask={() => confirmDiscard(taskDirty, openAddCareTask)}
+          historyHref={viewHref ? `${viewHref}?view=history` : undefined}
+          onHistory={viewHref ? undefined : () => setView("history")}
+          actions={actions}
+          status={status}
+        />
+        {isTaskFormOpen && <CareDialog id="care-task-dialog" title={editingCareTaskId ? "Edit care task" : "Add care task"}
+          onClose={() => confirmDiscard(taskDirty, cancelCareTask, "care-today-heading")}>
+          <CareTaskFormFields
+            garden={taskGarden ?? garden}
+            form={taskForm}
+            editingCareTaskId={editingCareTaskId}
+            locationControl={locationControl("task-location", "Task location", taskOwnerId, Boolean(editingCareTaskId), (id) => {
+              setTaskOwnerId(id); setTaskForm({ ...taskForm, targetScope: id === "all-gardens" ? "all-gardens" : "garden", growingAreaId: "", plantingRecordId: "" }); setActionError("");
+            })}
+            onSave={saveCareTask}
+            onCancel={() => confirmDiscard(taskDirty, cancelCareTask, "care-today-heading")}
+            onSetForm={setTaskForm}
+            extraActions={editingTaskRow && <>
+              <button className="secondary-button" type="button" onClick={() => confirmDiscard(taskDirty, () => { cancelCareTask(); openCompleteCareTask(editingTaskRow); })}>Complete on another date…</button>
+              <button className="remove-button" type="button" onClick={() => removeCareTask(editingTaskRow)}>Delete task</button>
+            </>}
           />
-          <FormField id="care-task-repeat" className="field">
-            <label htmlFor="care-task-repeat">Repeat every whole days (optional)</label>
-            <input
-              id="care-task-repeat"
-              min="1"
-              onChange={(event) => onSetForm({ ...form, repeatIntervalDays: event.target.value })}
-              step="1"
-              type="number"
-              value={form.repeatIntervalDays}
-            />
-          </FormField>
-          <div className="field care-note-field">
-            <label htmlFor="care-task-note">Note (optional)</label>
-            <input
-              id="care-task-note"
-              onChange={(event) => onSetForm({ ...form, note: event.target.value })}
-              value={form.note}
-            />
-          </div>
-          <div className="form-actions">
-            {editingCareTaskId
-              ? hasTaskChanges || !historicalTarget ? <button className="primary-button" type="submit">Save care task</button> : null
-              : <button className="primary-button" type="submit">Add care task</button>}
-            <button className="secondary-button" onClick={onCancel} type="button">Cancel</button>
-          </div>
-        </FeedbackForm>
-      ) : null}
-      {completionRequested ? (
-        <FeedbackForm className="care-completion-form" onSubmit={onSaveCompletion} validate={() => ({ "care-task-completion-date": !isCalendarDate(completionDate) ? "Enter a valid completion date." : undefined })}>
-          <h3>Complete {completingTask?.type === "watering" ? "watering" : completingTask ? "fertilizing" : "care"} task</h3>
-          {completingTask ? <p>{completionLocation} · {careTargetLabel(completingTask, completionLocation)}</p> : <p role="alert">This task is no longer available. Your completion date is kept; cancel to return to the list.</p>}
-          <FormField id="care-task-completion-date" className="field">
-            <label htmlFor="care-task-completion-date">Completion date</label>
-            <input
-              id="care-task-completion-date" autoFocus
-              onChange={(event) => onSetCompletionDate(event.target.value)}
-              required
-              type="date"
-              value={completionDate}
-            />
-          </FormField>
-          <div className="form-actions">
-            <button className="primary-button" type="submit" disabled={!completingTask}>Complete task</button>
-            <button className="secondary-button" onClick={onCancelCompletion} type="button">Cancel</button>
-          </div>
-        </FeedbackForm>
-      ) : null}
-      {groups.map(([status, label]) => {
-        const tasks = rows
-          .filter((row) => careTaskStatus(row.record, today) === status)
-          .sort((left, right) => left.record.dueDate.localeCompare(right.record.dueDate));
-        return (
-          <section className="care-task-group" key={status} aria-labelledby={`care-task-${status}`}>
-            <h3 id={`care-task-${status}`}>{label}</h3>
-            {tasks.length ? (
-              <ul className="care-event-list">
-                {tasks.map((row) => { const task = row.record; return (
-                  <li key={row.key} className={styles.row}>
-                    <div>
-                      <strong>{task.type === "watering" ? "Watering" : "Fertilizing"}</strong>
-                      <p>{row.targetLabel}</p>
-                      <p>Due {task.dueDate}{task.repeatIntervalDays ? ` · Repeats every ${task.repeatIntervalDays} days` : ""}</p>
-                      {task.note && <p className={styles.note}>{task.note}</p>}
-                    </div>
-                    <div className="area-actions">
-                      <button className="primary-button" onClick={() => onComplete(row)} type="button">Complete</button>
-                      <button className="text-button" onClick={() => onEdit(row)} type="button">Edit</button>
-                      <button className="remove-button" onClick={() => onRemove(row)} type="button">Delete</button>
-                    </div>
-                  </li>
-                ); })}
-              </ul>
-            ) : (
-              <p className="section-context">No {label.toLowerCase()} tasks.</p>
-            )}
-          </section>
-        );
-      })}
-    </section>
+        </CareDialog>}
+        {completingCareTaskId && <CareDialog id="care-completion-dialog" title={`Complete ${completionTask ? careTypeLabel(completionTask.type) : "care"} task`}
+          onClose={() => confirmDiscard(completionDate !== completionBaseline, cancelCompletion, "care-today-heading")}>
+          <CareCompletionForm task={completionTask} location={completionGarden?.name} date={completionDate} onSetDate={setCompletionDate}
+            onSave={completeCareTask} onCancel={() => confirmDiscard(completionDate !== completionBaseline, cancelCompletion, "care-today-heading")} />
+        </CareDialog>}
+      </> : <>
+        <CareHistory
+          history={careHistory(records, { today, location: activeLocation, type, limit })}
+          gardens={allGardens ? gardens : []}
+          location={activeLocation}
+          type={type}
+          careHref={viewHref}
+          onBack={viewHref ? undefined : () => setView("tasks")}
+          onLocation={(next) => { setLimit(HISTORY_PAGE); changeLocation(next); }}
+          onType={changeType}
+          onMore={() => setLimit((current) => current + HISTORY_PAGE)}
+          onClear={clearFilters}
+          onAddRecord={() => confirmDiscard(careDirty, openAddCare)}
+          onCorrect={(row) => confirmDiscard(careDirty, () => openEditCare(row))}
+          onDelete={removeCare}
+          status={status}
+        />
+        {isFormOpen && <CareDialog id="care-record-dialog" title={editingCareEventId ? "Edit care event" : "Add care event"}
+          onClose={() => confirmDiscard(careDirty, cancelCare, "care-history-heading")}>
+          <CareRecordFormFields
+            garden={eventGarden ?? garden}
+            form={form}
+            editingCareEventId={editingCareEventId}
+            locationControl={locationControl("record-location", "Record location", eventOwnerId, Boolean(editingCareEventId), (id) => {
+              setEventOwnerId(id); setForm({ ...form, targetScope: id === "all-gardens" ? "all-gardens" : "garden", growingAreaId: "", plantingRecordId: "" }); setActionError("");
+            })}
+            onSave={saveCare}
+            onCancel={() => confirmDiscard(careDirty, cancelCare, "care-history-heading")}
+            onSetForm={setForm}
+          />
+        </CareDialog>}
+      </>}
+    </div>
   );
-}
-
-function CareTargetSelect({
-  form,
-  garden,
-  historicalTarget,
-  onSetForm,
-}: {
-  form: CareTaskForm;
-  garden: Garden;
-  historicalTarget?: CareTask;
-  onSetForm: (form: CareTaskForm) => void;
-}) {
-  return (
-    <FormField id="care-task-target" className="field">
-      <label htmlFor="care-task-target">Target</label>
-      <select
-        id="care-task-target" required
-        onChange={(event) => {
-          const [targetScope, targetId] = event.target.value.split(":");
-          onSetForm({
-            ...form,
-            targetScope: targetScope as CareEventTargetScope,
-            growingAreaId: targetScope === "planting-area" ? targetId : "",
-            plantingRecordId: targetScope === "plant-group" ? targetId : "",
-          });
-        }}
-        value={form.targetScope === "all-gardens" || form.targetScope === "garden" ? form.targetScope : `${form.targetScope}:${form.targetScope === "planting-area" ? form.growingAreaId : form.plantingRecordId}`}
-      >
-        <option value={garden.id === "all-gardens" ? "all-gardens" : "garden"}>{garden.name}</option>
-        <optgroup label="Planting areas">
-          {historicalTarget?.targetScope === "planting-area" &&
-          historicalTarget.growingAreaId === form.growingAreaId &&
-          !garden.growingAreas.some((area) => area.id === form.growingAreaId) ? (
-            <option value={`planting-area:${form.growingAreaId}`}>Former planting area: {historicalTarget.growingAreaName}</option>
-          ) : null}
-          {garden.growingAreas.map((area) => (
-            <option key={area.id} value={`planting-area:${area.id}`}>{area.name}</option>
-          ))}
-        </optgroup>
-        <optgroup label="Plant groups">
-          {historicalTarget?.targetScope === "plant-group" &&
-          historicalTarget.plantingRecordId === form.plantingRecordId &&
-          !garden.plantings.some((planting) => planting.id === form.plantingRecordId) ? (
-            <option value={`plant-group:${form.plantingRecordId}`}>Former plant group: {historicalTarget.plantingRecordName}</option>
-          ) : null}
-          {garden.plantings.map((planting) => (
-            <option key={planting.id} value={`plant-group:${planting.id}`}>{plantGroupDisplayName(planting, garden)}</option>
-          ))}
-        </optgroup>
-      </select>
-    </FormField>
-  );
-}
-
-function CareLog({
-  garden,
-  rows, locationControl,
-  editingCareEventId,
-  form,
-  isFormOpen,
-  onAdd,
-  onCancel,
-  onEdit,
-  onRemove,
-  onSave,
-  onSetForm,
-}: {
-  garden: Garden;
-  rows: CareRow<CareEvent>[];
-  locationControl?: ReactNode;
-  editingCareEventId?: string;
-  form: CareForm;
-  isFormOpen: boolean;
-  onAdd: () => void;
-  onCancel: () => void;
-  onEdit: (event: CareRow<CareEvent>) => void;
-  onRemove: (event: CareRow<CareEvent>) => void;
-  onSave: (event: FormEvent<HTMLFormElement>) => void;
-  onSetForm: (form: CareForm) => void;
-}) {
-  const historicalTarget = garden.careEvents.find(
-    (event) => event.id === editingCareEventId,
-  );
-  const hasEventChanges = Boolean(
-    historicalTarget && (
-      form.type !== historicalTarget.type ||
-      form.date !== historicalTarget.date ||
-      form.note !== historicalTarget.note ||
-      form.targetScope !== historicalTarget.targetScope ||
-      form.growingAreaId !== (historicalTarget.growingAreaId ?? "") ||
-      form.plantingRecordId !== (historicalTarget.plantingRecordId ?? "") ||
-      form.fertilizerProduct !== (historicalTarget.fertilizerProduct ?? "") ||
-      form.fertilizerAmount !== String(historicalTarget.fertilizerAmount ?? "") ||
-      form.fertilizerUnit !== (historicalTarget.fertilizerUnit ?? "")
-    ),
-  );
-  const events = [...rows].sort((left, right) =>
-    right.record.date.localeCompare(left.record.date),
-  );
-
-  return (
-    <section className="care-view care-log" aria-labelledby="care-history-heading">
-      <div className="care-view-header">
-        <h2 id="care-history-heading" tabIndex={-1}>History</h2>
-        <button className="primary-button" onClick={onAdd} type="button">
-          Add care event
-        </button>
-      </div>
-      {isFormOpen ? (
-        <FeedbackForm className="care-form" onSubmit={onSave} validate={() => ({
-          "care-date": !isCalendarDate(form.date) ? "Enter a valid care date." : undefined,
-          "care-target": careTargetError(garden, form, historicalTarget),
-          "fertilizer-amount": form.type === "fertilizing" && form.fertilizerAmount.trim() && Number(form.fertilizerAmount) <= 0 ? "Enter a fertilizer amount greater than zero." : undefined,
-        })}>
-          <h3>{editingCareEventId ? "Edit care event" : "Add care event"}</h3>
-          {locationControl}
-          <div className="field">
-            <label htmlFor="care-type">Care type</label>
-            <select
-              id="care-type"
-              onChange={(event) =>
-                onSetForm({ ...form, type: event.target.value as CareEventType })
-              }
-              value={form.type}
-            >
-              <option value="watering">Watering</option>
-              <option value="fertilizing">Fertilizing</option>
-            </select>
-          </div>
-          <FormField id="care-date" className="field">
-            <label htmlFor="care-date">Date</label>
-            <input
-              autoFocus
-              id="care-date" required
-              onChange={(event) => onSetForm({ ...form, date: event.target.value })}
-              type="date"
-              value={form.date}
-            />
-          </FormField>
-          <FormField id="care-target" className="field">
-            <label htmlFor="care-target">Target</label>
-            <select
-              id="care-target" required
-              onChange={(event) => {
-                const [targetScope, targetId] = event.target.value.split(":");
-                onSetForm({
-                  ...form,
-                  targetScope: targetScope as CareEventTargetScope,
-                  growingAreaId:
-                    targetScope === "planting-area" ? targetId : "",
-                  plantingRecordId:
-                    targetScope === "plant-group" ? targetId : "",
-                });
-              }}
-              value={
-                form.targetScope === "all-gardens" || form.targetScope === "garden"
-                  ? form.targetScope
-                  : `${form.targetScope}:${form.targetScope === "planting-area" ? form.growingAreaId : form.plantingRecordId}`
-              }
-            >
-              <option value={garden.id === "all-gardens" ? "all-gardens" : "garden"}>{garden.name}</option>
-              <optgroup label="Planting areas">
-                {historicalTarget?.targetScope === "planting-area" &&
-                  historicalTarget.growingAreaId === form.growingAreaId &&
-                  !garden.growingAreas.some(
-                    (area) => area.id === form.growingAreaId,
-                  ) ? (
-                  <option value={`planting-area:${form.growingAreaId}`}>
-                    Former planting area: {historicalTarget.growingAreaName}
-                  </option>
-                ) : null}
-                {garden.growingAreas.map((area) => (
-                  <option key={area.id} value={`planting-area:${area.id}`}>
-                    {area.name}
-                  </option>
-                ))}
-              </optgroup>
-              <optgroup label="Plant groups">
-                {historicalTarget?.targetScope === "plant-group" &&
-                  historicalTarget.plantingRecordId === form.plantingRecordId &&
-                  !garden.plantings.some(
-                    (planting) => planting.id === form.plantingRecordId,
-                  ) ? (
-                  <option value={`plant-group:${form.plantingRecordId}`}>
-                    Former plant group: {historicalTarget.plantingRecordName}
-                  </option>
-                ) : null}
-                {garden.plantings.map((planting) => (
-                  <option key={planting.id} value={`plant-group:${planting.id}`}>
-                    {plantGroupDisplayName(planting, garden)}
-                  </option>
-                ))}
-              </optgroup>
-            </select>
-          </FormField>
-          {form.type === "fertilizing" ? (
-            <>
-              <div className="field">
-                <label htmlFor="fertilizer-product">Fertilizer product (optional)</label>
-                <input
-                  id="fertilizer-product"
-                  onChange={(event) => onSetForm({ ...form, fertilizerProduct: event.target.value })}
-                  value={form.fertilizerProduct}
-                />
-              </div>
-              <FormField id="fertilizer-amount" className="field">
-                <label htmlFor="fertilizer-amount">Fertilizer amount (optional)</label>
-                <input
-                  id="fertilizer-amount"
-                  min="0"
-                  onChange={(event) => onSetForm({ ...form, fertilizerAmount: event.target.value })}
-                  step="any"
-                  type="number"
-                  value={form.fertilizerAmount}
-                />
-              </FormField>
-              <div className="field">
-                <label htmlFor="fertilizer-unit">Fertilizer unit (optional)</label>
-                <input
-                  id="fertilizer-unit"
-                  onChange={(event) => onSetForm({ ...form, fertilizerUnit: event.target.value })}
-                  placeholder="e.g. g, tbsp, mL"
-                  value={form.fertilizerUnit}
-                />
-              </div>
-            </>
-          ) : null}
-          <div className="field care-note-field">
-            <label htmlFor="care-note">Note (optional)</label>
-            <input
-              id="care-note"
-              onChange={(event) => onSetForm({ ...form, note: event.target.value })}
-              value={form.note}
-            />
-          </div>
-          <div className="form-actions">
-            {editingCareEventId
-              ? hasEventChanges || !historicalTarget ? <button className="primary-button" type="submit">Save care event</button> : null
-              : <button className="primary-button" type="submit">Add care event</button>}
-            <button className="secondary-button" onClick={onCancel} type="button">
-              Cancel
-            </button>
-          </div>
-        </FeedbackForm>
-      ) : null}
-      {events.length ? (
-        <ul className="care-event-list">
-          {events.map((row) => { const event = row.record; return (
-            <li key={row.key} className={styles.row}>
-              <div>
-                <strong>{event.type === "watering" ? "Watering" : "Fertilizing"}</strong>
-                <p>{row.targetLabel}</p>
-                <p>{event.date}{event.type === "fertilizing" && careFertilizerDetails(event) ? ` · ${careFertilizerDetails(event)}` : ""}</p>
-                {event.note && <p className={styles.note}>{event.note}</p>}
-              </div>
-              <div className="area-actions">
-                <button className="text-button" onClick={() => onEdit(row)} type="button">
-                  Correct record
-                </button>
-                <button className="remove-button" onClick={() => onRemove(row)} type="button">
-                  Delete record
-                </button>
-              </div>
-            </li>
-          ); })}
-        </ul>
-      ) : (
-        <div className="empty-areas">
-          <h3>No care events yet</h3>
-          <p>Record completed watering or fertilizing for {garden.name}.</p>
-        </div>
-      )}
-    </section>
-  );
-}
-
-function careTargetError(garden: Garden, form: CareForm | CareTaskForm, previous?: CareEvent | CareTask) {
-  if (form.targetScope === "planting-area" && !garden.growingAreas.some((area) => area.id === form.growingAreaId) && !(previous?.targetScope === "planting-area" && previous.growingAreaId === form.growingAreaId)) return "Choose an existing planting area.";
-  if (form.targetScope === "plant-group" && !garden.plantings.some((planting) => planting.id === form.plantingRecordId) && !(previous?.targetScope === "plant-group" && previous.plantingRecordId === form.plantingRecordId)) return "Choose an existing plant group.";
-}
-
-function CareLocation({ id, label, gardens, value, editing, onChange }: { id: string; label: string; gardens: Garden[]; value: string; editing: boolean; onChange: (id: string) => void }) {
-  if (editing) return <p>{label}: {gardens.find((garden) => garden.id === value)?.name ?? "Location no longer available"}</p>;
-  return <FormField id={id} className="field"><label htmlFor={id}>{label}</label><select id={id} required value={value} onChange={(event) => onChange(event.target.value)}>
-    <option value="">Choose a location</option>
-    {gardens.map((garden) => <option key={garden.id} value={garden.id}>{garden.name}</option>)}
-  </select></FormField>;
 }
