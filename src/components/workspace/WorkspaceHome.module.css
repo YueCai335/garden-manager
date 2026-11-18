@@ -88,6 +88,7 @@ button.tick:hover .circle { border-color: var(--color-brand); color: var(--color
 .todayLink { justify-self: end; margin-top: 6px; color: var(--color-text); font-size: 14px; font-weight: 500; text-decoration: none; }
 .todayLink:hover { text-decoration: underline; }
 .skeleton { min-height: 180px; border: 1px solid var(--color-line); border-radius: var(--radius-card); background: var(--color-soft); }
+.slowHint { margin: 0 0 16px; color: var(--color-muted); }
 .visuallyHidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .onboarding { max-width: 720px; padding: 24px; border: 1px solid var(--color-line); border-radius: var(--radius-card); background: var(--color-surface); }
 .onboarding h2 { margin-bottom: 16px; }

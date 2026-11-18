@@ -75,7 +75,8 @@ same project and deployment:
   its `WorkspaceProvider` and `AppShell`.
 
 The landing page does not load the workspace provider or call the API. A
-visitor reads it without a backend.
+visitor reads it without a backend. (Amended by ADR-0079: it sends one
+fire-and-forget `GET /health` that wakes the API, and never waits for it.)
 
 Entry points into the app:
 

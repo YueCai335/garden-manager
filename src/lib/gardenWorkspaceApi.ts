@@ -170,10 +170,12 @@ export type PlantKnowledgeAnswer = {
 };
 
 export const WORKSPACE_REQUEST_TIMEOUT_MS = 30_000;
+/** Opening a workspace may wake a sleeping demo server, which takes about a minute (ADR-0079). */
+export const WORKSPACE_LOAD_TIMEOUT_MS = 90_000;
 
-async function request(path: string, options?: RequestInit): Promise<ServerWorkspace> {
+async function request(path: string, options?: RequestInit, timeoutMs = WORKSPACE_REQUEST_TIMEOUT_MS): Promise<ServerWorkspace> {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), WORKSPACE_REQUEST_TIMEOUT_MS);
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const response = await fetch(`${apiBaseUrl}${path}`, {
       ...options,
@@ -197,7 +199,7 @@ async function request(path: string, options?: RequestInit): Promise<ServerWorks
 }
 
 export function loadServerWorkspace(workspaceId: string) {
-  return request(`/workspaces/${encodeURIComponent(workspaceId)}`);
+  return request(`/workspaces/${encodeURIComponent(workspaceId)}`, undefined, WORKSPACE_LOAD_TIMEOUT_MS);
 }
 
 export async function loadRuntimeConfig(): Promise<RuntimeConfig> {

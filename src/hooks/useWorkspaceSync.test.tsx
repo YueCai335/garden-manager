@@ -289,7 +289,7 @@ describe("workspace save recovery", () => {
     expect(result.current.syncState).toBe("empty");
   });
 
-  it("shows slow restoration and allows retry after the 30 second request timeout", async () => {
+  it("waits through a server cold start and allows retry after the 90 second load timeout", async () => {
     vi.useFakeTimers();
     localStorage.setItem(SERVER_WORKSPACE_STORAGE_KEY, "slow");
     const fetch = vi.fn((_url: string, init?: RequestInit) => new Promise<Response>((_resolve, reject) => {
@@ -300,7 +300,10 @@ describe("workspace save recovery", () => {
     await act(async () => vi.advanceTimersByTimeAsync(5000));
     expect(result.current.syncState).toBe("loading");
     expect(result.current.isSlow).toBe(true);
-    await act(async () => vi.advanceTimersByTimeAsync(25000));
+    // A sleeping Render service takes about a minute to start (ADR-0079).
+    await act(async () => vi.advanceTimersByTimeAsync(55_000));
+    expect(result.current.syncState).toBe("loading");
+    await act(async () => vi.advanceTimersByTimeAsync(30_000));
     expect(result.current.syncState).toBe("load-error");
     expect(result.current.isBusy).toBe(false);
     fetch.mockResolvedValueOnce(response({ ...createDemoGardenWorkspace(), workspaceId: "slow", revision: 1 }));

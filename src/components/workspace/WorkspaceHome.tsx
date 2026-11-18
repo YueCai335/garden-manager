@@ -8,6 +8,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { careEventForTask, completeCareTask, undoCareTaskCompletion, updateCareOwner } from "@/lib/careViews";
 import { createId, isDemoGardenId, plantDisplayName, todayDate, type Garden } from "@/lib/gardenWorkspace";
 import { homeTasks, type HomeCompletion, type HomeTaskRow } from "@/lib/homeTasks";
+import { SLOW_LOAD_HINT, useSlowLoadHint } from "@/hooks/useSlowLoadHint";
 import { gardenPath } from "@/lib/workspaceRoutes";
 import { OverviewNoteEntry } from "./AppShell";
 import { useWorkspace } from "./WorkspaceProvider";
@@ -83,10 +84,11 @@ function CareToDo({ tasks, onTick, onUntick }: { tasks: HomeTasks; onTick: (row:
 }
 
 export function WorkspaceHomeLoading() {
+  const slow = useSlowLoadHint();
   return <div className={`${styles.home} ${styles.overview}`} role="status">
-    <span className={styles.visuallyHidden}>Loading your gardens…</span>
-    <div className={`${styles.gallery} ${styles.gardens}`} aria-hidden="true">
-      <div className={styles.grid}><div className={styles.skeleton} /><div className={styles.skeleton} /></div>
+    <div className={`${styles.gallery} ${styles.gardens}`}>
+      {slow ? <p className={styles.slowHint}>{SLOW_LOAD_HINT}</p> : <span className={styles.visuallyHidden}>Loading your gardens…</span>}
+      <div className={styles.grid} aria-hidden="true"><div className={styles.skeleton} /><div className={styles.skeleton} /></div>
     </div>
   </div>;
 }
