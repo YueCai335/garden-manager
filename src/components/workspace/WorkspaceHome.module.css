@@ -1,113 +1,340 @@
+/*
+ * The Gardens home (ADR-0081). Values follow the approved mockup in
+ * design/garden-home-redesign/gardens.css. Two stacked blocks on one grid: the gardens,
+ * standing half on a textured band, then Today beside the AI Garden Notes.
+ */
 .home {
+  --overlap: 164px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
   width: min(var(--content-width), calc(100% - var(--workspace-gutters)));
-  margin: 20px auto 48px;
+  margin: 32px auto 72px;
   min-width: 0;
 }
-/* Narrow screens read Today, then the gardens, then the note box; the header "+ Note" stays in reach. */
-.overview { display: grid; grid-template-areas: "today" "gallery" "note"; align-items: start; gap: 24px; }
-.todayArea { grid-area: today; min-width: 0; }
-.noteArea { grid-area: note; display: grid; gap: 12px; min-width: 0; }
-.gallery { grid-area: gallery; min-width: 0; }
-.overviewNoteForm { display: grid; gap: 8px; }
-.overviewNoteForm .noteField textarea { min-height: 88px; }
-.home h2, .note h2 { font-size: 20px; line-height: 1.3; font-weight: 650; margin: 0; }
-.gardens { container-type: inline-size; min-width: 0; }
-.sectionHeading { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin-bottom: 16px; }
-.gardenCount { color: var(--color-muted); font-weight: 400; }
-.grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
-@container (min-width: 340px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@container (min-width: 780px) { .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-.card {
+.home :focus-visible { outline: 2px solid var(--color-brand); outline-offset: 2px; }
+.band :focus-visible { outline-color: #fff; }
+.kicker { margin: 0; font-size: 12.5px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: var(--color-brand); }
+.hint { color: var(--color-muted); font-size: 14px; line-height: 1.45; }
+.home > .hint { margin: 0; }
+.visuallyHidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* ---------- Dark textured bands: real photos on --color-band-base, never a flat block ---------- */
+.band {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: 20px;
+  color: #fff;
+  background-color: var(--color-band-base);
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+.band::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; }
+/* Leaf ridges: the landing hero's photo. */
+.ridges { background-image: url("/landing/hero-still.webp"); background-position: center; }
+.ridges::before { background: linear-gradient(100deg, rgb(9 24 15 / 78%), rgb(9 24 15 / 46%) 55%, rgb(9 24 15 / 58%)); }
+/* Leaf veins: the landing footer's photo. Only the note block uses it. */
+.veins { background-image: url("/landing/footer-still.webp"); background-position: 30% 60%; }
+.veins::before { background: linear-gradient(165deg, rgb(9 24 15 / 84%), rgb(9 24 15 / 56%) 55%, rgb(9 24 15 / 34%)); }
+.bandKicker { margin: 0; font-size: 12.5px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; }
+
+/* ---------- Buttons ---------- */
+.buttonWhite, .buttonGhost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 46px;
+  padding: 0 22px;
+  border-radius: var(--radius-pill);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.buttonWhite { border: 0; background: #fff; color: var(--color-band-ink); }
+.buttonWhite:hover:not(:disabled) { background: #ececea; }
+.buttonWhite:disabled { background: rgb(255 255 255 / 72%); color: rgb(14 29 20 / 72%); cursor: default; }
+.buttonWhite:active:not(:disabled) { transform: translateY(1px); }
+.buttonGhost {
+  border: 1px solid rgb(255 255 255 / 20%);
+  background: rgb(255 255 255 / 7%);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  color: #fff;
+  font-weight: 500;
+}
+.buttonGhost:hover { background: rgb(255 255 255 / 14%); }
+.textLink { font-size: 14px; font-weight: 600; text-decoration: none; white-space: nowrap; color: var(--color-brand); }
+.textLink:hover { text-decoration: underline; }
+
+/* ---------- 1. Gardens: a band that only carries the title; the cards stand half on it ---------- */
+.gardens { display: flex; flex-direction: column; min-width: 0; }
+.gardensBand {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px 32px;
+  padding: 44px 48px calc(40px + var(--overlap));
+}
+.bandIntro { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+/* .band raises these above the app shell's heading and field colours (globals.css, legacy-workspace.css). */
+.band .bandHeadline {
+  margin: 0;
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: clamp(2.25rem, 4.2vw, 3.5rem);
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: -0.035em;
+}
+.bandSummary { min-height: 1.55em; margin: 0; font-size: 17px; line-height: 1.55; color: rgb(255 255 255 / 88%); }
+.gardenGrid {
+  position: relative;
+  z-index: 1;
   display: grid;
-  grid-template-rows: auto 1fr;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 20px;
+  margin: calc(-1 * var(--overlap)) 48px 0;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
   overflow: hidden;
   border: 1px solid var(--color-line);
-  border-radius: var(--radius-card);
+  border-radius: 16px;
   background: var(--color-surface);
   color: var(--color-text);
   text-decoration: none;
-  transition: border-color 140ms, box-shadow 140ms;
+  box-shadow: 0 34px 54px -34px rgb(10 26 17 / 70%);
+  transition: border-color 140ms, box-shadow 140ms, transform 140ms;
 }
-.card:hover { border-color: var(--color-input-border); box-shadow: 0 6px 20px -10px rgb(24 24 26 / 25%); }
-.card:active { box-shadow: inset 0 0 0 1px var(--color-input-border); }
+.card:hover { border-color: var(--color-brand); box-shadow: 0 38px 60px -32px rgb(10 26 17 / 80%); transform: translateY(-2px); }
+/* The same pale dot grid as the Garden Plan canvas (ADR-0073 S4). The thumbnail carries no text. */
 .map {
   position: relative;
-  display: grid;
-  place-items: center;
-  height: 148px;
+  flex: 1 1 auto;
+  min-height: 168px;
   overflow: hidden;
-  /* The same pale dot grid as the Garden Plan canvas (ADR-0073 S4). */
   background-color: var(--color-plan-outside);
   background-image: radial-gradient(var(--color-plan-dot) 1px, transparent 1.2px);
   background-size: 14px 14px;
   border-bottom: 1px solid var(--color-line);
-  color: var(--color-muted);
-  font-size: 14px;
-  text-align: center;
 }
 .map > div { position: absolute; inset: 0; }
-.cardDetails { display: grid; gap: 4px; align-content: start; padding: 10px 12px; overflow-wrap: anywhere; }
-.cardDetails h3 { display: flex; justify-content: space-between; gap: 6px; margin: 0; font-size: 17px; line-height: 1.3; font-weight: 650; }
-.cardDetails h3 > span:first-child { min-width: 0; }
-.cardArrow { flex: none; color: var(--color-muted); }
-.metadata { display: grid; align-content: start; gap: 2px; color: var(--color-muted); font-size: 13px; }
-.demoLink { margin-top: 12px; }
-.tasks { min-width: 0; padding: 20px; border: 1px solid var(--color-line); border-radius: var(--radius-card); background: var(--color-surface); }
-.hint { color: var(--color-muted); font-size: 14px; line-height: 1.45; }
-.tasks .hint { margin: 4px 0 16px; }
-.overdue { color: var(--color-error); }
-/* "Care to do" (ADR-0073): Overdue, Today, and Coming up, split by hairlines; ticked rows stay, struck through. */
-.today { display: grid; padding: 16px 20px 14px; border: 1px solid var(--color-line); border-radius: var(--radius-card); background: var(--color-surface); }
-.todayHeader { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 2px; }
-.todayCount { flex: none; color: var(--color-muted); font-size: 13px; font-variant-numeric: tabular-nums; }
-.taskGroup { padding: 10px 0 2px; }
-.taskGroup + .taskGroup { border-top: 1px solid var(--color-line); }
-.taskGroup h3 { margin: 0; font-size: 13px; line-height: 1.4; font-weight: 500; color: var(--color-muted); }
-.taskGroup h3.late { color: var(--color-error); }
-.taskList { margin: 0; padding: 0; list-style: none; }
-.taskEmpty { margin: 6px 0 8px; color: var(--color-muted); font-size: 14px; }
-.task { display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 14px; line-height: 1.35; }
-.careDot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--color-care-watering); }
-.careDot[data-type="fertilizing"] { background: var(--color-care-fertilizing); }
-.taskText { display: grid; flex: 1; min-width: 0; padding: 4px 0; overflow-wrap: anywhere; }
-.taskText small { color: var(--color-muted); font-size: 12px; }
-.task[data-upcoming] .taskText > span { color: var(--color-muted); }
-.task[data-done] .taskText { color: var(--color-input-border); text-decoration: line-through; }
-.task[data-done] .taskText small { color: inherit; }
-.task[data-done] .careDot { opacity: 0.4; }
-.when { flex: none; color: var(--color-muted); font-size: 12px; }
-/* A 44 px target around a 22 px circle. */
-.tick { display: grid; flex: none; place-items: center; width: 44px; height: 44px; margin: -2px -11px -2px 0; padding: 0; border: 0; background: none; color: var(--color-brand); cursor: pointer; }
-span.tick { cursor: default; }
-.circle { display: grid; place-items: center; width: 22px; height: 22px; border: 1.5px solid var(--color-input-border); border-radius: 50%; color: transparent; transition: background-color 140ms, border-color 140ms; }
-button.tick:hover .circle { border-color: var(--color-brand); color: var(--color-brand); }
-.tick[aria-checked="true"] .circle, span.tick .circle { border-color: var(--color-brand); background: var(--color-brand); color: var(--color-surface); }
-.tick:focus-visible { outline: none; }
-.tick:focus-visible .circle { outline: 2px solid var(--color-brand); outline-offset: 2px; }
-.todayLink { justify-self: end; margin-top: 6px; color: var(--color-text); font-size: 14px; font-weight: 500; text-decoration: none; }
-.todayLink:hover { text-decoration: underline; }
-.skeleton { min-height: 180px; border: 1px solid var(--color-line); border-radius: var(--radius-card); background: var(--color-soft); }
-.visuallyHidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-.onboarding { max-width: 720px; padding: 24px; border: 1px solid var(--color-line); border-radius: var(--radius-card); background: var(--color-surface); }
-.onboarding h2 { margin-bottom: 16px; }
-.onboarding .setupForm { margin-top: 0; }
-.onboardingActions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
-@media (min-width: 1024px) {
-  .overview { grid-template-areas: "gallery today" "gallery note"; grid-template-columns: minmax(0, 1fr) 300px; grid-template-rows: auto 1fr; }
+.mapEmpty { position: absolute; inset: 0; display: grid; place-items: center; padding: 16px; font-size: 14px; color: var(--color-muted); text-align: center; }
+.cardBody { position: relative; display: grid; gap: 6px; padding: 18px 20px 20px; }
+.cardName { margin: 0; font-size: 18px; font-weight: 650; line-height: 1.3; color: var(--color-heading); overflow-wrap: anywhere; }
+.cardMeta { font-size: 13.5px; line-height: 1.4; color: var(--color-muted); }
+.cardPlants { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin-top: 8px; font-size: 13.5px; }
+.cardPlant { display: inline-flex; align-items: center; gap: 7px; min-width: 0; overflow-wrap: anywhere; }
+.cardPlant i { flex: none; width: 11px; height: 11px; border: 1.5px solid; border-radius: 50%; }
+.cardMore { color: var(--color-muted); }
+/* Today's count sits on the line between the plan and the text. */
+.chip {
+  position: absolute;
+  top: -13px;
+  right: 16px;
+  padding: 4px 11px;
+  border-radius: var(--radius-pill);
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  background: var(--color-soft);
+  color: var(--color-muted);
+  box-shadow: 0 0 0 3px var(--color-surface);
 }
-@media (min-width: 768px) { .home { margin-top: 24px; } }
-@media (max-width: 767px) { .map { height: 112px; } .tasks { padding: 14px; } .today { padding: 12px 14px; } }
+.chip[data-open] { background: var(--color-brand); color: #fff; }
 
+.newCard {
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 10px;
+  min-width: 0;
+  min-height: 240px;
+  padding: 24px;
+  border: 1.5px dashed var(--color-neutral-dash);
+  border-radius: 16px;
+  background: var(--color-surface);
+  text-decoration: none;
+  text-align: center;
+  transition: border-color 140ms;
+}
+.newCard:hover { border-color: var(--color-brand); }
+.newMark { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 50%; background: var(--color-brand); color: #fff; box-shadow: 0 10px 20px -10px rgb(20 40 29 / 70%); }
+.newTitle { margin-top: 4px; font-size: 17px; font-weight: 650; color: var(--color-heading); }
+.newSub { max-width: 22ch; font-size: 13.5px; line-height: 1.45; color: var(--color-muted); }
+
+/* No gardens yet: the existing "Create your garden" form, or a Create garden link, where the cards would be. */
+.firstGarden {
+  grid-column: span 2;
+  display: grid;
+  align-content: start;
+  gap: 16px;
+  padding: 28px;
+  border: 1px solid var(--color-line);
+  border-radius: 16px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: 0 34px 54px -34px rgb(10 26 17 / 70%);
+}
+.firstGarden .onboarding { max-width: none; padding: 0; border: 0; border-radius: 0; background: none; }
+.firstGarden .onboarding h2 { font-size: 20px; color: var(--color-heading); }
+.firstGarden .onboarding form { margin-top: 20px; }
+/* The status line stays in the page so later messages are announced; empty, it takes no space. */
+.firstGarden .onboarding > p:empty { min-height: 0; margin: 0; }
+.firstText { margin: 0; font-size: 15px; line-height: 1.5; color: var(--color-muted); }
+.skeleton { min-height: 280px; border: 1px solid var(--color-line); border-radius: 16px; background: var(--color-soft); }
+
+/* ---------- 2. Lower row: Today beside the AI Garden Notes, two separate blocks ---------- */
+.lower { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); gap: 24px; align-items: stretch; }
+
+/* Today: what is due today and nothing later. */
+.todayCard { display: flex; gap: 8px; min-width: 0; padding: 14px; border: 1px solid var(--color-line); border-radius: 20px; background: var(--color-surface); }
+.dateTile { flex: 0 0 172px; display: flex; flex-direction: column; padding: 22px 20px 20px; border-radius: 14px; background-size: 1300px auto; background-position: 46% 42%; }
+.dateBig { margin: 10px 0 2px; font-family: var(--font-display); font-size: 76px; font-weight: 500; line-height: 0.9; letter-spacing: -0.04em; }
+.dateMonth { margin: 0; font-size: 15.5px; font-weight: 500; color: rgb(255 255 255 / 88%); }
+.progress { display: flex; flex-direction: column; gap: 10px; margin-top: auto; padding-top: 24px; }
+.progressTrack { height: 6px; border-radius: var(--radius-pill); background: rgb(255 255 255 / 20%); }
+/* Lime has one meaning in the app: today's care progress (ADR-0080, ADR-0081). */
+.progressFill { height: 6px; border-radius: var(--radius-pill); background: var(--color-accent-lime); box-shadow: 0 0 14px rgb(214 255 92 / 45%); transition: width 350ms ease; }
+.progressLabel { font-size: 14px; font-weight: 500; }
+.todayBody { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; padding: 12px 14px 2px 18px; }
+.todayHead { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--color-line); }
+.todayHeading { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.todayTitle { margin: 0; font-size: 26px; font-weight: 500; line-height: 1.1; letter-spacing: -0.02em; color: var(--color-heading); }
+.todayHead .textLink { display: inline-flex; align-items: center; min-height: 44px; }
+.todayEmpty { margin: 0; padding: 18px 0; font-size: 15px; line-height: 1.5; color: var(--color-muted); }
+.todayMore { display: flex; align-items: center; min-height: 48px; border-top: 1px solid var(--color-line); }
+.todayMore .textLink { display: inline-flex; align-items: center; min-height: 44px; }
+
+.rows { margin: 0; padding: 0; list-style: none; }
+.row { display: flex; align-items: center; gap: 12px; min-height: 50px; border-top: 1px solid var(--color-line); }
+.row:first-child { border-top: 0; }
+/* A 44 px target around a 22 px circle. */
+.tick { flex: none; display: grid; place-items: center; width: 44px; height: 44px; margin: 0 -8px 0 -11px; padding: 0; border: 0; background: none; cursor: pointer; }
+span.tick { cursor: default; }
+.tickCircle { display: grid; place-items: center; width: 22px; height: 22px; border: 1.5px solid var(--color-ink-subtle); border-radius: 50%; color: transparent; transition: background-color 140ms, border-color 140ms; }
+.row:not([data-done]) button.tick:hover .tickCircle { border-color: var(--color-brand); color: var(--color-brand); }
+.row[data-done] .tickCircle { border-color: var(--color-brand); background: var(--color-brand); color: #fff; }
+.tick:focus-visible { outline: none; }
+.tick:focus-visible .tickCircle { outline: 2px solid var(--color-brand); outline-offset: 2px; }
+.careIcon { flex: none; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--color-soft); color: var(--color-care-watering); }
+.careIcon[data-type="fertilizing"] { color: var(--color-care-fertilizing); }
+.rowText { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 10px; padding: 8px 0; overflow-wrap: anywhere; }
+.rowTitle { font-size: 15px; font-weight: 600; line-height: 1.35; }
+.rowSub { font-size: 13.5px; line-height: 1.4; color: var(--color-muted); }
+.row[data-done] .rowTitle { text-decoration: line-through; font-weight: 500; color: var(--color-done-ink); }
+.row[data-done] .careIcon { opacity: 0.55; }
+.lateChip { flex: none; padding: 3px 10px; border-radius: var(--radius-pill); background: var(--color-error-surface); color: var(--color-error); font-size: 12.5px; font-weight: 600; white-space: nowrap; }
+.lateInline { display: none; flex-basis: 100%; font-size: 13px; font-weight: 600; color: var(--color-error); }
+
+/* AI Garden Notes: a ruled sheet of paper lying on the leaf-vein band. The paper is the textarea. */
+.noteBlock { display: flex; flex-direction: column; gap: 18px; min-width: 0; padding: 26px 28px 24px; }
+.noteHead { display: flex; align-items: center; gap: 14px; }
+.noteIcon { flex: none; display: grid; place-items: center; width: 34px; height: 34px; border: 1px solid rgb(255 255 255 / 20%); border-radius: 50%; background: rgb(255 255 255 / 14%); }
+.band .noteTitle { margin: 0; color: #fff; font-family: var(--font-display); font-size: 28px; font-weight: 500; line-height: 1.05; letter-spacing: -0.03em; }
+.noteHint { margin-left: auto; font-size: 13.5px; font-weight: 500; color: rgb(255 255 255 / 88%); text-align: right; }
+.noteForm { flex: 1 1 auto; display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.paper { flex: 1 1 auto; display: flex; padding: 8px 26px 4px; border-radius: 12px; background: var(--color-surface); box-shadow: 0 30px 50px -30px rgb(0 0 0 / 85%); }
+.paper:focus-within { outline: 2px solid #fff; outline-offset: 2px; }
+.paper .ruled {
+  display: block;
+  width: 100%;
+  min-height: 136px;
+  padding: 0 2px;
+  border: 0;
+  outline: 0;
+  resize: none;
+  font: inherit;
+  font-size: 16px;
+  line-height: 34px;
+  color: var(--color-text);
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent repeating-linear-gradient(to bottom, transparent 0 33px, var(--color-line) 33px 34px) local;
+}
+.paper .ruled:focus-visible { outline: 0; }
+.ruled::placeholder { color: var(--color-muted); opacity: 1; }
+.noteError { margin: -6px 0 0; font-size: 13.5px; font-weight: 600; color: var(--color-error-on-dark); }
+.noteFoot { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; }
+.noteFootHint { max-width: 30ch; font-size: 13.5px; line-height: 1.45; color: rgb(255 255 255 / 88%); }
+.noteActions { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 18px; margin-left: auto; }
+.noteTextButton { min-height: 44px; padding: 0 6px; border: 0; background: none; color: #fff; font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; }
+.noteTextButton:hover { text-decoration: underline; }
+
+/* ---------- Responsive ---------- */
+@media (max-width: 1099px) {
+  .gardenGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .lower { grid-template-columns: minmax(0, 1fr); }
+}
+/* Phones: the garden cards turn into short rows so Today stays within reach. */
+@media (max-width: 699px) {
+  .home { --overlap: 56px; gap: 20px; margin-top: 16px; }
+  .gardensBand { padding: 28px 20px calc(24px + var(--overlap)); }
+  .bandIntro { gap: 12px; }
+  .bandSummary { font-size: 15.5px; }
+  .gardenGrid { grid-template-columns: minmax(0, 1fr); gap: 12px; margin-inline: 12px; }
+  .card { flex-direction: row; }
+  .map { flex: 0 0 124px; min-height: 104px; border-bottom: 0; border-right: 1px solid var(--color-line); }
+  .cardBody { flex: 1 1 auto; min-width: 0; align-content: center; gap: 4px; padding: 14px 16px; }
+  .cardName { font-size: 17px; }
+  .cardPlants { display: none; }
+  .chip { position: static; justify-self: start; margin-top: 6px; box-shadow: none; }
+  .newCard { grid-template-columns: auto 1fr; place-content: center start; justify-items: start; align-items: center; gap: 14px; min-height: 72px; padding: 12px 16px; text-align: left; }
+  .newMark { width: 40px; height: 40px; }
+  .newTitle { margin-top: 0; }
+  .newSub { display: none; }
+  .firstGarden { grid-column: auto; padding: 20px; }
+  .skeleton { min-height: 104px; }
+  .todayCard { flex-direction: column; gap: 4px; padding: 10px; }
+  .dateTile { flex: none; display: grid; grid-template-columns: auto 1fr; grid-template-areas: "big day" "big month" "progress progress"; align-items: center; gap: 2px 14px; padding: 14px 16px 16px; background-size: cover; }
+  .dateDay { grid-area: day; align-self: end; }
+  .dateBig { grid-area: big; margin: 0; font-size: 50px; }
+  .dateMonth { grid-area: month; align-self: start; }
+  .progress { grid-area: progress; margin: 0; padding-top: 12px; gap: 8px; }
+  .todayBody { padding: 12px 8px 2px 10px; }
+  .todayTitle { font-size: 22px; }
+  .row { min-height: 56px; }
+  .rowSub { flex-basis: 100%; }
+  .lateChip { display: none; }
+  .lateInline { display: block; }
+  .noteBlock { padding: 22px 18px 18px; }
+  .noteHead { flex-wrap: wrap; }
+  .band .noteTitle { font-size: 24px; }
+  .noteHint { flex-basis: 100%; margin-left: 0; text-align: left; }
+  .paper { padding: 6px 16px 2px; }
+  .noteActions { margin-left: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .card, .newCard, .tickCircle, .progressFill { transition: none; }
+  .card:hover { transform: none; }
+  .buttonWhite:active:not(:disabled) { transform: none; }
+}
+
+/* ---------- Garden setup and "Garden not found" (GardenWorkspace.tsx) ---------- */
+.onboarding { max-width: 720px; padding: 24px; border: 1px solid var(--color-line); border-radius: var(--radius-card); background: var(--color-surface); }
+.onboarding h2 { margin: 0 0 16px; font-size: 20px; line-height: 1.3; font-weight: 650; }
+.onboarding .setupForm { margin-top: 0; }
+.onboardingActions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; margin-top: 16px; }
+
+/* ---------- The /notes page's single-note entry (WorkspaceNoteEntry.tsx) ---------- */
 .note { min-width: 0; padding: 24px; border: 1px solid var(--color-line); border-radius: var(--radius-card); background: var(--color-surface); }
+.note h2 { font-size: 20px; line-height: 1.3; font-weight: 650; margin: 0; }
 .note form { max-width: 880px; }
 .noteField { display: grid; gap: 8px; min-width: 0; }
 .noteField label { font-weight: 600; font-size: 14px; }
 .noteField textarea, .noteField select { width: 100%; min-width: 0; border: 1px solid var(--color-input-border); border-radius: var(--radius-control); padding: 10px 12px; background: var(--color-surface); color: var(--color-text); }
 .noteField textarea { min-height: 112px; resize: vertical; }
-.count, .hint, .mode { font-size: 14px; line-height: 1.45; color: var(--color-muted); }
+.count, .mode { font-size: 14px; line-height: 1.45; color: var(--color-muted); }
+.note .hint { margin: 12px 0; }
 .count { text-align: right; }
-.hint { margin: 12px 0; }
 .mode { margin: 12px 0 0; }
 .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
 @media (max-width: 767px) { .note { padding: 16px; } }

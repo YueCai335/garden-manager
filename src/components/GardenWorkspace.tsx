@@ -4,6 +4,8 @@ import { FeedbackForm, FormField } from "@/components/forms/FormFeedback";
 import { Button, ButtonLink } from "@/components/ui/Button";
 
 import { FormEvent, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { usePageActionsSlot } from "@/components/workspace/AppShell";
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -12,7 +14,7 @@ import { useWorkspace, useWorkspaceDraft, useUnsavedDraft } from "@/components/w
 import { WorkspaceHome, WorkspaceHomeLoading } from "@/components/workspace/WorkspaceHome";
 import { ServerWorkspaceUnavailable } from "@/components/workspace/ServerWorkspaceUnavailable";
 import homeStyles from "@/components/workspace/WorkspaceHome.module.css";
-import { gardenPath, areaPath, areaEditPath, planLevelPath, careLocationPath, careView, seasonGardenPath, workspaceHomePath, type WorkspaceRoute } from "@/lib/workspaceRoutes";
+import { gardenPath, areaPath, areaEditPath, planLevelPath, careHistoryPath, careHistoryType, careLocationPath, careView, seasonGardenPath, workspaceHomePath, type WorkspaceRoute } from "@/lib/workspaceRoutes";
 
 import { PlantingAreaInspector } from "@/components/PlantingAreaInspector";
 import { areaKindDefaults, defaultAreaName, findFreeAreaSpot, resizeLayout, type AreaSpot } from "@/lib/areaPlacement";
@@ -79,8 +81,9 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
   const {
     workspace, setWorkspace, message, setMessage, isSynced, isLoaded, storageSource,
     serverWorkspaceId, serverLoadFailed, clearBrowserWorkspace,
-    areaDrafts, plantDrafts, setPlantDrafts, setAreaDraft, discardDrafts, planHistory,
+    areaDrafts, plantDrafts, setPlantDrafts, setAreaDraft, discardDrafts, planHistory, syncState,
   } = useWorkspace();
+  const pageActionsSlot = usePageActionsSlot();
   // The guided first-run setup in progress, if any (ADR-0072, phase G6).
   const [setup, setSetup] = useGuidedSetup();
   const page = {
@@ -132,12 +135,12 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
   const guide = route.module === "plan" && garden && setup?.gardenId === garden.id ? setup : undefined;
   /**
    * The plan level (ADR-0075): the guided setup's step decides it while the
-   * guide runs; otherwise ?level= does, defaulting to Plants (or Planting
-   * areas while the garden has none). Ready views the plan without a level.
+   * guide runs; otherwise ?level= does, defaulting to Garden, or to Plants
+   * when the address opens an area (ADR-0078). Ready views the plan without a level.
    */
   const planLevel: PlanLevel | undefined = route.module !== "plan" || !garden ? undefined
     : guide ? setupLevel(guide.step)
-    : planLevelFromSearch(search.get("level"), garden.growingAreas.length);
+    : planLevelFromSearch(search.get("level"), search.has("area"));
   const changePlanLevel = (next: PlanLevel) => {
     if (!garden) return;
     // The open or selected area carries over to the other area-based level.
@@ -235,11 +238,14 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
           if (JSON.stringify(latest) !== JSON.stringify(workspace)) throw new Error("Your workspace changed. Cancel and review the deletion again.");
           if (!clearBrowserWorkspace()) throw new Error("The workspace could not be removed from this device. Keep this page open and try again.");
           garden.growingAreas.forEach((area) => discardDrafts(areaDraftKey(garden.id, area.id)));
+          if (setup?.gardenId === garden.id) setSetup(undefined);
           navigate(workspaceHomePath);
           setMessage("Create a garden when you are ready.");
           return;
         }
         setWorkspace(next);
+        // A garden deleted during its guided setup ends that setup too.
+        if (setup?.gardenId === garden.id) setSetup(undefined);
         navigate(workspaceHomePath);
         garden.growingAreas.forEach((area) => discardDrafts(areaDraftKey(garden.id, area.id)));
         setMessage(`${garden.name} deleted.`);
@@ -250,6 +256,26 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
   const confirmDiscard = (dirty: boolean, onConfirm: () => void) => {
     if (!dirty) { onConfirm(); return; }
     setPendingConfirmation({ message: "Your changes have not been submitted. Discard them or keep editing.", confirmLabel: "Discard changes", cancelLabel: "Keep editing", onConfirm });
+  };
+
+  /**
+   * Done ends editing the whole garden, on any level (ADR-0078). Plan edits
+   * already save as they happen, so Done only checks for unsubmitted drafts,
+   * then returns to Gardens and reports the save state honestly.
+   */
+  const finishEditing = () => {
+    if (!garden) return;
+    const keys = garden.growingAreas.map((area) => areaDraftKey(garden.id, area.id));
+    const dirty = keys.some((key) => {
+      const draft = areaDrafts[key];
+      return Boolean(draft && !sameAreaProperties(draft.values, draft.baseline)) || plantDraftIsDirty(plantDrafts[key]);
+    });
+    confirmDiscard(dirty, () => {
+      if (dirty) keys.forEach((key) => discardDrafts(key));
+      const failed = syncState === "error" || syncState === "local-error" || syncState === "conflict";
+      setMessage(failed ? `Some changes to ${garden.name} are not saved yet. Check the status at the top of the page.` : `${garden.name} saved.`);
+      navigate(workspaceHomePath);
+    });
   };
   const loadDemo = () => {
     const applyDemo = () => {
@@ -554,6 +580,16 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
   const hasSizedArea = Boolean(garden?.growingAreas.some((area) => area.layout));
   const levelBar = !guide && planLevel ? <PlanLevelBar level={planLevel} onLevel={changePlanLevel}
     disabled={hasSizedArea ? {} : { plants: "Add a planting area first." }} /> : undefined;
+  // The title row's actions (ADR-0078): Done on every level, Delete garden on the Garden level.
+  // The guided setup keeps its own Continue and Finish instead of Done, and its Garden size
+  // step, the setup's Garden level, keeps Delete garden so an unfinished garden can go (ADR-0078, amended).
+  const deleteGardenButton = <Button variant="danger" shape="pill" onClick={deleteGarden}>Delete garden</Button>;
+  const gardenActions = !garden || route.module !== "plan" ? null
+    : guide ? (guide.step === "size" ? deleteGardenButton : null)
+    : <>
+      {planLevel === "garden" && deleteGardenButton}
+      <Button variant="primary" shape="pill" aria-label={`Done editing ${garden.name}`} onClick={finishEditing}>Done</Button>
+    </>;
 
   const archivePlantingRecord = (plantingRecordId: string) => {
     updateGarden("archive a planting record", (current) => archivePlanting(current, plantingRecordId));
@@ -731,24 +767,25 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
       ) : page.name === "home" ? (
           <WorkspaceHome onOpenDemoGarden={openDemoGarden} />
         ) : page.name === "careLog" && careGarden ? (
-          <section className="operations-content">
-
-            <CareWorkspace
-              garden={careGarden}
-              gardens={workspace?.gardens}
-              locationFilter={search.get("location") ?? "all"}
-              onLocationChange={(location) => navigate(`/care?${new URLSearchParams({ view: page.view, location })}`)}
-              initialView={page.view}
-              viewHref="/care"
-              onMessage={setMessage}
-              onUpdateRecords={updateCareRecords}
-            />
-            <Status message={message} />
-            {workspace && <details><summary>Care by location</summary><CareHub gardens={workspace.gardens} workspace={workspace} /></details>}
-          </section>
+          <CareWorkspace
+            garden={careGarden}
+            gardens={workspace?.gardens}
+            locationFilter={search.get("location") ?? "all"}
+            typeFilter={careHistoryType(search.get("type"))}
+            // History filters replace the URL, so the back button leaves History instead of undoing filters (ADR-0080).
+            onLocationChange={(location) => navigate(careHistoryPath(location, careHistoryType(search.get("type"))), true)}
+            onTypeChange={(type) => navigate(careHistoryPath(search.get("location") ?? "all", type), true)}
+            onClearFilters={() => navigate(careHistoryPath("all", "all"), true)}
+            initialView={page.view}
+            viewHref="/care"
+            message={message}
+            onMessage={setMessage}
+            onUpdateRecords={updateCareRecords}
+          />
         ) : garden ? (
           <section className="operations-content management-content">
             <>
+              {gardenActions && (pageActionsSlot ? createPortal(gardenActions, pageActionsSlot) : <div className="plan-page-actions">{gardenActions}</div>)}
               {editingLayoutId && !editingArea && <p role="alert">Planting area not found in this garden. <Link href={gardenPath(garden.id)}>Back to plan</Link></p>}
               <EditorWorkbench single={setupStep === "size" || setupStep === "ready" || planLevel === "garden"}>{(mode) => {
                 // An unsaved properties draft keeps its editor open when the layout narrows.
@@ -839,7 +876,6 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
                   onResizeArea={resizeArea}
                   onEditLayout={openAreaInspector}
                   onExitArea={closeAreaInspector}
-                  onDeleteGarden={deleteGarden}
                   onGardenNameChange={(name) => updateGarden("rename the garden", (current) => ({ ...current, name }))}
                   onPlacementChange={updateAreaPlacement}
                   onPlanChange={updatePlan}
@@ -893,8 +929,7 @@ function Onboarding({
           <h2 id="create-garden-heading">Create your garden</h2>
         </div>
         <FeedbackForm className="garden-form" onSubmit={onCreate}>
-          <label htmlFor="garden-name">Garden name</label>
-          <FormField id="garden-name" className="inline-form-row">
+          <FormField id="garden-name" label="Garden name">
             <input
               id="garden-name"
               onChange={(event) => onChangeName(event.target.value)}
@@ -902,14 +937,16 @@ function Onboarding({
               required
               value={newGardenName}
             />
+          </FormField>
+          <div className={homeStyles.onboardingActions}>
             <button className="primary-button" type="submit">
               Create garden
             </button>
-          </FormField>
+            <button className="text-button" onClick={onLoadDemo} type="button">
+              Load demo garden
+            </button>
+          </div>
         </FeedbackForm>
-        <button className="text-button" onClick={onLoadDemo} type="button">
-          Load demo garden
-        </button>
         <Status message={message} />
       </section>
   );
@@ -950,56 +987,6 @@ function GardenSetupStart({
         <Status message={message} />
       </section>
     </div>
-  );
-}
-
-function CareHub({
-  gardens,
-  workspace,
-}: {
-  gardens: Garden[];
-  workspace: GardenWorkspace;
-}) {
-  return (
-    <section className="operations-content season-planner" aria-labelledby="care-hub-heading">
-      <div className="section-header">
-        <div>
-          <p className="section-eyebrow">Garden operations</p>
-          <h2 id="care-hub-heading">Care locations</h2>
-          <p className="section-context">Manage care for all gardens or one location.</p>
-        </div>
-      </div>
-      <div className="season-planner-grid">
-        <article className="season-area-card">
-          <div>
-            <p className="section-eyebrow">Workspace-wide records</p>
-            <h3>All gardens</h3>
-          </div>
-          <p className="season-history">
-            <strong>{workspace.careTasks.length} open {workspace.careTasks.length === 1 ? "task" : "tasks"}</strong>
-            <span>{workspace.careEvents.length} completed care {workspace.careEvents.length === 1 ? "record" : "records"}</span>
-          </p>
-          <Link className="secondary-button" href="/care?view=tasks&location=all-gardens#care-workspace-heading">Open care</Link>
-        </article>
-        {gardens.map((candidate) => {
-          const openTasks = candidate.careTasks.length;
-          const recentEvents = candidate.careEvents.length;
-          return (
-            <article className="season-area-card" key={candidate.id}>
-              <div>
-                <p className="section-eyebrow">Garden</p>
-                <h3>{candidate.name}</h3>
-              </div>
-              <p className="season-history">
-                <strong>{openTasks} open {openTasks === 1 ? "task" : "tasks"}</strong>
-                <span>{recentEvents} completed care {recentEvents === 1 ? "record" : "records"}</span>
-              </p>
-              <Link className="secondary-button" href={`${careLocationPath(candidate.id, "tasks")}#care-workspace-heading`}>Open care</Link>
-            </article>
-          );
-        })}
-      </div>
-    </section>
   );
 }
 

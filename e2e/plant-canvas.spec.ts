@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { metresToCanvas } from "../src/lib/canvasViewport";
 import { areaFocusViewport, createSampleGardenWorkspace, type GardenWorkspace, type PlantAllocation } from "../src/lib/gardenWorkspace";
-import { planCanvas, planSurface, planTransform } from "./areaHelpers";
+import { goToLevel, planCanvas, planSurface, planTransform } from "./areaHelpers";
 import { openWorkspace } from "./workspace";
 
 // ADR-0072, phase G3: plants are placed, filled, and moved on the Garden Plan canvas itself.
@@ -21,6 +21,8 @@ for (const width of [390, 1440]) {
     await page.getByRole("button", { name: "Load demo garden" }).click();
     await page.getByRole("link", { name: "Open Demo Garden" }).click();
     await expect(page.getByText("All changes saved", { exact: true })).toBeVisible();
+    // A garden opens on Garden (ADR-0078); plants are placed on Plants.
+    await goToLevel(page, "Plants");
     await page.getByRole("link", { name: "Edit Sample raised bed" }).click();
     await expect(page.getByRole("button", { name: "Whole garden" })).toBeVisible();
 

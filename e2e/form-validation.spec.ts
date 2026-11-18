@@ -35,9 +35,9 @@ test("invalid garden properties keep input, describe each error, and focus the f
     const garden = (await response.json()).gardens[0];
     return `${garden.name} ${garden.plan.widthMeters}`;
   }).toBe("Valid garden 9");
-  // The Garden level is in the address, so the reload returns to it.
+  // The Garden level is the bare plan address (ADR-0078), so the reload returns to it.
   await page.reload();
-  await expect(page).toHaveURL(/level=garden$/);
+  await expect(page).toHaveURL(/\/plan$/);
   await expect(name).toHaveValue("Valid garden");
   await expect(width).toHaveValue("9");
 });

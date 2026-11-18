@@ -141,6 +141,8 @@ for (const width of [390, 1440]) {
     await page.getByRole("button", { name: "Load demo garden" }).click();
     await page.getByRole("link", { name: "Open Demo Garden" }).click();
     await expect(page.getByText("All changes saved", { exact: true })).toBeVisible();
+    // A garden opens on Garden (ADR-0078); areas zoom on Plants.
+    await goToLevel(page, "Plants");
     const surface = planSurface(page);
     const canvas = surface.locator(".konvajs-content");
     await expectFittedCanvas(canvas);
@@ -173,7 +175,7 @@ for (const width of [390, 1440]) {
     await page.keyboard.press("Escape");
     await expect(surface).not.toHaveAttribute("data-focused-area", /.+/);
     await expect(back).toBeHidden();
-    await expect(page).toHaveURL(/\/plan$/);
+    await expect(page).toHaveURL(/\?level=plants$/);
     await expect(page.locator(`#area-link-${area.id}`)).toBeFocused();
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
   });
@@ -201,7 +203,7 @@ test("a rotated area stays zoomed after reload and Escape returns to the whole g
   await page.screenshot({ path: testInfo.outputPath("area-zoom-rotated.png") });
   await page.getByRole("heading", { name: "Plants", exact: true }).focus();
   await page.keyboard.press("Escape");
-  await expect(page).toHaveURL(/\/plan$/);
+  await expect(page).toHaveURL(/\?level=plants$/);
   await expect(surface).not.toHaveAttribute("data-focused-area", /.+/);
   await expect(page.locator("#area-link-demo-raised-bed")).toBeFocused();
 });

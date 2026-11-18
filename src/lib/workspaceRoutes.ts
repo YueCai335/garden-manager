@@ -8,10 +8,11 @@ export const gardenPath = (gardenId: string) => `/gardens/${encodeURIComponent(g
 export const areaPath = (gardenId: string, areaId: string) => `${gardenPath(gardenId)}?${new URLSearchParams({ area: areaId })}`;
 /**
  * A plan level, with an optional area: open on Plants, selected on Planting
- * areas. Plants with no area is the bare plan address, its default level.
+ * areas. Garden is the bare plan address, its default level (ADR-0078).
  */
 export const planLevelPath = (gardenId: string, level: "garden" | "areas" | "plants", areaId?: string) =>
-  level === "plants" ? areaId ? areaPath(gardenId, areaId) : gardenPath(gardenId)
+  level === "garden" ? gardenPath(gardenId)
+    : level === "plants" && areaId ? areaPath(gardenId, areaId)
     : `${gardenPath(gardenId)}?${new URLSearchParams({ level, ...(areaId ? { area: areaId } : {}) })}`;
 /** The area's properties editor on Planting areas; on narrower layouts it opens over the plan. */
 export const areaEditPath = (gardenId: string, areaId: string) => `${gardenPath(gardenId)}?${new URLSearchParams({ level: "areas", area: areaId, edit: "area" })}`;
@@ -19,6 +20,11 @@ export const careView = (value: string | null): "tasks" | "history" => value ===
 /** Care filtered to one location: a garden ID, or "all-gardens" for workspace-wide records. */
 export const careLocationPath = (location: string, view?: "tasks" | "history") =>
   `/care?${new URLSearchParams({ ...(view ? { view } : {}), location })}`;
+/** History's care-type filter from `?type=`; anything else means every type (ADR-0080). */
+export const careHistoryType = (value: string | null): "all" | "watering" | "fertilizing" => value === "watering" || value === "fertilizing" ? value : "all";
+/** History with its filters; "all" leaves a filter out of the address. */
+export const careHistoryPath = (location: string, type: "all" | "watering" | "fertilizing") =>
+  `/care?${new URLSearchParams({ view: "history", ...(location !== "all" ? { location } : {}), ...(type !== "all" ? { type } : {}) })}`;
 /** Next Season filtered to one garden. */
 export const seasonGardenPath = (gardenId: string) => `/season?${new URLSearchParams({ garden: gardenId })}`;
 /**

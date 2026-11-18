@@ -166,10 +166,10 @@ describe("workspace routes and persistent provider", () => {
     resetTestRouter("/care?view=invalid&location=demo-garden");
     const user = userEvent.setup();
     render(<GardenWorkspace />);
-    await screen.findByRole("heading", { name: "Tasks" });
+    await screen.findByRole("region", { name: /today\.$/ });
     expect(location.search).toBe("?view=tasks&location=demo-garden");
     await user.click(screen.getByRole("link", { name: "History" }));
-    await user.click(screen.getByRole("button", { name: "Add care event" }));
+    await user.click(screen.getByRole("button", { name: "Add record" }));
     fireEvent.change(screen.getByLabelText("Note (optional)"), { target: { value: "Keep this care draft" } });
     await user.click(screen.getByRole("link", { name: "Plant Guide" }));
     act(() => testRouter.back());

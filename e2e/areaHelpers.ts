@@ -7,6 +7,9 @@ export async function goToLevel(page: Page, name: "Garden" | "Planting areas" | 
   const level = page.getByRole("navigation", { name: "Garden Plan levels" }).getByRole("button", { name, exact: true });
   await level.click();
   await expect(level).toHaveAttribute("aria-current", "true");
+  // Leaving Garden reframes the canvas with a short zoom; wait two frames for it to start, then for it to end.
+  await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+  await expect(planSurface(page)).toHaveAttribute("data-zooming", "false");
 }
 
 /**
