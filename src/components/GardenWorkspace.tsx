@@ -14,7 +14,7 @@ import { useWorkspace, useWorkspaceDraft, useUnsavedDraft } from "@/components/w
 import { WorkspaceHome, WorkspaceHomeLoading } from "@/components/workspace/WorkspaceHome";
 import { ServerWorkspaceUnavailable } from "@/components/workspace/ServerWorkspaceUnavailable";
 import homeStyles from "@/components/workspace/WorkspaceHome.module.css";
-import { gardenPath, areaPath, areaEditPath, planLevelPath, careLocationPath, careView, seasonGardenPath, workspaceHomePath, type WorkspaceRoute } from "@/lib/workspaceRoutes";
+import { gardenPath, areaPath, areaEditPath, planLevelPath, careHistoryPath, careHistoryType, careLocationPath, careView, seasonGardenPath, workspaceHomePath, type WorkspaceRoute } from "@/lib/workspaceRoutes";
 
 import { PlantingAreaInspector } from "@/components/PlantingAreaInspector";
 import { areaKindDefaults, defaultAreaName, findFreeAreaSpot, resizeLayout, type AreaSpot } from "@/lib/areaPlacement";
@@ -767,21 +767,21 @@ export function GardenWorkspace({ route }: { route: WorkspaceRoute }) {
       ) : page.name === "home" ? (
           <WorkspaceHome onOpenDemoGarden={openDemoGarden} />
         ) : page.name === "careLog" && careGarden ? (
-          <section className="operations-content">
-
-            <CareWorkspace
-              garden={careGarden}
-              gardens={workspace?.gardens}
-              locationFilter={search.get("location") ?? "all"}
-              onLocationChange={(location) => navigate(`/care?${new URLSearchParams({ view: page.view, location })}`)}
-              initialView={page.view}
-              viewHref="/care"
-              onMessage={setMessage}
-              onUpdateRecords={updateCareRecords}
-            />
-            <Status message={message} />
-            {workspace && <details><summary>Care by location</summary><CareHub gardens={workspace.gardens} workspace={workspace} /></details>}
-          </section>
+          <CareWorkspace
+            garden={careGarden}
+            gardens={workspace?.gardens}
+            locationFilter={search.get("location") ?? "all"}
+            typeFilter={careHistoryType(search.get("type"))}
+            // History filters replace the URL, so the back button leaves History instead of undoing filters (ADR-0080).
+            onLocationChange={(location) => navigate(careHistoryPath(location, careHistoryType(search.get("type"))), true)}
+            onTypeChange={(type) => navigate(careHistoryPath(search.get("location") ?? "all", type), true)}
+            onClearFilters={() => navigate(careHistoryPath("all", "all"), true)}
+            initialView={page.view}
+            viewHref="/care"
+            message={message}
+            onMessage={setMessage}
+            onUpdateRecords={updateCareRecords}
+          />
         ) : garden ? (
           <section className="operations-content management-content">
             <>
@@ -987,56 +987,6 @@ function GardenSetupStart({
         <Status message={message} />
       </section>
     </div>
-  );
-}
-
-function CareHub({
-  gardens,
-  workspace,
-}: {
-  gardens: Garden[];
-  workspace: GardenWorkspace;
-}) {
-  return (
-    <section className="operations-content season-planner" aria-labelledby="care-hub-heading">
-      <div className="section-header">
-        <div>
-          <p className="section-eyebrow">Garden operations</p>
-          <h2 id="care-hub-heading">Care locations</h2>
-          <p className="section-context">Manage care for all gardens or one location.</p>
-        </div>
-      </div>
-      <div className="season-planner-grid">
-        <article className="season-area-card">
-          <div>
-            <p className="section-eyebrow">Workspace-wide records</p>
-            <h3>All gardens</h3>
-          </div>
-          <p className="season-history">
-            <strong>{workspace.careTasks.length} open {workspace.careTasks.length === 1 ? "task" : "tasks"}</strong>
-            <span>{workspace.careEvents.length} completed care {workspace.careEvents.length === 1 ? "record" : "records"}</span>
-          </p>
-          <Link className="secondary-button" href="/care?view=tasks&location=all-gardens#care-workspace-heading">Open care</Link>
-        </article>
-        {gardens.map((candidate) => {
-          const openTasks = candidate.careTasks.length;
-          const recentEvents = candidate.careEvents.length;
-          return (
-            <article className="season-area-card" key={candidate.id}>
-              <div>
-                <p className="section-eyebrow">Garden</p>
-                <h3>{candidate.name}</h3>
-              </div>
-              <p className="season-history">
-                <strong>{openTasks} open {openTasks === 1 ? "task" : "tasks"}</strong>
-                <span>{recentEvents} completed care {recentEvents === 1 ? "record" : "records"}</span>
-              </p>
-              <Link className="secondary-button" href={`${careLocationPath(candidate.id, "tasks")}#care-workspace-heading`}>Open care</Link>
-            </article>
-          );
-        })}
-      </div>
-    </section>
   );
 }
 

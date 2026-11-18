@@ -88,4 +88,9 @@ describe("ADR-0080 and ADR-0081 band tokens", () => {
     expect(contrast(token("--color-band-ink"), "#ffffff")).toBeGreaterThanOrEqual(4.5);
     expect(contrast(token("--color-error-on-dark"), token("--color-band-base"))).toBeGreaterThanOrEqual(4.5);
   });
+
+  it("keeps the Care type icons on the glass card visible (ADR-0080)", () => {
+    expect({ watering: token("--color-care-watering-on-dark"), fertilizing: token("--color-care-fertilizing-on-dark") }).toEqual({ watering: "#b4e1ee", fertilizing: "#edd08f" });
+    for (const name of ["--color-care-watering-on-dark", "--color-care-fertilizing-on-dark"]) expect(contrast(token(name), token("--color-band-base"))).toBeGreaterThanOrEqual(3);
+  });
 });

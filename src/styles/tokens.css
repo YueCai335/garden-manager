@@ -55,6 +55,9 @@
   --color-band-ink: #0e1d14;
   --color-accent-lime: #d6ff5c;
   --color-error-on-dark: #ffc9c2;
+  /* Care type icons on the glass card inside a band (ADR-0080). */
+  --color-care-watering-on-dark: #b4e1ee;
+  --color-care-fertilizing-on-dark: #edd08f;
   --color-done-ink: #6b6b6f;
   /* The New garden card's dashed outline: a neutral between --color-line and --color-ink-subtle. */
   --color-neutral-dash: #bdbdba;
