@@ -28,15 +28,8 @@
 .page .blockTitle { font-size: clamp(1.5rem, 2.6vw, 2rem); font-weight: 500; line-height: 1.1; letter-spacing: -0.02em; color: var(--color-heading); }
 
 /* ---------- The textured band (Today) and the slim strip (History) ---------- */
-.band {
-  position: relative;
-  isolation: isolate;
-  overflow: hidden;
-  border-radius: 20px;
-  color: #fff;
-  background: var(--color-band-base) url("/landing/hero-still.webp") center / cover no-repeat;
-}
-.band::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; background: linear-gradient(100deg, rgb(9 24 15 / 78%), rgb(9 24 15 / 46%) 55%, rgb(9 24 15 / 58%)); }
+.band { composes: band ridges from "../../styles/bands.module.css"; border-radius: 20px; }
+.band::before { background: linear-gradient(100deg, rgb(9 24 15 / 78%), rgb(9 24 15 / 46%) 55%, rgb(9 24 15 / 58%)); }
 .page .band :focus-visible { outline-color: #fff; }
 .today { padding: 48px; display: flex; flex-wrap: wrap; gap: 40px; align-items: stretch; }
 .bandMain { flex: 1 1 360px; min-width: 0; display: flex; flex-direction: column; justify-content: space-between; gap: 32px; }

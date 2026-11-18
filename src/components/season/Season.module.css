@@ -1,41 +1,214 @@
-.planner :global(.season-planner-grid) {
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
-  align-items: start;
-}
-.planner :global(.season-area-card),
-.planner :global(.season-garden-section) {
+/*
+ * Next Season (ADR-0082): a rotation sheet with a dark 2027 lane, a small map beside it, and
+ * Plan with AI in a drawer. Values follow the approved mockup in design/season-redesign/season.css;
+ * colours come from tokens.css. Selectors start at .planner so the older app-shell form styles
+ * do not reach into the sheet.
+ */
+.planner {
+  --lane: 356px;
+  --lift: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  width: min(var(--content-width), calc(100% - var(--workspace-gutters)));
+  margin: 36px auto 96px;
   min-width: 0;
-  overflow-wrap: anywhere;
 }
-.planner :global(.season-garden-heading) {
-  flex-wrap: wrap;
+.planner :is(p, ul, ol, h2, h3) { margin: 0; }
+.planner svg { display: block; }
+.planner :focus-visible { outline: 2px solid var(--color-brand); outline-offset: 2px; }
+.planner .onDark :focus-visible { outline-color: #fff; }
+
+/* ---------- Dark textured surfaces: the shared photos (src/styles/bands.module.css) and this page's overlays ---------- */
+.band { composes: band from "../../styles/bands.module.css"; }
+.ridges { composes: ridges from "../../styles/bands.module.css"; }
+.ridges::before { background: linear-gradient(170deg, rgb(9 24 15 / 62%), rgb(9 24 15 / 40%) 45%, rgb(9 24 15 / 66%)); }
+.veins { composes: veins from "../../styles/bands.module.css"; }
+.veins::before { background: linear-gradient(165deg, rgb(9 24 15 / 62%), rgb(9 24 15 / 44%) 55%, rgb(9 24 15 / 30%)); }
+
+/* ---------- Garden switch (in the page title row) ---------- */
+.gardenSwitch { display: flex; flex-wrap: wrap; gap: 4px; max-width: 100%; padding: 5px; border: 1px solid var(--color-line); border-radius: var(--radius-pill); background: var(--color-surface); }
+.gardenSwitch a { display: inline-flex; align-items: center; gap: 10px; min-height: 42px; padding: 0 16px 0 18px; border-radius: var(--radius-pill); color: var(--color-text); font-size: 15px; font-weight: 500; white-space: nowrap; text-decoration: none; }
+.gardenSwitch a:hover { background: var(--color-soft); }
+.gardenSwitch a[aria-current="page"] { background: var(--color-brand); color: #fff; font-weight: 600; }
+.gardenSwitch a:focus-visible { outline: 2px solid var(--color-brand); outline-offset: 2px; }
+.count { padding: 2px 8px; border-radius: var(--radius-pill); background: var(--color-soft); color: var(--color-muted); font-size: 12.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.gardenSwitch a[aria-current="page"] .count { background: rgb(255 255 255 / 18%); color: #fff; }
+
+/* ---------- Layout: the rotation sheet beside the map ---------- */
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 372px; gap: 28px calc(28px + var(--lift)); align-items: start; }
+
+/* The sheet: one row per planting area. Columns read left to right: area, grown before, rest from, next year. */
+.sheet { position: relative; isolation: isolate; min-width: 0; margin: var(--lift) 0; border: 1px solid var(--color-line); border-radius: 20px; background: var(--color-surface); }
+/* The next-year lane is one dark slab laid over the right end of the sheet. It stands out above, below and to the right. */
+.lane { position: absolute; z-index: 0; top: calc(-1 * var(--lift)); bottom: calc(-1 * var(--lift)); right: calc(-1 * var(--lift)); width: calc(var(--lane) + var(--lift)); border-radius: 20px; background-size: auto max(112%, 880px); background-position: 58% 50%; box-shadow: 0 36px 60px -34px rgb(10 26 17 / 80%); }
+.row, .head { position: relative; z-index: 1; display: grid; grid-template-columns: 212px minmax(0, 1fr) 148px var(--lane); }
+.head { grid-template-rows: 1fr auto; }
+.gardenTitle { grid-column: 1 / span 3; display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px 20px; padding: 28px 28px 30px; min-width: 0; }
+.gardenText { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.gardenText h2 { font-size: 26px; font-weight: 500; line-height: 1.1; letter-spacing: -0.02em; color: var(--color-heading); overflow-wrap: anywhere; }
+.gardenText p { font-size: 14.5px; color: var(--color-muted); }
+.columnLabel { padding: 0 12px 12px 60px; font-size: 12.5px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: var(--color-muted); border-bottom: 1px solid var(--color-line); }
+.columnLabel + .columnLabel { padding-left: 12px; }
+
+/* ---------- Buttons ---------- */
+.aiButton, .whiteButton, .ghostButton { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 20px; border-radius: var(--radius-pill); font: inherit; font-size: 15px; font-weight: 600; white-space: nowrap; cursor: pointer; }
+.aiButton { min-height: 42px; padding: 0 18px 0 14px; border: 1px solid var(--color-brand); background: none; color: var(--color-brand); }
+.aiButton:hover { background: var(--color-brand); color: #fff; }
+.whiteButton { border: 0; background: #fff; color: var(--color-band-ink); }
+.whiteButton:hover { background: #ececea; }
+.ghostButton { border: 1px solid rgb(255 255 255 / 24%); background: rgb(255 255 255 / 9%); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); color: #fff; font-weight: 500; }
+.ghostButton:hover { background: rgb(255 255 255 / 16%); }
+.whiteButton:active, .aiButton:active { transform: translateY(1px); }
+.textLink { color: var(--color-brand); font-size: 14px; font-weight: 600; white-space: nowrap; text-decoration: none; }
+.textLink:hover { text-decoration: underline; }
+
+/* ---------- The lane's head: year and progress ---------- */
+.laneHead { grid-column: 4; grid-row: 1 / span 2; display: flex; flex-direction: column; padding: 16px 24px 24px; color: #fff; border-bottom: 1px solid rgb(255 255 255 / 18%); }
+.laneKicker { font-size: 12.5px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; }
+.planner .laneYear { margin-top: 10px; font-family: var(--font-display); font-size: 76px; font-weight: 500; line-height: 0.9; letter-spacing: -0.04em; }
+.progress { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
+.track { height: 6px; border-radius: var(--radius-pill); background: rgb(255 255 255 / 20%); }
+.fill { height: 6px; border-radius: var(--radius-pill); background: #fff; transition: width 0.35s ease; }
+.progressLine { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; font-size: 14px; font-weight: 500; }
+
+/* ---------- Rows ---------- */
+.row > div { min-width: 0; padding: 15px 12px; border-bottom: 1px solid var(--color-line); }
+.row:last-child > div { border-bottom: 0; }
+.row:last-child > .areaCell { border-bottom-left-radius: 20px; }
+.row[data-hot] > div:not(.nextCell) { background: #fafaf9; }
+.row > .areaCell { display: flex; align-items: flex-start; gap: 12px; padding-left: 24px; }
+.number { flex: none; display: grid; place-items: center; width: 24px; height: 24px; margin-top: -1px; border-radius: 50%; background: var(--color-soft); color: var(--color-muted); font-size: 12.5px; font-weight: 600; font-variant-numeric: tabular-nums; transition: background-color 0.14s, color 0.14s; }
+.row[data-hot] .number { background: var(--color-brand); color: #fff; }
+.areaName { font-size: 15.5px; font-weight: 600; line-height: 1.35; overflow-wrap: anywhere; }
+.areaKind { margin-top: 2px; font-size: 13px; color: var(--color-muted); }
+.row > .beforeCell { display: flex; flex-direction: column; gap: 6px; padding-top: 16px; }
+.seasonLine { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; font-size: 14.5px; }
+.year { flex: none; width: 34px; font-size: 12.5px; font-weight: 600; color: var(--color-muted); font-variant-numeric: tabular-nums; }
+.none { font-size: 14px; color: var(--color-muted); }
+.plant { display: inline-flex; align-items: center; gap: 7px; min-width: 0; overflow-wrap: anywhere; }
+.plant i { flex: none; width: 11px; height: 11px; border-radius: 50%; border: 1.5px solid; }
+.row > .restCell { display: flex; flex-wrap: wrap; align-content: flex-start; align-items: center; gap: 6px; }
+.family { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px 3px 8px; border-radius: var(--radius-pill); background: var(--color-soft); font-size: 12.5px; font-weight: 600; white-space: nowrap; }
+.family svg { color: var(--color-muted); }
+
+/* Next-year cells, on the dark lane. */
+.row > .nextCell { display: flex; flex-direction: column; gap: 8px; padding: 12px 24px; color: #fff; border-bottom-color: rgb(255 255 255 / 14%); }
+.row[data-hot] > .nextCell { background: rgb(255 255 255 / 7%); }
+.picks { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-height: 30px; }
+.pickGroup { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; }
+.pick { display: inline-flex; align-items: center; gap: 8px; min-height: 30px; padding-left: 2px; font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
+.pick i { flex: none; width: 12px; height: 12px; border-radius: 50%; box-shadow: 0 0 0 1.5px rgb(255 255 255 / 70%); }
+.remove, .addMore { position: relative; flex: none; display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border-radius: 50%; border: 0; background: none; color: inherit; cursor: pointer; }
+/* The 28px circles reach a 44px target through an invisible ring. */
+.remove::after, .addMore::after { content: ""; position: absolute; inset: -8px; }
+/* Remove shows when the row is pointed at or focused; touch screens always show it. */
+/* 10px after the remove circle keeps its 44px ring clear of the next button's ring. */
+.remove { margin: 0 10px 0 -4px; opacity: 0; }
+.row:hover .remove, .row:focus-within .remove { opacity: 0.6; }
+.row .remove:hover, .row .remove:focus-visible { opacity: 1; background: rgb(255 255 255 / 14%); }
+@media (hover: none) { .remove { opacity: 0.6; } }
+.addMore { border: 1px dashed rgb(255 255 255 / 55%); }
+.addMore:hover { background: rgb(255 255 255 / 14%); border-style: solid; }
+.choose { display: inline-flex; align-items: center; gap: 8px; min-height: 34px; padding: 0 16px 0 12px; border-radius: var(--radius-pill); border: 1px dashed rgb(255 255 255 / 60%); background: none; color: inherit; font: inherit; font-size: 14.5px; font-weight: 500; cursor: pointer; }
+.choose:hover { background: rgb(255 255 255 / 12%); border-style: solid; }
+.again { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px 3px 8px; border-radius: var(--radius-pill); background: var(--color-warning-surface); color: var(--color-warning); font-size: 12.5px; font-weight: 600; white-space: nowrap; }
+.pair { font-size: 13px; line-height: 1.45; }
+.pair a { color: inherit; font-weight: 600; white-space: nowrap; }
+
+/* Choosing a plant: the field opens in place, white on the lane. */
+.chooser { display: flex; flex-direction: column; gap: 10px; padding: 6px 0 4px; }
+.chooser label { font-size: 13px; font-weight: 600; }
+.planner .chooser :is(input, select) { width: 100%; min-height: 44px; padding: 0 14px; border: 0; border-radius: 10px; background: #fff; color: var(--color-text); font: inherit; font-size: 15.5px; box-shadow: 0 16px 30px -18px rgb(0 0 0 / 80%); }
+.chooser input::placeholder { color: var(--color-muted); opacity: 1; }
+.chooserFamily { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: 13.5px; }
+.chooserFamily button { padding: 0; border: 0; background: none; color: inherit; font: inherit; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.chooserHint { font-size: 13.5px; line-height: 1.45; }
+.chooserError { font-size: 13.5px; font-weight: 600; color: var(--color-error-on-dark); }
+.chooserActions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 2px; }
+.chooserActions button { min-height: 40px; padding: 0 16px; font-size: 14.5px; }
+
+/* ---------- The next-year map ---------- */
+.side { position: sticky; top: calc(var(--app-header-height, 0px) + 24px); display: flex; flex-direction: column; gap: 20px; margin-top: var(--lift); min-width: 0; }
+.mapCard { border: 1px solid var(--color-line); border-radius: 20px; background: var(--color-surface); overflow: hidden; }
+.mapHead { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 12px; padding: 20px 22px 14px; }
+.mapHead h2 { font-size: 18px; font-weight: 650; color: var(--color-heading); }
+.mapCanvas { border-block: 1px solid var(--color-line); background-color: var(--color-plan-outside); background-image: radial-gradient(var(--color-plan-dot) 1px, transparent 1.2px); background-size: 14px 14px; padding: 10px; }
+.mapCanvas svg { width: 100%; height: auto; max-height: 420px; }
+.bed { fill: var(--color-plan-bed); stroke: var(--color-plan-bed-edge); transition: stroke 0.14s; }
+.bedOpen { fill: #fff; stroke: var(--color-ink-subtle); }
+.bedGroup { cursor: pointer; }
+.bedGroup[data-hot] .bed { stroke: var(--color-brand); }
+/* Areas carry their row number, so the map reads without pointing. */
+.bedNumber { font-weight: 600; fill: var(--color-muted); transition: fill 0.14s; }
+.bedGroup[data-hot] .bedNumber { fill: var(--color-brand); }
+.mapFoot { display: flex; flex-direction: column; gap: 12px; padding: 16px 22px 18px; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13.5px; }
+.mapEmpty, .mapNote { font-size: 14px; line-height: 1.5; color: var(--color-muted); }
+.mapNote { font-size: 13px; }
+.key { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--color-muted); }
+.key span { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
+.key i { flex: none; width: 16px; height: 11px; border-radius: 3px; border: 1.5px solid var(--color-plan-bed-edge); background: var(--color-plan-bed); }
+.key i.keyOpen { border: 1.3px dashed var(--color-ink-subtle); background: #fff; }
+
+/* ---------- Plan with AI: a drawer that opens only when asked ---------- */
+.drawer { position: fixed; inset: 0 0 0 auto; width: min(480px, 100vw); max-width: 100vw; height: 100dvh; max-height: 100dvh; margin: 0; padding: 0; border: 0; background: var(--color-surface); color: var(--color-text); box-shadow: -30px 0 60px -30px rgb(0 0 0 / 55%); }
+.drawer[open] { display: flex; flex-direction: column; animation: drawer-in 0.2s ease-out; }
+.drawer::backdrop { background: rgb(14 20 16 / 45%); }
+.drawer :focus-visible { outline: 2px solid var(--color-brand); outline-offset: 2px; }
+.drawer .onDark :focus-visible { outline-color: #fff; }
+@keyframes drawer-in { from { transform: translateX(32px); opacity: 0; } }
+.drawerHead { flex: none; display: flex; flex-direction: column; gap: 10px; padding: 26px 28px 24px; }
+.drawerKicker { font-size: 12.5px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; overflow-wrap: anywhere; }
+.drawerTop { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.drawerTop h2 { margin: 0; font-family: var(--font-display); font-size: 30px; font-weight: 500; line-height: 1.05; letter-spacing: -0.03em; color: #fff; }
+.drawerHead p { margin: 0; max-width: 40ch; font-size: 14.5px; line-height: 1.5; color: rgb(255 255 255 / 90%); }
+.drawerClose { flex: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; border: 1px solid rgb(255 255 255 / 24%); background: rgb(255 255 255 / 9%); color: #fff; cursor: pointer; }
+.drawerClose:hover { background: rgb(255 255 255 / 16%); }
+.drawerBody { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+
+/* ---------- Empty states ---------- */
+.blank { display: grid; justify-items: start; gap: 12px; padding: 40px 28px; border: 1px solid var(--color-line); border-radius: 20px; background: var(--color-surface); }
+.blank h2 { font-size: 20px; font-weight: 650; color: var(--color-heading); }
+.blank p { max-width: 48ch; font-size: 15px; line-height: 1.55; color: var(--color-muted); }
+
+/* ---------- Responsive ---------- */
+/*
+ * The sheet's fixed columns (212 + 148 + 356px) plus the 372px map need about 1360px before the
+ * history column has room, so the map moves below the sheet until then.
+ */
+@media (max-width: 1359px) {
+  .layout { grid-template-columns: minmax(0, 1fr); }
+  .side { position: static; margin-top: 0; }
 }
-.planner :global(.season-garden-preview) {
-  min-width: 0;
-  width: 100%;
+/* Narrow screens: the lane cannot run down the side. Its head becomes a dark tile and each area becomes a short card. */
+@media (max-width: 899px) {
+  .planner { margin-top: 24px; }
+  .gardenSwitch { flex-wrap: nowrap; overflow-x: auto; }
+  .sheet { display: flex; flex-direction: column; gap: 12px; margin: 0; border: 0; background: none; }
+  .lane { display: none; }
+  .head { display: flex; flex-direction: column; gap: 12px; }
+  .gardenTitle { order: 2; padding: 8px 4px 0; }
+  .columnLabel { display: none; }
+  .laneHead { order: 1; padding: 20px 22px 22px; border: 0; border-radius: 20px; background: var(--color-band-base) url("/landing/hero-still.webp") center / cover; box-shadow: inset 0 0 0 999px rgb(9 24 15 / 45%); }
+  .planner .laneYear { font-size: 64px; }
+  .row { display: flex; flex-direction: column; border: 1px solid var(--color-line); border-radius: 16px; background: var(--color-surface); overflow: hidden; }
+  .row > div, .row > .areaCell, .row > .nextCell, .row:last-child > div { padding: 0 18px; border: 0; border-radius: 0; }
+  .row > .areaCell { padding-top: 16px; }
+  .row > .beforeCell { padding-top: 10px; }
+  .row > .restCell { padding-top: 8px; padding-bottom: 14px; }
+  .row > .nextCell, .row[data-hot] > .nextCell, .row:last-child > .nextCell { padding: 12px 18px 16px; border-top: 1px solid var(--color-line); background: var(--color-surface); color: var(--color-text); }
+  .nextCell::before { content: attr(data-year); font-size: 12.5px; font-weight: 600; letter-spacing: 0.09em; color: var(--color-brand); }
+  .row[data-hot] > div:not(.nextCell) { background: none; }
+  .pick i { box-shadow: 0 0 0 1.5px var(--color-ink-subtle); }
+  .addMore, .choose { border-color: var(--color-ink-subtle); }
+  .addMore:hover, .choose:hover, .row .remove:hover { background: var(--color-soft); }
+  .planner .chooser :is(input, select) { border: 1px solid var(--color-ink-subtle); box-shadow: none; }
+  .chooserError { color: var(--color-error); }
+  .chooser .whiteButton { background: var(--color-brand); color: #fff; }
+  .chooser .ghostButton { border-color: var(--color-brand); background: none; color: var(--color-brand); -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .planner .nextCell :focus-visible { outline-color: var(--color-brand); }
 }
-.disclosure {
-  min-width: 0;
-  border-top: 1px solid var(--color-line);
-  padding-top: 8px;
-  color: var(--color-text);
+@media (prefers-reduced-motion: reduce) {
+  .planner *, .drawer, .drawer * { transition: none !important; animation: none !important; }
 }
-.disclosure > summary {
-  min-height: 44px;
-  padding: 10px 0;
-  cursor: pointer;
-  font-weight: 600;
-}
-.disclosure p, .disclosure li {
-  font-size: 0.9rem;
-  line-height: 1.5;
-}
-.emptyPlan {
-  margin: 0;
-  padding: 12px;
-  background: var(--color-soft);
-  border-radius: var(--radius-control);
-  line-height: 1.5;
-}
-.planner :global(.season-filter) { justify-self: start; max-width: 100%; }
-.planner :global(.season-planner-empty) a { margin-top: 12px; }

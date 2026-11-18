@@ -28,7 +28,7 @@ test("deep links, browser history, and missing entities keep explicit garden con
   await page.reload();
   await expect(page.getByRole("heading", { name: "History", exact: true })).toBeVisible();
   await page.goto("/season?garden=demo-garden");
-  await expect(page.getByRole("heading", { name: /Next Season ·/ })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Next Season" })).toBeVisible();
   await page.reload();
   await expect(page).toHaveURL(/\/season\?garden=demo-garden$/);
   await page.goto("/gardens/demo-garden/plan?area=missing");
@@ -65,17 +65,18 @@ test("old garden Care and Next Season links land on the filtered modules, and Ba
 
   await page.goto("/gardens/demo-garden/season");
   await expect(page).toHaveURL(/\/season\?garden=demo-garden$/);
-  const plans = page.getByRole("region", { name: "Planting plans" });
-  await expect(plans.getByRole("combobox", { name: "Garden", exact: true })).toHaveValue("demo-garden");
-  await expect(plans.getByText("Only Demo Garden ·")).toBeVisible();
+  // One garden at a time: the switch marks the garden from the URL (ADR-0082).
+  const switcher = page.getByRole("navigation", { name: "Garden" });
+  await expect(switcher.getByRole("link", { name: /^Demo Garden, / })).toHaveAttribute("aria-current", "page");
+  await expect(page.getByRole("region", { name: /rotation sheet for Demo Garden$/ })).toBeVisible();
   await page.goBack();
   await expect(page).toHaveURL(/\/care\?location=demo-garden$/);
   await page.goForward();
   await expect(page).toHaveURL(/\/season\?garden=demo-garden$/);
-  await plans.getByRole("link", { name: "Show all", exact: true }).click();
+  // Without ?garden= the page shows the first garden and keeps the address.
+  await page.goto("/season");
   await expect(page).toHaveURL(/\/season$/);
-  await expect(plans.getByRole("combobox", { name: "Garden", exact: true })).toHaveValue("all");
-  await expect(plans.getByText("Only Demo Garden ·")).toHaveCount(0);
+  await expect(switcher.getByRole("link", { name: /^Demo Garden, / })).toHaveAttribute("aria-current", "page");
 });
 
 test("mobile navigation preserves a note across routes without a model request", async ({ page }) => {

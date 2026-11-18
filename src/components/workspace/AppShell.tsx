@@ -5,7 +5,6 @@ import { createContext, Fragment, useContext, useEffect, useRef, useState, type 
 import { useWorkspace } from "./WorkspaceProvider";
 import { SyncStatus } from "./SyncStatus";
 import { gardenPath, routeFromPath, workspaceHomePath } from "@/lib/workspaceRoutes";
-import { nextSeasonYear } from "@/lib/seasonAllocation";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { GardenNoteDialog } from "@/components/notes/GardenNoteDialog";
@@ -25,7 +24,8 @@ const OpenGardenNoteContext = createContext<OpenGardenNote | null>(null);
 
 /**
  * The page title row's right side. A garden's page puts Done and Delete
- * garden there (ADR-0078); pages render nothing into it otherwise.
+ * garden there (ADR-0078); Next Season puts its garden switch there (ADR-0082);
+ * pages render nothing into it otherwise.
  */
 const PageActionsSlotContext = createContext<HTMLElement | null>(null);
 export function usePageActionsSlot() {
@@ -79,9 +79,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, []);
   const title = {
     home: "Gardens", new: "Add garden", plan: garden?.name ?? "Garden Plan", care: "Care",
-    season: `Next Season · ${nextSeasonYear()}`, notes: "AI Garden Note", guide: "Plant Guide", doctor: "Plant Doctor",
+    season: "Next Season", notes: "AI Garden Note", guide: "Plant Guide", doctor: "Plant Doctor",
   }[route.module];
-  const description = route.module === "doctor" ? "Record what you observe and review an assessment before saving it to health history."
+  const description = route.module === "season" ? "Choose what grows in each planting area. A bed rests from the crop families it grew in the last three seasons."
+    : route.module === "doctor" ? "Record what you observe and review an assessment before saving it to health history."
     : route.module === "guide" ? "Ask a gardening question and see the reviewed sources behind the answer." : undefined;
   // L2 and L3 pages sit below the header modules: one garden, one area, or a new garden.
   // A garden's care and season plan are filtered L1 modules, so they have no crumbs (ADR-0073, phase S3).
@@ -134,7 +135,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     </header>
     <main id="workspace-content">
       {/* Gardens and Care keep their h1 for screen readers and focus; their bands carry the visible title (ADR-0080, ADR-0081). */}
-      <div className={`${styles.context} ${route.module === "home" || route.module === "care" ? styles.contextHidden : ""}`}>
+      <div className={`${styles.context} ${route.module === "home" || route.module === "care" ? styles.contextHidden : ""} ${route.module === "season" ? styles.contextSeason : ""}`}>
         {crumbs && <div className={styles.crumbs}>
           <ButtonLink href={workspaceHomePath} shape="pill" className={styles.allGardens}><span aria-hidden="true">←</span>All gardens</ButtonLink>
           <nav aria-label="Breadcrumb" className={styles.breadcrumb}>
@@ -152,9 +153,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>}
         </div>}
         <PageHeader title={title} description={description} headingRef={heading}
-          actions={route.module === "plan" ? <div ref={setActionsSlot} className={styles.pageActions} /> : undefined} />
+          actions={route.module === "plan" || route.module === "season" ? <div ref={setActionsSlot} className={styles.pageActions} /> : undefined} />
       </div>
-      <PageActionsSlotContext.Provider value={route.module === "plan" ? actionsSlot : null}>
+      <PageActionsSlotContext.Provider value={route.module === "plan" || route.module === "season" ? actionsSlot : null}>
       <OpenGardenNoteContext.Provider value={openNote}>
       {route.module === "home" ? <OverviewNoteEntryContext.Provider value={
         <OverviewGardenNote primaryButton={noteButton} expanded={showNote} onOpen={(opener, batchAvailable) => openNote(opener, { batchAvailable })} />

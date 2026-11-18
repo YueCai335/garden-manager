@@ -125,8 +125,9 @@ for (const width of [1440, 390]) {
     } else {
       await page.getByRole("link", { name: "Plan next season" }).click();
       await expect(page).toHaveURL(/\/season\?garden=/);
-      await expect(page.getByRole("region", { name: "Planting plans" }).getByRole("combobox", { name: "Garden", exact: true })).toHaveValue(gardenId);
-      await expect(page.getByText(`Only ${name} ·`)).toBeVisible();
+      await expect(page).toHaveURL(new RegExp(`/season\\?garden=${gardenId}$`));
+      await expect(page.getByRole("navigation", { name: "Garden" }).getByRole("link", { name: new RegExp(`^${name}, `) })).toHaveAttribute("aria-current", "page");
+      await expect(page.getByRole("region", { name: new RegExp(`rotation sheet for ${name}$`) })).toBeVisible();
     }
     // Back returns to this garden's plan, and the finished guide stays closed.
     await page.goBack();

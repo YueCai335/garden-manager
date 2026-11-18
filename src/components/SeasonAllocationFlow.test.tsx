@@ -89,8 +89,8 @@ function plan2027(workspace: SentWorkspace | undefined) {
 async function openPlanner(user: ReturnType<typeof userEvent.setup>) {
   render(<GardenWorkspace />);
   await user.click(await screen.findByRole("link", { name: "Next Season" }));
-  await user.click(screen.getByText("Allocation Assistant · Demo Garden", { selector: "summary" }));
-  return screen.findByRole("region", { name: "Allocation Assistant" });
+  await user.click(await screen.findByRole("button", { name: "Plan with AI", expanded: false }));
+  return within(await screen.findByRole("dialog", { name: "Plan with AI" })).findByRole("region", { name: "Plan with AI" });
 }
 
 async function planTomatoAndBean(user: ReturnType<typeof userEvent.setup>, panel: HTMLElement) {
@@ -102,8 +102,8 @@ async function planTomatoAndBean(user: ReturnType<typeof userEvent.setup>, panel
 }
 
 async function addPlanByHand(user: ReturnType<typeof userEvent.setup>, areaName: string, plantType: string) {
-  const card = screen.getByRole("heading", { name: areaName, level: 3 }).closest("article")!;
-  await user.click(within(card).getByRole("button", { name: "Choose a plant" }));
+  const card = screen.getByRole("group", { name: areaName });
+  await user.click(within(card).getByRole("button", { name: /^(Choose a plant for|Add a plant to) / }));
   fireEvent.change(within(card).getByLabelText("Plant type"), { target: { value: plantType } });
   await user.click(within(card).getByRole("button", { name: "Add to 2027 plan" }));
 }
@@ -201,8 +201,8 @@ describe("Allocation Assistant in the Season Planner", () => {
     await addPlanByHand(user, "Sample raised bed", "Kale");
     await waitFor(() => expect(server.held).toHaveLength(1));
     // B -> A: remove it again. The content matches the saved copy, but B and A are still unsaved.
-    const card = screen.getByRole("heading", { name: "Sample raised bed", level: 3 }).closest("article")!;
-    await user.click(within(card).getByRole("button", { name: "Remove" }));
+    const card = screen.getByRole("group", { name: "Sample raised bed" });
+    await user.click(within(card).getByRole("button", { name: "Remove Kale from Sample raised bed" }));
     await user.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Remove plan item" }));
     expect(planButton()).toBeDisabled();
 

@@ -1,0 +1,19 @@
+/*
+ * Dark textured bands (ADR-0080 Care, ADR-0081 Gardens home, ADR-0082 Next Season): a real
+ * photo on --color-band-base, never a flat block. Pages compose these classes and add their
+ * own shape and overlay gradient in a ::before rule.
+ */
+.band {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  color: #fff;
+  background-color: var(--color-band-base);
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+.band::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; }
+/* Leaf ridges: the landing hero's photo. */
+.ridges { background-image: url("/landing/hero-still.webp"); background-position: center; }
+/* Leaf veins: the landing footer's photo. */
+.veins { background-image: url("/landing/footer-still.webp"); background-position: 30% 60%; }

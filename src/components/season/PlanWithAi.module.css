@@ -1,0 +1,66 @@
+/*
+ * The Allocation Assistant inside the Plan with AI drawer (ADR-0082). Only its look changes:
+ * checkboxes read as pills, the main buttons are solid content-green pills held at the
+ * drawer's foot, and each draft line reads "plant → area". Values follow
+ * design/season-redesign/season.css.
+ */
+.assistant { display: flex; flex-direction: column; gap: 26px; min-width: 0; padding: 26px 28px 0; color: var(--color-text); }
+.assistant :is(p, ul, ol) { margin: 0; }
+.assistant :focus-visible { outline: 2px solid var(--color-brand); outline-offset: 2px; }
+
+.notice { font-size: 14px; line-height: 1.5; color: var(--color-muted); }
+.demoNote { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+.textButton { min-height: 44px; padding: 0; border: 0; background: none; color: var(--color-brand); font: inherit; font-size: 14.5px; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+
+.form { display: flex; flex-direction: column; gap: 26px; }
+.choices { min-width: 0; margin: 0; padding: 0; border: 0; }
+.choices legend { margin-bottom: 10px; padding: 0; font-size: 14.5px; font-weight: 650; color: var(--color-heading); }
+.help { margin-bottom: 10px; font-size: 13px; color: var(--color-muted); }
+.pills { display: flex; flex-wrap: wrap; gap: 8px; }
+/* The checkbox stays real and focusable; the label is the visible pill. */
+.pill { position: relative; display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 16px 0 12px; border: 1px solid var(--color-ink-subtle); border-radius: var(--radius-pill); background: var(--color-surface); font-size: 14.5px; font-weight: 500; white-space: nowrap; cursor: pointer; }
+.pill:not(:has(i)) { padding-left: 16px; }
+.pill input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: inherit; }
+.pill i { flex: none; width: 11px; height: 11px; border-radius: 50%; border: 1.5px solid; }
+.pill:has(input:checked) { border-color: var(--color-brand); background: var(--color-brand); color: #fff; font-weight: 600; }
+.pill:has(input:disabled) { border-color: var(--color-line); color: var(--color-muted); cursor: default; }
+.pill:has(input:focus-visible) { outline: 2px solid var(--color-brand); outline-offset: 2px; }
+.pill:hover:not(:has(input:disabled, input:checked)) { background: var(--color-soft); }
+
+.areasAll { display: flex; flex-direction: column; gap: 6px; font-size: 14.5px; line-height: 1.5; color: var(--color-muted); }
+.areasAll strong { font-weight: 650; color: var(--color-heading); }
+
+.preference { display: flex; flex-direction: column; gap: 8px; }
+.preference label { font-size: 14.5px; font-weight: 650; color: var(--color-heading); }
+.assistant .preference textarea { width: 100%; min-height: 76px; padding: 12px 14px; border: 1px solid var(--color-ink-subtle); border-radius: 10px; resize: vertical; font: inherit; font-size: 15px; line-height: 1.5; }
+.count { font-size: 13px; color: var(--color-muted); }
+
+/* The action row sticks to the drawer's foot while its section scrolls. */
+.actions { position: sticky; bottom: 0; z-index: 1; display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 12px; margin: 0 -28px; padding: 16px 28px 22px; border-top: 1px solid var(--color-line); background: var(--color-surface); }
+.primary { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 20px; border: 0; border-radius: var(--radius-pill); background: var(--color-brand); color: #fff; font: inherit; font-size: 15px; font-weight: 600; white-space: nowrap; cursor: pointer; }
+.primary:hover:not(:disabled) { background: var(--color-brand-hover); }
+.primary:active:not(:disabled) { transform: translateY(1px); }
+.primary:disabled { background: var(--color-soft); color: var(--color-muted); cursor: default; }
+
+.error { display: flex; flex-direction: column; gap: 6px; padding: 12px 16px; border-radius: 12px; background: var(--color-error-surface); color: var(--color-error); font-size: 14px; line-height: 1.5; }
+.error ul { padding-left: 18px; }
+.confirmed { padding: 12px 16px; border-radius: 12px; background: var(--color-soft); font-size: 14.5px; font-weight: 600; color: var(--color-heading); }
+
+.fieldTitle { display: block; font-size: 14.5px; font-weight: 650; color: var(--color-heading); }
+.draft { display: flex; flex-direction: column; gap: 12px; }
+.draftList { display: flex; flex-direction: column; padding: 0; list-style: none; border: 1px solid var(--color-line); border-radius: 14px; }
+.draftList li { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 6px 10px; padding: 12px 16px; border-top: 1px solid var(--color-line); font-size: 14.5px; }
+.draftList li:first-child { border-top: 0; }
+.draftList li > strong { font-weight: 600; overflow-wrap: anywhere; }
+.draftList li > strong:first-child { grid-column: 1 / span 2; }
+.warning, .why { grid-column: 1 / -1; font-size: 13px; line-height: 1.45; color: var(--color-muted); }
+.warning { color: var(--color-warning); }
+.explanation { display: flex; flex-direction: column; gap: 4px; font-size: 14px; line-height: 1.5; color: var(--color-muted); }
+.explanation strong { color: var(--color-heading); font-weight: 650; }
+
+.trace, .example { display: flex; flex-direction: column; gap: 10px; min-width: 0; padding-bottom: 26px; }
+.trace ol, .toolResults ol { display: flex; flex-direction: column; gap: 8px; padding-left: 20px; font-size: 13.5px; line-height: 1.45; }
+.trace li, .toolResults li { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.traceTool { font-weight: 600; }
+.trace code, .toolResults code { font-size: 12px; color: var(--color-muted); overflow-wrap: anywhere; white-space: pre-wrap; }
+.toolResults summary { min-height: 44px; display: flex; align-items: center; font-size: 14px; font-weight: 600; cursor: pointer; }

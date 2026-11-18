@@ -37,21 +37,20 @@ test("Garden Plan", async ({ page }) => {
   await page.locator('[data-mode="wide"]').screenshot({ path: "docs/screenshots/garden-plan.png" });
 });
 
-test("Next Season rotation details", async ({ page }) => {
+test("Next Season rotation sheet", async ({ page }) => {
   await page.goto("/season?garden=demo-garden");
   const plans = page.getByRole("region", { name: "Planting plans" });
-  await expect(plans.getByRole("article")).toHaveCount(3);
-  for (const summary of await plans.locator("summary", { hasText: "Rotation details" }).all()) await summary.click();
-  await expect(plans.getByText("Good rotation fit", { exact: true }).first()).toBeVisible();
+  await expect(plans.getByRole("group")).toHaveCount(3);
+  await expect(page.getByText("All changes saved", { exact: true })).toBeVisible();
   await plans.screenshot({ path: "docs/screenshots/season-rotation.png" });
 });
 
 test("Allocation Assistant recorded run", async ({ page }) => {
   await page.route("**/runtime-config", (route) => route.fulfill({ json: { portfolioDemo: true, careNotePublicAvailable: false, careNoteBatchAvailable: false } }));
   await page.goto("/season?garden=demo-garden");
-  await page.locator("summary", { hasText: "Allocation Assistant · Demo Garden" }).click();
-  await page.getByRole("button", { name: "View example run" }).click();
-  const assistant = page.locator("section.allocation-assistant");
-  await expect(assistant.getByRole("region", { name: "Example run" })).toBeVisible();
-  await assistant.screenshot({ path: "docs/screenshots/allocation-assistant.png" });
+  await page.getByRole("button", { name: "Plan with AI" }).click();
+  const drawer = page.getByRole("dialog", { name: "Plan with AI" });
+  await drawer.getByRole("button", { name: "View example run" }).click();
+  await expect(drawer.getByRole("region", { name: "Example run" })).toBeVisible();
+  await drawer.screenshot({ path: "docs/screenshots/allocation-assistant.png" });
 });

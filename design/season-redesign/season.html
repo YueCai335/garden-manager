@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Next Season mockup (ADR-0082)</title>
+<!-- The mockup loads fonts from Google; the app self-hosts them with next/font. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..600&family=Instrument+Sans:wght@400..700&display=swap">
+<link rel="stylesheet" href="season.css">
+</head>
+<body>
+
+<header class="appbar">
+  <div class="appbar-inner">
+    <a class="brand" href="#">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21c-4.2-2.2-6.5-5.6-6.5-9.6C5.5 7.2 8.2 4.3 12 3c3.8 1.3 6.5 4.2 6.5 8.4 0 4-2.3 7.4-6.5 9.6z"/><path d="M12 21V9"/></svg>
+      Garden Manager
+    </a>
+    <nav class="nav" aria-label="Workspace sections">
+      <a href="#">Gardens</a>
+      <a href="#">Care</a>
+      <a href="#" aria-current="page">Next Season</a>
+      <span class="divider"></span>
+      <a href="#">Plant Doctor</a>
+      <a href="#">Plant Guide</a>
+    </nav>
+    <span class="menu-button">Menu</span>
+    <span class="note-button">+ Note</span>
+    <span class="sync">All changes saved</span>
+  </div>
+</header>
+
+<main class="page">
+
+  <div class="head">
+    <div class="head-text">
+      <h1 class="title">Next Season</h1>
+      <p class="lede">Choose what grows in each planting area. A bed rests from the crop families it grew in the last three seasons.</p>
+    </div>
+    <nav class="garden-switch" id="garden-switch" aria-label="Garden"></nav>
+  </div>
+
+  <div class="layout">
+    <!-- The rotation sheet. The dark slab on the right is the 2027 lane. -->
+    <section class="board" id="board" aria-label="Rotation sheet"></section>
+
+    <aside class="side">
+      <section class="map-card" aria-labelledby="map-title">
+        <div class="map-head">
+          <h2 class="map-title" id="map-title">2027 map</h2>
+          <a class="text-link" href="#">Open Garden Plan →</a>
+        </div>
+        <div class="map-canvas" id="map"></div>
+        <div class="map-foot">
+          <div class="map-legend" id="map-legend"></div>
+          <div class="key"><span><i></i>Planned</span><span><i class="open"></i>Not planned yet</span></div>
+        </div>
+      </section>
+    </aside>
+  </div>
+
+</main>
+
+<div id="ai-root"></div>
+
+<!-- Mockup only: switches the sample plan so every state can be seen. -->
+<div class="switch" role="group" aria-label="Mockup states">
+  <button type="button" data-scene="some">Partly planned</button>
+  <button type="button" data-scene="empty">Nothing planned</button>
+  <button type="button" data-scene="full">All planned</button>
+</div>
+
+<script>
+// Sample data for the mockup only. The planning year is 2027; history covers 2024 to 2026.
+const YEAR = 2027;
+const FAM = { nightshade: 'Nightshade', brassica: 'Brassica', cucurbit: 'Cucurbit', legume: 'Legume', allium: 'Allium', root: 'Root crop', leafy: 'Leafy green', other: 'Other or unknown' };
+// name: [crop family, fill, outline]. The colours follow the plan palette (ADR-0076).
+const PLANTS = {
+  'Pepper': ['nightshade', '#f1ceb0', '#9f632f'], 'Meadow sage': ['other', '#cdc4f4', '#5f5aa8'], 'Lettuce': ['leafy', '#c6e2ca', '#438054'],
+  'Carrot': ['root', '#f4cfa6', '#a5601f'], 'Eggplant': ['nightshade', '#dad3ee', '#6656a0'], 'Marigold': ['other', '#f6c39a', '#93571f'],
+  'Sunflower': ['other', '#ecd08e', '#7b6310'], 'Squash': ['cucurbit', '#e9dca0', '#806a14'], 'Kale': ['brassica', '#c0dde2', '#1a7888'],
+  'Cucumber': ['cucurbit', '#e1e1b3', '#777923'], 'Bean': ['legume', '#cfe3b4', '#587a2a'], 'Basil': ['other', '#bfe0d2', '#2f7a63'],
+  'Tomato': ['nightshade', '#f0c6c7', '#ab4e59'], 'Panicle hydrangea': ['other', '#f3b8d4', '#a44374'], 'Garlic': ['allium', '#e6e0d2', '#7a6c4c'],
+  'Onion': ['allium', '#e9d6de', '#8a5570'], 'Pea': ['legume', '#cfe3b4', '#587a2a'], 'Broccoli': ['brassica', '#c0dde2', '#1a7888'],
+  'Cabbage': ['brassica', '#c0dde2', '#1a7888'], 'Spinach': ['leafy', '#c6e2ca', '#438054'], 'Beet': ['root', '#ecc3cf', '#9a3f5c'],
+  'Radish': ['root', '#f0c6c7', '#ab4e59'], 'Zucchini': ['cucurbit', '#e1e1b3', '#777923'], 'Potato': ['nightshade', '#e6dcc4', '#7d6a3a'],
+};
+const AI_CROPS = ['Tomato', 'Bean', 'Lettuce', 'Cucumber', 'Carrot'];
+// shape: [x, y, width, height, round?] on the map.
+const GARDENS = [
+  { key: 'backyard', name: 'Backyard', view: [700, 392], areas: [
+    { id: 'rb1', name: 'Raised bed 1', kind: 'Raised bed', shape: [48, 52, 46, 102], hist: [[2026, 'Pepper'], [2026, 'Meadow sage']] },
+    { id: 'rb2', name: 'Raised bed 2', kind: 'Raised bed', shape: [116, 52, 46, 102], hist: [[2026, 'Lettuce'], [2025, 'Bean']] },
+    { id: 'rb3', name: 'Raised bed 3', kind: 'Raised bed', shape: [186, 46, 48, 108], hist: [[2026, 'Carrot']] },
+    { id: 'rb4', name: 'Raised bed 4', kind: 'Raised bed', shape: [266, 46, 48, 108], hist: [] },
+    { id: 'rb5', name: 'Raised bed 5', kind: 'Raised bed', shape: [350, 46, 48, 108], hist: [] },
+    { id: 'ct1', name: 'Container 1', kind: 'Container', shape: [80, 242, 50, 48], hist: [[2026, 'Eggplant']] },
+    { id: 'ct2', name: 'container 2', kind: 'Container', shape: [600, 62, 40, 26], hist: [] },
+    { id: 'gh1', name: 'Greenhouse 1', kind: 'Greenhouse', shape: [504, 214, 96, 118], hist: [] },
+    { id: 'ct3', name: 'Container 3', kind: 'Container', shape: [466, 50, 32, 32], hist: [[2026, 'Marigold']] },
+    { id: 'gh2', name: 'Greenhouse 2', kind: 'Greenhouse', shape: [240, 222, 120, 138], hist: [[2026, 'Sunflower'], [2026, 'Squash']] },
+  ] },
+  { key: 'community', name: 'Community Garden', view: [700, 392], areas: [
+    { id: 'c1', name: '1', kind: 'Raised bed', shape: [226, 50, 62, 118], hist: [[2026, 'Eggplant'], [2026, 'Kale']] },
+    { id: 'c2', name: '2', kind: 'Raised bed', shape: [330, 50, 62, 118], hist: [[2026, 'Cucumber']] },
+    { id: 'c3', name: 'Raised bed 1', kind: 'Raised bed', shape: [226, 226, 62, 118], hist: [] },
+    { id: 'c4', name: 'Raised bed 2', kind: 'Raised bed', shape: [330, 226, 62, 118], hist: [[2026, 'Bean'], [2026, 'Basil']] },
+    { id: 'c5', name: 'Container 1', kind: 'Container', shape: [440, 88, 46, 46, 1], hist: [[2026, 'Tomato']] },
+    { id: 'c6', name: 'Container 2', kind: 'Container', shape: [440, 262, 46, 46, 1], hist: [] },
+  ] },
+  { key: 'front', name: 'Front Yard', view: [700, 392], areas: [
+    { id: 'f1', name: 'In-ground bed 1', kind: 'In-ground bed', shape: [300, 70, 270, 84], hist: [[2026, 'Panicle hydrangea']] },
+    { id: 'f2', name: 'In-ground bed 2', kind: 'In-ground bed', shape: [300, 190, 48, 110], hist: [[2026, 'Sunflower']] },
+    { id: 'f3', name: 'In-ground bed 3', kind: 'In-ground bed', shape: [130, 314, 170, 34], hist: [[2026, 'Marigold']] },
+  ] },
+];
+const SCENES = {
+  empty: {},
+  some: { rb1: ['Bean'], rb2: ['Tomato', 'Basil'], rb3: ['Carrot'], c1: ['Carrot'], c4: ['Cucumber'], f1: ['Panicle hydrangea'] },
+  full: { rb1: ['Bean'], rb2: ['Tomato', 'Basil'], rb3: ['Kale'], rb4: ['Pepper'], rb5: ['Garlic'], ct1: ['Lettuce'], ct2: ['Basil'], gh1: ['Cucumber'], ct3: ['Marigold'], gh2: ['Tomato', 'Lettuce'],
+    c1: ['Carrot'], c2: ['Bean'], c3: ['Tomato'], c4: ['Cucumber'], c5: ['Lettuce'], c6: ['Basil'], f1: ['Panicle hydrangea'], f2: ['Sunflower'], f3: ['Marigold'] },
+};
+const ICON = {
+  plus: '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg>',
+  x: '<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M2.5 2.5l7 7M9.5 2.5l-7 7"/></svg>',
+  rest: '<svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="7" cy="7" r="5.2"/><path d="M3.4 10.6l7.2-7.2"/></svg>',
+  warn: '<svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 1.8l5.6 9.9H1.4L7 1.8z"/><path d="M7 5.8v2.6M7 10v.1"/></svg>',
+  spark: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4l1.7 4.8L17.5 10.5l-4.8 1.7L11 17l-1.7-4.8L4.5 10.5l4.8-1.7L11 4z"/><path d="M18.5 15.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7.7-1.8z"/></svg>',
+};
+
+const params = new URLSearchParams(location.search);
+const state = { garden: params.get('garden') || 'backyard', scene: params.get('scene') || 'some', plans: {}, choosing: null, manual: null, ai: null };
+const resetPlans = () => { state.plans = JSON.parse(JSON.stringify(SCENES[state.scene] || {})); };
+resetPlans();
+
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const info = (name) => {
+  const lower = name.trim().toLowerCase();
+  const key = Object.keys(PLANTS).find((k) => lower === k.toLowerCase()) || Object.keys(PLANTS).find((k) => lower && lower.includes(k.toLowerCase()));
+  return key ? PLANTS[key] : ['other', '#dcdcd8', '#6b6b6f'];
+};
+const garden = () => GARDENS.find((g) => g.key === state.garden) || GARDENS[0];
+const picks = (id) => state.plans[id] || [];
+const avoid = (area) => [...new Set(area.hist.map(([, n]) => info(n)[0]).filter((f) => f !== 'other'))];
+const goodFit = (area) => Object.keys(FAM).filter((f) => f !== 'other' && !avoid(area).includes(f));
+const lastYear = (area, family) => Math.max(...area.hist.filter(([, n]) => info(n)[0] === family).map(([y]) => y));
+const eligible = (g) => g.areas.filter((a) => a.kind !== 'Greenhouse');
+const plannedCount = (g) => g.areas.filter((a) => picks(a.id).length).length;
+const chip = (name) => { const [, fill, line] = info(name); return `<span class="plant"><i style="background:${fill};border-color:${line}"></i>${esc(name)}</span>`; };
+
+function beforeCell(area) {
+  if (!area.hist.length) return '<span class="none">No record</span>';
+  const years = [...new Set(area.hist.map(([y]) => y))].sort((a, b) => b - a);
+  return years.map((y) => `<div class="season-line"><span class="yr">${y}</span>${area.hist.filter(([hy]) => hy === y).map(([, n]) => chip(n)).join('')}</div>`).join('');
+}
+function avoidCell(area) {
+  const list = avoid(area);
+  return list.length ? list.map((f) => `<span class="fam">${ICON.rest}${FAM[f]}</span>`).join('') : '<span class="none">Any family</span>';
+}
+function pairNote(names) {
+  const has = (n) => names.some((x) => x.toLowerCase().includes(n));
+  if (has('tomato') && has('basil')) return 'Basil may reduce some tomato pests.';
+  if (has('tomato') && has('lettuce')) return 'Lettuce can use the space before the tomato fills in.';
+  return '';
+}
+function nextCell(area) {
+  const names = picks(area.id);
+  const rest = avoid(area);
+  let html = '';
+  if (names.length) {
+    html += '<div class="picks">' + names.map((n, i) => {
+      const [fam, fill] = info(n);
+      const again = rest.includes(fam) ? `<span class="again">${ICON.warn}${FAM[fam]} again</span>` : '';
+      return `<span class="pick"><i style="background:${fill}"></i>${esc(n)}</span>${again}<button class="pick-x" type="button" data-remove="${area.id}:${i}" aria-label="Remove ${esc(n)} from ${esc(area.name)}">${ICON.x}</button>`;
+    }).join('') + (state.choosing === area.id ? '' : `<button class="add-more" type="button" data-choose="${area.id}" aria-label="Add a plant to ${esc(area.name)}">${ICON.plus}</button>`) + '</div>';
+    const note = pairNote(names);
+    if (note) html += `<p class="pair">${note} <a href="#">Source</a></p>`;
+  }
+  if (state.choosing === area.id) {
+    html += `<form class="chooser" data-form="${area.id}">
+      <label for="plant-input">Plant type</label>
+      <input id="plant-input" autocomplete="off" placeholder="e.g. Tomato or Sungold">
+      <div id="chooser-live"></div>
+      <div class="chooser-actions"><button class="button-white" type="submit">Add to ${YEAR} plan</button><button class="button-ghost" type="button" data-cancel>Cancel</button></div>
+    </form>`;
+  } else if (!names.length) {
+    html += `<div class="picks"><button class="choose" type="button" data-choose="${area.id}" aria-label="Choose a plant for ${esc(area.name)}">${ICON.plus}Choose a plant</button></div>`;
+  }
+  return html;
+}
+// The lines under the field change as the gardener types; the field itself keeps focus.
+function chooserLive() {
+  const live = document.getElementById('chooser-live');
+  const input = document.getElementById('plant-input');
+  if (!live || !input) return;
+  const area = garden().areas.find((a) => a.id === state.choosing);
+  const typed = input.value.trim();
+  const fam = state.manual || info(typed)[0];
+  const rest = avoid(area);
+  let html = '';
+  if (typed) {
+    html += state.manual
+      ? `<select id="fam-select" aria-label="Crop family">${Object.keys(FAM).map((f) => `<option value="${f}"${f === fam ? ' selected' : ''}>${FAM[f]}</option>`).join('')}</select>`
+      : `<p class="chooser-family">Crop family: <strong>${FAM[fam]}</strong> <button type="button" data-manual>Change</button></p>`;
+  }
+  if (typed && rest.includes(fam)) html += `<p class="chooser-hint"><span class="again">${ICON.warn}${FAM[fam]} grew here in ${lastYear(area, fam)}</span></p>`;
+  else if (rest.length) html += `<p class="chooser-hint">Good fit here: ${goodFit(area).slice(0, 4).map((f) => FAM[f]).join(', ')}.</p>`;
+  live.innerHTML = html ? `<div style="display:grid;gap:10px">${html}</div>` : '';
+}
+
+function renderBoard() {
+  const g = garden();
+  const done = plannedCount(g);
+  const total = g.areas.length;
+  const checks = g.areas.reduce((sum, a) => sum + picks(a.id).filter((n) => avoid(a).includes(info(n)[0])).length, 0);
+  const board = document.getElementById('board');
+  board.setAttribute('aria-label', `${YEAR} rotation sheet for ${g.name}`);
+  board.innerHTML = `<div class="band tex-ridges lane-bg" aria-hidden="true"></div>
+    <div class="b-head">
+      <div class="b-garden"><div class="b-garden-text"><h2 class="b-name">${g.name}</h2><p class="b-meta">${total} planting areas</p></div><button class="button-outline" type="button" data-ai-open>${ICON.spark}Plan with AI</button></div>
+      <div class="b-label">Planting area</div><div class="b-label">Grown 2024–2026</div><div class="b-label">Rest from</div>
+      <div class="lane-head on-dark">
+        <p class="lane-kicker">Planting plan</p>
+        <p class="lane-year">${YEAR}</p>
+        <div class="lane-progress">
+          <div class="progress-track"><div class="progress-fill" style="width:${Math.round((done / total) * 100)}%"></div></div>
+          <div class="progress-line"><span>${done} of ${total} areas planned</span>${checks ? `<span>${checks} to check</span>` : ''}</div>
+        </div>
+      </div>
+    </div>` + g.areas.map((a, i) => `<div class="b-row" data-area="${a.id}" role="group" aria-label="${esc(a.name)}">
+      <div class="c-area"><span class="num" aria-hidden="true">${i + 1}</span><div><p class="area-name">${esc(a.name)}</p><p class="area-kind">${a.kind}</p></div></div>
+      <div class="c-before">${beforeCell(a)}</div>
+      <div class="c-avoid">${avoidCell(a)}</div>
+      <div class="c-next on-dark">${nextCell(a)}</div>
+    </div>`).join('');
+  chooserLive();
+}
+
+// Same layout as planTokens() in SeasonPlanner.tsx: one circle per plant type, never a count.
+function bedTokens(area, names) {
+  const [x, y, w, h] = area.shape;
+  const unique = [...new Set(names)];
+  const columns = Math.max(1, Math.ceil(Math.sqrt(unique.length)));
+  const rows = Math.max(1, Math.ceil(unique.length / columns));
+  const short = Math.min(w, h), pad = short * 0.12;
+  const availW = Math.max(w - pad * 2, short * 0.4), availH = Math.max(h - pad * 2, short * 0.4);
+  const r = Math.max(short * 0.11, Math.min(availW / columns, availH / rows) * 0.36);
+  return unique.map((name, i) => {
+    const [, fill, line] = info(name);
+    return `<circle cx="${(x + pad + ((i % columns) + 0.5) * (availW / columns)).toFixed(1)}" cy="${(y + pad + (Math.floor(i / columns) + 0.5) * (availH / rows)).toFixed(1)}" r="${r.toFixed(1)}" fill="${fill}" stroke="${line}" stroke-width="1.4"/>`;
+  }).join('');
+}
+function renderMap() {
+  const g = garden();
+  // The view is cropped to the planting areas, like the "Planting areas" view of the current preview.
+  const pad = 30;
+  const x0 = Math.min(...g.areas.map((a) => a.shape[0])) - pad, y0 = Math.min(...g.areas.map((a) => a.shape[1])) - pad - 22;
+  const x1 = Math.max(...g.areas.map((a) => a.shape[0] + a.shape[2])) + pad, y1 = Math.max(...g.areas.map((a) => a.shape[1] + a.shape[3])) + pad;
+  document.getElementById('map').innerHTML = `<svg viewBox="${x0} ${y0} ${x1 - x0} ${y1 - y0}" role="img" aria-label="${YEAR} plan preview for ${g.name}">` + g.areas.map((a, i) => {
+    const [x, y, w, h, round] = a.shape;
+    const names = picks(a.id);
+    return `<g class="bed-group" data-area="${a.id}">
+      <rect class="bed${names.length ? '' : ' open'}" x="${x}" y="${y}" width="${w}" height="${h}" rx="${round ? w / 2 : 3}"/>
+      <title>${esc(a.name)}</title>${names.length ? bedTokens(a, names) : ''}
+      <text class="bed-num" x="${x + w / 2}" y="${y - 9}">${i + 1}</text></g>`;
+  }).join('') + '</svg>';
+  const all = [...new Set(g.areas.flatMap((a) => picks(a.id)))];
+  document.getElementById('map-legend').innerHTML = all.length ? all.map(chip).join('') : `<p class="map-empty">Plants appear on the map as you choose them.</p>`;
+  document.getElementById('map-title').textContent = `${YEAR} map`;
+}
+
+function renderSwitch() {
+  document.getElementById('garden-switch').innerHTML = GARDENS.map((g) => `<a href="#"${g.key === state.garden ? ' aria-current="page"' : ''} data-garden="${g.key}" aria-label="${g.name}, ${plannedCount(g)} of ${g.areas.length} areas planned">${g.name}<span class="count" aria-hidden="true">${plannedCount(g)}/${g.areas.length}</span></a>`).join('');
+  document.querySelectorAll('.switch button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.scene === state.scene));
+}
+
+// ---------- Plan with AI (opens only from the button on the lane) ----------
+function draftPlan() {
+  const g = garden();
+  const areas = g.areas.filter((a) => state.ai.areas.includes(a.id));
+  const load = Object.fromEntries(areas.map((a) => [a.id, picks(a.id).length]));
+  return state.ai.crops.map((crop) => {
+    const fam = info(crop)[0];
+    const free = areas.filter((a) => !avoid(a).includes(fam)).sort((a, b) => load[a.id] - load[b.id]);
+    const target = free[0] || areas.slice().sort((a, b) => load[a.id] - load[b.id])[0];
+    load[target.id] += 1;
+    return { crop, area: target, why: free[0] ? `No ${FAM[fam]} here in the last three seasons.` : `${FAM[fam]} grew here in ${lastYear(target, fam)}. No selected area is free of it.` };
+  });
+}
+function renderAi() {
+  const root = document.getElementById('ai-root');
+  if (!state.ai) { root.innerHTML = ''; return; }
+  const g = garden();
+  const ai = state.ai;
+  const ready = ai.crops.length && ai.areas.length;
+  const form = `<div><p class="field-title">Crops</p><div class="checks">${AI_CROPS.map((c) => { const [, fill, line] = info(c); return `<button class="check" type="button" data-crop="${c}" aria-pressed="${ai.crops.includes(c)}"><i style="background:${fill};border-color:${line}"></i>${c}</button>`; }).join('')}</div></div>
+    ${eligible(g).length <= 3 ? `<div><p class="field-title">Planting areas</p><p class="areas-all">${eligible(g).map((a) => esc(a.name)).join(' · ')}</p></div>` : `<div><p class="field-title">Planting areas <small>Up to 3</small></p><div class="checks">${eligible(g).map((a) => `<button class="check" type="button" data-ai-area="${a.id}" aria-pressed="${ai.areas.includes(a.id)}"${!ai.areas.includes(a.id) && ai.areas.length >= 3 ? ' disabled' : ''}>${esc(a.name)}</button>`).join('')}</div></div>`}
+    <div><p class="field-title"><label for="ai-pref">Preference</label> <small>Optional</small></p><textarea id="ai-pref" maxlength="200" placeholder="Put the lettuce in the containers"></textarea></div>`;
+  const done = ai.added !== undefined && `<p class="ai-done" role="status">Added ${ai.added} to the ${YEAR} plan.</p>`;
+  const draft = ai.draft && `<div><p class="field-title">Draft for ${YEAR}</p><ul class="draft">${ai.draft.map((d) => `<li>${chip(d.crop)}<span aria-hidden="true">→</span><span class="to">${esc(d.area.name)}</span><span class="why">${d.why}</span></li>`).join('')}</ul></div>`;
+  root.innerHTML = `<div class="scrim" data-ai-close></div>
+    <aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="ai-title">
+      <div class="band tex-veins drawer-head on-dark">
+        <div class="drawer-top"><h2 class="drawer-title" id="ai-title">Plan with AI</h2><button class="drawer-close" type="button" data-ai-close aria-label="Close">${ICON.x}</button></div>
+        <p class="drawer-sub">Pick crops for ${g.name}. The assistant checks each placement against the rotation history and returns a draft.</p>
+      </div>
+      <div class="drawer-body">${done || ""}${draft || form}</div>
+      <div class="drawer-foot">${done ? `<p>Plan again to place more crops.</p><button class="button-primary" type="button" data-ai-close>Done</button>` : draft
+        ? `<button class="button-outline" type="button" data-ai-again>Plan again</button><button class="button-primary" type="button" data-ai-confirm>Add to ${YEAR} plan</button>`
+        : `<p>Nothing is added until you confirm.</p><button class="button-primary" type="button" data-ai-draft${ready ? '' : ' disabled'}>Draft a plan</button>`}</div>
+    </aside>`;
+}
+
+function render() {
+  renderSwitch(); renderBoard(); renderMap(); renderAi();
+  history.replaceState(null, '', `?garden=${state.garden}&scene=${state.scene}${params.has('shot') ? '&shot' : ''}`);
+}
+const setHot = (id) => document.querySelectorAll('[data-area]').forEach((el) => el.classList.toggle('is-hot', el.dataset.area === id));
+function openChooser(id) { state.choosing = id; state.manual = null; render(); document.getElementById('plant-input')?.focus(); }
+
+document.addEventListener('click', (event) => {
+  const on = (sel) => event.target.closest(sel);
+  if (on('a[href="#"]')) event.preventDefault();
+  let el;
+  if ((el = on('.switch button'))) { state.scene = el.dataset.scene; state.choosing = null; resetPlans(); render(); }
+  else if ((el = on('[data-garden]'))) { state.garden = el.dataset.garden; state.choosing = null; render(); }
+  else if ((el = on('[data-choose]'))) openChooser(el.dataset.choose);
+  else if (on('[data-cancel]')) { state.choosing = null; render(); }
+  else if (on('[data-manual]')) { state.manual = info(document.getElementById('plant-input').value)[0]; chooserLive(); }
+  else if ((el = on('[data-remove]'))) { const [id, i] = el.dataset.remove.split(':'); state.plans[id].splice(Number(i), 1); render(); }
+  else if (on('[data-ai-open]')) { const open = eligible(garden()); state.ai = { crops: [], areas: open.length > 3 ? [] : open.map((a) => a.id), draft: null }; render(); }
+  else if (on('[data-ai-close]')) { state.ai = null; render(); }
+  else if ((el = on('[data-crop]'))) { const c = el.dataset.crop; state.ai.crops = state.ai.crops.includes(c) ? state.ai.crops.filter((x) => x !== c) : [...state.ai.crops, c]; renderAi(); }
+  else if ((el = on('[data-ai-area]'))) { const a = el.dataset.aiArea; state.ai.areas = state.ai.areas.includes(a) ? state.ai.areas.filter((x) => x !== a) : [...state.ai.areas, a]; renderAi(); }
+  else if (on('[data-ai-draft]')) { state.ai.draft = draftPlan(); renderAi(); }
+  else if (on('[data-ai-again]')) { state.ai.draft = null; renderAi(); }
+  else if (on('[data-ai-confirm]')) { state.ai.draft.forEach((d) => { state.plans[d.area.id] = [...picks(d.area.id), d.crop]; }); state.ai.added = state.ai.draft.length; render(); }
+  else if ((el = on('.bed-group'))) { document.querySelector(`.b-row[data-area="${el.dataset.area}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' }); if (!picks(el.dataset.area).length) openChooser(el.dataset.area); }
+});
+document.addEventListener('submit', (event) => {
+  event.preventDefault();
+  const form = event.target.closest('[data-form]');
+  const value = document.getElementById('plant-input').value.trim();
+  if (!form || !value) { document.getElementById('plant-input').focus(); return; }
+  if (state.manual) PLANTS[value] = [state.manual, ...info(value).slice(1)];
+  state.plans[form.dataset.form] = [...picks(form.dataset.form), value];
+  state.choosing = null; state.manual = null; render();
+});
+document.addEventListener('input', (event) => { if (event.target.id === 'plant-input') chooserLive(); });
+document.addEventListener('change', (event) => { if (event.target.id === 'fam-select') state.manual = event.target.value; chooserLive(); });
+document.addEventListener('mouseover', (event) => { const el = event.target.closest('[data-area]'); setHot(el ? el.dataset.area : null); });
+document.addEventListener('keydown', (event) => { if (event.key === 'Escape') { if (state.ai) { state.ai = null; render(); } else if (state.choosing) { state.choosing = null; render(); } } });
+if (params.has('shot')) document.body.classList.add('shot');
+render();
+</script>
+</body>
+</html>

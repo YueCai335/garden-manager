@@ -56,8 +56,8 @@ test("a failed season save can be retried from another module without creating a
     await route.continue();
   });
   await page.getByRole("link", { name: "Next Season", exact: true }).click();
-  const area = page.locator("article", { has: page.getByRole("heading", { name: "Sample raised bed" }) });
-  await area.getByRole("button", { name: "Choose a plant" }).click();
+  const area = page.getByRole("group", { name: "Sample raised bed", exact: true });
+  await area.getByRole("button", { name: "Choose a plant for Sample raised bed" }).click();
   await area.getByLabel("Plant type").fill("Kale");
   await area.getByRole("button", { name: `Add to ${nextYear} plan` }).click();
   await expect(page.getByText("Changes not synced", { exact: true })).toBeVisible();
@@ -75,7 +75,7 @@ test("a failed season save can be retried from another module without creating a
   await page.getByRole("link", { name: "Next Season", exact: true }).click();
   await expect(page).toHaveURL(/\/season$/);
   await page.reload();
-  await expect(page.getByRole("region", { name: /plan for Sample raised bed/ }).getByText("Kale", { exact: true })).toBeVisible();
+  await expect(area.getByText("Kale", { exact: true })).toBeVisible();
   expect(writes).toBe(2);
 });
 
@@ -105,8 +105,8 @@ test("a committed save with a lost response reloads the original record after a 
   });
 
   await page.getByRole("link", { name: "Next Season", exact: true }).click();
-  const area = page.getByRole("article").filter({ has: page.getByRole("heading", { name: "Sample raised bed", exact: true }) });
-  await area.getByRole("button", { name: "Choose a plant" }).click();
+  const area = page.getByRole("group", { name: "Sample raised bed", exact: true });
+  await area.getByRole("button", { name: "Choose a plant for Sample raised bed" }).click();
   await area.getByLabel("Plant type").fill("Kale");
   await area.getByRole("button", { name: `Add to ${nextYear} plan` }).click();
   await expect(page.getByText("Changes not synced", { exact: true })).toBeVisible();
