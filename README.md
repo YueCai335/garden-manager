@@ -14,11 +14,11 @@ plan the next season, and ask source-grounded plant questions.
 
 <img width="1000" alt="Garden Plan as a pale planting chart: three planting areas on a metric grid, a floating toolbar with area type buttons, Undo and Redo, a crop-family legend, and the planting-area list" src="docs/screenshots/garden-plan.png" />
 
-**Next Season** — area plans first, with expandable rotation history and companion sources.
+**Next Season** — one garden at a time as a rotation sheet: each planting area's last three seasons, the crop families it rests from, and next year's plan on a dark lane, with a numbered map beside it.
 
-<img width="1000" alt="Rotation cards per growing area: last season's crop, families to avoid, and good rotation fits" src="docs/screenshots/season-rotation.png" />
+<img width="1000" alt="Rotation sheet: one row per planting area with its recent crops, the families it rests from, a dark 2027 plan column, and a numbered map" src="docs/screenshots/season-rotation.png" />
 
-**Allocation Assistant** — the recorded run shown in the public demo. The agent reads the planting history, checks a first plan (2 rotation warnings), revises it, and returns a draft with none. Nothing is added until the gardener confirms.
+**Allocation Assistant** — opens from **Plan with AI** in a drawer; this is the recorded run shown in the public demo. The agent reads the planting history, checks a first plan (2 rotation warnings), revises it, and returns a draft with none. Nothing is added until the gardener confirms.
 
 <img width="1000" alt="Allocation Assistant with a recorded run: request, draft per area, explanation, and three agent steps" src="docs/screenshots/allocation-assistant.png" />
 
@@ -55,7 +55,7 @@ Open the [live demo](https://garden-manager-demo.vercel.app), select **Open app*
 then walk through steps 4-6 below. Garden, Care, and Next Season are available
 online; AI and photo workflows are shown as previews and run in the local app.
 In **Next Season**, the Allocation Assistant does not run live online; it
-offers a labelled recording of one real evaluation run under the expandable **Allocation Assistant**.
+offers a labelled recording of one real evaluation run behind the **Plan with AI** button.
 AI Garden Note stays directly available on the Gardens page; the hosted build keeps its assisted-entry restrictions.
 The API sleeps on the free tier, so the first request can take about a minute.
 
@@ -67,8 +67,8 @@ The API sleeps on the free tier, so the first request can take about a minute.
 4. Select the **Demo Garden** card. Open an area to zoom the plan into it and
    place plants, drag an area to move it, and use **Undo** to reverse a change.
    **Add garden** starts the four-step guided setup on the same canvas.
-5. Return to **Gardens** and open **Next Season**. Choose plants for each area. Expand **Rotation details** for history and companion sources,
-   or **Allocation Assistant** to review an AI draft or the recorded demo run.
+5. Return to **Gardens** and open **Next Season**. Each row shows what the area grew and which families it rests from;
+   choose a plant on the dark 2027 column, or select **Plan with AI** to review an AI draft or the recorded demo run.
 6. Open **Care** to create a task or record a completed care event.
 7. After completing [Enable local AI features](#enable-local-ai-features), open
    **Plant Guide** to ask a Chinese or English question and inspect the cited source cards.

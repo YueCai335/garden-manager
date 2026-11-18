@@ -1,24 +1,9 @@
 /*
- * Shared by Care (ADR-0080) and the Gardens home (ADR-0081): the textured band, today's progress,
- * and a care row's tick, type icon, title, and late chip. Page modules compose these classes
- * (`composes: … from`), which also loads this file before theirs, and keep their own sizes.
+ * Shared by Care (ADR-0080) and the Gardens home (ADR-0081): today's progress and a care row's
+ * tick, type icon, title, and late chip. Page modules compose these classes (`composes: … from`),
+ * which also loads this file before theirs, and keep their own sizes. The textured band itself
+ * lives in src/styles/bands.module.css.
  */
-
-/* ---------- Dark textured bands: real photos on --color-band-base, never a flat block ---------- */
-.band {
-  position: relative;
-  isolation: isolate;
-  overflow: hidden;
-  border-radius: 20px;
-  color: #fff;
-  background-color: var(--color-band-base);
-  background-repeat: no-repeat;
-  background-size: cover;
-}
-.band::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; }
-/* Leaf ridges: the landing hero's photo. */
-.ridges { background-image: url("/landing/hero-still.webp"); background-position: center; }
-.ridges::before { background: linear-gradient(100deg, rgb(9 24 15 / 78%), rgb(9 24 15 / 46%) 55%, rgb(9 24 15 / 58%)); }
 
 /* ---------- Today's progress ---------- */
 .progressTrack { height: 6px; border-radius: var(--radius-pill); background: rgb(255 255 255 / 20%); }

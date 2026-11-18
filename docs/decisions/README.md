@@ -123,7 +123,8 @@ changes, mark the old record as superseded and add a new record.
 | [ADR-0078](0078-finish-a-garden-with-done-and-open-it-on-the-garden-level.md) | Finish a garden with Done and open it on the Garden level | Accepted; implemented 2026-11-16; amended 2026-11-17: the guided setup's Garden size step shows Delete garden |
 | [ADR-0080](0080-show-care-as-a-today-board-with-a-separate-history-log.md) | Show Care as a Today board with a separate History log | Accepted 2026-11-16; implemented 2026-11-17. The number 0079 belongs to a decision on another branch (`demo-prewarm`) |
 | [ADR-0081](0081-stage-the-gardens-on-a-textured-band-on-the-gardens-home.md) | Stage the gardens on a textured band on the Gardens home | Accepted 2026-11-16; implemented 2026-11-17 |
-| [ADR-0083](0083-close-app-pages-with-a-compact-footer.md) | Close app pages with a compact footer | Accepted; implemented 2026-11-17. The number 0082 belongs to a decision on another branch (`season-redesign`) |
+| [ADR-0082](0082-show-next-season-as-a-rotation-sheet-with-a-dark-plan-lane.md) | Show Next Season as a rotation sheet with a dark plan lane | Accepted 2026-11-16; implemented 2026-11-18 |
+| [ADR-0083](0083-close-app-pages-with-a-compact-footer.md) | Close app pages with a compact footer | Accepted; implemented 2026-11-17 |
 
 ## Interview Use
 

@@ -85,8 +85,8 @@ describe("local form validation", () => {
   it("keeps a blank season choice open without adding a plan", async () => {
     localRoute("/season");
     const user = userEvent.setup();
-    const area = (await screen.findByRole("heading", { name: "Sample raised bed" })).closest("article")!;
-    await user.click(within(area).getByRole("button", { name: "Choose a plant" }));
+    const area = await screen.findByRole("group", { name: "Sample raised bed" });
+    await user.click(within(area).getByRole("button", { name: "Choose a plant for Sample raised bed" }));
     await user.click(within(area).getByRole("button", { name: /Add to .* plan/ }));
     expect(within(area).getByLabelText("Plant type")).toHaveFocus();
     expect(within(area).getByLabelText("Plant type")).toHaveAttribute("aria-invalid", "true");

@@ -1,32 +1,46 @@
 "use client";
 
 import Link from "next/link";
-import { useRef, useState } from "react";
-import { gardenPath } from "@/lib/workspaceRoutes";
+import { useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
+import { createPortal } from "react-dom";
+import { gardenPath, seasonGardenPath } from "@/lib/workspaceRoutes";
 import { ButtonLink } from "@/components/ui/Button";
 import styles from "./season/Season.module.css";
 import { useConfirmation } from "./ConfirmDialog";
-import { FeedbackForm, FormField, InlineNotice } from "@/components/forms/FormFeedback";
-
+import { InlineNotice } from "@/components/forms/FormFeedback";
+import { PlantChip } from "@/components/season/PlantChip";
 import { useWorkspaceDraft, useUnsavedDraft } from "@/components/workspace/WorkspaceProvider";
-
-
+import { usePageActionsSlot } from "@/components/workspace/AppShell";
 import { AllocationAssistant, type AllocationConfirmOutcome } from "@/components/AllocationAssistant";
 import { PortfolioFeatureSettingsError, useRuntimeConfig } from "@/components/PortfolioFeaturePreview";
+import { openModalDialog } from "@/lib/modalDialog";
 import {
-  defaultPlantColor,
   gardenPlanViewport,
   growingAreaKindLabels,
   inferPlantCropFamily,
   plantingCropFamilies,
   plantingCropFamilyLabels,
   type Garden,
-  type GardenPlanViewMode,
+  type GrowingArea,
   type PlannedPlanting,
   type PlantingCropFamily,
 } from "@/lib/gardenWorkspace";
 import { nextSeasonYear, type AllocationInput, type SeasonAllocationResult } from "@/lib/seasonAllocation";
-import { companionNotes } from "@/lib/seasonPlanner";
+import {
+  companionNotes,
+  cropFamilySummaryLabel,
+  historyBySeason,
+  latestFamilyYear,
+  plannedAreaCount,
+  plannedForArea,
+  plantsToCheck,
+  recentFamilies,
+  recentHistory,
+  repeatedFamily,
+  rotationFit,
+  seasonPlantColors,
+  uniquePlanPlants,
+} from "@/lib/seasonPlanner";
 
 type PlantChoice = {
   plantType: string;
@@ -35,518 +49,581 @@ type PlantChoice = {
 };
 
 type PlanChoice = Pick<PlantChoice, "plantType" | "cropFamily">;
+type ColorOf = ReturnType<typeof seasonPlantColors>;
 
-export function SeasonPlanner({
-  gardens,
-  gardenFilter: urlGardenFilter,
-  onGardenFilterChange,
-  workspaceId,
-  isSynced,
-  notice,
-  onSavePlan,
-  onRemovePlan,
-  onConfirmAllocation,
-}: {
+type SeasonPlannerProps = {
   gardens: Garden[];
-  /** The `?garden=` filter: a garden ID, or "all". The page's URL owns it; without it the filter is local. */
-  gardenFilter?: string;
-  onGardenFilterChange?: (gardenId: string) => void;
+  /** The `?garden=` value. Without it the page shows the first garden. */
+  gardenId?: string;
   workspaceId?: string;
   isSynced: boolean;
   notice?: string;
-  onConfirmAllocation: (
-    gardenId: string,
-    draft: SeasonAllocationResult,
-    input: AllocationInput,
-  ) => AllocationConfirmOutcome;
-  onSavePlan: (
-    gardenId: string,
-    growingAreaId: string,
-    choice: PlanChoice,
-  ) => void;
-  onRemovePlan: (
-    gardenId: string,
-    seasonYear: number,
-    plantingId: string,
-  ) => void;
-}) {
-  const { requestConfirmation, confirmation, confirmDiscard } = useConfirmation();
-  const currentGardens = useRef(gardens);
-  currentGardens.current = gardens;
-  const [localGardenFilter, setLocalGardenFilter] = useState("all");
-  const gardenFilter = urlGardenFilter ?? localGardenFilter;
-  const setGardenFilter = onGardenFilterChange ?? setLocalGardenFilter;
-  const filteredGarden = gardens.find((garden) => garden.id === gardenFilter);
-  const [previewMode, setPreviewMode] =
-    useWorkspaceDraft<GardenPlanViewMode>("season:all:previewMode", "growing-areas");
-  const [choosingAreaKey, setChoosingAreaKey] = useWorkspaceDraft<string | undefined>("season:all:choosingAreaKey", undefined);
-  const [choices, setChoices] = useWorkspaceDraft<Record<string, PlantChoice>>("season:all:choices", {});
-  useUnsavedDraft("season:all:choices", Boolean(choosingAreaKey));
-  const { config, failed, retry } = useRuntimeConfig();
-  const isPortfolioDemo = config?.portfolioDemo;
+  onConfirmAllocation: (gardenId: string, draft: SeasonAllocationResult, input: AllocationInput) => AllocationConfirmOutcome;
+  onSavePlan: (gardenId: string, growingAreaId: string, choice: PlanChoice) => void;
+  onRemovePlan: (gardenId: string, seasonYear: number, plantingId: string) => void;
+};
+
+/**
+ * Next Season (ADR-0082): one garden at a time, as a rotation sheet. One row per planting
+ * area reads left to right: the area, what it grew in the last three seasons, the families
+ * it rests from, and its plan for next year on a dark textured lane. A small map beside the
+ * sheet shows where the plan lands; the Allocation Assistant opens from "Plan with AI".
+ */
+export function SeasonPlanner({ gardens, gardenId, workspaceId, isSynced, notice, onSavePlan, onRemovePlan, onConfirmAllocation }: SeasonPlannerProps) {
   const planningYear = nextSeasonYear();
-  const visibleGardens = gardenFilter === "all" ? gardens : gardens.filter((garden) => garden.id === gardenFilter);
+  const garden = gardenId === undefined ? gardens[0] : gardens.find((item) => item.id === gardenId);
+  const actionsSlot = usePageActionsSlot();
+  const switcher = gardens.length ? <GardenSwitch gardens={gardens} currentId={garden?.id} planningYear={planningYear} /> : null;
 
   return (
-    <section
-      className={`operations-content season-planner ${styles.planner}`}
-      aria-label="Planting plans"
-    >
-      {confirmation}
+    <section className={styles.planner} aria-label="Planting plans">
+      {actionsSlot ? switcher && createPortal(switcher, actionsSlot) : switcher}
       <InlineNotice tone="status">{notice}</InlineNotice>
-      <label className="season-filter" htmlFor="season-garden-filter">
-        Garden
-        <select
-          id="season-garden-filter"
-          onChange={(event) => setGardenFilter(event.target.value)}
-          value={gardenFilter}
-        >
-          <option value="all">All gardens</option>
-          {gardenFilter !== "all" && !gardens.some((garden) => garden.id === gardenFilter) && <option value={gardenFilter}>Unavailable garden</option>}
-          {gardens.map((garden) => (
-            <option key={garden.id} value={garden.id}>
-              {garden.name}
-            </option>
-          ))}
-        </select>
-      </label>
-      {gardenFilter !== "all" && <p className="section-context">
-        Only {filteredGarden?.name ?? "an unavailable garden"} · <Link href="/season">Show all</Link>
-      </p>}
-
-      {!visibleGardens.length ? (
-        <div className="season-planner-empty">
-          <h2>{gardens.length ? "Garden unavailable" : "Create a garden to start planning"}</h2>
-          <p>{gardens.length ? "Choose another garden to see its plan." : "Add a garden and a planting area, then choose what to grow next season."}</p>
-          {!gardens.length && <ButtonLink href="/gardens/new">Create a garden</ButtonLink>}
-        </div>
+      {!gardens.length ? (
+        <Blank title="Create a garden to start planning" text="Add a garden and a planting area, then choose what to grow next season.">
+          <ButtonLink href="/gardens/new">Create a garden</ButtonLink>
+        </Blank>
+      ) : !garden ? (
+        <Blank title="Garden unavailable" text="Choose another garden to see its plan." />
+      ) : !garden.growingAreas.length ? (
+        <Blank title="Add a planting area first" text="Open Garden Plan to add a bed or container group, then return to choose plants.">
+          <ButtonLink href={gardenPath(garden.id)}>Open Garden Plan for {garden.name}</ButtonLink>
+        </Blank>
       ) : (
-        <div className="season-garden-grid">
-          {visibleGardens.map((garden) => (
-            <section
-              aria-labelledby={`season-garden-${garden.id}`}
-              className="season-garden-section"
-              key={garden.id}
-            >
-              <div className="season-garden-heading">
-                <h2 id={`season-garden-${garden.id}`}>{garden.name}</h2>
-                <span>{garden.growingAreas.filter((area) => plannedForArea(garden, area.id, planningYear).length).length} of {garden.growingAreas.length} areas planned</span>
-              </div>
-              {!garden.growingAreas.length ? <div className="season-planner-empty">
-                <h3>Add a planting area first</h3>
-                <p>Open Garden Plan to add a bed or container group, then return to choose plants.</p>
-                <ButtonLink href={gardenPath(garden.id)}>Open Garden Plan for {garden.name}</ButtonLink>
-              </div> : null}
-              <div className="season-planner-grid">
-                {garden.growingAreas.map((area) => {
-                  const key = guidanceKey(garden.id, area.id);
-                  const choice = choices[key] ?? emptyChoice();
-                  const history = recentHistory(garden, area.id, planningYear);
-                  const recentCropFamilies = recentFamilies(history);
-                  const plannedPlantings = plannedForArea(
-                    garden,
-                    area.id,
-                    planningYear,
-                  );
-                  const notes = companionNotes(plannedPlantings);
-
-                  return (
-                    <article className="season-area-card" key={key}>
-                      <div>
-                        <p className="section-eyebrow">
-                          {garden.name} · {growingAreaKindLabels[area.kind]}
-                        </p>
-                        <h3>{area.name}</h3>
-                      </div>
-                      <SummaryLine
-                        label="Last season"
-                        value={historyForSeason(history, planningYear - 1)}
-                      />
-                      <SummaryLine
-                        label="Rotation summary"
-                        value={recentCropFamilies.length
-                          ? `Consider a different family from ${recentCropFamilies.map((family) => plantingCropFamilyLabels[family]).join(", ")}.`
-                          : "No known family restriction in the last three seasons."}
-                      />
-
-                      {plannedPlantings.length ? (
-                        <section
-                          className="season-selections"
-                          aria-label={`${planningYear} plan for ${area.name}`}
-                        >
-                          <strong>{planningYear} plan</strong>
-                          <ul>
-                            {plannedPlantings.map((planting) => (
-                              <li key={planting.id}>
-                                <span>{planting.commonName}</span>
-                                <button
-                                  className="text-button"
-                                  onClick={() => requestConfirmation({
-                                    confirmLabel: "Remove plan item", tone: "danger", fallbackFocusId: "season-planner-heading",
-                                    message: `Remove “${planting.commonName}” from the ${planningYear} plan for ${garden.name} · ${area.name}? Current plants and past care records stay available.`,
-                                    onConfirm: () => {
-                                      const exists = currentGardens.current.find((item) => item.id === garden.id)?.seasonPlans?.some((plan) => plan.seasonYear === planningYear && plan.plantings.some((item) => item.id === planting.id));
-                                      if (!exists) throw new Error("This plan item no longer exists. Cancel to return to the plan.");
-                                      onRemovePlan(garden.id, planningYear, planting.id);
-                                    },
-                                  })}
-                                  type="button"
-                                >
-                                  Remove
-                                </button>
-                              </li>
-                            ))}
-                          </ul>
-
-                        </section>
-                      ) : <p className={styles.emptyPlan}>No plants chosen for {planningYear}. Choose a plant to start this area&apos;s plan.</p>}
-
-                      {choosingAreaKey === key ? (
-                        <FeedbackForm
-                          className="season-plant-choice"
-                          onSubmit={(event) => {
-                            event.preventDefault();
-                            if (!choice.plantType.trim()) return;
-                            onSavePlan(garden.id, area.id, {
-                              plantType: choice.plantType.trim(),
-                              cropFamily: resolvedCropFamily(choice),
-                            });
-                            setChoosingAreaKey(undefined);
-                            setChoices((current) => ({
-                              ...current,
-                              [key]: emptyChoice(),
-                            }));
-                          }}
-                        >
-                          <FormField id={`season-plant-type-${key}`}><label htmlFor={`season-plant-type-${key}`}>Plant type</label>
-                            <input
-                              id={`season-plant-type-${key}`} required autoFocus
-                              onChange={(event) =>
-                                setChoices((current) => {
-                                  const plantType = event.target.value;
-                                  return {
-                                    ...current,
-                                    [key]: {
-                                      ...choice,
-                                      plantType,
-                                      cropFamily: choice.isCropFamilyManual
-                                        ? choice.cropFamily
-                                        : inferPlantCropFamily(plantType),
-                                    },
-                                  };
-                                })
-                              }
-                              placeholder="e.g. Tomato or Sungold"
-                              value={choice.plantType}
-                            />
-                          </FormField>
-                          <p className="season-crop-family">
-                            Crop family: {" "}
-                            <strong>
-                              {plantingCropFamilyLabels[resolvedCropFamily(choice)]}
-                            </strong>{" "}
-                            {choice.isCropFamilyManual ? "(edited)" : "(automatic)"}
-                          </p>
-                          {choice.isCropFamilyManual ? (
-                            <label
-                              className="field"
-                              htmlFor={`season-crop-family-${key}`}
-                            >
-                              Crop family
-                              <select
-                                id={`season-crop-family-${key}`}
-                                onChange={(event) =>
-                                  setChoices((current) => ({
-                                    ...current,
-                                    [key]: {
-                                      ...choice,
-                                      cropFamily: event.target.value as PlantingCropFamily,
-                                    },
-                                  }))
-                                }
-                                value={choice.cropFamily}
-                              >
-                                {plantingCropFamilies.map((family) => (
-                                  <option key={family} value={family}>
-                                    {plantingCropFamilyLabels[family]}
-                                  </option>
-                                ))}
-                              </select>
-                            </label>
-                          ) : (
-                            <button
-                              className="text-button"
-                              onClick={() =>
-                                setChoices((current) => ({
-                                  ...current,
-                                  [key]: {
-                                    ...choice,
-                                    cropFamily: resolvedCropFamily(choice),
-                                    isCropFamilyManual: true,
-                                  },
-                                }))
-                              }
-                              type="button"
-                            >
-                              Change crop family
-                            </button>
-                          )}
-                          <div className="form-actions">
-                            <button className="primary-button" type="submit">
-                              Add to {planningYear} plan
-                            </button>
-                            <button
-                              className="secondary-button"
-                              onClick={() => confirmDiscard(Boolean(choice.plantType || choice.isCropFamilyManual), () => {
-                                setChoosingAreaKey(undefined);
-                                setChoices((current) => ({ ...current, [key]: emptyChoice() }));
-                              }, "season-planner-heading")}
-                              type="button"
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        </FeedbackForm>
-                      ) : (
-                        <button
-                          className="secondary-button"
-                          onClick={() => setChoosingAreaKey(key)}
-                          type="button"
-                        >
-                          {plannedPlantings.length ? "Add a plant" : "Choose a plant"}
-                        </button>
-                      )}
-                      <details className={styles.disclosure}>
-                        <summary>Rotation details</summary>
-                        <p>Based on saved planting records from {planningYear - 3}–{planningYear - 1}.</p>
-                        {history.length ? <ul>{history.map((planting) => <li key={planting.id}>
-                          {planting.plantingDate} · {planting.commonName} · {plantingCropFamilyLabels[planting.cropFamily]}
-                        </li>)}</ul> : <p>No planting history for these seasons. Add current plants in Garden Plan as you grow them.</p>}
-                        <SummaryLine label="Avoid if possible" value={familyList(recentCropFamilies)} />
-                        <SummaryLine label="Good rotation fit" value={rotationFit(recentCropFamilies).length ? familyList(rotationFit(recentCropFamilies)) : "Every known family appears in recent history. Review the records before choosing."} />
-                        <h4>Companion notes</h4>
-                          {notes.map((note) => (
-                            <p
-                              className={`pairing-note pairing-note-${note.kind}`}
-                              key={note.message}
-                            >
-                              {note.message}{" "}
-                              <a
-                                href={note.sourceUrl}
-                                rel="noreferrer"
-                                target="_blank"
-                              >
-                                {note.sourceLabel}
-                              </a>
-                            </p>
-                          ))}
-                        {!notes.length && <p>No companion notes for the chosen plants.</p>}
-                      </details>
-                    </article>
-                  );
-                })}
-              </div>
-              {garden.growingAreas.length ? <>
-                <details className={styles.disclosure}>
-                  <summary>Plan preview · {garden.name}</summary>
-                  <div
-                    aria-label="Plan preview view"
-                    className="season-preview-mode"
-                    role="group"
-                  >
-                    <button
-                      aria-pressed={previewMode === "growing-areas"}
-                      onClick={() => setPreviewMode("growing-areas")}
-                      type="button"
-                    >
-                      Planting areas
-                    </button>
-                    <button
-                      aria-pressed={previewMode === "full"}
-                      onClick={() => setPreviewMode("full")}
-                      type="button"
-                    >
-                      Full garden
-                    </button>
-                  </div>
-                  <SeasonGardenPreview garden={garden} planningYear={planningYear} viewMode={previewMode} />
-                </details>
-                <details className={styles.disclosure}>
-                  <summary>Allocation Assistant · {garden.name}</summary>
-                  {failed ? <PortfolioFeatureSettingsError featureName="Allocation Assistant" onRetry={retry} /> : <AllocationAssistant
-                    garden={garden}
-                    isPortfolioDemo={isPortfolioDemo}
-                    isSynced={isSynced}
-                    onConfirm={onConfirmAllocation}
-                    workspaceId={workspaceId}
-                  />}
-                </details>
-              </> : null}
-            </section>
-          ))}
-        </div>
+        // Keyed by garden: the drawer, highlight, and dialogs never carry over to another garden.
+        <GardenSeason
+          key={garden.id}
+          garden={garden}
+          planningYear={planningYear}
+          workspaceId={workspaceId}
+          isSynced={isSynced}
+          onSavePlan={onSavePlan}
+          onRemovePlan={onRemovePlan}
+          onConfirmAllocation={onConfirmAllocation}
+        />
       )}
     </section>
   );
 }
 
-function SummaryLine({ label, value }: { label: string; value: string }) {
+function Blank({ title, text, children }: { title: string; text: string; children?: ReactNode }) {
   return (
-    <p className="season-summary-line">
-      <strong>{label}</strong>
-      <span>{value}</span>
-    </p>
-  );
-}
-
-function SeasonGardenPreview({
-  garden,
-  planningYear,
-  viewMode,
-}: {
-  garden: Garden;
-  planningYear: number;
-  viewMode: GardenPlanViewMode;
-}) {
-  const viewport = gardenPlanViewport(
-    garden.plan,
-    garden.growingAreas,
-    viewMode,
-  );
-  return (
-    <div className="season-garden-preview-wrap">
-      <svg
-        aria-label={`${planningYear} plan preview for ${garden.name}`}
-        className="season-garden-preview"
-        role="img"
-        viewBox={`${viewport.x - 0.25} ${viewport.y - 0.35} ${viewport.widthMeters + 0.5} ${viewport.depthMeters + 0.7}`}
-      >
-        <rect
-          className="season-garden-boundary"
-          height={garden.plan.depthMeters}
-          strokeWidth={0.04}
-          width={garden.plan.widthMeters}
-          x="0"
-          y="0"
-        />
-        {garden.growingAreas.map((area) => {
-          const layout = area.layout;
-          if (!layout) return null;
-          const plannedPlantings = plannedForArea(garden, area.id, planningYear);
-          const previewPlants = uniquePlanPlants(plannedPlantings);
-          const tokens = planTokens(previewPlants, layout.widthMeters, layout.depthMeters);
-          const label = seasonAreaLabelPosition(area);
-
-          return (
-            <g key={area.id}>
-              <g
-                transform={`translate(${area.planPlacement.x} ${area.planPlacement.y}) rotate(${area.planPlacement.rotationDegrees})`}
-              >
-                <rect
-                  className="season-garden-area"
-                  height={layout.depthMeters}
-                  strokeWidth={0.05}
-                  width={layout.widthMeters}
-                  x="0"
-                  y="0"
-                />
-                {tokens.map(({ planting, x, y, radius }) => (
-                  <g key={planting.id}>
-                    <circle
-                      aria-label={planting.commonName}
-                      className="season-garden-plant"
-                      cx={x}
-                      cy={y}
-                      fill={defaultPlantColor(
-                        planting.plantType ?? planting.commonName,
-                        planting.variety,
-                      )}
-                      r={radius}
-                      strokeWidth={0.04}
-                    />
-                    <text
-                      className="season-garden-plant-label"
-                      dominantBaseline="middle"
-                      fontSize={Math.min(radius * 0.65, 0.2)}
-                      textAnchor="middle"
-                      x={x}
-                      y={y}
-                    >
-                      {plantLabel(planting)}
-                    </text>
-                  </g>
-                ))}
-              </g>
-              <text
-                className="season-garden-area-label"
-                data-testid={`season-area-label-${area.id}`}
-                fontSize={0.22}
-                textAnchor="middle"
-                x={label.x}
-                y={label.y}
-              >
-                {area.name}
-              </text>
-            </g>
-          );
-        })}
-      </svg>
+    <div className={styles.blank}>
+      <h2>{title}</h2>
+      <p>{text}</p>
+      {children}
     </div>
   );
 }
 
-function seasonAreaLabelPosition(area: Garden["growingAreas"][number]) {
+function GardenSwitch({ gardens, currentId, planningYear }: { gardens: Garden[]; currentId?: string; planningYear: number }) {
+  return (
+    <nav className={styles.gardenSwitch} aria-label="Garden">
+      {gardens.map((item) => {
+        const planned = plannedAreaCount(item, planningYear);
+        const total = item.growingAreas.length;
+        return (
+          <Link
+            key={item.id}
+            href={seasonGardenPath(item.id)}
+            aria-current={item.id === currentId ? "page" : undefined}
+            aria-label={`${item.name}, ${planned} of ${total} areas planned`}
+          >
+            {item.name}
+            <span className={styles.count} aria-hidden="true">{planned}/{total}</span>
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
+
+function GardenSeason({
+  garden,
+  planningYear,
+  workspaceId,
+  isSynced,
+  onSavePlan,
+  onRemovePlan,
+  onConfirmAllocation,
+}: { garden: Garden; planningYear: number } & Pick<SeasonPlannerProps, "workspaceId" | "isSynced" | "onSavePlan" | "onRemovePlan" | "onConfirmAllocation">) {
+  const { requestConfirmation, confirmation, confirmDiscard } = useConfirmation();
+  const currentGarden = useRef(garden);
+  currentGarden.current = garden;
+  const [choosingAreaKey, setChoosingAreaKey] = useWorkspaceDraft<string | undefined>("season:all:choosingAreaKey", undefined);
+  const [choices, setChoices] = useWorkspaceDraft<Record<string, PlantChoice>>("season:all:choices", {});
+  useUnsavedDraft("season:all:choices", Boolean(choosingAreaKey));
+  // A row is lit while it is pointed at (in the sheet or on the map) or holds keyboard focus.
+  const [pointedAreaId, setPointedAreaId] = useState<string>();
+  const [focusedAreaId, setFocusedAreaId] = useState<string>();
+  const isHot = (areaId: string) => areaId === pointedAreaId || areaId === focusedAreaId;
+  const [aiOpen, setAiOpen] = useState(false);
+  const aiButton = useRef<HTMLButtonElement>(null);
+  const colorOf = useMemo(() => seasonPlantColors(garden), [garden]);
+
+  const areas = garden.growingAreas;
+  const planned = plannedAreaCount(garden, planningYear);
+  const toCheck = plantsToCheck(garden, planningYear);
+  const progress = Math.round((planned / areas.length) * 100);
+
+  const focusAddButton = (key: string) => requestAnimationFrame(() => document.getElementById(addButtonId(key))?.focus());
+  const closeChooser = (key: string) => {
+    setChoosingAreaKey(undefined);
+    setChoices((current) => ({ ...current, [key]: emptyChoice() }));
+    focusAddButton(key);
+  };
+  const openFromMap = (area: GrowingArea) => {
+    const key = guidanceKey(garden.id, area.id);
+    const row = document.getElementById(rowId(key));
+    row?.scrollIntoView?.({ block: "center", behavior: prefersReducedMotion() ? "auto" : "smooth" });
+    if (!plannedForArea(garden, area.id, planningYear).length) setChoosingAreaKey(key);
+  };
+
+  return (
+    <div className={styles.layout}>
+      {confirmation}
+      <section className={styles.sheet} aria-label={`${planningYear} rotation sheet for ${garden.name}`}>
+        <div className={`${styles.band} ${styles.ridges} ${styles.lane}`} aria-hidden="true" />
+        <div className={styles.head}>
+          <div className={styles.gardenTitle}>
+            <div className={styles.gardenText}>
+              <h2>{garden.name}</h2>
+              <p>{areas.length === 1 ? "1 planting area" : `${areas.length} planting areas`}</p>
+            </div>
+            <button ref={aiButton} className={styles.aiButton} type="button" aria-haspopup="dialog" aria-expanded={aiOpen} onClick={() => setAiOpen(true)}>
+              <SparkIcon />Plan with AI
+            </button>
+          </div>
+          <div className={styles.columnLabel}>Planting area</div>
+          <div className={styles.columnLabel}>Grown {planningYear - 3}–{planningYear - 1}</div>
+          <div className={styles.columnLabel}>Rest from</div>
+          <div className={`${styles.laneHead} ${styles.onDark}`}>
+            <p className={styles.laneKicker}>Planting plan</p>
+            <p className={styles.laneYear}>{planningYear}</p>
+            <div className={styles.progress}>
+              <div className={styles.track}><div className={styles.fill} style={{ width: `${progress}%` }} /></div>
+              <p className={styles.progressLine}>
+                <span>{planned} of {areas.length} {areas.length === 1 ? "area" : "areas"} planned</span>
+                {toCheck ? <span>{toCheck} to check</span> : null}
+              </p>
+            </div>
+          </div>
+        </div>
+        {areas.map((area, index) => {
+          const key = guidanceKey(garden.id, area.id);
+          return (
+            <SeasonRow
+              key={key}
+              areaKey={key}
+              area={area}
+              number={index + 1}
+              garden={garden}
+              planningYear={planningYear}
+              colorOf={colorOf}
+              isHot={isHot(area.id)}
+              onPoint={(pointed) => setPointedAreaId(pointed ? area.id : undefined)}
+              onFocusChange={(focused) => setFocusedAreaId((current) => focused ? area.id : current === area.id ? undefined : current)}
+              isChoosing={choosingAreaKey === key}
+              choice={choices[key] ?? emptyChoice()}
+              onChoose={() => setChoosingAreaKey(key)}
+              onChoiceChange={(choice) => setChoices((current) => ({ ...current, [key]: choice }))}
+              onSubmit={(choice) => {
+                onSavePlan(garden.id, area.id, { plantType: choice.plantType.trim(), cropFamily: resolvedCropFamily(choice) });
+                closeChooser(key);
+              }}
+              onCancel={(choice) => confirmDiscard(Boolean(choice.plantType || choice.isCropFamilyManual), () => closeChooser(key), addButtonId(key))}
+              onRemove={(planting) => requestConfirmation({
+                confirmLabel: "Remove plan item", tone: "danger", fallbackFocusId: addButtonId(key),
+                message: `Remove “${planting.commonName}” from the ${planningYear} plan for ${garden.name} · ${area.name}? Current plants and past care records stay available.`,
+                onConfirm: () => {
+                  const exists = currentGarden.current.seasonPlans?.some((plan) => plan.seasonYear === planningYear && plan.plantings.some((item) => item.id === planting.id));
+                  if (!exists) throw new Error("This plan item no longer exists. Cancel to return to the plan.");
+                  onRemovePlan(garden.id, planningYear, planting.id);
+                },
+              })}
+            />
+          );
+        })}
+      </section>
+
+      <SeasonMap garden={garden} planningYear={planningYear} colorOf={colorOf} isHot={isHot} onPoint={setPointedAreaId} onOpenArea={openFromMap} />
+
+      <PlanWithAiDrawer gardenName={garden.name} open={aiOpen} opener={aiButton} onClose={() => setAiOpen(false)}>
+        <AssistantBody garden={garden} colorOf={colorOf} workspaceId={workspaceId} isSynced={isSynced} onConfirm={onConfirmAllocation} />
+      </PlanWithAiDrawer>
+    </div>
+  );
+}
+
+function AssistantBody({ garden, colorOf, workspaceId, isSynced, onConfirm }: { garden: Garden; colorOf: ColorOf; workspaceId?: string; isSynced: boolean; onConfirm: SeasonPlannerProps["onConfirmAllocation"] }) {
+  const { config, failed, retry } = useRuntimeConfig();
+  if (failed) return <PortfolioFeatureSettingsError featureName="Allocation Assistant" onRetry={retry} />;
+  return <AllocationAssistant garden={garden} isPortfolioDemo={config?.portfolioDemo} isSynced={isSynced} onConfirm={onConfirm} workspaceId={workspaceId} labelledBy={drawerTitleId} plantColors={colorOf} />;
+}
+
+type SeasonRowProps = {
+  areaKey: string;
+  area: GrowingArea;
+  number: number;
+  garden: Garden;
+  planningYear: number;
+  colorOf: ColorOf;
+  isHot: boolean;
+  onPoint: (pointed: boolean) => void;
+  onFocusChange: (focused: boolean) => void;
+  isChoosing: boolean;
+  choice: PlantChoice;
+  onChoose: () => void;
+  onChoiceChange: (choice: PlantChoice) => void;
+  onSubmit: (choice: PlantChoice) => void;
+  onCancel: (choice: PlantChoice) => void;
+  onRemove: (planting: PlannedPlanting) => void;
+};
+
+function SeasonRow({ areaKey, area, number, garden, planningYear, colorOf, isHot, onPoint, onFocusChange, isChoosing, choice, onChoose, onChoiceChange, onSubmit, onCancel, onRemove }: SeasonRowProps) {
+  const history = recentHistory(garden, area.id, planningYear);
+  const seasons = historyBySeason(history);
+  const restFrom = recentFamilies(history);
+  const plantings = plannedForArea(garden, area.id, planningYear);
+  const notes = companionNotes(plantings);
+
+  return (
+    <div
+      id={rowId(areaKey)}
+      className={styles.row}
+      data-hot={isHot || undefined}
+      role="group"
+      aria-label={area.name}
+      onMouseEnter={() => onPoint(true)}
+      onMouseLeave={() => onPoint(false)}
+      onFocus={() => onFocusChange(true)}
+      onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) onFocusChange(false); }}
+    >
+      <div className={styles.areaCell}>
+        <span className={styles.number} aria-hidden="true">{number}</span>
+        <div>
+          <p className={styles.areaName}>{area.name}</p>
+          <p className={styles.areaKind}>{growingAreaKindLabels[area.kind]}</p>
+        </div>
+      </div>
+      <div className={styles.beforeCell}>
+        {seasons.length ? seasons.map(({ year, plants }) => (
+          <p className={styles.seasonLine} key={year}>
+            <span className={styles.year}>{year}</span>
+            {plants.map((plant) => <PlantChip key={plant.identity} name={plant.label} colors={colorOf(plant.planting)} />)}
+          </p>
+        )) : <span className={styles.none}>No record</span>}
+      </div>
+      <div className={styles.restCell}>
+        {restFrom.length ? restFrom.map((family) => (
+          <span className={styles.family} key={family} title={cropFamilySummaryLabel(family)}>
+            <RestIcon />{plantingCropFamilyLabels[family]}
+          </span>
+        )) : <span className={styles.none}>Any family</span>}
+      </div>
+      <div className={`${styles.nextCell} ${styles.onDark}`} data-year={planningYear}>
+        {plantings.length ? (
+          <div className={styles.picks}>
+            {plantings.map((planting) => {
+              const repeated = repeatedFamily(planting, restFrom);
+              return (
+                <span className={styles.pickGroup} key={planting.id}>
+                  <span className={styles.pick}>
+                    <i data-plant-swatch style={{ background: colorOf(planting).fill }} />
+                    {planting.commonName}
+                  </span>
+                  {repeated ? <span className={styles.again}><WarnIcon />{plantingCropFamilyLabels[repeated]} again</span> : null}
+                  <button className={styles.remove} type="button" aria-label={`Remove ${planting.commonName} from ${area.name}`} onClick={() => onRemove(planting)}>
+                    <CrossIcon />
+                  </button>
+                </span>
+              );
+            })}
+            {isChoosing ? null : (
+              <button id={addButtonId(areaKey)} className={styles.addMore} type="button" aria-label={`Add a plant to ${area.name}`} onClick={onChoose}>
+                <PlusIcon />
+              </button>
+            )}
+          </div>
+        ) : null}
+        {notes.map((note) => (
+          <p className={styles.pair} key={note.message}>
+            {note.message}{" "}
+            <a href={note.sourceUrl} rel="noreferrer" target="_blank">{note.sourceLabel}</a>
+          </p>
+        ))}
+        {isChoosing ? (
+          <PlantChooser
+            areaKey={areaKey}
+            planningYear={planningYear}
+            choice={choice}
+            history={history}
+            restFrom={restFrom}
+            onChange={onChoiceChange}
+            onSubmit={() => onSubmit(choice)}
+            onCancel={() => onCancel(choice)}
+          />
+        ) : !plantings.length ? (
+          <div className={styles.picks}>
+            <button id={addButtonId(areaKey)} className={styles.choose} type="button" aria-label={`Choose a plant for ${area.name}`} onClick={onChoose}>
+              <PlusIcon />Choose a plant
+            </button>
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function PlantChooser({ areaKey, planningYear, choice, history, restFrom, onChange, onSubmit, onCancel }: {
+  areaKey: string;
+  planningYear: number;
+  choice: PlantChoice;
+  history: ReturnType<typeof recentHistory>;
+  restFrom: PlantingCropFamily[];
+  onChange: (choice: PlantChoice) => void;
+  onSubmit: () => void;
+  onCancel: () => void;
+}) {
+  const family = resolvedCropFamily(choice);
+  const typed = Boolean(choice.plantType.trim());
+  const repeatYear = typed && restFrom.includes(family) ? latestFamilyYear(history, family) : undefined;
+  const fit = rotationFit(restFrom).slice(0, 4).map((item) => plantingCropFamilyLabels[item]);
+  const inputId = `season-plant-type-${areaKey}`;
+  const familyId = `season-crop-family-${areaKey}`;
+  const input = useRef<HTMLInputElement>(null);
+  const [invalid, setInvalid] = useState(false);
+
+  return (
+    <form
+      className={styles.chooser}
+      noValidate
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (choice.plantType.trim()) onSubmit();
+        else { setInvalid(true); input.current?.focus(); }
+      }}
+      onKeyDown={(event) => {
+        // Escape on the family select only closes the select's own list.
+        if (event.key !== "Escape" || event.defaultPrevented || event.target instanceof HTMLSelectElement) return;
+        event.preventDefault();
+        onCancel();
+      }}
+    >
+      <label htmlFor={inputId}>Plant type</label>
+      <input
+        ref={input}
+        id={inputId}
+        required
+        autoFocus
+        autoComplete="off"
+        placeholder="e.g. Tomato or Sungold"
+        value={choice.plantType}
+        aria-invalid={invalid || undefined}
+        aria-describedby={invalid ? `${inputId}-error` : undefined}
+        onChange={(event) => {
+          const plantType = event.target.value;
+          setInvalid(false);
+          onChange({ ...choice, plantType, cropFamily: choice.isCropFamilyManual ? choice.cropFamily : inferPlantCropFamily(plantType) });
+        }}
+      />
+      {invalid ? <p className={styles.chooserError} id={`${inputId}-error`}>Enter a plant type.</p> : null}
+      {choice.isCropFamilyManual ? (
+        <>
+          <label htmlFor={familyId}>Crop family</label>
+          <select id={familyId} value={choice.cropFamily} onChange={(event) => onChange({ ...choice, cropFamily: event.target.value as PlantingCropFamily })}>
+            {plantingCropFamilies.map((item) => <option key={item} value={item}>{plantingCropFamilyLabels[item]}</option>)}
+          </select>
+        </>
+      ) : typed ? (
+        <p className={styles.chooserFamily}>
+          Crop family: <strong>{plantingCropFamilyLabels[family]}</strong>
+          <button type="button" onClick={() => onChange({ ...choice, cropFamily: family, isCropFamilyManual: true })}>Change</button>
+        </p>
+      ) : null}
+      {repeatYear !== undefined ? (
+        <p className={styles.chooserHint}><span className={styles.again}><WarnIcon />{plantingCropFamilyLabels[family]} grew here in {repeatYear}</span></p>
+      ) : restFrom.length ? (
+        <p className={styles.chooserHint}>Good fit here: {fit.join(", ")}.</p>
+      ) : null}
+      <div className={styles.chooserActions}>
+        <button className={styles.whiteButton} type="submit">Add to {planningYear} plan</button>
+        <button className={styles.ghostButton} type="button" onClick={onCancel}>Cancel</button>
+      </div>
+    </form>
+  );
+}
+
+function SeasonMap({ garden, planningYear, colorOf, isHot, onPoint, onOpenArea }: {
+  garden: Garden;
+  planningYear: number;
+  colorOf: ColorOf;
+  isHot: (areaId: string) => boolean;
+  onPoint: (areaId: string | undefined) => void;
+  onOpenArea: (area: GrowingArea) => void;
+}) {
+  const titleId = `season-map-${garden.id}`;
+  const areas = garden.growingAreas;
+  const measured = areas.filter((area) => area.layout);
+  const unmeasured = areas.length - measured.length;
+  const legend = uniquePlanPlants(garden.seasonPlans?.find((plan) => plan.seasonYear === planningYear)?.plantings ?? []);
+  const viewport = gardenPlanViewport(garden.plan, areas, "growing-areas");
+  // One "screen pixel" in metres, for a map about 340px wide: keeps numbers and lines the same size in any garden.
+  const pad = Math.max(viewport.widthMeters, viewport.depthMeters) * 0.06;
+  const viewWidth = viewport.widthMeters + pad * 2;
+  const unit = viewWidth / 340;
+  const fontSize = 12 * unit;
+
+  return (
+    <aside className={styles.side}>
+      <section className={styles.mapCard} aria-labelledby={titleId}>
+        <div className={styles.mapHead}>
+          <h2 id={titleId}>{planningYear} map</h2>
+          <Link className={styles.textLink} href={gardenPath(garden.id)}>Open Garden Plan <span aria-hidden="true">→</span></Link>
+        </div>
+        {measured.length ? (
+          <div className={styles.mapCanvas}>
+            <svg
+              aria-label={`${planningYear} plan preview for ${garden.name}`}
+              role="img"
+              viewBox={`${viewport.x - pad} ${viewport.y - pad - fontSize * 1.4} ${viewWidth} ${viewport.depthMeters + pad * 2 + fontSize * 1.4}`}
+            >
+              {areas.map((area, index) => {
+                const layout = area.layout;
+                if (!layout) return null;
+                const plants = uniquePlanPlants(plannedForArea(garden, area.id, planningYear));
+                const tokens = planTokens(plants, layout.widthMeters, layout.depthMeters);
+                const label = numberPosition(area, fontSize);
+                const hot = isHot(area.id);
+                return (
+                  <g
+                    key={area.id}
+                    className={styles.bedGroup}
+                    data-hot={hot || undefined}
+                    onMouseEnter={() => onPoint(area.id)}
+                    onMouseLeave={() => onPoint(undefined)}
+                    onClick={() => onOpenArea(area)}
+                  >
+                    <title>{area.name}</title>
+                    <g transform={`translate(${area.planPlacement.x} ${area.planPlacement.y}) rotate(${area.planPlacement.rotationDegrees})`}>
+                      <polygon
+                        className={plants.length ? styles.bed : `${styles.bed} ${styles.bedOpen}`}
+                        points={layout.boundary.map((point) => `${point.x},${point.y}`).join(" ")}
+                        strokeWidth={(hot ? 3 : plants.length ? 1.6 : 1.3) * unit}
+                        strokeDasharray={plants.length || hot ? undefined : `${5 * unit} ${4 * unit}`}
+                      />
+                      {tokens.map(({ planting, x, y, radius }) => {
+                        const colors = colorOf(planting);
+                        return <circle key={planting.id} aria-label={planting.commonName} cx={x} cy={y} r={radius} fill={colors.fill} stroke={colors.stroke} strokeWidth={1.4 * unit} />;
+                      })}
+                    </g>
+                    <text className={styles.bedNumber} data-testid={`season-area-label-${area.id}`} fontSize={fontSize} textAnchor="middle" x={label.x} y={label.y}>
+                      {index + 1}
+                    </text>
+                  </g>
+                );
+              })}
+            </svg>
+          </div>
+        ) : null}
+        <div className={styles.mapFoot}>
+          {legend.length ? (
+            <p className={styles.legend}>
+              {legend.map((planting) => <PlantChip key={planting.id} name={planting.commonName} colors={colorOf(planting)} />)}
+            </p>
+          ) : <p className={styles.mapEmpty}>Plants appear on the map as you choose them.</p>}
+          <p className={styles.key}>
+            <span><i data-plant-swatch aria-hidden="true" />Planned</span>
+            <span><i data-plant-swatch aria-hidden="true" className={styles.keyOpen} />Not planned yet</span>
+          </p>
+          {unmeasured ? (
+            <p className={styles.mapNote}>
+              {unmeasured === 1 ? "1 planting area needs a size to appear here." : `${unmeasured} planting areas need a size to appear here.`}
+            </p>
+          ) : null}
+        </div>
+      </section>
+    </aside>
+  );
+}
+
+const drawerTitleId = "season-plan-with-ai-title";
+
+/**
+ * Plan with AI: a native modal dialog that slides in from the right. Closing only hides it;
+ * the Allocation Assistant inside stays mounted, so chosen crops and a draft survive.
+ */
+function PlanWithAiDrawer({ gardenName, open, opener, onClose, children }: { gardenName: string; open: boolean; opener: RefObject<HTMLButtonElement | null>; onClose: () => void; children: ReactNode }) {
+  const dialog = useRef<HTMLDialogElement>(null);
+  // A press that starts inside the drawer and ends on the backdrop (a text selection) is not a backdrop click.
+  const pressedBackdrop = useRef(false);
+  useEffect(() => {
+    const node = dialog.current;
+    if (!open || !node) return;
+    const trigger = opener.current;
+    const close = openModalDialog(node, () => trigger);
+    node.querySelector<HTMLElement>("[data-drawer-close]")?.focus();
+    return close;
+  }, [open, opener]);
+  return (
+    <dialog
+      ref={dialog}
+      className={styles.drawer}
+      aria-labelledby={drawerTitleId}
+      aria-modal="true"
+      onCancel={(event) => {
+        if (event.target !== event.currentTarget) return;
+        event.preventDefault();
+        onClose();
+      }}
+      // The drawer's content fills the dialog box, so a press on the dialog itself is on the backdrop.
+      onPointerDown={(event) => { pressedBackdrop.current = event.target === event.currentTarget; }}
+      onClick={(event) => {
+        const onBackdrop = pressedBackdrop.current && event.target === event.currentTarget;
+        pressedBackdrop.current = false;
+        if (onBackdrop) onClose();
+      }}
+    >
+      <div className={`${styles.band} ${styles.veins} ${styles.drawerHead} ${styles.onDark}`}>
+        <p className={styles.drawerKicker}>{gardenName}</p>
+        <div className={styles.drawerTop}>
+          <h2 id={drawerTitleId}>Plan with AI</h2>
+          <button className={styles.drawerClose} type="button" aria-label="Close" data-drawer-close onClick={onClose}><CrossIcon /></button>
+        </div>
+        <p>
+          Choose crops for next season. The assistant checks each placement against this garden&apos;s crop rotation
+          history and returns a draft. Nothing is added until you confirm.
+        </p>
+      </div>
+      <div className={styles.drawerBody}>{children}</div>
+    </dialog>
+  );
+}
+
+/** Where an area's number sits on the map: above its top edge, or below it when the top is at the edge. */
+function numberPosition(area: GrowingArea, fontSize: number) {
   const layout = area.layout;
   if (!layout) return { x: area.planPlacement.x, y: area.planPlacement.y };
   const angle = (area.planPlacement.rotationDegrees * Math.PI) / 180;
   const points = layout.boundary.map((point) => ({
-    x:
-      area.planPlacement.x +
-      point.x * Math.cos(angle) -
-      point.y * Math.sin(angle),
-    y:
-      area.planPlacement.y +
-      point.x * Math.sin(angle) +
-      point.y * Math.cos(angle),
+    x: area.planPlacement.x + point.x * Math.cos(angle) - point.y * Math.sin(angle),
+    y: area.planPlacement.y + point.x * Math.sin(angle) + point.y * Math.cos(angle),
   }));
   const top = Math.min(...points.map((point) => point.y));
-  const bottom = Math.max(...points.map((point) => point.y));
   const left = Math.min(...points.map((point) => point.x));
   const right = Math.max(...points.map((point) => point.x));
-
-  return {
-    x: (left + right) / 2,
-    y: top >= 0.22 ? top - 0.12 : bottom + 0.24,
-  };
+  return { x: (left + right) / 2, y: top - fontSize * 0.45 };
 }
 
-function uniquePlanPlants(plantings: PlannedPlanting[]) {
-  const plantsByIdentity = new Map<string, PlannedPlanting>();
-  for (const planting of plantings) {
-    const identity = `${planting.plantType ?? planting.commonName}:${planting.variety ?? ""}`
-      .trim()
-      .toLocaleLowerCase();
-    plantsByIdentity.set(identity, planting);
-  }
-  return [...plantsByIdentity.values()];
-}
-
-function planTokens(
-  plantings: PlannedPlanting[],
-  widthMeters: number,
-  depthMeters: number,
-) {
+/** One circle per planned plant type, never a count, laid out on a grid inside the area. */
+function planTokens(plantings: PlannedPlanting[], widthMeters: number, depthMeters: number) {
   const columns = Math.max(1, Math.ceil(Math.sqrt(plantings.length)));
   const rows = Math.max(1, Math.ceil(plantings.length / columns));
   const shortestSide = Math.min(widthMeters, depthMeters);
   const padding = shortestSide * 0.12;
   const availableWidth = Math.max(widthMeters - padding * 2, shortestSide * 0.4);
   const availableDepth = Math.max(depthMeters - padding * 2, shortestSide * 0.4);
-  const radius = Math.max(
-    shortestSide * 0.11,
-    Math.min(availableWidth / columns, availableDepth / rows) * 0.36,
-  );
-
+  const radius = Math.max(shortestSide * 0.11, Math.min(availableWidth / columns, availableDepth / rows) * 0.36);
   return plantings.map((planting, index) => ({
     planting,
     x: padding + ((index % columns) + 0.5) * (availableWidth / columns),
@@ -555,129 +632,37 @@ function planTokens(
   }));
 }
 
-function plantLabel(planting: PlannedPlanting) {
-  const label = planting.commonName.trim();
-  return label.length > 7 ? `${label.slice(0, 6)}…` : label;
-}
-
 function emptyChoice(): PlantChoice {
   return { plantType: "", cropFamily: "other", isCropFamilyManual: false };
 }
 
 function resolvedCropFamily(choice: PlantChoice) {
-  return choice.isCropFamilyManual
-    ? choice.cropFamily
-    : inferPlantCropFamily(choice.plantType);
+  return choice.isCropFamilyManual ? choice.cropFamily : inferPlantCropFamily(choice.plantType);
 }
 
 function guidanceKey(gardenId: string, areaId: string) {
   return `${gardenId}:${areaId}`;
 }
 
-type PlantingRecordLike = Pick<
-  Garden["plantings"][number],
-  "commonName" | "plantType" | "variety" | "plantingDate" | "cropFamily"
->;
+const addButtonId = (key: string) => `season-add-${key}`;
+const rowId = (key: string) => `season-row-${key}`;
 
-function historyForSeason(plantings: PlantingRecordLike[], season: number) {
-  const seasonPlantings = plantings.filter((planting) =>
-    planting.plantingDate.startsWith(`${season}-`),
-  );
-  return seasonPlantings.length
-    ? uniqueHistoryLabels(seasonPlantings).join(" · ")
-    : `No planting record saved for ${season}.`;
+function prefersReducedMotion() {
+  return typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 }
 
-function uniqueHistoryLabels(plantings: PlantingRecordLike[]) {
-  const labelsByIdentity = new Map<string, string>();
-  for (const planting of plantings) {
-    const { identity, label } = normalizedHistoryLabel(planting);
-    labelsByIdentity.set(identity, label);
-  }
-  return [...labelsByIdentity.values()];
+function PlusIcon() {
+  return <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><path d="M8 3v10M3 8h10" /></svg>;
 }
-
-function normalizedHistoryLabel(planting: PlantingRecordLike) {
-  const source = [planting.plantType, planting.variety, planting.commonName]
-    .filter(Boolean)
-    .join(" ")
-    .toLocaleLowerCase();
-  if (source.includes("sungold") || source.includes("sun gold")) {
-    return { identity: "tomato:sun-gold", label: "Tomato · Sun Gold" };
-  }
-  if (source.includes("tomato") || source.includes("番茄") || source.includes("西红柿")) {
-    return { identity: "tomato", label: "Tomato" };
-  }
-  if (source.includes("basil") || source.includes("九层塔")) {
-    return { identity: "basil", label: "Basil" };
-  }
-
-  const label = planting.variety?.trim()
-    ? `${planting.plantType?.trim() || planting.commonName.trim()} · ${planting.variety.trim()}`
-    : planting.plantType?.trim() || planting.commonName.trim();
-  return {
-    identity: `${planting.cropFamily}:${label.toLocaleLowerCase()}`,
-    label,
-  };
+function CrossIcon() {
+  return <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><path d="M2.5 2.5l7 7M9.5 2.5l-7 7" /></svg>;
 }
-
-function recentHistory(garden: Garden, growingAreaId: string, planningYear: number) {
-  return garden.plantings.filter((planting) => {
-    const season = Number(planting.plantingDate.slice(0, 4));
-    return (
-      planting.growingAreaId === growingAreaId &&
-      season >= planningYear - 3 &&
-      season < planningYear
-    );
-  });
+function RestIcon() {
+  return <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden="true"><circle cx="7" cy="7" r="5.2" /><path d="M3.4 10.6l7.2-7.2" /></svg>;
 }
-
-function plannedForArea(
-  garden: Garden,
-  growingAreaId: string,
-  seasonYear: number,
-): PlannedPlanting[] {
-  return (
-    garden.seasonPlans
-      ?.find((plan) => plan.seasonYear === seasonYear)
-      ?.plantings.filter((planting) => planting.growingAreaId === growingAreaId) ??
-    []
-  );
+function WarnIcon() {
+  return <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M7 1.8l5.6 9.9H1.4L7 1.8z" /><path d="M7 5.8v2.6M7 10v.1" /></svg>;
 }
-
-function recentFamilies(plantings: PlantingRecordLike[]) {
-  return [
-    ...new Set(
-      plantings
-        .map((planting) => planting.cropFamily)
-        .filter((family) => family !== "other"),
-    ),
-  ];
-}
-
-function rotationFit(recentCropFamilies: PlantingCropFamily[]) {
-  return plantingCropFamilies.filter(
-    (family) => family !== "other" && !recentCropFamilies.includes(family),
-  );
-}
-
-function familyList(families: PlantingCropFamily[]) {
-  return families.length
-    ? families.map(cropFamilySummaryLabel).join(" · ")
-    : "No family restriction from recent history.";
-}
-
-function cropFamilySummaryLabel(family: PlantingCropFamily) {
-  const examples: Partial<Record<PlantingCropFamily, string>> = {
-    nightshade: "tomato, pepper, eggplant",
-    brassica: "cabbage, broccoli, kale",
-    cucurbit: "cucumber, squash, melon",
-    legume: "bean, pea",
-    allium: "onion, garlic, leek",
-    root: "carrot, beet, radish",
-    leafy: "lettuce, spinach",
-  };
-  return examples[family]
-    ? `${plantingCropFamilyLabels[family]} (${examples[family]})`
-    : plantingCropFamilyLabels[family];
+function SparkIcon() {
+  return <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M11 4l1.7 4.8L17.5 10.5l-4.8 1.7L11 17l-1.7-4.8L4.5 10.5l4.8-1.7L11 4z" /><path d="M18.5 15.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7.7-1.8z" /></svg>;
 }

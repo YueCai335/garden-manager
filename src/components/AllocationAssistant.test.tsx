@@ -140,6 +140,25 @@ describe("AllocationAssistant", () => {
     expect(confirmButton()).toBeDisabled();
   });
 
+  it("keeps a rotation warning that matches no placement on a line of its own", async () => {
+    const user = userEvent.setup();
+    respondWith(draftResponse({
+      warnings: [
+        { growingAreaId: "bed", crop: "tomato", rotationGroup: "nightshade", warning: true, repeatedYears: [lastYear], rotationFriendlyGroups: [] },
+        { growingAreaId: "ground", crop: "tomato", rotationGroup: "nightshade", warning: true, repeatedYears: [lastYear - 1], rotationFriendlyGroups: [] },
+      ],
+    }));
+    renderPanel();
+    await fillAndPlan(user);
+    const draft = await screen.findByRole("region", { name: "Draft allocation" });
+    const lines = within(within(draft).getAllByRole("list")[0]).getAllByRole("listitem").map((line) => line.textContent);
+    expect(lines).toEqual([
+      `Tomato→North bedRotation warning: Tomato is nightshade, grown here in ${lastYear}.`,
+      "Bean→Back plot",
+      `Back plotRotation warning: Tomato is nightshade, grown here in ${lastYear - 1}.`,
+    ]);
+  });
+
   it("sends growingAreaIds only when more than three eligible areas require a choice", async () => {
     const user = userEvent.setup();
     const fetch = respondWith(draftResponse({ status: "needs_input", scope: null }));
@@ -353,7 +372,9 @@ describe("AllocationAssistant", () => {
           "Recorded on 2026-09-25 with gpt-4o-mini-2024-07-18 on the Demo Garden. This shows how the assistant works. It is not a plan for your garden and cannot be added.",
         );
         expect(within(example).getByText("Tomato · Bean — “keep it simple”")).toBeInTheDocument();
-        expect(within(example).getByText("Bean · Tomato")).toBeInTheDocument();
+        // One draft line per placement: "plant → area".
+        const lines = within(within(example).getAllByRole("list")[0]).getAllByRole("listitem");
+        expect(lines.map((line) => line.textContent)).toEqual(["Bean→Sample raised bed", "Tomato→Sample raised bed"]);
         expect(within(example).getByText("Recorded explanation.")).toBeInTheDocument();
         expect(within(example).getByText('{"history":{"demo-raised-bed":{"2026":["nightshade"]}}}')).toBeInTheDocument();
         expect(within(example).queryByRole("button")).not.toBeInTheDocument();
@@ -375,7 +396,7 @@ describe("AllocationAssistant", () => {
       const example = screen.getByRole("region", { name: "Example run" });
       expect(example).toHaveTextContent("with gpt-4o-mini-2024-07-18 on the Demo Garden");
       const steps = within(within(example).getByRole("region", { name: "Recorded agent steps" })).getAllByRole("listitem");
-      expect(steps.map((step) => step.querySelector(".allocation-trace-tool")?.textContent)).toEqual([
+      expect(steps.map((step) => step.querySelector("span")?.textContent)).toEqual([
         "Step 1 · get_planting_history",
         "Step 2 · check_allocation",
         "Step 3 · check_allocation",
