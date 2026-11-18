@@ -1,5 +1,6 @@
 import { expect, it } from "vitest";
-import { careRows, workspaceCareGarden, updateCareOwner } from "./careViews";
+import { careEventForTask, careRows, completeCareTask, undoCareTaskCompletion, workspaceCareGarden, updateCareOwner } from "./careViews";
+import type { CareTask } from "./gardenWorkspace";
 import { careFixture } from "@/test/careFixture";
 
 
@@ -23,4 +24,12 @@ it("updates only the declared collection and never recreates a deleted garden ow
   expect(result.gardens[1].careEvents).toHaveLength(2);
   expect(workspace.gardens[1].careEvents).toHaveLength(3);
   expect(updateCareOwner(workspace, { ownerScope: "garden", gardenId: "missing" }, () => ({ careEvents: [], careTasks: [] }))).toEqual(workspace);
+});
+
+it("removes a one-time task when it is completed, and restores it when undone", () => {
+  const task: CareTask = { id: "once", dueDate: "2026-11-10", type: "watering", note: "", targetScope: "garden" };
+  const records = { careEvents: [], careTasks: [task] };
+  const event = careEventForTask(task, "2026-11-10", { ownerScope: "workspace" }, "e");
+  expect(completeCareTask(records, task, event)).toEqual({ careEvents: [{ ...event, targetScope: "all-gardens" }], careTasks: [] });
+  expect(undoCareTaskCompletion({ careEvents: [event], careTasks: [] }, task, "e")).toEqual(records);
 });

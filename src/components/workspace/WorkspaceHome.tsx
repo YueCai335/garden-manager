@@ -1,139 +1,191 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { GardenPlanOverview } from "@/components/GardenPlanOverview";
-import { Button, ButtonLink } from "@/components/ui/Button";
-import { EmptyState } from "@/components/ui/EmptyState";
-import { careEventForTask, completeCareTask, undoCareTaskCompletion, updateCareOwner } from "@/lib/careViews";
-import { createId, isDemoGardenId, plantDisplayName, todayDate, type Garden } from "@/lib/gardenWorkspace";
-import { homeTasks, type HomeCompletion, type HomeTaskRow } from "@/lib/homeTasks";
+import { CareIcon, PlusIcon, Tick } from "@/components/care/CareMarks";
+import { ButtonLink } from "@/components/ui/Button";
+import { useCareTicks } from "@/hooks/useCareTicks";
 import { SLOW_LOAD_HINT, useSlowLoadHint } from "@/hooks/useSlowLoadHint";
+import { updateCareOwner } from "@/lib/careViews";
+import { isDemoGardenId, todayDate, type Garden } from "@/lib/gardenWorkspace";
+import { gardenCardSummary, gardenPlants, gardensSummary } from "@/lib/homeGardens";
+import { careBoard, type CareBoard, type CareBoardRow } from "@/lib/careBoard";
 import { gardenPath } from "@/lib/workspaceRoutes";
 import { OverviewNoteEntry } from "./AppShell";
 import { useWorkspace } from "./WorkspaceProvider";
 import styles from "./WorkspaceHome.module.css";
 
-function GardenCard({ garden }: { garden: Garden }) {
-  const areaCount = garden.growingAreas.length;
-  const unmeasured = garden.growingAreas.filter((area) => !area.layout).length;
-  const crops = [...new Set(garden.plantings.filter((plant) => plant.isActive).map((plant) =>
-    plantDisplayName({ plantType: plant.plantType, variety: plant.variety, fallback: plant.commonName })))];
-  const detailsId = `garden-card-${garden.id}-details`;
-  return <Link aria-label={`Open ${garden.name}`} aria-describedby={detailsId} className={styles.card} href={gardenPath(garden.id)}>
-    <div className={styles.map} aria-hidden="true">
-      {areaCount > unmeasured
-        ? <GardenPlanOverview compact growingAreas={garden.growingAreas} plantings={garden.plantings} plan={garden.plan} />
-        : <span>{areaCount ? "Planting areas need a size" : "No planting areas yet"}</span>}
+/** Today's care for one garden: open rows left, and all of today's rows. */
+type GardenToday = { left: number; total: number };
+
+/** Today's Today rows shown on the page; more go to Care (ADR-0081). */
+const TODAY_ROWS = 6;
+
+const localDay = (date: string, options: Intl.DateTimeFormatOptions) =>
+  new Date(`${date}T12:00:00Z`).toLocaleDateString("en-US", { ...options, timeZone: "UTC" });
+
+/** ADR-0081: the textured band carries only the date, the title, the totals, and Demo garden. */
+function GardensBand({ summary, onOpenDemoGarden }: { summary?: string; onOpenDemoGarden?: () => void }) {
+  return <div className={`${styles.band} ${styles.ridges} ${styles.gardensBand}`}>
+    <div className={styles.bandIntro}>
+      <p className={styles.bandKicker}>{localDay(todayDate(), { weekday: "long", month: "short", day: "numeric" })}</p>
+      <h2 id="your-gardens-heading" className={styles.bandHeadline}>Your gardens</h2>
+      <p className={styles.bandSummary}>{summary}</p>
     </div>
-    <div className={styles.cardDetails}>
-      <h3><span>{garden.name}</span><span className={styles.cardArrow} aria-hidden="true">→</span></h3>
-      <div className={styles.metadata} id={detailsId}>
-        <span>{areaCount} planting {areaCount === 1 ? "area" : "areas"}{unmeasured > 0 && ` · ${unmeasured} need${unmeasured === 1 ? "s" : ""} a size`}</span>
-        <span>{crops.length ? `Growing now: ${crops.slice(0, 3).join(", ")}${crops.length > 3 ? ` + ${crops.length - 3} more` : ""}` : "No current plantings"}</span>
-      </div>
+    {onOpenDemoGarden && <button type="button" className={styles.buttonGhost} onClick={onOpenDemoGarden}>Demo garden</button>}
+  </div>;
+}
+
+function GardenCard({ garden, today }: { garden: Garden; today?: GardenToday }) {
+  const areaCount = garden.growingAreas.length;
+  const measured = garden.growingAreas.some((area) => area.layout);
+  const plants = gardenPlants(garden);
+  const id = `garden-card-${garden.id}`;
+  const chip = today && today.total > 0 ? today.left ? `${today.left} to do today` : "All done today" : undefined;
+  // The link's name is the garden; the description reads the counts, the plants, and today's label.
+  const described = [`${id}-meta`, plants.length ? `${id}-plants` : "", chip ? `${id}-today` : ""].filter(Boolean).join(" ");
+  return <Link aria-label={`Open ${garden.name}`} aria-describedby={described} className={styles.card} href={gardenPath(garden.id)}>
+    <div className={styles.map} aria-hidden="true">
+      {measured
+        ? <GardenPlanOverview compact growingAreas={garden.growingAreas} plantings={garden.plantings} plan={garden.plan} />
+        : <span className={styles.mapEmpty}>{areaCount ? "Planting areas need a size" : "No planting areas yet"}</span>}
+    </div>
+    <div className={styles.cardBody}>
+      {chip && <span id={`${id}-today`} className={styles.chip} data-open={today!.left > 0 || undefined}>{chip}</span>}
+      <h3 className={styles.cardName}>{garden.name}</h3>
+      <span id={`${id}-meta`} className={styles.cardMeta}>{gardenCardSummary(garden)}</span>
+      {plants.length > 0 && <span id={`${id}-plants`} className={styles.cardPlants}>
+        {plants.slice(0, 3).map((plant) => <span key={plant.key} className={styles.cardPlant}>
+          {/* The plan's own plant colours (ADR-0076): the same fill and outline as the thumbnail. */}
+          <i data-plant-swatch style={{ background: plant.colors.fill, borderColor: plant.colors.stroke }} />{plant.name}
+        </span>)}
+        {plants.length > 3 && <span className={styles.cardMore}>+{plants.length - 3} more</span>}
+      </span>}
     </div>
   </Link>;
 }
 
-type HomeTasks = ReturnType<typeof homeTasks>;
+function NewGardenCard() {
+  return <Link className={styles.newCard} href="/gardens/new" aria-labelledby="new-garden-title" aria-describedby="new-garden-sub">
+    <span className={styles.newMark}><PlusIcon size={20} strokeWidth={1.6} /></span>
+    <span id="new-garden-title" className={styles.newTitle}>New garden</span>
+    <span id="new-garden-sub" className={styles.newSub}>Draw the outline, then add planting areas</span>
+  </Link>;
+}
 
-function TaskRow({ row, titleId, onTick, onUntick }: { row: HomeTaskRow; titleId: string; onTick: (row: HomeTaskRow) => void; onUntick: (row: HomeTaskRow) => void }) {
-  const check = <span className={styles.circle} aria-hidden="true">
-    <svg viewBox="0 0 16 16" width="12" height="12"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
-  </span>;
-  return <li className={styles.task} data-done={row.done || undefined} data-upcoming={row.when ? true : undefined}>
-    <span className={styles.careDot} data-type={row.type} aria-hidden="true" />
-    <span className={styles.taskText}>
-      <span id={titleId}>{row.title}</span>
-      {row.detail && <small>{row.detail}</small>}
+function TaskRow({ row, onTick, onUntick }: { row: CareBoardRow; onTick: (row: CareBoardRow) => void; onUntick: (row: CareBoardRow) => void }) {
+  const late = row.late && !row.done ? row.late : undefined;
+  return <li className={styles.row} data-done={row.done || undefined}>
+    {/* Done earlier (in Care or from a note), a row has no toggle: it is corrected in Care history. */}
+    <Tick rowKey={row.key} label={[row.title, row.target].filter(Boolean).join(", ")} done={row.done} doneLabel="Done"
+      onToggle={row.source || row.completion ? () => row.done ? onUntick(row) : onTick(row) : undefined} />
+    <CareIcon type={row.type} />
+    <span className={styles.rowText}>
+      <span className={styles.rowTitle}>{row.title}</span>
+      {row.target && <span className={styles.rowSub}>{row.target}</span>}
+      {late && <span className={styles.lateInline}>{late}</span>}
     </span>
-    {row.when ? <span className={styles.when}>{row.when}</span>
-      : row.task || row.completion
-        ? <button type="button" role="checkbox" aria-checked={row.done} aria-labelledby={titleId} className={styles.tick}
-          onClick={() => row.done ? onUntick(row) : onTick(row)}>{check}</button>
-        // Done earlier (on another visit, in Care, or from a note): it is corrected in Care history.
-        : <span className={styles.tick} role="img" aria-label="Done">{check}</span>}
+    {late && <span className={styles.lateChip}>{late}</span>}
   </li>;
 }
 
-function TaskGroup({ id, label, rows, late, empty, onTick, onUntick }: { id: string; label: string; rows: HomeTaskRow[]; late?: boolean; empty?: string; onTick: (row: HomeTaskRow) => void; onUntick: (row: HomeTaskRow) => void }) {
-  return <div className={styles.taskGroup}>
-    <h3 id={id} className={late ? styles.late : undefined}>{label}</h3>
-    {rows.length
-      ? <ul className={styles.taskList} aria-labelledby={id}>{rows.map((row, index) =>
-        <TaskRow key={row.key} row={row} titleId={`${id}-${index}`} onTick={onTick} onUntick={onUntick} />)}</ul>
-      : <p className={styles.taskEmpty}>{empty}</p>}
-  </div>;
-}
-
-/** ADR-0073: "Care to do" beside the gardens. Tick off what is due; the full task list lives in Care. */
-function CareToDo({ tasks, onTick, onUntick }: { tasks: HomeTasks; onTick: (row: HomeTaskRow) => void; onUntick: (row: HomeTaskRow) => void }) {
-  const { overdue, today, upcoming, done, total } = tasks;
-  const nothing = total === 0 && upcoming.length === 0;
-  return <section aria-labelledby="care-todo-heading" className={styles.today}>
-    <div className={styles.todayHeader}>
-      <h2 id="care-todo-heading">Care to do</h2>
-      {total > 0 && <span className={styles.todayCount}>{done === total ? "All done" : `${done} of ${total} done`}</span>}
+/** ADR-0081: today's care only (overdue, due today, done today), ticked off in place. Care owns the week. */
+function TodayCard({ board, hasGardens, focusKey, onTick, onUntick }: {
+  board?: CareBoard;
+  hasGardens: boolean;
+  focusKey?: string;
+  onTick: (row: CareBoardRow) => void;
+  onUntick: (row: CareBoardRow) => void;
+}) {
+  const rows = board?.today ?? [];
+  const { done, total } = board?.progress ?? { done: 0, total: 0 };
+  const left = total - done;
+  const list = useRef<HTMLUListElement>(null);
+  // A ticked row is a new record row; keep the keyboard on its circle.
+  useEffect(() => {
+    if (!focusKey) return;
+    [...list.current?.querySelectorAll<HTMLButtonElement>("button[data-row-key]") ?? []].find((button) => button.dataset.rowKey === focusKey)?.focus();
+  }, [focusKey, rows.length, done]);
+  const date = todayDate();
+  const heading = !total ? "Nothing due today" : !left ? "All done for today" : left === 1 ? "1 thing left" : `${left} things left`;
+  const nothingAtAll = total === 0 && !board?.days.some((day) => day.rows.length);
+  return <section className={styles.todayCard} aria-label="Care today">
+    <div className={`${styles.band} ${styles.ridges} ${styles.dateTile}`}>
+      <p className={`${styles.bandKicker} ${styles.dateDay}`}>{localDay(date, { weekday: "long" })}</p>
+      <p className={styles.dateBig}>{Number(date.slice(8, 10))}</p>
+      <p className={styles.dateMonth}>{localDay(date, { month: "long" })}</p>
+      {total > 0 && <div className={styles.progress}>
+        <div className={styles.progressTrack}><div className={styles.progressFill} style={{ width: `${Math.round((done / total) * 100)}%` }} /></div>
+        <span className={styles.progressLabel}>{done} of {total} done</span>
+      </div>}
     </div>
-    {overdue.length > 0 && <TaskGroup id="care-todo-overdue" label="Overdue" late rows={overdue} onTick={onTick} onUntick={onUntick} />}
-    <TaskGroup id="care-todo-today" label="Today" rows={today} empty={nothing ? "No care tasks this week." : "Nothing due today."} onTick={onTick} onUntick={onUntick} />
-    {upcoming.length > 0 && <TaskGroup id="care-todo-upcoming" label="Coming up" rows={upcoming} onTick={onTick} onUntick={onUntick} />}
-    <Link className={styles.todayLink} href="/care?view=tasks">{nothing ? "Add a care task" : "All tasks"} <span aria-hidden="true">→</span></Link>
+    <div className={styles.todayBody}>
+      <div className={styles.todayHead}>
+        <div className={styles.todayHeading}>
+          <p className={styles.kicker}>Care today</p>
+          <h2 className={styles.todayTitle}>{heading}</h2>
+        </div>
+        <Link className={styles.textLink} href="/care?view=tasks">{nothingAtAll ? "Add a care task" : "Open Care"} <span aria-hidden="true">→</span></Link>
+      </div>
+      {rows.length
+        ? <ul ref={list} className={styles.rows}>{rows.slice(0, TODAY_ROWS).map((row) => <TaskRow key={row.key} row={row} onTick={onTick} onUntick={onUntick} />)}</ul>
+        : <p className={styles.todayEmpty}>{hasGardens ? "No watering or fertilizing is due today." : "Care tasks appear here on the day they are due."}</p>}
+      {rows.length > TODAY_ROWS && <div className={styles.todayMore}>
+        <Link className={styles.textLink} href="/care?view=tasks">+{rows.length - TODAY_ROWS} more in Care <span aria-hidden="true">→</span></Link>
+      </div>}
+    </div>
   </section>;
 }
 
 export function WorkspaceHomeLoading() {
+  // After five seconds the band's summary line explains a sleeping demo server (ADR-0079).
   const slow = useSlowLoadHint();
-  return <div className={`${styles.home} ${styles.overview}`} role="status">
-    <div className={`${styles.gallery} ${styles.gardens}`}>
-      {slow ? <p className={styles.slowHint}>{SLOW_LOAD_HINT}</p> : <span className={styles.visuallyHidden}>Loading your gardens…</span>}
-      <div className={styles.grid} aria-hidden="true"><div className={styles.skeleton} /><div className={styles.skeleton} /></div>
-    </div>
+  return <div className={styles.home} role="status">
+    <span className={styles.visuallyHidden}>{slow ? SLOW_LOAD_HINT : "Loading your gardens…"}</span>
+    <section className={styles.gardens} aria-hidden="true">
+      <GardensBand summary={slow ? SLOW_LOAD_HINT : undefined} />
+      <div className={styles.gardenGrid}><div className={styles.skeleton} /><div className={styles.skeleton} /></div>
+    </section>
   </div>;
 }
 
 export function WorkspaceHome({ onOpenDemoGarden, onboarding }: { onOpenDemoGarden: () => void; onboarding?: ReactNode }) {
   const { workspace, message, setWorkspace } = useWorkspace();
   // Ticks from this visit; each can be unticked until the page is left (ADR-0073).
-  const [completions, setCompletions] = useState<HomeCompletion[]>([]);
+  const { completions, focus, tick: tickRow, untick: untickRow } = useCareTicks((owner, change) =>
+    setWorkspace((current) => current ? updateCareOwner(current, owner, change) : current));
+  const focusKey = focus?.key;
   const allGardens = workspace?.gardens ?? [];
   const hasPersonalGardens = allGardens.some((garden) => !isDemoGardenId(garden.id));
   const gardens = hasPersonalGardens ? allGardens.filter((garden) => !isDemoGardenId(garden.id)) : allGardens;
-  const tasks = workspace ? homeTasks(workspace, todayDate(), completions) : undefined;
-  const tick = (row: HomeTaskRow) => {
-    const { task, owner } = row;
-    if (!task) return;
-    const event = careEventForTask(task, todayDate(), owner, createId("care"));
-    setWorkspace((current) => current ? updateCareOwner(current, owner, (records) => completeCareTask(records, task, event)) : current);
-    setCompletions((current) => [...current, { taskKey: row.key, task, owner, eventId: event.id }]);
-  };
-  const untick = (row: HomeTaskRow) => {
-    const { completion } = row;
-    if (!completion) return;
-    setWorkspace((current) => current ? updateCareOwner(current, completion.owner, (records) => undoCareTaskCompletion(records, completion.task, completion.eventId)) : current);
-    setCompletions((current) => current.filter((item) => item !== completion));
-  };
+  const board = workspace ? careBoard(workspace, todayDate(), completions) : undefined;
+  // Each card's label counts that garden's own rows; workspace-wide care belongs to no card.
+  const gardenToday = new Map<string, GardenToday>(board?.gardens.map(({ garden, left, total }) => [garden.id, { left, total }]));
+  const tick = (row: CareBoardRow) => tickRow({ key: row.key, owner: row.owner, task: row.source?.record });
+  const untick = (row: CareBoardRow) => untickRow(row.completion);
 
-  // ADR-0073 (amended 2026-11-16): the gardens fill the left; Today and AI Garden Notes stack on the right.
+  const firstGarden = onboarding
+    ? <div className={styles.firstGarden}>{onboarding}</div>
+    : !gardens.length && <div className={styles.firstGarden}>
+      <p className={styles.firstText}>Add your first garden to start recording care.</p>
+      <div><ButtonLink variant="primary" href="/gardens/new">Create garden</ButtonLink></div>
+    </div>;
+
+  // ADR-0081: the gardens stand half on a textured band; Today and AI Garden Notes are two blocks below.
   return <div className={styles.home}>
-    <div className={styles.overview}>
-      {tasks && <div className={styles.todayArea}><CareToDo tasks={tasks} onTick={tick} onUntick={untick} /></div>}
-      <div className={styles.noteArea}>
-        <OverviewNoteEntry />
+    <section className={styles.gardens} aria-labelledby="your-gardens-heading">
+      <GardensBand summary={gardensSummary(onboarding ? [] : gardens)} onOpenDemoGarden={!onboarding && hasPersonalGardens ? onOpenDemoGarden : undefined} />
+      <div className={styles.gardenGrid}>
+        {firstGarden || <>
+          {gardens.map((garden) => <GardenCard key={garden.id} garden={garden} today={gardenToday.get(garden.id)} />)}
+          <NewGardenCard />
+        </>}
       </div>
-      <div className={styles.gallery}>
-        {onboarding ?? <section aria-labelledby="your-gardens-heading" className={styles.gardens}>
-          <div className={styles.sectionHeading}>
-            <h2 id="your-gardens-heading">Your gardens <span className={styles.gardenCount}>({gardens.length})</span></h2>
-            {gardens.length > 0 && <ButtonLink href="/gardens/new">Add garden</ButtonLink>}
-          </div>
-          {gardens.length
-            ? <div className={styles.grid}>{gardens.map((garden) => <GardenCard key={garden.id} garden={garden} />)}</div>
-            : <EmptyState action={<ButtonLink variant="primary" href="/gardens/new">Create garden</ButtonLink>}>Add your first garden to start recording care.</EmptyState>}
-          {hasPersonalGardens && <Button className={styles.demoLink} variant="text" onClick={onOpenDemoGarden}>Demo garden</Button>}
-        </section>}
-      </div>
+    </section>
+    <div className={styles.lower}>
+      <TodayCard board={board} hasGardens={gardens.length > 0} focusKey={focusKey} onTick={tick} onUntick={untick} />
+      <OverviewNoteEntry />
     </div>
     {workspace && message && <p className={styles.hint} role="status">{message}</p>}
   </div>;

@@ -1,0 +1,43 @@
+/* The app footer (ADR-0083): a full-width bar with square edges, like the app bar at the top,
+   on the landing footer's leaf-vein photo as a still image under a dark wash. */
+.footer {
+  position: relative;
+  isolation: isolate;
+  margin-top: 24px;
+  background: var(--color-band-base) url("/landing/footer-still.webp") 30% 60% / cover no-repeat;
+  color: #ffffff;
+  font-size: 14px;
+}
+.footer::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(100deg, rgb(9 24 15 / 86%), rgb(9 24 15 / 62%) 55%, rgb(9 24 15 / 74%));
+  pointer-events: none;
+}
+/* The content lines up with the page content above it. */
+.inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 24px;
+  width: min(var(--content-width), calc(100% - var(--workspace-gutters)));
+  margin: auto;
+  padding: 18px 0;
+}
+.footer p { margin: 0; }
+.brand span { color: rgb(255 255 255 / 78%); }
+/* The brand holds the left end; the links and the credit share the right. */
+.inner > nav { margin-left: auto; }
+.links { display: flex; flex-wrap: wrap; gap: 4px 20px; margin: 0; padding: 0; list-style: none; }
+.footer a { color: #ffffff; text-decoration: none; }
+.footer a:hover { text-decoration: underline; }
+.footer :focus-visible { outline: 2px solid #ffffff; outline-offset: 2px; border-radius: 4px; }
+.credit { color: rgb(255 255 255 / 78%); font-size: 13px; }
+.credit a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+
+@media (max-width: 720px) {
+  .inner { flex-direction: column; align-items: flex-start; }
+  .inner > nav { margin-left: 0; }
+}

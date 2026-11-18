@@ -80,7 +80,8 @@ for (const viewport of viewports) {
       await page.addInitScript((value) => {
         if (!localStorage.getItem("sun-aware-garden-planner:garden-workspace:v1")) localStorage.setItem("sun-aware-garden-planner:garden-workspace:v1", JSON.stringify(value));
       }, createSampleGardenWorkspace());
-      await page.goto("/gardens/demo-garden/plan");
+      // Plants is one click from Garden, where a garden opens (ADR-0078); this run starts there.
+      await page.goto("/gardens/demo-garden/plan?level=plants");
       await expect(page.getByRole("heading", { name: "Garden Plan" })).toBeVisible();
       await expect(page.getByText("All changes saved", { exact: true })).toBeVisible();
       const surface = planSurface(page);
@@ -121,7 +122,7 @@ for (const viewport of viewports) {
 
       // A new garden starts the guide on the same canvas.
       await page.getByRole("link", { name: "All gardens", exact: true }).click();
-      await page.getByRole("link", { name: "Add garden" }).click();
+      await page.getByRole("link", { name: "New garden" }).click();
       await page.getByLabel("Garden name").fill("Acceptance plot");
       await page.getByRole("button", { name: "Continue setup" }).click();
       const track = page.getByRole("navigation", { name: "Guided setup" });
@@ -145,10 +146,9 @@ for (const viewport of viewports) {
       await expectNoSideScroll(page);
       await page.getByRole("button", { name: "Finish setup" }).click();
       await expect(track).toHaveCount(0);
-      // After the guide the same three parts switch levels (ADR-0075); the Garden level holds the size.
+      // After the guide the same three parts switch levels (ADR-0075) and open on Garden, which holds the size (ADR-0078).
       const levels = page.getByRole("navigation", { name: "Garden Plan levels" });
-      await expect(levels.getByRole("button", { name: "Plants", exact: true })).toHaveAttribute("aria-current", "true");
-      await goToLevel(page, "Garden");
+      await expect(levels.getByRole("button", { name: "Garden", exact: true })).toHaveAttribute("aria-current", "true");
       await expect(page.getByLabel("Garden name")).toHaveValue("Acceptance plot");
       await expect(page.getByLabel("Garden width (m)")).toHaveValue("6");
       await expect(page.getByLabel("Garden length (m)")).toHaveValue("4");

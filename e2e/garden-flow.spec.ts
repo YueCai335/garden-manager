@@ -88,12 +88,12 @@ test("create a garden, save an edit, add and arrange an area, plan next season, 
   await page.getByRole("link", { name: "All gardens", exact: true }).click();
   await expect(page).toHaveURL(workspaceHome);
   await page.getByRole("navigation", { name: "Workspace sections" }).getByRole("link", { name: "Next Season", exact: true }).click();
-  await expect(page.getByRole("heading", { name: /Next Season ·/ })).toBeVisible();
-  const raisedBed = page.locator("article", { has: page.getByRole("heading", { name: "Sample raised bed" }) });
-  await raisedBed.getByRole("button", { name: "Choose a plant" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Next Season" })).toBeVisible();
+  const raisedBed = page.getByRole("group", { name: "Sample raised bed", exact: true });
+  await raisedBed.getByRole("button", { name: "Choose a plant for Sample raised bed" }).click();
   await raisedBed.getByLabel("Plant type").fill("Kale");
   await raisedBed.getByRole("button", { name: `Add to ${nextYear} plan` }).click();
-  await expect(page.getByRole("region", { name: "plan for Sample raised bed" }).getByText("Kale", { exact: true })).toBeVisible();
+  await expect(raisedBed.getByText("Kale", { exact: true })).toBeVisible();
 
   // Verify both edits directly at the API: both edits must
   // be on the server before we reload.
@@ -112,7 +112,7 @@ test("create a garden, save an edit, add and arrange an area, plan next season, 
   await page.reload();
   await expect(page.getByText("All changes saved")).toBeVisible();
   await expect(page).toHaveURL(/\/season$/);
-  await expect(page.getByRole("region", { name: "plan for Sample raised bed" }).getByText("Kale", { exact: true })).toBeVisible();
+  await expect(raisedBed.getByText("Kale", { exact: true })).toBeVisible();
 });
 
 async function serverWorkspaceId(page: import("@playwright/test").Page) {

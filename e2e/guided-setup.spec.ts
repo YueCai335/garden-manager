@@ -20,7 +20,7 @@ for (const width of [1440, 390]) {
     await openWorkspace(page);
     await page.getByRole("button", { name: "Load demo garden" }).click();
     await expect(page.getByRole("link", { name: "Open Demo Garden" })).toBeVisible();
-    await page.getByRole("link", { name: "Add garden" }).click();
+    await page.getByRole("link", { name: "New garden" }).click();
     const name = `Guided ${width}`;
     await page.getByLabel("Garden name").fill(name);
     await page.getByRole("button", { name: "Continue setup" }).click();
@@ -120,13 +120,14 @@ for (const width of [1440, 390]) {
     if (width === 1440) {
       await page.getByRole("link", { name: "Log the first watering" }).click();
       await expect(page).toHaveURL(/\/care\?view=history&location=/);
-      await expect(page.getByRole("combobox", { name: "Location", exact: true })).toHaveValue(gardenId);
-      await expect(page.getByRole("button", { name: "Add care event" })).toBeVisible();
+      await expect(page.getByRole("group", { name: "Filter by garden" }).getByRole("button", { name })).toHaveAttribute("aria-pressed", "true");
+      await expect(page.getByRole("button", { name: "Add record" })).toBeVisible();
     } else {
       await page.getByRole("link", { name: "Plan next season" }).click();
       await expect(page).toHaveURL(/\/season\?garden=/);
-      await expect(page.getByRole("region", { name: "Planting plans" }).getByRole("combobox", { name: "Garden", exact: true })).toHaveValue(gardenId);
-      await expect(page.getByText(`Only ${name} ·`)).toBeVisible();
+      await expect(page).toHaveURL(new RegExp(`/season\\?garden=${gardenId}$`));
+      await expect(page.getByRole("navigation", { name: "Garden" }).getByRole("link", { name: new RegExp(`^${name}, `) })).toHaveAttribute("aria-current", "page");
+      await expect(page.getByRole("region", { name: new RegExp(`rotation sheet for ${name}$`) })).toBeVisible();
     }
     // Back returns to this garden's plan, and the finished guide stays closed.
     await page.goBack();

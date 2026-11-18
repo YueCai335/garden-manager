@@ -101,8 +101,8 @@ describe("shared save feedback", () => {
     resetTestRouter("/season");
     const user = userEvent.setup();
     const mounted = render(<GardenWorkspace />);
-    const area = (await screen.findByRole("heading", { name: "Sample raised bed" })).closest("article")!;
-    await user.click(within(area).getByRole("button", { name: "Choose a plant" }));
+    const area = await screen.findByRole("group", { name: "Sample raised bed" });
+    await user.click(within(area).getByRole("button", { name: "Choose a plant for Sample raised bed" }));
     await user.type(within(area).getByLabelText("Plant type"), "Kale");
     await user.click(within(area).getByRole("button", { name: /Add to .* plan/ }));
     expect(await screen.findByText("Changes not synced")).toBeInTheDocument();
@@ -119,7 +119,7 @@ describe("shared save feedback", () => {
     mounted.unmount();
     resetTestRouter("/season");
     render(<GardenWorkspace />);
-    const plan = await screen.findByRole("region", { name: /plan for Sample raised bed/ });
+    const plan = await screen.findByRole("group", { name: "Sample raised bed" });
     expect(within(plan).getByText("Kale", { exact: true })).toBeInTheDocument();
     expect(puts).toHaveLength(2);
   });

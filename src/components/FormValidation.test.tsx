@@ -66,7 +66,7 @@ describe("local form validation", () => {
   it("rejects zero fertilizer amount and accepts a positive amount smaller than 0.01", async () => {
     localRoute("/care?view=history&location=demo-garden");
     const user = userEvent.setup();
-    await user.click(await screen.findByRole("button", { name: "Add care event" }));
+    await user.click(await screen.findByRole("button", { name: "Add record" }));
     await user.selectOptions(screen.getByLabelText("Care type"), "fertilizing");
     fireEvent.change(screen.getByLabelText("Date"), { target: { value: todayDate() } });
     fireEvent.change(screen.getByLabelText("Fertilizer amount (optional)"), { target: { value: "0" } });
@@ -85,8 +85,8 @@ describe("local form validation", () => {
   it("keeps a blank season choice open without adding a plan", async () => {
     localRoute("/season");
     const user = userEvent.setup();
-    const area = (await screen.findByRole("heading", { name: "Sample raised bed" })).closest("article")!;
-    await user.click(within(area).getByRole("button", { name: "Choose a plant" }));
+    const area = await screen.findByRole("group", { name: "Sample raised bed" });
+    await user.click(within(area).getByRole("button", { name: "Choose a plant for Sample raised bed" }));
     await user.click(within(area).getByRole("button", { name: /Add to .* plan/ }));
     expect(within(area).getByLabelText("Plant type")).toHaveFocus();
     expect(within(area).getByLabelText("Plant type")).toHaveAttribute("aria-invalid", "true");
@@ -94,7 +94,7 @@ describe("local form validation", () => {
   });
 
   it("validates Add and duplicate through the same plant form", async () => {
-    localRoute("/gardens/demo-garden/plan");
+    localRoute("/gardens/demo-garden/plan?level=plants");
     const user = userEvent.setup();
     await user.click(await screen.findByRole("link", { name: "Edit Sample raised bed" }));
     await user.click(await screen.findByRole("button", { name: "Add plant" }));

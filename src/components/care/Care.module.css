@@ -1,12 +1,253 @@
-.toolbar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--color-line); }
-.views { display: flex; flex-wrap: wrap; gap: 4px; }
-/* Selected view: the content-green selected state (ADR-0073). */
-.views :is([aria-current="page"], [aria-selected="true"]), .views :is([aria-current="page"], [aria-selected="true"]):hover:not(:disabled) { color: #ffffff; background: var(--color-brand); }
-.filter { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; min-width: 0; }
-.filter select { max-width: 100%; min-height: 44px; }
-.filter p { margin: 0; color: var(--color-muted); }
-.row.row { gap: 16px; min-width: 0; }
-.row > div { min-width: 0; }
-.row p { margin: 6px 0 0; overflow-wrap: anywhere; }
-.row .note { color: var(--color-text); white-space: pre-wrap; }
-@media (max-width: 767px) { .row.row { flex-direction: column; align-items: stretch; } }
+/*
+ * Care (ADR-0080): the Today board and the History log. Values follow the approved mockup in
+ * design/care-redesign/mockup.css; colours come from tokens.css.
+ */
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 64px;
+  width: min(var(--content-width), calc(100% - var(--workspace-gutters)));
+  margin: 24px auto 72px;
+  min-width: 0;
+}
+.page[data-view="history"] { gap: 32px; }
+.page :focus-visible { outline: 2px solid var(--color-brand); outline-offset: 2px; }
+.page :is(p, ul, ol, h1, h2, h3, h4) { margin: 0; }
+.page :is(ul, ol) { padding: 0; list-style: none; }
+.page svg { display: block; }
+.visuallyHidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+/* Kept in the page while empty, so screen readers announce the next message. */
+.status:empty { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.page .status { margin: -40px 0 0; color: var(--color-muted); font-size: 14px; }
+.page[data-view="history"] .status { margin: -16px 0 0; }
+.alert { margin: 0; padding: 12px 16px; border-radius: var(--radius-card); background: var(--color-error-surface); color: var(--color-error); font-weight: 600; }
+
+.block { display: flex; flex-direction: column; gap: 24px; min-width: 0; }
+.blockHead { display: flex; flex-direction: column; gap: 8px; }
+.kicker { font-size: 12.5px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: var(--color-brand); }
+.page .blockTitle { font-size: clamp(1.5rem, 2.6vw, 2rem); font-weight: 500; line-height: 1.1; letter-spacing: -0.02em; color: var(--color-heading); }
+
+/* ---------- The textured band (Today) and the slim strip (History) ---------- */
+.band { composes: band ridges from "../../styles/bands.module.css"; border-radius: 20px; }
+.band::before { background: linear-gradient(100deg, rgb(9 24 15 / 78%), rgb(9 24 15 / 46%) 55%, rgb(9 24 15 / 58%)); }
+.page .band :focus-visible { outline-color: #fff; }
+.today { padding: 48px; display: flex; flex-wrap: wrap; gap: 40px; align-items: stretch; }
+.bandMain { flex: 1 1 360px; min-width: 0; display: flex; flex-direction: column; justify-content: space-between; gap: 32px; }
+.bandIntro { display: flex; flex-direction: column; gap: 18px; }
+.bandKicker { font-size: 12.5px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; }
+.band .headline { color: #fff; font-family: var(--font-display); font-size: clamp(2.25rem, 4.2vw, 3.5rem); font-weight: 500; line-height: 1; letter-spacing: -0.035em; }
+.headline:focus { outline: none; }
+.summary { font-size: 17px; line-height: 1.55; color: rgb(255 255 255 / 88%); max-width: 40ch; }
+.progress { display: flex; flex-direction: column; gap: 10px; max-width: 420px; padding-top: 6px; }
+.progressTrack { composes: progressTrack from "./CareShared.module.css"; }
+.progressFill { composes: progressFill from "./CareShared.module.css"; }
+.progressLabel { composes: progressLabel from "./CareShared.module.css"; }
+.tilesLabel { margin-bottom: 12px !important; font-size: 13px; font-weight: 600; color: rgb(255 255 255 / 84%); }
+.tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.tile {
+  display: grid; gap: 4px; align-content: start; min-width: 0; min-height: 44px; padding: 14px 16px 16px;
+  border-radius: 14px; border: 1px solid rgb(255 255 255 / 16%); background: rgb(10 26 17 / 34%);
+  -webkit-backdrop-filter: blur(14px) saturate(1.1); backdrop-filter: blur(14px) saturate(1.1);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 12%); color: #fff; text-decoration: none;
+  transition: background-color 140ms, transform 140ms;
+}
+.tile:hover { background: rgb(255 255 255 / 14%); transform: translateY(-1px); }
+.tileName { font-size: 13px; font-weight: 600; line-height: 1.3; overflow-wrap: anywhere; }
+.tileCount { font-size: 24px; font-weight: 500; letter-spacing: -0.02em; line-height: 1.15; }
+.tileSub { font-size: 12.5px; line-height: 1.35; color: rgb(255 255 255 / 84%); }
+.bandActions { display: flex; flex-wrap: wrap; gap: 12px; }
+.glass {
+  composes: onDark from "./CareShared.module.css";
+  background: rgb(10 26 17 / 38%);
+  -webkit-backdrop-filter: blur(22px) saturate(1.1); backdrop-filter: blur(22px) saturate(1.1);
+  border: 1px solid rgb(255 255 255 / 16%);
+  box-shadow: 0 40px 80px -40px rgb(0 0 0 / 75%), inset 0 1px 0 rgb(255 255 255 / 14%);
+}
+.todo { flex: 1 1 480px; min-width: 0; border-radius: 24px; padding: 10px 28px 18px; }
+.page .todo h3 { color: rgb(255 255 255 / 82%); font-size: 13px; font-weight: 600; padding: 14px 0 2px; }
+.todo .doneLabel { margin-top: 10px; border-top: 1px solid rgb(255 255 255 / 14%); }
+.todoEmpty { padding: 14px 0 18px; font-size: 15px; }
+
+/* ---------- Buttons ---------- */
+.buttonWhite, .buttonGhost, .buttonPrimary {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 46px; padding: 0 22px;
+  border-radius: var(--radius-pill); font: inherit; font-size: 15px; font-weight: 600; white-space: nowrap; text-decoration: none; cursor: pointer;
+}
+.buttonWhite { border: 0; background: #fff; color: var(--color-band-ink); }
+.buttonWhite:hover { background: #ececea; }
+.buttonGhost { padding: 0 20px; border: 1px solid rgb(255 255 255 / 20%); background: rgb(255 255 255 / 7%); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); color: #fff; font-weight: 500; }
+.buttonGhost:hover { background: rgb(255 255 255 / 14%); }
+.buttonPrimary { padding: 0 24px; border: 0; background: var(--color-brand); color: #fff; }
+.buttonPrimary:hover { background: var(--color-brand-hover); }
+.buttonWhite:active, .buttonPrimary:active, .buttonGhost:active { transform: translateY(1px); }
+
+/* ---------- Task and record rows ---------- */
+/* The row, tick, type icon, title, and late chip are shared with the Gardens home (CareShared.module.css).
+   `.tick` and `.careIcon` here are hooks that CareMarks adds for this page's placement rules. */
+.groupLabel { font-size: 13px; font-weight: 600; color: var(--color-muted); padding: 14px 0 2px; }
+.row { composes: row from "./CareShared.module.css"; min-height: 58px; }
+.rowText { flex: 1; min-width: 0; display: grid; gap: 1px; padding: 8px 0; overflow-wrap: anywhere; }
+.rowTitle { composes: rowTitle from "./CareShared.module.css"; }
+.rowSub { font-size: 13px; line-height: 1.4; color: var(--color-muted); }
+.rowNote { font-size: 13.5px; line-height: 1.45; color: var(--color-text); white-space: pre-wrap; }
+/* A task title that opens the task dialog: reads as text, behaves as a button. */
+.titleButton { justify-self: start; max-width: 100%; margin: 0; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; overflow-wrap: anywhere; }
+.titleButton:hover { text-decoration: underline; text-underline-offset: 3px; }
+.lateChip { composes: lateChip from "./CareShared.module.css"; }
+/* Phones: the chip has no room beside the title, so the same words sit under it instead. */
+.lateInline { display: none; font-size: 13px; font-weight: 600; color: var(--color-error); }
+.more { flex: none; display: grid; place-items: center; width: 44px; height: 44px; margin-right: -12px; padding: 0; border: 0; border-radius: 50%; background: none; cursor: pointer; color: var(--color-muted); }
+.more:hover, .more[aria-expanded="true"] { background: rgb(127 127 127 / 14%); }
+/* Rows on the glass card; the tick and icon colours come from the shared `onDark`. */
+.glass .row { border-top-color: rgb(255 255 255 / 14%); }
+.glass .rowSub { color: rgb(255 255 255 / 82%); }
+.glass .rowNote { color: #fff; }
+.glass .row[data-done] .rowTitle { color: rgb(255 255 255 / 74%); }
+.glass .lateInline { color: var(--color-error-on-dark); }
+.glass .more { color: rgb(255 255 255 / 82%); }
+
+/* ---------- The row menu ---------- */
+.menuWrap { position: relative; flex: none; }
+.menu {
+  position: absolute; right: -12px; top: calc(100% + 4px); z-index: 20; min-width: 236px; padding: 6px;
+  border: 1px solid var(--color-line); border-radius: 12px; background: var(--color-surface); color: var(--color-text);
+  box-shadow: 0 16px 40px -12px rgb(24 24 26 / 28%);
+}
+.menu[data-up] { top: auto; bottom: calc(100% + 4px); }
+.menuItem { display: flex; align-items: center; width: 100%; min-height: 44px; padding: 0 14px; border: 0; border-radius: 8px; background: none; color: inherit; font: inherit; font-size: 14.5px; font-weight: 500; text-align: left; white-space: nowrap; cursor: pointer; }
+.menuItem:hover, .menuItem:focus { background: var(--color-soft); outline: none; }
+.menuItem[data-danger] { color: var(--color-error); }
+
+/* ---------- Upcoming: the seven-day ribbon ---------- */
+.ribbon { border: 1px solid var(--color-line); border-radius: 20px; background: var(--color-surface); overflow: hidden; }
+.ribbonGrid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.day { padding: 20px 16px 24px; min-height: 150px; display: flex; flex-direction: column; gap: 14px; border-left: 1px solid var(--color-line); min-width: 0; }
+.day:first-child { border-left: 0; }
+.dayHead { display: flex; align-items: baseline; gap: 7px; }
+.dayName { font-size: 12.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-muted); }
+.dayNumber { font-size: 22px; font-weight: 500; letter-spacing: -0.02em; color: var(--color-heading); }
+.dayEmpty { font-size: 13px; color: var(--color-muted); }
+.dayItems { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.mini { display: flex; gap: 10px; align-items: flex-start; }
+.mini .careIcon { width: 26px; height: 26px; }
+.miniText { display: grid; gap: 1px; min-width: 0; overflow-wrap: anywhere; }
+.miniTitle { font-size: 14px; font-weight: 600; line-height: 1.35; }
+
+/* ---------- Gardens ---------- */
+.card { background: var(--color-surface); border: 1px solid var(--color-line); border-radius: 14px; min-width: 0; overflow: hidden; }
+.allGardens { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 32px; padding: 14px 24px; scroll-margin-top: 16px; }
+.allGardensHead { flex: 0 1 280px; display: flex; align-items: center; gap: 14px; min-width: 0; padding: 6px 0; }
+.allGardensMark { flex: none; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: var(--color-brand); color: #fff; }
+.allGardens ul { flex: 1 1 360px; min-width: 0; }
+.gardenGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 20px; align-items: start; }
+.gardenCard { display: flex; flex-direction: column; scroll-margin-top: 16px; transition: border-color 140ms, box-shadow 140ms; }
+.gardenCard[data-highlight], .allGardens[data-highlight] { border-color: var(--color-brand); box-shadow: 0 0 0 3px rgb(31 66 48 / 18%); }
+.gardenMap { position: relative; display: grid; place-items: center; height: 132px; padding: 8px; background-color: var(--color-surface); background-image: radial-gradient(var(--color-plan-dot) 1px, transparent 1.2px); background-size: 14px 14px; border-bottom: 1px solid var(--color-line); }
+.gardenMap > * { width: 100%; height: 100%; }
+.mapEmpty { display: grid; place-items: center; color: var(--color-muted); font-size: 14px; }
+.gardenHead { padding: 18px 20px 14px; display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.page .gardenName { font-size: 18px; font-weight: 650; line-height: 1.3; color: var(--color-heading); overflow-wrap: anywhere; }
+.gardenName:focus { outline: none; }
+.countChip { flex: none; padding: 4px 11px; border-radius: var(--radius-pill); font-size: 12.5px; font-weight: 600; white-space: nowrap; background: var(--color-soft); color: var(--color-muted); }
+.countChip[data-open] { background: var(--color-brand); color: #fff; }
+.gardenSection { padding: 0 20px 6px; border-top: 1px solid var(--color-line); }
+.gardenSection .row { min-height: 62px; }
+.gardenSection .tick { margin: 0; }
+.gardenEmpty { padding: 8px 0 12px; font-size: 14px; color: var(--color-muted); }
+.dateCol { flex: none; display: grid; justify-items: center; width: 44px; }
+.dateColName { font-size: 11.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-muted); }
+.dateColNumber { font-size: 19px; font-weight: 500; letter-spacing: -0.02em; line-height: 1.15; color: var(--color-heading); }
+.gardenFoot { padding: 14px 20px 18px; border-top: 1px solid var(--color-line); }
+.gardenLink { display: inline-flex; align-items: center; min-height: 44px; margin: -12px 0; font-size: 14px; font-weight: 600; text-decoration: none; color: var(--color-brand); }
+.gardenLink:hover { text-decoration: underline; }
+.emptyGardens { display: flex; flex-direction: column; align-items: flex-start; gap: 16px; padding: 32px; }
+
+/* ---------- History ---------- */
+.strip { padding: 28px 40px 30px; display: flex; flex-direction: column; gap: 24px; background-position: center 30%; }
+.stripTop { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px 24px; }
+.stripTitle { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 22px; min-width: 0; }
+.stripTitle .buttonGhost { min-height: 44px; padding: 0 18px 0 14px; }
+.stripHeading { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 18px; }
+.band .stripHeading h2 { color: #fff; font-family: var(--font-display); font-size: clamp(2rem, 3.2vw, 2.75rem); font-weight: 500; line-height: 1; letter-spacing: -0.03em; }
+.stripHeading h2:focus { outline: none; }
+.stripHeading p { font-size: 16px; line-height: 1.5; color: rgb(255 255 255 / 88%); }
+.filters { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 36px; }
+.filterGroup { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.filterLabel { font-size: 13px; font-weight: 600; color: rgb(255 255 255 / 86%); margin-right: 4px; }
+.chip {
+  min-height: 44px; padding: 0 16px; border-radius: var(--radius-pill); border: 1px solid rgb(255 255 255 / 22%); background: rgb(10 26 17 / 30%);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); color: #fff; font: inherit; font-size: 14.5px; font-weight: 500; cursor: pointer; white-space: nowrap; transition: background-color 140ms;
+}
+.chip:hover { background: rgb(255 255 255 / 16%); }
+.chip[aria-pressed="true"] { background: #fff; border-color: #fff; color: var(--color-band-ink); font-weight: 600; }
+.filterCount { margin-left: auto !important; font-size: 14px; font-weight: 500; font-variant-numeric: tabular-nums; }
+/* No overflow clipping: a row menu near the card's edge must not be cut off. */
+.log { background: var(--color-surface); border: 1px solid var(--color-line); border-radius: 20px; }
+.logDay { display: flex; flex-wrap: wrap; border-top: 1px solid var(--color-line); }
+.logDay:first-child { border-top: 0; }
+.logDate { flex: 0 0 260px; padding: 18px 16px 14px 28px; display: flex; align-items: center; gap: 16px; align-self: flex-start; }
+.dateBadge { flex: none; display: grid; place-items: center; align-content: center; gap: 1px; width: 56px; height: 60px; border-radius: 12px; background: var(--color-brand); color: #fff; box-shadow: 0 8px 18px -10px rgb(20 40 29 / 70%); }
+.dateBadgeNumber { font-size: 23px; font-weight: 600; line-height: 1; letter-spacing: -0.02em; }
+.dateBadgeMonth { font-size: 10.5px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; }
+.page .logDayName { font-size: 17px; font-weight: 650; line-height: 1.3; color: var(--color-heading); }
+.logRows { flex: 1 1 440px; min-width: 0; padding: 6px 32px 6px 28px; }
+.logRows .row { align-items: flex-start; }
+.logRows .careIcon { margin-top: 14px; }
+.logRows .rowText { gap: 2px; padding: 12px 0; }
+.logRows .menuWrap { margin-top: 7px; }
+.logEmpty { padding: 40px 32px; display: flex; flex-direction: column; align-items: flex-start; gap: 16px; font-size: 16px; }
+.logMore { display: flex; justify-content: center; }
+
+/* ---------- Dialogs ---------- */
+.dialog {
+  position: fixed; inset: 0; width: min(640px, calc(100% - 48px)); max-height: 90dvh; padding: 0; overflow: hidden;
+  border: 1px solid var(--color-line); border-radius: 18px; background: var(--color-surface); color: var(--color-text);
+  box-shadow: 0 16px 48px rgb(24 24 26 / 20%);
+}
+.dialog[open] { display: flex; flex-direction: column; }
+.dialog::backdrop { background: rgb(24 24 26 / 45%); }
+.dialogHeader { display: flex; flex: none; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 24px; border-bottom: 1px solid var(--color-line); }
+.dialogHeader h2 { margin: 0; color: var(--color-heading); font-size: 22px; line-height: 1.25; }
+.dialogHeader h2:focus { outline: none; }
+.dialogBody { min-height: 0; padding: 20px 24px 24px; overflow-y: auto; overscroll-behavior: contain; overflow-wrap: anywhere; }
+.dialogBody :focus-visible { outline: 2px solid var(--color-brand); outline-offset: 2px; }
+.form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 16px; }
+.form > * { min-width: 0; }
+.form :is(input, select) { width: 100%; max-width: 100%; }
+.wide { grid-column: 1 / -1; }
+.formContext { grid-column: 1 / -1; margin: 0 0 14px; color: var(--color-muted); }
+.formActions { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding-top: 8px; }
+.formActionsSecondary { margin-left: auto; display: flex; flex-wrap: wrap; gap: 8px; }
+
+@media (max-width: 899px) {
+  .ribbonGrid { grid-template-columns: minmax(0, 1fr); }
+  .day { flex-direction: row; align-items: flex-start; gap: 16px; min-height: 0; padding: 16px 20px; border-left: 0; border-top: 1px solid var(--color-line); }
+  .day:first-child { border-top: 0; }
+  .dayHead { flex: 0 0 76px; }
+  .dayItems { flex: 1; }
+}
+@media (max-width: 599px) {
+  .page { gap: 48px; margin-top: 16px; }
+  .today { padding: 28px 20px; gap: 28px; }
+  .strip { padding: 22px 20px 24px; }
+  .todo { padding: 6px 18px 14px; }
+  .tiles { grid-template-columns: minmax(0, 1fr); }
+  .tile { grid-template-columns: 1fr auto; align-items: baseline; }
+  .tileSub { grid-column: 1 / -1; }
+  .todo .lateChip { display: none; }
+  .lateInline { display: block; }
+  .logDate { flex-basis: 100%; padding: 16px 20px 4px; }
+  .logRows { padding: 2px 20px 6px; }
+  .filterCount { margin-left: 0 !important; }
+  .allGardens { padding: 14px 18px; }
+  .gardenSection, .gardenHead, .gardenFoot { padding-left: 16px; padding-right: 16px; }
+  .dialog { width: 100%; max-width: none; height: 100dvh; max-height: none; margin: 0; border: 0; border-radius: 0; }
+  .dialogHeader { padding: max(8px, env(safe-area-inset-top)) 16px 8px; }
+  .dialogBody { padding: 16px; }
+  .form { grid-template-columns: minmax(0, 1fr); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tile, .gardenCard { transition: none; }
+  .tile:hover { transform: none; }
+  .buttonWhite:active, .buttonPrimary:active, .buttonGhost:active { transform: none; }
+}

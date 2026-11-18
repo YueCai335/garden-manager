@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Care mockup (ADR-0080)</title>
+<!-- The mockup loads fonts from Google; the app self-hosts them with next/font. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..600&family=Instrument+Sans:wght@400..700&display=swap">
+<link rel="stylesheet" href="mockup.css">
+</head>
+<body>
+
+<header class="appbar">
+  <div class="appbar-inner">
+    <a class="brand" href="#">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21c-4.2-2.2-6.5-5.6-6.5-9.6C5.5 7.2 8.2 4.3 12 3c3.8 1.3 6.5 4.2 6.5 8.4 0 4-2.3 7.4-6.5 9.6z"/><path d="M12 21V9"/></svg>
+      Garden Manager
+    </a>
+    <nav class="nav" aria-label="Workspace sections">
+      <a href="#">Gardens</a>
+      <a href="care.html" aria-current="page">Care</a>
+      <a href="#">Next Season</a>
+      <span class="divider"></span>
+      <a href="#">Plant Doctor</a>
+      <a href="#">Plant Guide</a>
+    </nav>
+    <span class="note-button">+ Note</span>
+    <span class="sync">All changes saved</span>
+  </div>
+</header>
+
+<main class="page">
+
+  <!-- 1. Today band -->
+  <section class="band today" aria-labelledby="today-heading">
+    <div class="band-main">
+      <div class="band-intro">
+        <p class="band-kicker">Today · Monday, Nov 16</p>
+        <h1 class="band-headline" id="today-heading"></h1>
+        <p class="band-summary" id="today-summary"></p>
+        <div class="progress">
+          <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+          <span class="progress-label" id="progress-label"></span>
+        </div>
+      </div>
+      <div>
+        <p class="tiles-label">Today by garden</p>
+        <div class="tiles" id="tiles"></div>
+      </div>
+      <div class="band-actions">
+        <button class="button-white" type="button">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg>
+          Add task
+        </button>
+        <a class="button-ghost" href="history.html">History</a>
+      </div>
+    </div>
+    <div class="glass todo">
+      <p class="group-label" id="todo-label"></p>
+      <ul id="todo-list"></ul>
+      <p class="group-label todo-done-label" id="done-label"></p>
+      <ul id="done-list"></ul>
+    </div>
+  </section>
+
+  <!-- 2. Upcoming: seven-day ribbon -->
+  <section class="block" aria-labelledby="upcoming-heading">
+    <div class="block-head">
+      <p class="kicker">Next 7 days</p>
+      <h2 class="block-title" id="upcoming-heading">Upcoming</h2>
+    </div>
+    <div class="ribbon"><div class="ribbon-grid" id="ribbon"></div></div>
+  </section>
+
+  <!-- 3. Gardens -->
+  <section class="block" aria-labelledby="gardens-heading">
+    <div class="block-head">
+      <p class="kicker">By garden</p>
+      <h2 class="block-title" id="gardens-heading">Coming up in each garden</h2>
+    </div>
+    <div class="card all-gardens">
+      <div class="all-gardens-head">
+        <span class="all-gardens-mark" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="2" width="5.5" height="5.5" rx="1.5"/><rect x="10.5" y="2" width="5.5" height="5.5" rx="1.5"/><rect x="2" y="10.5" width="5.5" height="5.5" rx="1.5"/><rect x="10.5" y="10.5" width="5.5" height="5.5" rx="1.5"/></svg>
+        </span>
+        <div>
+          <h3 class="garden-name">All gardens</h3>
+          <p class="row-sub">Applies to every garden</p>
+        </div>
+      </div>
+      <ul id="all-gardens-list"></ul>
+    </div>
+    <div class="garden-grid" id="garden-grid"></div>
+  </section>
+
+</main>
+
+<script>
+// Sample data for the mockup only. "Today" is Monday 2026-11-16.
+const WATER = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5c3 3.6 5.5 6.3 5.5 9.6a5.5 5.5 0 0 1-11 0c0-3.3 2.5-6 5.5-9.6z"/></svg>';
+const FEED = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20v-8"/><path d="M12 12c0-3-2-5-6-5 0 3 2 5 6 5z"/><path d="M12 14.5c0-2.5 2-4.5 6-4.5 0 2.5-2 4.5-6 4.5z"/></svg>';
+const CHECK = '<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 6.5l2.5 2.5 4.5-5.5"/></svg>';
+const DOTS = '<svg width="18" height="18" viewBox="0 0 18 18" fill="currentColor" aria-hidden="true"><circle cx="3.5" cy="9" r="1.5"/><circle cx="9" cy="9" r="1.5"/><circle cx="14.5" cy="9" r="1.5"/></svg>';
+
+const TASKS = [
+  { id: 't1', type: 'watering', g: 'backyard', place: 'Backyard', area: 'Raised bed A', plant: 'Pepper', when: 'overdue' },
+  { id: 't2', type: 'watering', g: 'front', place: 'Front Yard', area: 'Border', plant: 'Panicle hydrangea', when: 'today' },
+  { id: 't3', type: 'fertilizing', g: 'community', place: 'Community Garden', area: 'Bed 2', plant: 'Eggplant', repeat: 'Every 14 days', when: 'today' },
+  { id: 't4', type: 'watering', g: 'backyard', place: 'Backyard', area: 'Salad bed', plant: 'Lettuce', when: 'today' },
+  { id: 't5', type: 'watering', g: 'community', place: 'Community Garden', when: 'today' },
+  { id: 't6', type: 'watering', g: 'backyard', place: 'Backyard', area: 'Herb pots', plant: 'Meadow sage', when: 'today' },
+  { id: 'u1', type: 'watering', g: 'community', place: 'Community Garden', area: 'Bed 4', plant: 'Kale', when: 'up', day: 0 },
+  { id: 'u2', type: 'watering', g: 'front', place: 'Front Yard', area: 'Fence row', plant: 'Sunflower', when: 'up', day: 1 },
+  { id: 'u3', type: 'watering', g: 'backyard', place: 'Backyard', area: 'Raised bed A', plant: 'Pepper', when: 'up', day: 1 },
+  { id: 'u4', type: 'fertilizing', g: 'all', place: 'all gardens', repeat: 'Every 7 days', when: 'up', day: 3 },
+  { id: 'u5', type: 'watering', g: 'backyard', place: 'Backyard', area: 'Salad bed', plant: 'Lettuce', when: 'up', day: 4 },
+  { id: 'u6', type: 'fertilizing', g: 'front', place: 'Front Yard', area: 'Planter', plant: 'Marigold', when: 'up', day: 5 },
+];
+const DAYS = [['Tue', 17], ['Wed', 18], ['Thu', 19], ['Fri', 20], ['Sat', 21], ['Sun', 22], ['Mon', 23]];
+const GARDENS = [
+  { key: 'backyard', name: 'Backyard', meta: '10 planting areas', beds: ['left:9%;top:26px;width:5%;height:50px', 'left:16.5%;top:26px;width:5%;height:50px', 'left:24%;top:26px;width:5%;height:50px', 'left:32.5%;top:26px;width:5%;height:50px', 'left:40%;top:26px;width:5%;height:50px', 'left:53%;top:24px;width:18px;height:18px;border-radius:50%', 'left:66%;top:30px;width:18px;height:12px;border-radius:50%', 'left:13%;top:92px;width:20px;height:20px;border-radius:50%', 'left:30%;top:84px;width:13%;height:32px', 'left:58%;top:76px;width:10%;height:38px'] },
+  { key: 'community', name: 'Community Garden', meta: '6 planting areas', beds: ['left:30%;top:18px;width:8%;height:44px', 'left:44%;top:18px;width:8%;height:44px', 'left:58%;top:28px;width:22px;height:22px;border-radius:50%', 'left:30%;top:74px;width:8%;height:44px', 'left:44%;top:74px;width:8%;height:44px', 'left:58%;top:84px;width:22px;height:22px;border-radius:50%'] },
+  { key: 'front', name: 'Front Yard', meta: '3 planting areas', beds: ['left:38%;top:20px;width:40%;height:34px', 'left:38%;top:54px;width:7%;height:46px', 'left:18%;top:100px;width:22%;height:16px'] },
+];
+const done = new Set(['t5', 't6']);
+
+const verb = (t) => (t.type === 'watering' ? 'Water' : 'Fertilize');
+const icon = (t) => `<span class="care-icon ${t.type}">${t.type === 'watering' ? WATER : FEED}</span>`;
+// Workspace-wide lists name the garden in the title and the target below it.
+const title = (t) => `${verb(t)} ${t.place}`;
+const sub = (t) => [[t.area, t.plant].filter(Boolean).join(' · ') || (t.g === 'all' ? '' : 'Whole garden'), t.repeat].filter(Boolean).join(' · ');
+// Inside a garden card the garden name is dropped.
+const localTitle = (t) => (t.g === 'all' ? 'Fertilize all gardens' : `${verb(t)} ${t.plant || t.area || 'whole garden'}`);
+const localSub = (t) => [t.plant ? t.area : '', t.repeat].filter(Boolean).join(' · ');
+const tick = (t) => `<button class="tick" type="button" role="checkbox" aria-checked="${done.has(t.id)}" aria-label="${title(t)}" data-toggle="${t.id}"><span class="tick-circle">${CHECK}</span></button>`;
+
+function render() {
+  const todays = TASKS.filter((t) => t.when !== 'up');
+  const upcoming = TASKS.filter((t) => t.when === 'up');
+  const open = todays.filter((t) => !done.has(t.id));
+  const finished = todays.filter((t) => done.has(t.id));
+  const late = open.filter((t) => t.when === 'overdue').length;
+  const n = open.length;
+
+  document.getElementById('today-heading').textContent = n === 0 ? 'All done for today.' : n === 1 ? '1 thing left today.' : `${n} things left today.`;
+  document.getElementById('today-summary').textContent = [late && `${late} overdue`, n - late && `${n - late} due today`, `${finished.length} already done`].filter(Boolean).join(' · ');
+  document.getElementById('progress-fill').style.width = `${Math.round((finished.length / todays.length) * 100)}%`;
+  document.getElementById('progress-label').textContent = `${finished.length} of ${todays.length} done`;
+
+  document.getElementById('tiles').innerHTML = GARDENS.map((g) => {
+    const mine = todays.filter((t) => t.g === g.key);
+    const left = mine.filter((t) => !done.has(t.id)).length;
+    return `<a class="tile" href="#garden-${g.key}"><span class="tile-name">${g.name}</span><span class="tile-count">${left ? `${left} left` : mine.length ? 'All done' : 'Nothing'}</span><span class="tile-sub">${mine.length ? `${mine.length - left} of ${mine.length} done` : 'No care today'}</span></a>`;
+  }).join('');
+
+  document.getElementById('todo-label').textContent = `To do · ${n}`;
+  document.getElementById('todo-list').innerHTML = n ? open.map((t) => `<li class="row">${tick(t)}${icon(t)}<span class="row-text"><span class="row-title">${title(t)}</span><span class="row-sub">${sub(t)}</span>${t.when === 'overdue' ? '<span class="late-inline">Due yesterday</span>' : ''}</span>${t.when === 'overdue' ? '<span class="late-chip">Due yesterday</span>' : ''}<button class="more" type="button" aria-label="More actions for ${title(t)}">${DOTS}</button></li>`).join('')
+    : '<li class="todo-empty">Nothing left. Everything for today is done.</li>';
+  document.getElementById('done-label').textContent = `Done today · ${finished.length}`;
+  document.getElementById('done-list').innerHTML = finished.length ? finished.map((t) => `<li class="row done">${tick(t)}${icon(t)}<span class="row-text"><span class="row-title">${title(t)}</span><span class="row-sub">${sub(t)}</span></span></li>`).join('')
+    : '<li class="todo-empty">Nothing ticked off yet.</li>';
+
+  document.getElementById('ribbon').innerHTML = DAYS.map(([name, number], index) => {
+    const items = upcoming.filter((t) => t.day === index);
+    return `<div class="day"><div class="day-head"><span class="day-name">${name}</span><span class="day-number">${number}</span></div>${items.length
+      ? `<div class="day-items">${items.map((t) => `<div class="mini">${icon(t)}<span class="mini-text"><span class="mini-title">${title(t)}</span><span class="row-sub">${sub(t)}</span></span></div>`).join('')}</div>`
+      : '<p class="day-empty">Nothing planned</p>'}</div>`;
+  }).join('');
+
+  const upcomingRow = (t) => `<li class="row"><span class="date-col"><span class="date-col-name">${DAYS[t.day][0]}</span><span class="date-col-number">${DAYS[t.day][1]}</span></span>${icon(t)}<span class="row-text"><span class="row-title">${localTitle(t)}</span><span class="row-sub">${localSub(t)}</span></span></li>`;
+  document.getElementById('all-gardens-list').innerHTML = upcoming.filter((t) => t.g === 'all').map(upcomingRow).join('');
+  document.getElementById('garden-grid').innerHTML = GARDENS.map((g) => {
+    const mine = todays.filter((t) => t.g === g.key);
+    const next = upcoming.filter((t) => t.g === g.key);
+    const left = mine.filter((t) => !done.has(t.id)).length;
+    return `<article class="card garden-card" id="garden-${g.key}">
+      <div class="garden-map" role="img" aria-label="Plan of ${g.name}">${g.beds.map((bed) => `<span style="${bed}"></span>`).join('')}</div>
+      <header class="garden-head"><div><h3 class="garden-name">${g.name}</h3><p class="row-sub">${g.meta}</p></div><span class="count-chip${left ? ' open' : ''}">${left ? `${left} to do today` : mine.length ? 'Done for today' : 'Nothing today'}</span></header>
+      <div class="garden-section"><p class="group-label">Today</p>${mine.length ? `<ul>${mine.map((t) => `<li class="row${done.has(t.id) ? ' done' : ''}">${tick(t)}${icon(t)}<span class="row-text"><span class="row-title">${localTitle(t)}</span><span class="row-sub">${localSub(t)}</span></span>${t.when === 'overdue' && !done.has(t.id) ? '<span class="late-chip">Overdue</span>' : ''}</li>`).join('')}</ul>` : '<p class="garden-empty">Nothing due today.</p>'}</div>
+      <div class="garden-section"><p class="group-label">Upcoming</p>${next.length ? `<ul>${next.map(upcomingRow).join('')}</ul>` : '<p class="garden-empty">Nothing in the next 7 days.</p>'}</div>
+      <footer class="garden-foot"><a class="garden-link" href="#">Open ${g.name} →</a></footer>
+    </article>`;
+  }).join('');
+}
+
+document.addEventListener('click', (event) => {
+  const button = event.target.closest('[data-toggle]');
+  if (!button) return;
+  const id = button.dataset.toggle;
+  if (done.has(id)) done.delete(id); else done.add(id);
+  render();
+});
+render();
+</script>
+</body>
+</html>

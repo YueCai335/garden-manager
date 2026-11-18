@@ -1,3 +1,7 @@
+/* Header, page, footer: a short page still puts the footer at the bottom of the window (ADR-0083). */
+.shell { display: flex; flex-direction: column; }
+.shell > main { flex: 1 0 auto; }
+
 /* The app bar (ADR-0073): deep green with a grayscale banana-leaf ridge texture in overlay blend.
    It must read clearly green, never black, so the texture only modulates the green. */
 /* It stays at the top while the page scrolls, like the landing header; z-index keeps it above the canvas layers. */
@@ -101,6 +105,14 @@
 /* Below the header modules: "All gardens", the breadcrumb, and the garden switcher. */
 .context { width: min(var(--content-width), calc(100% - var(--workspace-gutters))); padding: 24px 0 0; margin: auto; overflow-wrap: anywhere; }
 .context h1:focus { outline: none; }
+.contextHidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+/* A garden page's Done and Delete garden, on the title's row (ADR-0078). */
+.pageActions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-left: auto; }
+.pageActions:empty { display: none; }
+/* Next Season (ADR-0082): a larger, lighter title and the garden switch aligned to the lede's foot. */
+.contextSeason h1 { font-size: clamp(1.75rem, 2.8vw, 2.25rem); font-weight: 500; line-height: 1.1; letter-spacing: -0.02em; }
+.contextSeason h1 + p { max-width: 60ch; margin-top: 10px; font-size: 16px; line-height: 1.55; }
+.contextSeason .pageActions { align-self: flex-end; max-width: 100%; min-width: 0; }
 .crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-bottom: 12px; }
 .allGardens { gap: 6px; padding: 6px 16px 6px 12px; }
 .breadcrumb ol { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin: 0; padding: 0; list-style: none; color: var(--color-ink-muted); }

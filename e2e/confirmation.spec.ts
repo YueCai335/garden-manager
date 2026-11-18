@@ -69,7 +69,8 @@ test("care form cancellation keeps drafts until explicit discard", async ({ page
   await expect(page.getByRole("button", { name: "Cancel", exact: true })).toBeFocused();
   await page.getByRole("button", { name: "Cancel", exact: true }).click();
   await page.getByRole("button", { name: "Discard changes" }).click();
-  await expect(page.getByRole("heading", { name: "Tasks", exact: true })).toBeFocused();
+  await expect(page.getByRole("dialog", { name: "Add care task" })).toHaveCount(0);
+  await expect(page.locator("#care-today-heading")).toBeFocused();
   await page.getByRole("button", { name: "Add task", exact: true }).click();
   await expect(page.getByLabel("Note (optional)")).toHaveValue("");
 });

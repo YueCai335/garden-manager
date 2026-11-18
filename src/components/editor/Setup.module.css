@@ -42,14 +42,37 @@
 .start { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 0 0 12px; padding: 12px 16px; border: 1px dashed var(--color-input-border); border-radius: var(--radius-card); }
 .start p { margin: 0; flex: 1 1 220px; }
 
-/* The plan's level switcher (ADR-0075): the setup track's look with three parts and no progress fill. */
-.levels { padding-block: 10px; }
-.levels .track { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.levels .track::before { left: calc(100% / 6); right: calc(100% / 6); }
-.levels .track::after { display: none; }
-.levels [data-status="current"] .marker { animation: none; }
-.levels [data-status="current"] .stepButton { font-weight: 700; cursor: default; }
-.levels .stepButton:disabled { cursor: not-allowed; color: var(--color-muted); }
-.levels .stepButton:disabled .marker { border-style: dashed; border-color: var(--color-input-border); color: var(--color-muted); }
+/*
+ * The plan's level switcher (ADR-0075, ADR-0078): one strip of three joined
+ * arrows. Each part points into the next, a thin page-coloured seam keeps them
+ * separate, and the current part is filled with the brand green.
+ */
+.levelBar { margin: 0 0 12px; min-width: 0; }
+.arrows { --tip: 16px; --seam: 3px; display: flex; margin: 0; padding: 0; list-style: none; border-radius: var(--radius-card); overflow: hidden; background: var(--color-line); }
+.arrows li { flex: 1 1 0; min-width: 0; display: flex; }
+.arrows li + li { margin-left: calc(var(--seam) - var(--tip)); }
+.arrow { flex: 1; min-width: 0; min-height: 56px; display: flex; align-items: center; gap: 10px; padding: 10px calc(var(--tip) + 10px) 10px calc(var(--tip) + 14px); border: 0; border-radius: 0; background: var(--color-surface); color: var(--color-text); font: inherit; text-align: left; cursor: pointer;
+  clip-path: polygon(0 0, calc(100% - var(--tip)) 0, 100% 50%, calc(100% - var(--tip)) 100%, 0 100%, var(--tip) 50%); }
+.arrows li:first-child .arrow { padding-left: 16px; clip-path: polygon(0 0, calc(100% - var(--tip)) 0, 100% 50%, calc(100% - var(--tip)) 100%, 0 100%); }
+.arrows li:last-child .arrow { padding-right: 16px; clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, var(--tip) 50%); }
+.arrow:hover:not(:disabled) { background: var(--color-soft); }
+.arrow:focus-visible { outline: 2px solid currentColor; outline-offset: -7px; }
+.arrowMarker { box-sizing: border-box; flex: none; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--color-brand); color: var(--color-brand); font-size: 13px; font-weight: 700; }
+.arrowText { display: grid; min-width: 0; line-height: 1.25; }
+.levelLabel, .levelShortLabel { font-weight: 600; overflow-wrap: anywhere; }
+.levelHint { color: var(--color-muted); font-size: 13px; }
+.arrows [data-status="current"] .arrow { background: var(--color-brand); color: #ffffff; cursor: default; }
+.arrows [data-status="current"] .arrowMarker { border-color: #ffffff; background: #ffffff; color: var(--color-brand); }
+.arrows [data-status="current"] .levelHint { color: rgb(255 255 255 / 82%); }
+.arrow:disabled { cursor: not-allowed; color: var(--color-muted); }
+.arrow:disabled .arrowMarker { border-style: dashed; border-color: var(--color-input-border); color: var(--color-muted); }
 .levelShortLabel { display: none; }
-@media (max-width: 599px) { .levelLabel { display: none; } .levelShortLabel { display: inline; } }
+@media (max-width: 599px) {
+  .arrows { --tip: 12px; }
+  .arrow { min-height: 48px; gap: 6px; padding: 8px calc(var(--tip) + 2px) 8px calc(var(--tip) + 8px); }
+  .arrows li:first-child .arrow { padding-left: 10px; }
+  .arrows li:last-child .arrow { padding-right: 10px; }
+  .levelLabel, .levelHint { display: none; }
+  .levelShortLabel { display: inline; white-space: nowrap; overflow-wrap: normal; }
+  .arrowMarker { width: 24px; height: 24px; font-size: 12px; }
+}

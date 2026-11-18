@@ -5,12 +5,12 @@ import { createContext, Fragment, useContext, useEffect, useRef, useState, type 
 import { useWorkspace } from "./WorkspaceProvider";
 import { SyncStatus } from "./SyncStatus";
 import { gardenPath, routeFromPath, workspaceHomePath } from "@/lib/workspaceRoutes";
-import { nextSeasonYear } from "@/lib/seasonAllocation";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { GardenNoteDialog } from "@/components/notes/GardenNoteDialog";
 import { useRuntimeConfig } from "@/components/PortfolioFeaturePreview";
 import { OverviewGardenNote } from "./OverviewGardenNote";
+import { AppFooter } from "./AppFooter";
 import styles from "./AppShell.module.css";
 
 // The L1 modules (ADR-0073): the garden modules, a divider, then the AI helpers.
@@ -21,6 +21,16 @@ const moduleGroups = [
 const OverviewNoteEntryContext = createContext<ReactNode>(null);
 type OpenGardenNote = (opener: HTMLButtonElement | null, options: { batchAvailable: boolean; gardenId?: string }) => void;
 const OpenGardenNoteContext = createContext<OpenGardenNote | null>(null);
+
+/**
+ * The page title row's right side. A garden's page puts Done and Delete
+ * garden there (ADR-0078); Next Season puts its garden switch there (ADR-0082);
+ * pages render nothing into it otherwise.
+ */
+const PageActionsSlotContext = createContext<HTMLElement | null>(null);
+export function usePageActionsSlot() {
+  return useContext(PageActionsSlotContext);
+}
 
 export function OverviewNoteEntry() {
   return useContext(OverviewNoteEntryContext);
@@ -57,6 +67,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const navigation = useRef<HTMLElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   const header = useRef<HTMLElement>(null);
+  const [actionsSlot, setActionsSlot] = useState<HTMLDivElement | null>(null);
   // The header is sticky; its height (which grows with the open menu or a saving warning) offsets other sticky parts and scroll-into-view.
   useEffect(() => {
     const node = header.current;
@@ -68,9 +79,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, []);
   const title = {
     home: "Gardens", new: "Add garden", plan: garden?.name ?? "Garden Plan", care: "Care",
-    season: `Next Season · ${nextSeasonYear()}`, notes: "AI Garden Note", guide: "Plant Guide", doctor: "Plant Doctor",
+    season: "Next Season", notes: "AI Garden Note", guide: "Plant Guide", doctor: "Plant Doctor",
   }[route.module];
-  const description = route.module === "doctor" ? "Record what you observe and review an assessment before saving it to health history."
+  const description = route.module === "season" ? "Choose what grows in each planting area. A bed rests from the crop families it grew in the last three seasons."
+    : route.module === "doctor" ? "Record what you observe and review an assessment before saving it to health history."
     : route.module === "guide" ? "Ask a gardening question and see the reviewed sources behind the answer." : undefined;
   // L2 and L3 pages sit below the header modules: one garden, one area, or a new garden.
   // A garden's care and season plan are filtered L1 modules, so they have no crumbs (ADR-0073, phase S3).
@@ -79,7 +91,8 @@ export function AppShell({ children }: { children: ReactNode }) {
       ...(garden ? [{ label: garden.name, href: area ? gardenPath(garden.id) : undefined }] : []),
       ...(area ? [{ label: area.name }] : []),
     ];
-  useEffect(() => { if (isLoaded) heading.current?.focus(); }, [pathname, isLoaded]);
+  // preventScroll: a page may scroll itself on load, as Care does for ?location= (ADR-0080).
+  useEffect(() => { if (isLoaded) heading.current?.focus({ preventScroll: true }); }, [pathname, isLoaded]);
   useEffect(() => { if (menuOpen) navigation.current?.querySelector("a")?.focus(); }, [menuOpen]);
   // Moving to another page closes the dialog; the note session itself stays in the provider.
   const notePath = useRef(pathname);
@@ -94,7 +107,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     setNoteMode(batchAvailable ? "batch" : "default");
   };
   return <>
-    <div className="operations-shell operations-app-shell" inert={showNote} aria-hidden={showNote || undefined}>
+    <div className={`operations-shell operations-app-shell ${styles.shell}`} inert={showNote} aria-hidden={showNote || undefined}>
     <a className={styles.skip} href="#workspace-content">Skip to content</a>
     <header ref={header} className={styles.header}>
       <div className={styles.headerInner}>
@@ -121,7 +134,8 @@ export function AppShell({ children }: { children: ReactNode }) {
       </div>
     </header>
     <main id="workspace-content">
-      <div className={styles.context}>
+      {/* Gardens and Care keep their h1 for screen readers and focus; their bands carry the visible title (ADR-0080, ADR-0081). */}
+      <div className={`${styles.context} ${route.module === "home" || route.module === "care" ? styles.contextHidden : ""} ${route.module === "season" ? styles.contextSeason : ""}`}>
         {crumbs && <div className={styles.crumbs}>
           <ButtonLink href={workspaceHomePath} shape="pill" className={styles.allGardens}><span aria-hidden="true">←</span>All gardens</ButtonLink>
           <nav aria-label="Breadcrumb" className={styles.breadcrumb}>
@@ -138,14 +152,18 @@ export function AppShell({ children }: { children: ReactNode }) {
             <select id="workspace-garden" value={garden.id} onChange={(event) => router.push(gardenPath(event.target.value))}>{workspace?.gardens.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select>
           </div>}
         </div>}
-        <PageHeader title={title} description={description} headingRef={heading} />
+        <PageHeader title={title} description={description} headingRef={heading}
+          actions={route.module === "plan" || route.module === "season" ? <div ref={setActionsSlot} className={styles.pageActions} /> : undefined} />
       </div>
+      <PageActionsSlotContext.Provider value={route.module === "plan" || route.module === "season" ? actionsSlot : null}>
       <OpenGardenNoteContext.Provider value={openNote}>
       {route.module === "home" ? <OverviewNoteEntryContext.Provider value={
         <OverviewGardenNote primaryButton={noteButton} expanded={showNote} onOpen={(opener, batchAvailable) => openNote(opener, { batchAvailable })} />
       }>{children}</OverviewNoteEntryContext.Provider> : children}
       </OpenGardenNoteContext.Provider>
+      </PageActionsSlotContext.Provider>
     </main>
+    <AppFooter />
     </div>
     {showNote && <GardenNoteDialog opener={noteOpener} fallbackOpener={route.module === "home" ? noteButton : headerNoteButton} batchAvailable={noteMode === "batch"} initialGardenId={noteGardenId} onClose={() => setNoteMode(null)} />}
   </>;
