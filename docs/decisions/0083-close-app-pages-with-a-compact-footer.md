@@ -24,9 +24,10 @@ could reuse the landing footer.
 Every app page ends with one compact footer band, rendered once by the app
 shell:
 
+- It runs the full width of the window with square edges, like the app bar
+  at the top. Its text lines up with the page content.
 - It uses the landing footer's leaf-vein photo as a still image
-  (`/landing/footer-still.webp`) under a dark wash, with rounded corners. It
-  has the same width as the page content.
+  (`/landing/footer-still.webp`) under a dark wash.
 - It holds one row: "Garden Manager · A portfolio project", the project links
   (GitHub, Architecture, Decision records), and the photo credit. Below
   720 px the parts stack.
@@ -39,6 +40,10 @@ shell:
 - A closing band tells the user the page ends there, which answers "cut off".
 - The leaf-vein photo and deep green tie the footer to the app bar and the
   landing footer without adding a new color or texture.
+- A full-width bar with square edges mirrors the app bar, so the top and the
+  bottom of the page match. The first version was a rounded card inset from
+  the edges, like the Gardens bands; next to the edge-to-edge app bar it
+  looked unbalanced, and the owner chose the full-width bar from a mockup.
 - A still image costs one cached image. The landing footer's live shader
   would run on every app page for decoration only.
 - The project links matter to interviewers and visitors on any page; the
@@ -53,6 +58,11 @@ app bar's modules in its Product column, and runs a WebGL shader. Its headline
 speaks to a visitor deciding whether to try the product, not to a user who is
 already working. The owner compared it with the compact band in a clickable
 mockup and chose the compact band.
+
+### A full-width bar with the app bar's texture
+
+It matches the app bar exactly, but the footer then reads like a second
+toolbar. The darker leaf-vein photo marks the end of the page.
 
 ### No footer
 
