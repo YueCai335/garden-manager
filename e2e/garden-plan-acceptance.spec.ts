@@ -122,7 +122,7 @@ for (const viewport of viewports) {
 
       // A new garden starts the guide on the same canvas.
       await page.getByRole("link", { name: "All gardens", exact: true }).click();
-      await page.getByRole("link", { name: "Add garden" }).click();
+      await page.getByRole("link", { name: "New garden" }).click();
       await page.getByLabel("Garden name").fill("Acceptance plot");
       await page.getByRole("button", { name: "Continue setup" }).click();
       const track = page.getByRole("navigation", { name: "Guided setup" });

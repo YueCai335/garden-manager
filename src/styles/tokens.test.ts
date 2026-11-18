@@ -72,3 +72,20 @@ describe("ADR-0073 colour tokens", () => {
     expect(contrast(token("--color-warning"), token("--color-warning-surface"))).toBeGreaterThanOrEqual(4.5);
   });
 });
+
+describe("ADR-0080 and ADR-0081 band tokens", () => {
+  it("defines the shared band tokens once, with the approved values", () => {
+    expect({
+      base: token("--color-band-base"), ink: token("--color-band-ink"), lime: token("--color-accent-lime"),
+      errorOnDark: token("--color-error-on-dark"), doneInk: token("--color-done-ink"), dash: token("--color-neutral-dash"),
+    }).toEqual({ base: "#14281d", ink: "#0e1d14", lime: "#d6ff5c", errorOnDark: "#ffc9c2", doneInk: "#6b6b6f", dash: "#bdbdba" });
+    for (const name of ["--color-band-base", "--color-accent-lime", "--color-done-ink"]) expect(css.match(new RegExp(`${name}:`, "g")), name).toHaveLength(1);
+  });
+
+  it("keeps struck-through titles, band text, and the dark-band error readable", () => {
+    expect(contrast(token("--color-done-ink"), token("--color-surface"))).toBeGreaterThanOrEqual(4.5);
+    expect(contrast("#ffffff", token("--color-band-base"))).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(token("--color-band-ink"), "#ffffff")).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(token("--color-error-on-dark"), token("--color-band-base"))).toBeGreaterThanOrEqual(4.5);
+  });
+});

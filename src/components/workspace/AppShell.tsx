@@ -131,7 +131,8 @@ export function AppShell({ children }: { children: ReactNode }) {
       </div>
     </header>
     <main id="workspace-content">
-      <div className={styles.context}>
+      {/* The Gardens home keeps its h1 for screen readers and focus; its band shows "Your gardens" instead (ADR-0081). */}
+      <div className={`${styles.context} ${route.module === "home" ? styles.contextHidden : ""}`}>
         {crumbs && <div className={styles.crumbs}>
           <ButtonLink href={workspaceHomePath} shape="pill" className={styles.allGardens}><span aria-hidden="true">←</span>All gardens</ButtonLink>
           <nav aria-label="Breadcrumb" className={styles.breadcrumb}>

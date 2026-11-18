@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Care history mockup (ADR-0080)</title>
+<!-- The mockup loads fonts from Google; the app self-hosts them with next/font. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..600&family=Instrument+Sans:wght@400..700&display=swap">
+<link rel="stylesheet" href="mockup.css">
+</head>
+<body>
+
+<header class="appbar">
+  <div class="appbar-inner">
+    <a class="brand" href="#">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21c-4.2-2.2-6.5-5.6-6.5-9.6C5.5 7.2 8.2 4.3 12 3c3.8 1.3 6.5 4.2 6.5 8.4 0 4-2.3 7.4-6.5 9.6z"/><path d="M12 21V9"/></svg>
+      Garden Manager
+    </a>
+    <nav class="nav" aria-label="Workspace sections">
+      <a href="#">Gardens</a>
+      <a href="care.html" aria-current="page">Care</a>
+      <a href="#">Next Season</a>
+      <span class="divider"></span>
+      <a href="#">Plant Doctor</a>
+      <a href="#">Plant Guide</a>
+    </nav>
+    <span class="note-button">+ Note</span>
+    <span class="sync">All changes saved</span>
+  </div>
+</header>
+
+<main class="page history">
+
+  <!-- 1. Slim dark strip: back, title, Add record, filters -->
+  <section class="band strip" aria-labelledby="history-heading">
+    <div class="strip-top">
+      <div class="strip-title">
+        <a class="button-ghost" href="care.html">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.5 3.5L5 8l4.5 4.5"/></svg>
+          Care
+        </a>
+        <div class="strip-heading">
+          <h1 id="history-heading">History</h1>
+          <p>Care you have done, newest first.</p>
+        </div>
+      </div>
+      <button class="button-white" type="button">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg>
+        Add record
+      </button>
+    </div>
+    <div class="filters">
+      <div class="filter-group" role="group" aria-label="Filter by garden">
+        <span class="filter-label">Garden</span>
+        <span id="location-chips"></span>
+      </div>
+      <div class="filter-group" role="group" aria-label="Filter by care type">
+        <span class="filter-label">Care</span>
+        <span id="type-chips"></span>
+      </div>
+      <p class="filter-count" id="count" aria-live="polite"></p>
+    </div>
+  </section>
+
+  <!-- 2. The log: one continuous list grouped by day -->
+  <div id="log"></div>
+  <div class="log-more" id="more"></div>
+
+</main>
+
+<script>
+// Sample data for the mockup only. "Today" is Monday 2026-11-16.
+const WATER = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5c3 3.6 5.5 6.3 5.5 9.6a5.5 5.5 0 0 1-11 0c0-3.3 2.5-6 5.5-9.6z"/></svg>';
+const FEED = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20v-8"/><path d="M12 12c0-3-2-5-6-5 0 3 2 5 6 5z"/><path d="M12 14.5c0-2.5 2-4.5 6-4.5 0 2.5-2 4.5-6 4.5z"/></svg>';
+const DOTS = '<svg width="18" height="18" viewBox="0 0 18 18" fill="currentColor" aria-hidden="true"><circle cx="3.5" cy="9" r="1.5"/><circle cx="9" cy="9" r="1.5"/><circle cx="14.5" cy="9" r="1.5"/></svg>';
+
+const RECORDS = [
+  { d: '2026-11-16', type: 'watering', g: 'community', place: 'Community Garden', target: 'Whole garden' },
+  { d: '2026-11-16', type: 'watering', g: 'backyard', place: 'Backyard', target: 'Herb pots · Meadow sage' },
+  { d: '2026-11-15', type: 'watering', g: 'front', place: 'Front Yard', target: 'Border · Panicle hydrangea' },
+  { d: '2026-11-14', type: 'watering', g: 'backyard', place: 'Backyard', target: 'Salad bed · Lettuce' },
+  { d: '2026-11-14', type: 'watering', g: 'backyard', place: 'Backyard', target: 'Raised bed A · Pepper', note: 'Soil was dry 5 cm down, gave it a long soak.' },
+  { d: '2026-11-13', type: 'fertilizing', g: 'all-gardens', place: 'all gardens', product: 'Fish emulsion, 30 mL' },
+  { d: '2026-11-12', type: 'watering', g: 'community', place: 'Community Garden', target: 'Bed 4 · Kale' },
+  { d: '2026-11-11', type: 'watering', g: 'front', place: 'Front Yard', target: 'Fence row · Sunflower' },
+  { d: '2026-11-11', type: 'watering', g: 'backyard', place: 'Backyard', target: 'Raised bed A · Pepper' },
+  { d: '2026-11-09', type: 'watering', g: 'community', place: 'Community Garden', target: 'Whole garden' },
+  { d: '2026-11-09', type: 'watering', g: 'backyard', place: 'Backyard', target: 'Salad bed · Lettuce' },
+  { d: '2026-11-06', type: 'fertilizing', g: 'all-gardens', place: 'all gardens', product: 'Fish emulsion, 30 mL' },
+  { d: '2026-11-04', type: 'watering', g: 'backyard', place: 'Backyard', target: 'Herb pots · Meadow sage' },
+  { d: '2026-11-02', type: 'fertilizing', g: 'community', place: 'Community Garden', target: 'Bed 2 · Eggplant', product: 'Tomato feed, 15 g', note: 'First feed since transplanting.' },
+  { d: '2026-11-02', type: 'watering', g: 'front', place: 'Front Yard', target: 'Border · Panicle hydrangea' },
+  { d: '2026-10-30', type: 'fertilizing', g: 'all-gardens', place: 'all gardens', product: 'Fish emulsion, 30 mL' },
+  { d: '2026-10-28', type: 'watering', g: 'backyard', place: 'Backyard', target: 'Raised bed A · Pepper' },
+  { d: '2026-10-26', type: 'watering', g: 'community', place: 'Community Garden', target: 'Whole garden' },
+];
+const LOCATIONS = [['all', 'All'], ['backyard', 'Backyard'], ['community', 'Community Garden'], ['front', 'Front Yard'], ['all-gardens', 'All gardens']];
+const TYPES = [['all', 'All'], ['watering', 'Watering'], ['fertilizing', 'Fertilizing']];
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const TODAY = Date.UTC(2026, 10, 16);
+const PAGE = 15;
+const state = { location: 'all', type: 'all', limit: PAGE };
+
+const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+const chips = (options, current, name) => options.map(([key, label]) => `<button class="chip" type="button" aria-pressed="${current === key}" data-${name}="${key}">${label}</button>`).join(' ');
+
+function render() {
+  const matching = RECORDS.filter((r) => (state.location === 'all' || r.g === state.location) && (state.type === 'all' || r.type === state.type));
+  const shown = matching.slice(0, state.limit);
+  document.getElementById('location-chips').innerHTML = chips(LOCATIONS, state.location, 'location');
+  document.getElementById('type-chips').innerHTML = chips(TYPES, state.type, 'type');
+  document.getElementById('count').textContent = shown.length < matching.length ? `Showing ${shown.length} of ${matching.length} records` : plural(matching.length, 'record');
+
+  const days = [];
+  for (const record of shown) {
+    if (days.at(-1)?.key !== record.d) days.push({ key: record.d, rows: [] });
+    days.at(-1).rows.push(record);
+  }
+  document.getElementById('log').innerHTML = matching.length === 0
+    ? '<div class="log log-empty"><p>No care records match these filters.</p><button class="button-primary" type="button" data-clear>Clear filters</button></div>'
+    : `<div class="log">${days.map((day) => {
+      const [year, month, date] = day.key.split('-').map(Number);
+      const time = Date.UTC(year, month - 1, date);
+      const ago = Math.round((TODAY - time) / 86400000);
+      const name = ago === 0 ? 'Today' : ago === 1 ? 'Yesterday' : WEEKDAYS[new Date(time).getUTCDay()];
+      return `<section class="log-day">
+        <div class="log-date"><div class="date-badge" aria-hidden="true"><span class="date-badge-number">${date}</span><span class="date-badge-month">${MONTHS[month - 1]}</span></div><div><h2 class="log-day-name">${name}</h2><p class="row-sub">${plural(day.rows.length, 'record')}</p></div></div>
+        <ul class="log-rows">${day.rows.map((r) => {
+          const title = `${r.type === 'watering' ? 'Watered' : 'Fertilized'} ${r.place}`;
+          return `<li class="row"><span class="care-icon ${r.type}">${r.type === 'watering' ? WATER : FEED}</span><span class="row-text"><span class="row-title">${title}</span><span class="row-sub">${[r.target, r.product].filter(Boolean).join(' · ') || 'Applies to every garden'}</span>${r.note ? `<span class="row-note">${r.note}</span>` : ''}</span><button class="more" type="button" aria-label="More actions for ${title}">${DOTS}</button></li>`;
+        }).join('')}</ul>
+      </section>`;
+    }).join('')}</div>`;
+  document.getElementById('more').innerHTML = shown.length < matching.length ? '<button class="button-primary" type="button" data-more>Show earlier records</button>' : '';
+}
+
+document.addEventListener('click', (event) => {
+  const target = event.target.closest('button');
+  if (!target) return;
+  if (target.dataset.location) Object.assign(state, { location: target.dataset.location, limit: PAGE });
+  else if (target.dataset.type) Object.assign(state, { type: target.dataset.type, limit: PAGE });
+  else if ('more' in target.dataset) state.limit += PAGE;
+  else if ('clear' in target.dataset) Object.assign(state, { location: 'all', type: 'all', limit: PAGE });
+  else return;
+  render();
+});
+render();
+</script>
+</body>
+</html>

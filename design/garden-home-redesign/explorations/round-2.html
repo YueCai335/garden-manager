@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gardens home mockup: round 2</title>
+<!-- The mockup loads fonts from Google; the app self-hosts them with next/font. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..600&family=Instrument+Sans:wght@400..700&display=swap">
+<link rel="stylesheet" href="mockup.css">
+</head>
+<body data-v="1" data-note="n1">
+
+<header class="appbar">
+  <div class="appbar-inner">
+    <a class="brand" href="#">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21c-4.2-2.2-6.5-5.6-6.5-9.6C5.5 7.2 8.2 4.3 12 3c3.8 1.3 6.5 4.2 6.5 8.4 0 4-2.3 7.4-6.5 9.6z"/><path d="M12 21V9"/></svg>
+      Garden Manager
+    </a>
+    <nav class="nav" aria-label="Workspace sections">
+      <a href="#" aria-current="page">Gardens</a>
+      <a href="#">Care</a>
+      <a href="#">Next Season</a>
+      <span class="divider"></span>
+      <a href="#">Plant Doctor</a>
+      <a href="#">Plant Guide</a>
+    </nav>
+    <span class="note-button">+ Note</span>
+    <span class="sync">All changes saved</span>
+  </div>
+</header>
+
+<!-- ============ 1 · Step out: cards stand half on the band ============ -->
+<main class="page" data-variant="1">
+  <section class="step" aria-labelledby="gardens-1">
+    <div class="band tex-ridges step-band">
+      <div class="band-intro">
+        <p class="band-kicker">Monday, Nov 16</p>
+        <h1 class="band-headline" id="gardens-1">Your gardens</h1>
+        <p class="band-summary">3 gardens · 19 planting areas · 17 plants growing</p>
+      </div>
+      <a class="button-ghost" href="#">Demo garden</a>
+    </div>
+    <div class="step-cards g4">
+      <span data-garden="backyard" data-style="lift"></span>
+      <span data-garden="community" data-style="lift"></span>
+      <span data-garden="front" data-style="lift"></span>
+      <a class="new-tile solid" href="#">
+        <span class="new-mark" data-icon="plus-lg"></span>
+        <span class="new-title">New garden</span>
+        <span class="new-sub">Draw the outline, then add planting areas</span>
+      </a>
+    </div>
+  </section>
+  <div data-lower></div>
+</main>
+
+<!-- ============ 2 · Green plates: the texture is each card's name plate ============ -->
+<main class="page" data-variant="2">
+  <section class="block" aria-labelledby="gardens-2">
+    <div class="head-row">
+      <div class="block-head">
+        <p class="kicker">Monday, Nov 16</p>
+        <h1 class="block-title" id="gardens-2">Your gardens <span class="title-count">3</span></h1>
+      </div>
+      <div class="head-actions"><a class="button-secondary" href="#">Demo garden</a></div>
+    </div>
+    <div class="g4">
+      <span data-garden="backyard" data-style="plate"></span>
+      <span data-garden="community" data-style="plate"></span>
+      <span data-garden="front" data-style="plate"></span>
+      <a class="new-tile" href="#">
+        <span class="new-mark" data-icon="plus-lg"></span>
+        <span class="new-title">New garden</span>
+        <span class="new-sub">Draw the outline, then add planting areas</span>
+      </a>
+    </div>
+  </section>
+  <div data-lower></div>
+</main>
+
+<!-- ============ 3 · Cover: a title panel beside the gardens ============ -->
+<main class="page" data-variant="3">
+  <section class="cover-grid" aria-labelledby="gardens-3">
+    <div class="band tex-ridges cover">
+      <div class="band-intro">
+        <p class="band-kicker">Monday, Nov 16</p>
+        <h1 class="band-headline" id="gardens-3">Your<br>gardens</h1>
+      </div>
+      <div class="cover-bottom">
+        <ul class="stats">
+          <li><b>3</b><span>gardens</span></li>
+          <li><b>19</b><span>planting areas</span></li>
+          <li><b>17</b><span>plants growing</span></li>
+        </ul>
+        <a class="button-ghost" href="#">Demo garden</a>
+      </div>
+    </div>
+    <div class="g2">
+      <span data-garden="backyard"></span>
+      <span data-garden="community"></span>
+      <span data-garden="front"></span>
+      <a class="new-tile" href="#">
+        <span class="new-mark" data-icon="plus-lg"></span>
+        <span class="new-title">New garden</span>
+        <span class="new-sub">Draw the outline, then add planting areas</span>
+      </a>
+    </div>
+  </section>
+  <div data-lower></div>
+</main>
+
+<!-- Lower row, the same in every direction: Today (care due today only) and the AI Garden Note. -->
+<template id="lower">
+  <div class="lower">
+    <section class="card today-card" aria-label="Care today">
+      <div class="band tex-ridges date-tile">
+        <p class="band-kicker">Monday</p>
+        <p class="date-big">16</p>
+        <p class="date-month">November</p>
+        <div class="progress">
+          <div class="progress-track"><div class="progress-fill" data-progress></div></div>
+          <span class="progress-label" data-text="progress"></span>
+        </div>
+      </div>
+      <div class="today-body">
+        <div class="today-head">
+          <div class="block-head">
+            <p class="kicker">Care today</p>
+            <h2 class="card-title" data-text="left-short"></h2>
+          </div>
+          <a class="garden-link" href="#">Open Care →</a>
+        </div>
+        <ul class="compact" data-list="today" data-late="chip"></ul>
+      </div>
+    </section>
+
+    <!-- Note style 1 · Notepad -->
+    <section class="card notepad" data-note-style="n1" aria-label="AI Garden Note">
+      <header class="band tex-veins notepad-bind">
+        <span class="bind-icon" data-icon="pencil"></span>
+        <h2>AI Garden Note</h2>
+        <span class="bind-hint">Becomes care records</span>
+      </header>
+      <div class="paper"><textarea class="ruled" maxlength="500" aria-label="Quick garden note" placeholder="Watered the front beds and fertilized the back garden."></textarea></div>
+      <footer class="notepad-foot">
+        <span class="foot-hint">Write it your way. You review before anything is saved.</span>
+        <span class="foot-actions">
+          <a class="garden-link" href="#">Open note editor</a>
+          <button class="button-primary" type="button">Generate draft</button>
+        </span>
+      </footer>
+    </section>
+
+    <!-- Note style 2 · Paper on green -->
+    <section class="band tex-veins note-dark" data-note-style="n2" aria-label="AI Garden Note">
+      <div class="note-dark-head">
+        <span class="bind-icon" data-icon="pencil"></span>
+        <h2 class="note-title-lg">AI Garden Note</h2>
+        <span class="bind-hint">Becomes care records</span>
+      </div>
+      <div class="paper"><textarea class="ruled" maxlength="500" aria-label="Quick garden note" placeholder="Watered the front beds and fertilized the back garden."></textarea></div>
+      <div class="note-dark-foot">
+        <span class="foot-hint">Write it your way. You review before anything is saved.</span>
+        <span class="foot-actions">
+          <a class="link-on-dark" href="#">Open note editor</a>
+          <button class="button-white" type="button">Generate draft</button>
+        </span>
+      </div>
+    </section>
+  </div>
+</template>
+
+<div class="switch" role="group" aria-label="Design options">
+  <button type="button" data-set="1">1 · Step out</button>
+  <button type="button" data-set="2">2 · Green plates</button>
+  <button type="button" data-set="3">3 · Cover</button>
+  <span class="switch-gap"></span>
+  <button type="button" data-note="n1">Note: notepad</button>
+  <button type="button" data-note="n2">Note: paper on green</button>
+</div>
+
+<script>
+// Sample data for the mockup only. "Today" is Monday 2026-11-16.
+const ICON = {
+  watering: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5c3 3.6 5.5 6.3 5.5 9.6a5.5 5.5 0 0 1-11 0c0-3.3 2.5-6 5.5-9.6z"/></svg>',
+  fertilizing: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20v-8"/><path d="M12 12c0-3-2-5-6-5 0 3 2 5 6 5z"/><path d="M12 14.5c0-2.5 2-4.5 6-4.5 0 2.5-2 4.5-6 4.5z"/></svg>',
+  check: '<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 6.5l2.5 2.5 4.5-5.5"/></svg>',
+  'plus-lg': '<svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg>',
+  pencil: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20l1-4L16.5 4.5a2.1 2.1 0 0 1 3 3L8 19l-4 1z"/><path d="M14.5 6.5l3 3"/></svg>',
+};
+const TASKS = [
+  { id: 't1', type: 'watering', g: 'backyard', title: 'Water Backyard', sub: 'Raised bed A · Pepper', late: 'Due yesterday' },
+  { id: 't2', type: 'watering', g: 'front', title: 'Water Front Yard', sub: 'Border · Panicle hydrangea' },
+  { id: 't3', type: 'fertilizing', g: 'community', title: 'Fertilize Community Garden', sub: 'Bed 2 · Eggplant' },
+  { id: 't4', type: 'watering', g: 'backyard', title: 'Water Backyard', sub: 'Salad bed · Lettuce' },
+  { id: 't5', type: 'watering', g: 'community', title: 'Water Community Garden', sub: 'Whole garden' },
+  { id: 't6', type: 'watering', g: 'backyard', title: 'Water Backyard', sub: 'Herb pots · Meadow sage' },
+];
+const GARDENS = {
+  backyard: { name: 'Backyard', img: '../assets/backyard.png', meta: '10 planting areas · 8 plants', more: 5,
+    plants: [['Pepper', '#f1ceb0', '#9f632f'], ['Meadow sage', '#cdc4f4', '#5f5aa8'], ['Lettuce', '#c6e2ca', '#438054']] },
+  community: { name: 'Community Garden', img: '../assets/community-garden.png', meta: '6 planting areas · 6 plants', more: 3,
+    plants: [['Eggplant', '#dad3ee', '#6656a0'], ['Kale', '#c0dde2', '#1a7888'], ['Cucumber', '#e1e1b3', '#777923']] },
+  front: { name: 'Front Yard', img: '../assets/front-yard.png', meta: '3 planting areas · 3 plants', more: 0,
+    plants: [['Panicle hydrangea', '#f3b8d4', '#a44374'], ['Sunflower', '#ecd08e', '#7b6310'], ['Marigold', '#f6c39a', '#93571f']] },
+};
+const done = new Set(['t5', 't6']);
+
+function taskRow(t, late) {
+  const isDone = done.has(t.id);
+  return `<li class="row${isDone ? ' done' : ''}">
+    <button class="tick" type="button" role="checkbox" aria-checked="${isDone}" aria-label="${t.title}" data-toggle="${t.id}"><span class="tick-circle">${ICON.check}</span></button>
+    <span class="care-icon ${t.type}">${ICON[t.type]}</span>
+    <span class="row-text"><span class="row-title">${t.title}</span><span class="row-sub">${t.sub}</span></span>
+    ${t.late && !isDone && late === 'chip' ? `<span class="late-chip">${t.late}</span>` : ''}
+  </li>`;
+}
+function gardenCard(key, style) {
+  const g = GARDENS[key];
+  const left = TASKS.filter((t) => t.g === key && !done.has(t.id)).length;
+  return `<a class="g-card ${style || ''}" href="#">
+    <span class="g-map"><img src="${g.img}" alt=""></span>
+    <span class="g-body">
+      <span class="count-chip g-chip${left ? ' open' : ''}">${left ? `${left} to do today` : 'All done today'}</span>
+      <span class="g-name">${g.name}</span>
+      <span class="g-meta">${g.meta}</span>
+      <span class="g-plants">${g.plants.map(([n, f, s]) => `<span class="g-plant"><i style="background:${f};border-color:${s}"></i>${n}</span>`).join('')}${g.more ? `<span class="g-more">+${g.more} more</span>` : ''}</span>
+    </span>
+  </a>`;
+}
+function render() {
+  const open = TASKS.filter((t) => !done.has(t.id));
+  const finished = TASKS.filter((t) => done.has(t.id));
+  const n = open.length;
+  const text = {
+    'left-short': n === 0 ? 'All done for today' : n === 1 ? '1 thing left' : `${n} things left`,
+    progress: `${finished.length} of ${TASKS.length} done`,
+  };
+  document.querySelectorAll('[data-text]').forEach((el) => { el.textContent = text[el.dataset.text]; });
+  document.querySelectorAll('[data-progress]').forEach((el) => { el.style.width = `${Math.round((finished.length / TASKS.length) * 100)}%`; });
+  document.querySelectorAll('[data-list="today"]').forEach((ul) => { ul.innerHTML = [...open, ...finished].map((t) => taskRow(t, ul.dataset.late)).join(''); });
+  document.querySelectorAll('[data-garden]').forEach((slot) => { slot.innerHTML = gardenCard(slot.dataset.garden, slot.dataset.style); });
+}
+document.querySelectorAll('[data-lower]').forEach((slot) => slot.replaceWith(document.getElementById('lower').content.cloneNode(true)));
+document.querySelectorAll('[data-icon]').forEach((el) => { el.innerHTML = ICON[el.dataset.icon]; });
+const params = new URLSearchParams(location.search);
+function choose(v, note) {
+  if (v) document.body.dataset.v = v;
+  if (note) document.body.dataset.note = note;
+  document.querySelectorAll('[data-set]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.set === document.body.dataset.v));
+  document.querySelectorAll('.switch [data-note]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.note === document.body.dataset.note));
+  history.replaceState(null, '', `?v=${document.body.dataset.v}&note=${document.body.dataset.note}${params.has('shot') ? '&shot' : ''}`);
+}
+document.addEventListener('click', (event) => {
+  const toggle = event.target.closest('[data-toggle]');
+  if (toggle) { const id = toggle.dataset.toggle; done.has(id) ? done.delete(id) : done.add(id); render(); return; }
+  const set = event.target.closest('[data-set]');
+  if (set) { choose(set.dataset.set); scrollTo(0, 0); }
+  const note = event.target.closest('.switch [data-note]');
+  if (note) choose(null, note.dataset.note);
+  if (event.target.closest('a[href="#"]')) event.preventDefault();
+});
+if (params.has('shot')) document.body.classList.add('shot');
+render();
+choose(['1', '2', '3'].includes(params.get('v')) ? params.get('v') : '1', ['n1', 'n2'].includes(params.get('note')) ? params.get('note') : 'n1');
+</script>
+</body>
+</html>
