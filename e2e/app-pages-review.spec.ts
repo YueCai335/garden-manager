@@ -19,6 +19,8 @@ const allowedHues = new Set([
   "20,40,29", "14,29,20", // textured band base and the ink on its white buttons (ADR-0080, ADR-0081)
   "214,255,92", // lime: today's care progress only
   "255,201,194", // error text on a dark band
+  "10,26,17", // the glass card and garden tiles on the Care band (ADR-0080)
+  "180,225,238", "237,208,143", // watering and fertilizing icons on that glass (ADR-0080)
   "25,91,112", "219,238,244", // watering chip
   "128,91,23", "247,231,191", // fertilizing chip
 ]);

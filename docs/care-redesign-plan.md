@@ -1,7 +1,7 @@
 # Care 页面重新设计：实施计划
 
 - 日期：2026-11-16（America/Toronto）
-- 状态：设计已确认，尚未开始写代码。决定记录在 [ADR-0080](decisions/0080-show-care-as-a-today-board-with-a-separate-history-log.md)。
+- 状态：已实现（2026-11-17，C0–C6）。实现中补充的细节见 ADR-0080 的 "Implementation notes"。决定记录在 [ADR-0080](decisions/0080-show-care-as-a-today-board-with-a-separate-history-log.md)。
 - 本文读者：负责实现的工程师或 Agent。请先读完本文，再打开第 2 节的设计稿对照。
 - 设计稿是视觉的唯一依据。本文与设计稿冲突时，以设计稿的外观为准、以本文的行为规则为准；仍有疑问就问用户，不要自己猜。
 

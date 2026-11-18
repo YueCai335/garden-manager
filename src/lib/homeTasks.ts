@@ -1,6 +1,6 @@
-import { careTargetLabel } from "./careRecords";
-import { addDays, careTaskStatus, todayDate, type CareEvent, type CareEventType, type CareTask, type Garden, type GardenWorkspace } from "./gardenWorkspace";
-import { careLocationKey, carePathLabel, careRows, workspaceCareGarden, type CareOwner } from "./careViews";
+import { byDue, careLateLabel as lateLabel, careTarget as target, careTitle as title, careWhenLabel as whenLabel } from "./careLabels";
+import { addDays, careTaskStatus, todayDate, type CareEventType, type CareTask, type GardenWorkspace } from "./gardenWorkspace";
+import { careLocationKey, careRows, workspaceCareGarden, type CareOwner } from "./careViews";
 
 /** A task ticked off on Gardens this visit; it stays in its place, struck through, and can be unticked. */
 export type HomeCompletion = { taskKey: string; task: CareTask; owner: CareOwner; eventId: string };
@@ -22,35 +22,6 @@ export type HomeTaskRow = {
   owner: CareOwner;
   completion?: HomeCompletion;
 };
-
-function title(record: CareTask | CareEvent, garden: Garden) {
-  const verb = record.type === "watering" ? "Water" : "Fertilize";
-  return `${verb} ${record.targetScope === "all-gardens" ? "all gardens" : garden.name}`;
-}
-
-/** The part below the garden: a planting area, an area and a plant group, or the whole garden. */
-function target(record: CareTask | CareEvent, garden: Garden) {
-  if (record.targetScope === "planting-area") return careTargetLabel(record);
-  if (record.targetScope === "plant-group") return carePathLabel(record, garden).split(" / ").slice(1).join(" · ");
-  if (record.targetScope === "garden") return "Whole garden";
-  return undefined;
-}
-
-function daysBetween(from: string, to: string) {
-  return Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000);
-}
-
-function lateLabel(dueDate: string, today: string) {
-  const days = daysBetween(dueDate, today);
-  return days === 1 ? "Due yesterday" : `Due ${days} days ago`;
-}
-
-function whenLabel(dueDate: string, today: string) {
-  if (dueDate === addDays(today, 1)) return "Tomorrow";
-  return new Date(`${dueDate}T12:00:00Z`).toLocaleDateString("en-US", { weekday: "short", timeZone: "UTC" });
-}
-
-const byDue = (a: { dueDate: string; id: string }, b: { dueDate: string; id: string }) => a.dueDate.localeCompare(b.dueDate) || a.id.localeCompare(b.id);
 
 /**
  * Care on the Gardens home (ADR-0081). Overdue and Today can be ticked off; a row ticked here

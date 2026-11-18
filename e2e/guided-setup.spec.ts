@@ -120,8 +120,8 @@ for (const width of [1440, 390]) {
     if (width === 1440) {
       await page.getByRole("link", { name: "Log the first watering" }).click();
       await expect(page).toHaveURL(/\/care\?view=history&location=/);
-      await expect(page.getByRole("combobox", { name: "Location", exact: true })).toHaveValue(gardenId);
-      await expect(page.getByRole("button", { name: "Add care event" })).toBeVisible();
+      await expect(page.getByRole("group", { name: "Filter by garden" }).getByRole("button", { name })).toHaveAttribute("aria-pressed", "true");
+      await expect(page.getByRole("button", { name: "Add record" })).toBeVisible();
     } else {
       await page.getByRole("link", { name: "Plan next season" }).click();
       await expect(page).toHaveURL(/\/season\?garden=/);

@@ -43,7 +43,6 @@ test("old garden Care and Next Season links land on the filtered modules, and Ba
   await openWorkspace(page);
   await page.getByRole("button", { name: "Load demo garden" }).click();
   await expect(page.getByText("All changes saved", { exact: true })).toBeVisible();
-  const location = page.getByRole("combobox", { name: "Location", exact: true });
 
   // The server answers the old URL with a 307 before any page renders, so it never becomes a history entry.
   const response = await page.goto("/gardens/demo-garden/care?view=history");
@@ -52,7 +51,7 @@ test("old garden Care and Next Season links land on the filtered modules, and Ba
   expect((await redirected?.response())?.status()).toBe(307);
   await expect(page).toHaveURL(/\/care\?view=history&location=demo-garden$/);
   await expect(page.getByRole("heading", { name: "History", exact: true })).toBeVisible();
-  await expect(location).toHaveValue("demo-garden");
+  await expect(page.getByRole("group", { name: "Filter by garden" }).getByRole("button", { name: "Demo Garden" })).toHaveAttribute("aria-pressed", "true");
   // Care is an L1 module: the header marks it, and there is no garden breadcrumb.
   await expect(page.getByRole("navigation", { name: "Workspace sections" }).getByRole("link", { name: "Care", exact: true })).toHaveAttribute("aria-current", "page");
   await expect(page.getByRole("navigation", { name: "Breadcrumb" })).toHaveCount(0);
@@ -61,8 +60,8 @@ test("old garden Care and Next Season links land on the filtered modules, and Ba
 
   await page.goto("/gardens/demo-garden/care");
   await expect(page).toHaveURL(/\/care\?location=demo-garden$/);
-  await expect(page.getByRole("heading", { name: "Tasks", exact: true })).toBeVisible();
-  await expect(location).toHaveValue("demo-garden");
+  // Tasks has no Location filter; the link lands on the garden's card (ADR-0080 D6).
+  await expect(page.getByRole("article", { name: "Demo Garden" })).toHaveAttribute("data-highlight", "true");
 
   await page.goto("/gardens/demo-garden/season");
   await expect(page).toHaveURL(/\/season\?garden=demo-garden$/);

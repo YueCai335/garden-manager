@@ -89,7 +89,8 @@ export function AppShell({ children }: { children: ReactNode }) {
       ...(garden ? [{ label: garden.name, href: area ? gardenPath(garden.id) : undefined }] : []),
       ...(area ? [{ label: area.name }] : []),
     ];
-  useEffect(() => { if (isLoaded) heading.current?.focus(); }, [pathname, isLoaded]);
+  // preventScroll: a page may scroll itself on load, as Care does for ?location= (ADR-0080).
+  useEffect(() => { if (isLoaded) heading.current?.focus({ preventScroll: true }); }, [pathname, isLoaded]);
   useEffect(() => { if (menuOpen) navigation.current?.querySelector("a")?.focus(); }, [menuOpen]);
   // Moving to another page closes the dialog; the note session itself stays in the provider.
   const notePath = useRef(pathname);
@@ -131,8 +132,8 @@ export function AppShell({ children }: { children: ReactNode }) {
       </div>
     </header>
     <main id="workspace-content">
-      {/* The Gardens home keeps its h1 for screen readers and focus; its band shows "Your gardens" instead (ADR-0081). */}
-      <div className={`${styles.context} ${route.module === "home" ? styles.contextHidden : ""}`}>
+      {/* Gardens and Care keep their h1 for screen readers and focus; their bands carry the visible title (ADR-0080, ADR-0081). */}
+      <div className={`${styles.context} ${route.module === "home" || route.module === "care" ? styles.contextHidden : ""}`}>
         {crumbs && <div className={styles.crumbs}>
           <ButtonLink href={workspaceHomePath} shape="pill" className={styles.allGardens}><span aria-hidden="true">←</span>All gardens</ButtonLink>
           <nav aria-label="Breadcrumb" className={styles.breadcrumb}>

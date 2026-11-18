@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { GardenPlanOverview } from "@/components/GardenPlanOverview";
 import { ButtonLink } from "@/components/ui/Button";
-import { careEventForTask, completeCareTask, undoCareTaskCompletion, updateCareOwner } from "@/lib/careViews";
-import { createId, isDemoGardenId, todayDate, type CareEventType, type Garden } from "@/lib/gardenWorkspace";
+import { useCareTicks } from "@/hooks/useCareTicks";
+import { updateCareOwner } from "@/lib/careViews";
+import { isDemoGardenId, todayDate, type CareEventType, type Garden } from "@/lib/gardenWorkspace";
 import { gardenCardSummary, gardenPlants, gardensSummary } from "@/lib/homeGardens";
-import { homeTasks, type HomeCompletion, type HomeTaskRow } from "@/lib/homeTasks";
+import { homeTasks, type HomeTaskRow } from "@/lib/homeTasks";
 import { gardenPath } from "@/lib/workspaceRoutes";
 import { OverviewNoteEntry } from "./AppShell";
 import { useWorkspace } from "./WorkspaceProvider";
@@ -166,8 +167,9 @@ export function WorkspaceHomeLoading() {
 export function WorkspaceHome({ onOpenDemoGarden, onboarding }: { onOpenDemoGarden: () => void; onboarding?: ReactNode }) {
   const { workspace, message, setWorkspace } = useWorkspace();
   // Ticks from this visit; each can be unticked until the page is left (ADR-0073).
-  const [completions, setCompletions] = useState<HomeCompletion[]>([]);
-  const [focusKey, setFocusKey] = useState<string>();
+  const { completions, focus, tick: tickRow, untick: untickRow } = useCareTicks((owner, change) =>
+    setWorkspace((current) => current ? updateCareOwner(current, owner, change) : current));
+  const focusKey = focus?.key;
   const allGardens = workspace?.gardens ?? [];
   const hasPersonalGardens = allGardens.some((garden) => !isDemoGardenId(garden.id));
   const gardens = hasPersonalGardens ? allGardens.filter((garden) => !isDemoGardenId(garden.id)) : allGardens;
@@ -179,21 +181,8 @@ export function WorkspaceHome({ onOpenDemoGarden, onboarding }: { onOpenDemoGard
     const entry = gardenToday.get(row.owner.gardenId) ?? { left: 0, total: 0 };
     gardenToday.set(row.owner.gardenId, { left: entry.left + (row.done ? 0 : 1), total: entry.total + 1 });
   }
-  const tick = (row: HomeTaskRow) => {
-    const { task, owner } = row;
-    if (!task) return;
-    const event = careEventForTask(task, todayDate(), owner, createId("care"));
-    setWorkspace((current) => current ? updateCareOwner(current, owner, (records) => completeCareTask(records, task, event)) : current);
-    setCompletions((current) => [...current, { taskKey: row.key, task, owner, eventId: event.id }]);
-    setFocusKey(`done:${event.id}`);
-  };
-  const untick = (row: HomeTaskRow) => {
-    const { completion } = row;
-    if (!completion) return;
-    setWorkspace((current) => current ? updateCareOwner(current, completion.owner, (records) => undoCareTaskCompletion(records, completion.task, completion.eventId)) : current);
-    setCompletions((current) => current.filter((item) => item !== completion));
-    setFocusKey(completion.taskKey);
-  };
+  const tick = (row: HomeTaskRow) => tickRow(row);
+  const untick = (row: HomeTaskRow) => untickRow(row.completion);
 
   const firstGarden = onboarding
     ? <div className={styles.firstGarden}>{onboarding}</div>
