@@ -1,0 +1,58 @@
+/*
+ * Shared by Care (ADR-0080) and the Gardens home (ADR-0081): the textured band, today's progress,
+ * and a care row's tick, type icon, title, and late chip. Page modules compose these classes
+ * (`composes: … from`), which also loads this file before theirs, and keep their own sizes.
+ */
+
+/* ---------- Dark textured bands: real photos on --color-band-base, never a flat block ---------- */
+.band {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: 20px;
+  color: #fff;
+  background-color: var(--color-band-base);
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+.band::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; }
+/* Leaf ridges: the landing hero's photo. */
+.ridges { background-image: url("/landing/hero-still.webp"); background-position: center; }
+.ridges::before { background: linear-gradient(100deg, rgb(9 24 15 / 78%), rgb(9 24 15 / 46%) 55%, rgb(9 24 15 / 58%)); }
+
+/* ---------- Today's progress ---------- */
+.progressTrack { height: 6px; border-radius: var(--radius-pill); background: rgb(255 255 255 / 20%); }
+/* Lime has one meaning in the app: today's care progress (ADR-0080, ADR-0081). */
+.progressFill { height: 6px; border-radius: var(--radius-pill); background: var(--color-accent-lime); box-shadow: 0 0 14px rgb(214 255 92 / 45%); transition: width 350ms ease; }
+.progressLabel { font-size: 14px; font-weight: 500; }
+
+/* ---------- A care row ---------- */
+.row { display: flex; align-items: center; gap: 12px; border-top: 1px solid var(--color-line); }
+.row:first-child { border-top: 0; }
+/* A 44 px target around a 22 px circle. */
+.tick { flex: none; display: grid; place-items: center; width: 44px; height: 44px; margin: 0 -8px 0 -11px; padding: 0; border: 0; background: none; cursor: pointer; }
+span.tick { cursor: default; }
+.tickCircle { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--color-ink-subtle); color: transparent; transition: background-color 140ms, border-color 140ms; }
+.row:not([data-done]) button.tick:hover .tickCircle { border-color: var(--color-brand); color: var(--color-brand); }
+.row[data-done] .tickCircle { background: var(--color-brand); border-color: var(--color-brand); color: #fff; }
+/* The circle carries the focus ring; this outranks the pages' own `:focus-visible` rings. */
+.row button.tick:focus-visible { outline: none; }
+.row button.tick:focus-visible .tickCircle { outline: 2px solid var(--color-brand); outline-offset: 2px; }
+.careIcon { flex: none; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--color-soft); color: var(--color-care-watering); }
+.careIcon[data-type="fertilizing"] { color: var(--color-care-fertilizing); }
+.rowTitle { font-size: 15px; font-weight: 600; line-height: 1.35; }
+.row[data-done] .rowTitle { text-decoration: line-through; font-weight: 500; color: var(--color-done-ink); }
+.row[data-done] .careIcon { opacity: 0.55; }
+.lateChip { flex: none; padding: 3px 10px; border-radius: var(--radius-pill); background: var(--color-error-surface); color: var(--color-error); font-size: 12.5px; font-weight: 600; white-space: nowrap; }
+
+/* Rows on a dark surface, such as the glass card on Care's band. */
+.onDark .tickCircle { border-color: rgb(255 255 255 / 72%); }
+.onDark .row:not([data-done]) button.tick:hover .tickCircle { border-color: #fff; color: #fff; }
+.onDark .row[data-done] .tickCircle { background: #fff; border-color: #fff; color: var(--color-band-base); }
+.onDark .row button.tick:focus-visible .tickCircle { outline-color: #fff; }
+.onDark .careIcon { background: rgb(255 255 255 / 12%); color: var(--color-care-watering-on-dark); }
+.onDark .careIcon[data-type="fertilizing"] { color: var(--color-care-fertilizing-on-dark); }
+
+@media (prefers-reduced-motion: reduce) {
+  .progressFill, .tickCircle { transition: none; }
+}

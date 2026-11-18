@@ -4,7 +4,7 @@ import { useWorkspaceDraft, useUnsavedDraft } from "@/components/workspace/Works
 import { useCareTicks } from "@/hooks/useCareTicks";
 
 import { useConfirmation } from "./ConfirmDialog";
-import { startTransition, type FormEvent, useOptimistic, useRef, useState } from "react";
+import { startTransition, type FormEvent, useMemo, useOptimistic, useRef, useState } from "react";
 import { CareBoard, type CareBoardActions } from "./care/CareBoard";
 import { CareHistory } from "./care/CareHistory";
 import { CareCompletionForm, CareLocation, CareRecordFormFields, CareTaskFormFields } from "./care/CareForms";
@@ -32,9 +32,13 @@ import {
 
 export type CareView = "tasks" | "history";
 
+const NO_GARDENS: Garden[] = [];
+const NO_EVENTS: CareEvent[] = [];
+const NO_TASKS: CareTask[] = [];
+
 /** The two record lists the care screen edits. */
 export type { CareRecords } from "@/lib/careViews";
-import { careEventForTask, careRows, careOwner, completeCareTask as applyTaskCompletion, workspaceCareGarden, type CareOwner, type CareRecords, type CareRow } from "@/lib/careViews";
+import { careEventForTask, careRows, careOwner, completeCareTask as applyTaskCompletion, type CareOwner, type CareRecords, type CareRow } from "@/lib/careViews";
 import styles from "./care/Care.module.css";
 
 /**
@@ -43,7 +47,7 @@ import styles from "./care/Care.module.css";
  */
 export function CareWorkspace({
   garden: scopeGarden,
-  gardens = [],
+  gardens = NO_GARDENS,
   locationFilter, onLocationChange,
   typeFilter, onTypeChange, onClearFilters,
   initialView = "tasks",
@@ -440,8 +444,15 @@ export function CareWorkspace({
   };
 
   // The board and History read the same records as the forms: the root first, then each garden.
-  const root = allGardens ? garden : workspaceCareGarden({ careEvents: [], careTasks: [] });
-  const records = { careEvents: root.careEvents, careTasks: root.careTasks, gardens: allGardens ? gardens : [garden] };
+  // The parent rebuilds the root garden on every render, so the projections key on its record lists.
+  const rootEvents = allGardens ? garden.careEvents : NO_EVENTS;
+  const rootTasks = allGardens ? garden.careTasks : NO_TASKS;
+  const recordGardens = useMemo(() => allGardens ? gardens : [garden], [allGardens, gardens, garden]);
+  const records = useMemo(() => ({ careEvents: rootEvents, careTasks: rootTasks, gardens: recordGardens }), [rootEvents, rootTasks, recordGardens]);
+  // Each view projects only what it shows.
+  const board = useMemo(() => view === "tasks" ? careBoard(records, today, completions) : undefined, [view, records, today, completions]);
+  const history = useMemo(() => view === "history" ? careHistory(records, { today, location: activeLocation, type, limit }) : undefined,
+    [view, records, today, activeLocation, type, limit]);
   const taskRow = (ownerId?: string, taskId?: string) => careRows(sources, "careTasks").find((row) => row.garden.id === ownerId && row.record.id === taskId);
   const editingTaskRow = taskRow(taskOwnerId, editingCareTaskId);
   const completionTask = completionGarden?.careTasks.find((task) => task.id === completingCareTaskId);
@@ -472,9 +483,9 @@ export function CareWorkspace({
     <div className={styles.page} data-view={view} id="care-workspace-heading">
       {confirmation}
       {actionError && <p className={styles.alert} role="alert">{actionError}</p>}
-      {view === "tasks" ? <>
+      {board ? <>
         <CareBoard
-          board={careBoard(records, today, completions)}
+          board={board}
           today={today}
           focus={focus}
           scrollTo={allGardens && locationFilter && locationFilter !== "all" ? locationFilter : undefined}
@@ -507,9 +518,9 @@ export function CareWorkspace({
           <CareCompletionForm task={completionTask} location={completionGarden?.name} date={completionDate} onSetDate={setCompletionDate}
             onSave={completeCareTask} onCancel={() => confirmDiscard(completionDate !== completionBaseline, cancelCompletion, "care-today-heading")} />
         </CareDialog>}
-      </> : <>
+      </> : history && <>
         <CareHistory
-          history={careHistory(records, { today, location: activeLocation, type, limit })}
+          history={history}
           gardens={allGardens ? gardens : []}
           location={activeLocation}
           type={type}

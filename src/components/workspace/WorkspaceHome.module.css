@@ -19,21 +19,10 @@
 .home > .hint { margin: 0; }
 .visuallyHidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
-/* ---------- Dark textured bands: real photos on --color-band-base, never a flat block ---------- */
-.band {
-  position: relative;
-  isolation: isolate;
-  overflow: hidden;
-  border-radius: 20px;
-  color: #fff;
-  background-color: var(--color-band-base);
-  background-repeat: no-repeat;
-  background-size: cover;
-}
-.band::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; }
+/* ---------- Dark textured bands: shared with Care (care/CareShared.module.css) ---------- */
+.band { composes: band from "../care/CareShared.module.css"; }
 /* Leaf ridges: the landing hero's photo. */
-.ridges { background-image: url("/landing/hero-still.webp"); background-position: center; }
-.ridges::before { background: linear-gradient(100deg, rgb(9 24 15 / 78%), rgb(9 24 15 / 46%) 55%, rgb(9 24 15 / 58%)); }
+.ridges { composes: ridges from "../care/CareShared.module.css"; }
 /* Leaf veins: the landing footer's photo. Only the note block uses it. */
 .veins { background-image: url("/landing/footer-still.webp"); background-position: 30% 60%; }
 .veins::before { background: linear-gradient(165deg, rgb(9 24 15 / 84%), rgb(9 24 15 / 56%) 55%, rgb(9 24 15 / 34%)); }
@@ -201,10 +190,9 @@
 .dateBig { margin: 10px 0 2px; font-family: var(--font-display); font-size: 76px; font-weight: 500; line-height: 0.9; letter-spacing: -0.04em; }
 .dateMonth { margin: 0; font-size: 15.5px; font-weight: 500; color: rgb(255 255 255 / 88%); }
 .progress { display: flex; flex-direction: column; gap: 10px; margin-top: auto; padding-top: 24px; }
-.progressTrack { height: 6px; border-radius: var(--radius-pill); background: rgb(255 255 255 / 20%); }
-/* Lime has one meaning in the app: today's care progress (ADR-0080, ADR-0081). */
-.progressFill { height: 6px; border-radius: var(--radius-pill); background: var(--color-accent-lime); box-shadow: 0 0 14px rgb(214 255 92 / 45%); transition: width 350ms ease; }
-.progressLabel { font-size: 14px; font-weight: 500; }
+.progressTrack { composes: progressTrack from "../care/CareShared.module.css"; }
+.progressFill { composes: progressFill from "../care/CareShared.module.css"; }
+.progressLabel { composes: progressLabel from "../care/CareShared.module.css"; }
 .todayBody { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; padding: 12px 14px 2px 18px; }
 .todayHead { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--color-line); }
 .todayHeading { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
@@ -214,25 +202,13 @@
 .todayMore { display: flex; align-items: center; min-height: 48px; border-top: 1px solid var(--color-line); }
 .todayMore .textLink { display: inline-flex; align-items: center; min-height: 44px; }
 
+/* The row, tick, type icon, title, and late chip are shared with Care (care/CareShared.module.css). */
 .rows { margin: 0; padding: 0; list-style: none; }
-.row { display: flex; align-items: center; gap: 12px; min-height: 50px; border-top: 1px solid var(--color-line); }
-.row:first-child { border-top: 0; }
-/* A 44 px target around a 22 px circle. */
-.tick { flex: none; display: grid; place-items: center; width: 44px; height: 44px; margin: 0 -8px 0 -11px; padding: 0; border: 0; background: none; cursor: pointer; }
-span.tick { cursor: default; }
-.tickCircle { display: grid; place-items: center; width: 22px; height: 22px; border: 1.5px solid var(--color-ink-subtle); border-radius: 50%; color: transparent; transition: background-color 140ms, border-color 140ms; }
-.row:not([data-done]) button.tick:hover .tickCircle { border-color: var(--color-brand); color: var(--color-brand); }
-.row[data-done] .tickCircle { border-color: var(--color-brand); background: var(--color-brand); color: #fff; }
-.tick:focus-visible { outline: none; }
-.tick:focus-visible .tickCircle { outline: 2px solid var(--color-brand); outline-offset: 2px; }
-.careIcon { flex: none; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--color-soft); color: var(--color-care-watering); }
-.careIcon[data-type="fertilizing"] { color: var(--color-care-fertilizing); }
+.row { composes: row from "../care/CareShared.module.css"; min-height: 50px; }
 .rowText { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 10px; padding: 8px 0; overflow-wrap: anywhere; }
-.rowTitle { font-size: 15px; font-weight: 600; line-height: 1.35; }
+.rowTitle { composes: rowTitle from "../care/CareShared.module.css"; }
 .rowSub { font-size: 13.5px; line-height: 1.4; color: var(--color-muted); }
-.row[data-done] .rowTitle { text-decoration: line-through; font-weight: 500; color: var(--color-done-ink); }
-.row[data-done] .careIcon { opacity: 0.55; }
-.lateChip { flex: none; padding: 3px 10px; border-radius: var(--radius-pill); background: var(--color-error-surface); color: var(--color-error); font-size: 12.5px; font-weight: 600; white-space: nowrap; }
+.lateChip { composes: lateChip from "../care/CareShared.module.css"; }
 .lateInline { display: none; flex-basis: 100%; font-size: 13px; font-weight: 600; color: var(--color-error); }
 
 /* AI Garden Notes: a ruled sheet of paper lying on the leaf-vein band. The paper is the textarea. */
@@ -313,7 +289,7 @@ span.tick { cursor: default; }
   .noteActions { margin-left: 0; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .card, .newCard, .tickCircle, .progressFill { transition: none; }
+  .card, .newCard { transition: none; }
   .card:hover { transform: none; }
   .buttonWhite:active:not(:disabled) { transform: none; }
 }

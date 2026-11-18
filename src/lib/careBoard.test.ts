@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { careBoard } from "./careBoard";
-import { careEventForTask, completeCareTask, updateCareOwner } from "./careViews";
+import { careBoard, type CareCompletion } from "./careBoard";
+import { careEventForTask, completeCareTask, undoCareTaskCompletion, updateCareOwner } from "./careViews";
 import { createGarden, createGardenWorkspace, type CareEvent, type CareTask } from "./gardenWorkspace";
-import type { HomeCompletion } from "./homeTasks";
 
 const TODAY = "2026-11-16";
 const task = (id: string, dueDate: string, extra: Partial<CareTask> = {}): CareTask => ({ id, dueDate, type: "watering", note: "", targetScope: "garden", ...extra });
@@ -103,7 +102,7 @@ describe("Care board (ADR-0080)", () => {
     const row = careBoard(value, TODAY).todo[0];
     const done = careEventForTask(row.source!.record, TODAY, row.owner, "tick-1");
     value = updateCareOwner(value, row.owner, (records) => completeCareTask(records, row.source!.record, done));
-    const completion: HomeCompletion = { taskKey: row.key, task: row.source!.record, owner: row.owner, eventId: "tick-1" };
+    const completion: CareCompletion = { taskKey: row.key, task: row.source!.record, owner: row.owner, eventId: "tick-1" };
 
     const board = careBoard(value, TODAY, [completion]);
     expect(board.todo.map((item) => item.source?.record.id)).toEqual(["now"]);
@@ -131,5 +130,42 @@ describe("Care board (ADR-0080)", () => {
       expect(board.todo).toHaveLength(0);
       expect(board.days.find((day) => day.rows.length)?.date).toBe(expected);
     }
+  });
+
+  it("lists today for every location as the Gardens home does: ticks in place, earlier records last, place without repeat", () => {
+    let value = workspace();
+    value.careTasks = [task("root", "2026-11-15", { targetScope: "all-gardens", type: "fertilizing" })];
+    value.gardens[0].careTasks = [task("late", "2026-11-14", { repeatIntervalDays: 3 }), task("now", TODAY), task("soon", "2026-11-18")];
+    value.gardens[1].careEvents = [event("from-note", TODAY, { type: "fertilizing" }), event("old", "2026-11-10")];
+    const before = value;
+
+    const board = careBoard(value, TODAY);
+    expect(board.today.map(({ title, target, late, done }) => [title, target, late, done])).toEqual([
+      ["Water Backyard", "Whole garden", "Due 2 days ago", false],
+      ["Fertilize all gardens", undefined, "Due yesterday", false],
+      ["Water Backyard", "Whole garden", undefined, false],
+      ["Fertilize Front Yard", "Whole garden", undefined, true],
+    ]);
+    // The band's detail adds the repeat; the Gardens home shows the place alone.
+    expect(board.today[0].detail).toBe("Whole garden · Every 3 days");
+
+    const row = board.today[0];
+    const done = careEventForTask(row.source!.record, TODAY, row.owner, "tick-1");
+    value = updateCareOwner(value, row.owner, (records) => completeCareTask(records, row.source!.record, done));
+    const completion: CareCompletion = { taskKey: row.key, task: row.source!.record, owner: row.owner, eventId: "tick-1" };
+    const ticked = careBoard(value, TODAY, [completion]);
+    expect(ticked.today.map(({ key, done: isDone, completion: tick }) => [key, isDone, Boolean(tick)])).toEqual([
+      ["done:tick-1", true, true],
+      [board.today[1].key, false, false],
+      [board.today[2].key, false, false],
+      [board.today[3].key, true, false],
+    ]);
+    expect(ticked.progress).toEqual({ done: 2, total: 4 });
+
+    value = updateCareOwner(value, completion.owner, (records) => undoCareTaskCompletion(records, completion.task, completion.eventId));
+    expect(value.gardens[0].careTasks).toEqual(before.gardens[0].careTasks);
+    expect(value.gardens[0].careEvents).toEqual(before.gardens[0].careEvents);
+    // A tick whose record is gone no longer counts.
+    expect(careBoard(value, TODAY, [completion]).today[0]).toMatchObject({ key: row.key, done: false });
   });
 });
