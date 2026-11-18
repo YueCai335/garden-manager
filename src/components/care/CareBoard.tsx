@@ -11,7 +11,8 @@ import { calendarLabel } from "@/lib/careLabels";
 import type { CareRow } from "@/lib/careViews";
 import type { CareTask } from "@/lib/gardenWorkspace";
 import { gardenPath } from "@/lib/workspaceRoutes";
-import { CareIcon, PlusIcon, RowMenu, Tick } from "./CareParts";
+import { CareIcon, PlusIcon, Tick } from "./CareMarks";
+import { RowMenu } from "./CareParts";
 import styles from "./Care.module.css";
 
 export type CareBoardActions = {
@@ -39,7 +40,7 @@ function TodayRow({ row, region, local, menu, actions }: { row: CareBoardRow; re
   const toggle = row.done ? row.completion && (() => actions.onUntick(row, region)) : row.source && (() => actions.onTick(row, region));
   const late = !row.done ? row.late : undefined;
   return <li className={styles.row} data-done={row.done || undefined}>
-    <Tick rowKey={row.key} label={label} done={row.done} onToggle={toggle || undefined} />
+    <Tick rowKey={row.key} label={label} done={row.done} onToggle={toggle || undefined} className={styles.tick} />
     <CareIcon type={row.type} />
     <span className={styles.rowText}>
       {local && row.source && !row.done
@@ -147,7 +148,7 @@ function Ribbon({ board, actions }: { board: Board; actions: CareBoardActions })
           <div className={styles.dayHead}><span className={styles.dayName}>{day.weekday}</span><span className={styles.dayNumber}>{day.day}</span></div>
           {day.rows.length
             ? <ul className={styles.dayItems}>{day.rows.map((row) => <li key={row.key} className={styles.mini}>
-              <CareIcon type={row.type} />
+              <CareIcon type={row.type} className={styles.careIcon} />
               <span className={styles.miniText}>
                 {row.source
                   ? <button type="button" className={`${styles.miniTitle} ${styles.titleButton}`} onClick={() => actions.onEdit(row.source!)}>{row.title}</button>

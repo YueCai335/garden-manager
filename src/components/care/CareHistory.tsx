@@ -5,7 +5,8 @@ import type { ReactNode } from "react";
 import type { careHistory, HistoryType } from "@/lib/careHistory";
 import type { CareRow } from "@/lib/careViews";
 import type { CareEvent, Garden } from "@/lib/gardenWorkspace";
-import { CareIcon, PlusIcon, RowMenu } from "./CareParts";
+import { CareIcon, PlusIcon } from "./CareMarks";
+import { RowMenu } from "./CareParts";
 import styles from "./Care.module.css";
 
 type History = ReturnType<typeof careHistory>;
@@ -81,7 +82,7 @@ export function CareHistory({ history, gardens, location, type, careHref, onBack
           </div>
           <ul className={styles.logRows}>
             {day.rows.map((row) => <li key={row.key} className={styles.row}>
-              <CareIcon type={row.type} />
+              <CareIcon type={row.type} className={styles.careIcon} />
               <span className={styles.rowText}>
                 <span className={styles.rowTitle}>{row.title}</span>
                 <span className={styles.rowSub}>{row.detail}</span>

@@ -39,10 +39,9 @@
 .headline:focus { outline: none; }
 .summary { font-size: 17px; line-height: 1.55; color: rgb(255 255 255 / 88%); max-width: 40ch; }
 .progress { display: flex; flex-direction: column; gap: 10px; max-width: 420px; padding-top: 6px; }
-.progressTrack { height: 6px; border-radius: var(--radius-pill); background: rgb(255 255 255 / 20%); }
-/* Lime has one meaning in the app: today's care progress (ADR-0080). */
-.progressFill { height: 6px; border-radius: var(--radius-pill); background: var(--color-accent-lime); box-shadow: 0 0 14px rgb(214 255 92 / 45%); transition: width 350ms ease; }
-.progressLabel { font-size: 14px; font-weight: 500; }
+.progressTrack { composes: progressTrack from "./CareShared.module.css"; }
+.progressFill { composes: progressFill from "./CareShared.module.css"; }
+.progressLabel { composes: progressLabel from "./CareShared.module.css"; }
 .tilesLabel { margin-bottom: 12px !important; font-size: 13px; font-weight: 600; color: rgb(255 255 255 / 84%); }
 .tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .tile {
@@ -58,6 +57,7 @@
 .tileSub { font-size: 12.5px; line-height: 1.35; color: rgb(255 255 255 / 84%); }
 .bandActions { display: flex; flex-wrap: wrap; gap: 12px; }
 .glass {
+  composes: onDark from "./CareShared.module.css";
   background: rgb(10 26 17 / 38%);
   -webkit-backdrop-filter: blur(22px) saturate(1.1); backdrop-filter: blur(22px) saturate(1.1);
   border: 1px solid rgb(255 255 255 / 16%);
@@ -82,40 +82,24 @@
 .buttonWhite:active, .buttonPrimary:active, .buttonGhost:active { transform: translateY(1px); }
 
 /* ---------- Task and record rows ---------- */
+/* The row, tick, type icon, title, and late chip are shared with the Gardens home (CareShared.module.css).
+   `.tick` and `.careIcon` here are hooks that CareMarks adds for this page's placement rules. */
 .groupLabel { font-size: 13px; font-weight: 600; color: var(--color-muted); padding: 14px 0 2px; }
-.row { display: flex; align-items: center; gap: 12px; min-height: 58px; border-top: 1px solid var(--color-line); }
-.row:first-child { border-top: 0; }
-.tick { flex: none; display: grid; place-items: center; width: 44px; height: 44px; margin: 0 -8px 0 -11px; padding: 0; border: 0; background: none; cursor: pointer; }
-span.tick { cursor: default; }
-.tickCircle { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--color-ink-subtle); color: transparent; transition: background-color 140ms, border-color 140ms; }
-.row:not([data-done]) button.tick:hover .tickCircle { border-color: var(--color-brand); color: var(--color-brand); }
-.row[data-done] .tickCircle { background: var(--color-brand); border-color: var(--color-brand); color: #fff; }
-.page .tick:focus-visible { outline: none; }
-.page .tick:focus-visible .tickCircle { outline: 2px solid var(--color-brand); outline-offset: 2px; }
-.careIcon { flex: none; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--color-soft); color: var(--color-care-watering); }
-.careIcon[data-type="fertilizing"] { color: var(--color-care-fertilizing); }
+.row { composes: row from "./CareShared.module.css"; min-height: 58px; }
 .rowText { flex: 1; min-width: 0; display: grid; gap: 1px; padding: 8px 0; overflow-wrap: anywhere; }
-.rowTitle { font-size: 15px; font-weight: 600; line-height: 1.35; }
+.rowTitle { composes: rowTitle from "./CareShared.module.css"; }
 .rowSub { font-size: 13px; line-height: 1.4; color: var(--color-muted); }
 .rowNote { font-size: 13.5px; line-height: 1.45; color: var(--color-text); white-space: pre-wrap; }
-.row[data-done] .rowTitle { text-decoration: line-through; font-weight: 500; color: var(--color-done-ink); }
-.row[data-done] .careIcon { opacity: 0.55; }
 /* A task title that opens the task dialog: reads as text, behaves as a button. */
 .titleButton { justify-self: start; max-width: 100%; margin: 0; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; overflow-wrap: anywhere; }
 .titleButton:hover { text-decoration: underline; text-underline-offset: 3px; }
-.lateChip { flex: none; padding: 3px 10px; border-radius: var(--radius-pill); background: var(--color-error-surface); color: var(--color-error); font-size: 12.5px; font-weight: 600; white-space: nowrap; }
+.lateChip { composes: lateChip from "./CareShared.module.css"; }
 /* Phones: the chip has no room beside the title, so the same words sit under it instead. */
 .lateInline { display: none; font-size: 13px; font-weight: 600; color: var(--color-error); }
 .more { flex: none; display: grid; place-items: center; width: 44px; height: 44px; margin-right: -12px; padding: 0; border: 0; border-radius: 50%; background: none; cursor: pointer; color: var(--color-muted); }
 .more:hover, .more[aria-expanded="true"] { background: rgb(127 127 127 / 14%); }
-/* Rows on the glass card. */
+/* Rows on the glass card; the tick and icon colours come from the shared `onDark`. */
 .glass .row { border-top-color: rgb(255 255 255 / 14%); }
-.glass .tickCircle { border-color: rgb(255 255 255 / 72%); }
-.glass .row:not([data-done]) button.tick:hover .tickCircle { border-color: #fff; color: #fff; }
-.glass .row[data-done] .tickCircle { background: #fff; border-color: #fff; color: var(--color-band-base); }
-.page .glass .tick:focus-visible .tickCircle { outline-color: #fff; }
-.glass .careIcon { background: rgb(255 255 255 / 12%); color: var(--color-care-watering-on-dark); }
-.glass .careIcon[data-type="fertilizing"] { color: var(--color-care-fertilizing-on-dark); }
 .glass .rowSub { color: rgb(255 255 255 / 82%); }
 .glass .rowNote { color: #fff; }
 .glass .row[data-done] .rowTitle { color: rgb(255 255 255 / 74%); }
@@ -263,7 +247,7 @@ span.tick { cursor: default; }
   .form { grid-template-columns: minmax(0, 1fr); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .progressFill, .tickCircle, .tile, .gardenCard { transition: none; }
+  .tile, .gardenCard { transition: none; }
   .tile:hover { transform: none; }
   .buttonWhite:active, .buttonPrimary:active, .buttonGhost:active { transform: none; }
 }

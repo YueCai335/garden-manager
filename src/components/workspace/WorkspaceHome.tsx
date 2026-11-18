@@ -3,18 +3,18 @@
 import Link from "next/link";
 import { useEffect, useRef, type ReactNode } from "react";
 import { GardenPlanOverview } from "@/components/GardenPlanOverview";
+import { CareIcon, PlusIcon, Tick } from "@/components/care/CareMarks";
 import { ButtonLink } from "@/components/ui/Button";
 import { useCareTicks } from "@/hooks/useCareTicks";
 import { updateCareOwner } from "@/lib/careViews";
-import { isDemoGardenId, todayDate, type CareEventType, type Garden } from "@/lib/gardenWorkspace";
+import { isDemoGardenId, todayDate, type Garden } from "@/lib/gardenWorkspace";
 import { gardenCardSummary, gardenPlants, gardensSummary } from "@/lib/homeGardens";
-import { homeTasks, type HomeTaskRow } from "@/lib/homeTasks";
+import { careBoard, type CareBoard, type CareBoardRow } from "@/lib/careBoard";
 import { gardenPath } from "@/lib/workspaceRoutes";
 import { OverviewNoteEntry } from "./AppShell";
 import { useWorkspace } from "./WorkspaceProvider";
 import styles from "./WorkspaceHome.module.css";
 
-type HomeTasks = ReturnType<typeof homeTasks>;
 /** Today's care for one garden: open rows left, and all of today's rows. */
 type GardenToday = { left: number; total: number };
 
@@ -23,18 +23,6 @@ const TODAY_ROWS = 6;
 
 const localDay = (date: string, options: Intl.DateTimeFormatOptions) =>
   new Date(`${date}T12:00:00Z`).toLocaleDateString("en-US", { ...options, timeZone: "UTC" });
-
-function PlusIcon({ size }: { size: number }) {
-  return <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden="true"><path d="M8 3v10M3 8h10" /></svg>;
-}
-
-function CareIcon({ type }: { type: CareEventType }) {
-  return <span className={styles.careIcon} data-type={type} aria-hidden="true">
-    {type === "watering"
-      ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"><path d="M12 3.5c3 3.6 5.5 6.3 5.5 9.6a5.5 5.5 0 0 1-11 0c0-3.3 2.5-6 5.5-9.6z" /></svg>
-      : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20v-8" /><path d="M12 12c0-3-2-5-6-5 0 3 2 5 6 5z" /><path d="M12 14.5c0-2.5 2-4.5 6-4.5 0 2.5-2 4.5-6 4.5z" /></svg>}
-  </span>;
-}
 
 /** ADR-0081: the textured band carries only the date, the title, the totals, and Demo garden. */
 function GardensBand({ summary, onOpenDemoGarden }: { summary?: string; onOpenDemoGarden?: () => void }) {
@@ -79,27 +67,22 @@ function GardenCard({ garden, today }: { garden: Garden; today?: GardenToday }) 
 
 function NewGardenCard() {
   return <Link className={styles.newCard} href="/gardens/new" aria-labelledby="new-garden-title" aria-describedby="new-garden-sub">
-    <span className={styles.newMark}><PlusIcon size={20} /></span>
+    <span className={styles.newMark}><PlusIcon size={20} strokeWidth={1.6} /></span>
     <span id="new-garden-title" className={styles.newTitle}>New garden</span>
     <span id="new-garden-sub" className={styles.newSub}>Draw the outline, then add planting areas</span>
   </Link>;
 }
 
-function TaskRow({ row, onTick, onUntick }: { row: HomeTaskRow; onTick: (row: HomeTaskRow) => void; onUntick: (row: HomeTaskRow) => void }) {
-  const circle = <span className={styles.tickCircle} aria-hidden="true">
-    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2.5 6.5l2.5 2.5 4.5-5.5" /></svg>
-  </span>;
+function TaskRow({ row, onTick, onUntick }: { row: CareBoardRow; onTick: (row: CareBoardRow) => void; onUntick: (row: CareBoardRow) => void }) {
   const late = row.late && !row.done ? row.late : undefined;
   return <li className={styles.row} data-done={row.done || undefined}>
-    {row.task || row.completion
-      ? <button type="button" role="checkbox" aria-checked={row.done} aria-label={[row.title, row.detail].filter(Boolean).join(", ")}
-        className={styles.tick} data-row-key={row.key} onClick={() => row.done ? onUntick(row) : onTick(row)}>{circle}</button>
-      // Done earlier (in Care or from a note): it is corrected in Care history.
-      : <span className={styles.tick} role="img" aria-label="Done">{circle}</span>}
+    {/* Done earlier (in Care or from a note), a row has no toggle: it is corrected in Care history. */}
+    <Tick rowKey={row.key} label={[row.title, row.target].filter(Boolean).join(", ")} done={row.done} doneLabel="Done"
+      onToggle={row.source || row.completion ? () => row.done ? onUntick(row) : onTick(row) : undefined} />
     <CareIcon type={row.type} />
     <span className={styles.rowText}>
       <span className={styles.rowTitle}>{row.title}</span>
-      {row.detail && <span className={styles.rowSub}>{row.detail}</span>}
+      {row.target && <span className={styles.rowSub}>{row.target}</span>}
       {late && <span className={styles.lateInline}>{late}</span>}
     </span>
     {late && <span className={styles.lateChip}>{late}</span>}
@@ -107,15 +90,15 @@ function TaskRow({ row, onTick, onUntick }: { row: HomeTaskRow; onTick: (row: Ho
 }
 
 /** ADR-0081: today's care only (overdue, due today, done today), ticked off in place. Care owns the week. */
-function TodayCard({ tasks, hasGardens, focusKey, onTick, onUntick }: {
-  tasks: HomeTasks;
+function TodayCard({ board, hasGardens, focusKey, onTick, onUntick }: {
+  board?: CareBoard;
   hasGardens: boolean;
   focusKey?: string;
-  onTick: (row: HomeTaskRow) => void;
-  onUntick: (row: HomeTaskRow) => void;
+  onTick: (row: CareBoardRow) => void;
+  onUntick: (row: CareBoardRow) => void;
 }) {
-  const { overdue, today, upcoming, done, total } = tasks;
-  const rows = [...overdue, ...today];
+  const rows = board?.today ?? [];
+  const { done, total } = board?.progress ?? { done: 0, total: 0 };
   const left = total - done;
   const list = useRef<HTMLUListElement>(null);
   // A ticked row is a new record row; keep the keyboard on its circle.
@@ -125,7 +108,7 @@ function TodayCard({ tasks, hasGardens, focusKey, onTick, onUntick }: {
   }, [focusKey, rows.length, done]);
   const date = todayDate();
   const heading = !total ? "Nothing due today" : !left ? "All done for today" : left === 1 ? "1 thing left" : `${left} things left`;
-  const nothingAtAll = total === 0 && upcoming.length === 0;
+  const nothingAtAll = total === 0 && !board?.days.some((day) => day.rows.length);
   return <section className={styles.todayCard} aria-label="Care today">
     <div className={`${styles.band} ${styles.ridges} ${styles.dateTile}`}>
       <p className={`${styles.bandKicker} ${styles.dateDay}`}>{localDay(date, { weekday: "long" })}</p>
@@ -173,16 +156,11 @@ export function WorkspaceHome({ onOpenDemoGarden, onboarding }: { onOpenDemoGard
   const allGardens = workspace?.gardens ?? [];
   const hasPersonalGardens = allGardens.some((garden) => !isDemoGardenId(garden.id));
   const gardens = hasPersonalGardens ? allGardens.filter((garden) => !isDemoGardenId(garden.id)) : allGardens;
-  const tasks = workspace ? homeTasks(workspace, todayDate(), completions) : undefined;
+  const board = workspace ? careBoard(workspace, todayDate(), completions) : undefined;
   // Each card's label counts that garden's own rows; workspace-wide care belongs to no card.
-  const gardenToday = new Map<string, GardenToday>();
-  for (const row of tasks ? [...tasks.overdue, ...tasks.today] : []) {
-    if (row.owner.ownerScope !== "garden") continue;
-    const entry = gardenToday.get(row.owner.gardenId) ?? { left: 0, total: 0 };
-    gardenToday.set(row.owner.gardenId, { left: entry.left + (row.done ? 0 : 1), total: entry.total + 1 });
-  }
-  const tick = (row: HomeTaskRow) => tickRow(row);
-  const untick = (row: HomeTaskRow) => untickRow(row.completion);
+  const gardenToday = new Map<string, GardenToday>(board?.gardens.map(({ garden, left, total }) => [garden.id, { left, total }]));
+  const tick = (row: CareBoardRow) => tickRow({ key: row.key, owner: row.owner, task: row.source?.record });
+  const untick = (row: CareBoardRow) => untickRow(row.completion);
 
   const firstGarden = onboarding
     ? <div className={styles.firstGarden}>{onboarding}</div>
@@ -203,9 +181,7 @@ export function WorkspaceHome({ onOpenDemoGarden, onboarding }: { onOpenDemoGard
       </div>
     </section>
     <div className={styles.lower}>
-      {tasks
-        ? <TodayCard tasks={tasks} hasGardens={gardens.length > 0} focusKey={focusKey} onTick={tick} onUntick={untick} />
-        : <TodayCard tasks={{ overdue: [], today: [], upcoming: [], done: 0, total: 0 }} hasGardens={false} onTick={tick} onUntick={untick} />}
+      <TodayCard board={board} hasGardens={gardens.length > 0} focusKey={focusKey} onTick={tick} onUntick={untick} />
       <OverviewNoteEntry />
     </div>
     {workspace && message && <p className={styles.hint} role="status">{message}</p>}

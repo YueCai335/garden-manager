@@ -139,6 +139,12 @@ app rules.
 - Shared code: `src/lib/careBoard.ts`, `src/lib/careHistory.ts`, and
   `src/lib/careLabels.ts` (the words Gardens and Care share), and
   `src/hooks/useCareTicks.ts` (ticking, used by Gardens and Care).
+- 2026-11-18 cleanup, no visible change: the Gardens home reads its Today
+  rows from `careBoard` (its `today` list and `target` field), which
+  replaces `src/lib/homeTasks.ts`. The progress bar and the row, tick, and
+  type icon live once in `src/components/care/CareShared.module.css` and
+  `src/components/care/CareMarks.tsx`; both page modules compose them. The
+  textured band comes from `src/styles/bands.module.css` (ADR-0082).
 
 ## Reconsideration
 

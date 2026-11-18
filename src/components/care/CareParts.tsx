@@ -4,34 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "re
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/Button";
 import { lockBodyScroll } from "@/lib/modalScrollLock";
-import type { CareEventType } from "@/lib/gardenWorkspace";
 import styles from "./Care.module.css";
-
-export function PlusIcon() {
-  return <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><path d="M8 3v10M3 8h10" /></svg>;
-}
-
-/** Watering is a drop, fertilizing a sprout: the shape tells them apart, not only the colour. */
-export function CareIcon({ type }: { type: CareEventType }) {
-  return <span className={styles.careIcon} data-type={type} aria-hidden="true">
-    {type === "watering"
-      ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"><path d="M12 3.5c3 3.6 5.5 6.3 5.5 9.6a5.5 5.5 0 0 1-11 0c0-3.3 2.5-6 5.5-9.6z" /></svg>
-      : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20v-8" /><path d="M12 12c0-3-2-5-6-5 0 3 2 5 6 5z" /><path d="M12 14.5c0-2.5 2-4.5 6-4.5 0 2.5-2 4.5-6 4.5z" /></svg>}
-  </span>;
-}
-
-/**
- * The tick circle. An open task or a tick from this visit is a checkbox button; a record from
- * elsewhere shows as done but is corrected in History.
- */
-export function Tick({ rowKey, label, done, onToggle }: { rowKey: string; label: string; done: boolean; onToggle?: () => void }) {
-  const circle = <span className={styles.tickCircle} aria-hidden="true">
-    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2.5 6.5l2.5 2.5 4.5-5.5" /></svg>
-  </span>;
-  return onToggle
-    ? <button type="button" role="checkbox" aria-checked={done} aria-label={label} className={styles.tick} data-row-key={rowKey} onClick={onToggle}>{circle}</button>
-    : <span className={styles.tick} role="img" aria-label={`${label}, done`}>{circle}</span>;
-}
 
 export type MenuItem = { label: string; onSelect: () => void; danger?: boolean };
 
