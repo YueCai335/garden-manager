@@ -1,0 +1,421 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Landing Garden Plan section mockup v3</title>
+<!-- The mockup loads fonts from Google; the app self-hosts them with next/font. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..600&family=Instrument+Sans:wght@400..700&display=swap">
+<style>
+:root { --page: #f4f4f3; --ink: #18181a; --muted: #5f5f63; --line: #e3e3e1; --brand: #1f4230; --brand-head: #173322; --rx: 60deg; --rz: -45deg;
+  /* The hero's leaf-ridge photo under a lighter wash than v2, so it reads green, not black. */
+  --texture: linear-gradient(100deg, rgb(9 24 15 / 58%), rgb(9 24 15 / 28%) 55%, rgb(9 24 15 / 42%)), url("../../public/landing/hero-still.webp") center / cover no-repeat #1d3a28;
+  --texture-light: linear-gradient(rgb(31 66 48 / 18%), rgb(31 66 48 / 18%)), url("../../public/landing/hero-still.webp") 40% 50% / 260% no-repeat #2b5238; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--ink); font-family: "Instrument Sans", system-ui, sans-serif; }
+.tools { width: min(1180px, calc(100% - 32px)); margin: 20px auto 12px; display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; font-size: 13px; color: var(--muted); }
+.tools .grp { display: flex; gap: 6px; align-items: center; }
+.tools button { font: inherit; padding: 6px 12px; border-radius: 999px; border: 1px solid #d6d6d3; background: #fff; cursor: pointer; color: var(--ink); }
+.tools button[aria-pressed="true"] { background: var(--brand); color: #fff; border-color: var(--brand); }
+.tools .sp { flex: 1; }
+
+/* ---------- Section card (light) ---------- */
+.band { position: relative; isolation: isolate; overflow: hidden; width: min(1180px, calc(100% - 32px)); margin: 0 auto 64px; height: 720px; border-radius: 28px; background: #fff; border: 1px solid var(--line); }
+/* Right-side accent options. The white paper holds the dot grid; the frame option shows texture around it. */
+.paper { position: absolute; inset: 0; z-index: -2; background: #fff; }
+.tex.frame { z-index: -3; inset: 0; }
+.acc-frame .tex.frame { display: block; }
+.acc-frame .paper { left: 404px; top: 16px; right: 16px; bottom: 16px; border-radius: 18px; }
+.acc-frame .tex.slab { left: 16px; top: 16px; bottom: 16px; }
+.acc-base .tex.base { display: block; left: 420px; right: 20px; bottom: 20px; height: 14px; border-radius: 8px; }
+.band .dots { position: absolute; inset: 0; background-image: radial-gradient(#dcdcda 1px, transparent 1.3px); background-size: 18px 18px; -webkit-mask-image: radial-gradient(70% 70% at 62% 52%, #000 40%, transparent 100%); mask-image: radial-gradient(70% 70% at 62% 52%, #000 40%, transparent 100%); }
+.tex { position: absolute; z-index: -1; background: var(--texture); display: none; }
+.bg-slab .tex.slab { display: block; left: 20px; top: 20px; bottom: 20px; width: 380px; border-radius: 22px; }
+.bg-band .tex.strip { display: block; left: 0; right: 0; top: 0; height: 290px; }
+.bg-band .steps { margin-top: 74px; }
+
+.copy { position: absolute; left: 56px; top: 60px; width: 312px; z-index: 3; }
+.kicker { margin: 0 0 18px; font-size: 12.5px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: var(--brand); }
+.kicker span { margin-right: 10px; }
+h2 { margin: 0 0 18px; font-family: "Bricolage Grotesque", sans-serif; font-size: 46px; font-weight: 500; line-height: 1; letter-spacing: -0.03em; color: var(--brand-head); }
+.lede { margin: 0 0 30px; font-size: 16px; line-height: 1.55; color: var(--muted); }
+.steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.step { display: grid; grid-template-columns: 30px 1fr; gap: 12px; padding: 12px 12px 12px 10px; border-radius: 14px; transition: background .35s, opacity .35s; opacity: .5; }
+.step.on { opacity: 1; background: rgb(31 66 48 / 7%); }
+.step.done { opacity: 1; }
+.num { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-size: 12.5px; font-weight: 600; border: 1.5px solid var(--brand); color: var(--brand); background: #fff; transition: background .3s, color .3s; }
+.on .num { background: var(--brand); color: #fff; }
+.step b { display: block; font-size: 16.5px; font-weight: 500; margin: 3px 0 3px; color: var(--ink); }
+.step p { margin: 0; font-size: 14px; line-height: 1.5; color: var(--muted); }
+.summary { margin: 22px 0 0; font-size: 15px; line-height: 1.5; color: var(--brand-head); font-weight: 500; opacity: 0; transform: translateY(6px); transition: opacity .6s, transform .6s; }
+.summary.on { opacity: 1; transform: none; }
+.ctas { display: flex; gap: 10px; margin-top: 24px; }
+.btn { font: inherit; font-size: 15px; font-weight: 500; height: 46px; padding: 0 22px; border-radius: 999px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
+.btn.solid { background: var(--brand); color: #fff; border: 0; }
+.btn.ghost { background: #fff; color: var(--brand); border: 1.5px solid var(--brand); }
+
+/* Copy on the textured slab (option A) is white. */
+.bg-slab .copy { left: 52px; top: 56px; }
+.bg-slab .kicker, .bg-slab h2 { color: #fff; }
+.bg-slab .lede, .bg-slab .step p { color: rgb(255 255 255 / 80%); }
+.bg-slab .step b { color: #fff; }
+.bg-slab .step { opacity: .62; background: rgb(255 255 255 / 7%); border: 1px solid rgb(255 255 255 / 16%); box-shadow: inset 0 1px 0 rgb(255 255 255 / 10%); -webkit-backdrop-filter: blur(12px) saturate(1.2); backdrop-filter: blur(12px) saturate(1.2); transition: background .35s, opacity .35s, border-color .35s; }
+.bg-slab .step.done { opacity: 1; }
+.bg-slab .step.on { opacity: 1; background: rgb(255 255 255 / 16%); border-color: rgb(255 255 255 / 48%); }
+.bg-slab .copy .num { border-color: rgb(255 255 255 / 75%); color: #fff; background: transparent; }
+.bg-slab .copy .on .num { background: #fff; color: var(--brand-head); }
+.bg-slab .summary { color: #fff; }
+.bg-slab .btn.solid { background: #fff; color: var(--brand-head); }
+.bg-slab .btn.ghost { background: rgb(255 255 255 / 8%); color: #fff; border-color: rgb(255 255 255 / 35%); }
+/* The headline sits on the strip (option B); the steps sit on white below it. */
+.bg-band .kicker, .bg-band h2 { color: #fff; }
+.bg-band .lede { color: rgb(255 255 255 / 82%); }
+
+/* ---------- 3D stage ---------- */
+.stage { position: absolute; left: 400px; right: 0; top: 0; bottom: 0; perspective: 2600px; perspective-origin: 40% 45%; }
+.scene { --s: 1.45; position: absolute; left: 39px; top: 405px; width: 440px; height: 264px; transform-origin: 0 0; transform-style: preserve-3d; transform: scale(var(--s)) rotateX(var(--rx)) rotateZ(var(--rz)); transition: transform 1.15s cubic-bezier(.65,0,.2,1), left 1.15s cubic-bezier(.65,0,.2,1), top 1.15s cubic-bezier(.65,0,.2,1); }
+.pulled .scene { --s: 1.1; left: 26px; top: 403px; }
+.front .scene { --rx: 58deg; --rz: 0deg; left: 81px; top: 259px; }
+.front.pulled .scene { --s: 1.05; left: 68px; top: 290px; }
+.layer { position: absolute; inset: 0; transform-style: preserve-3d; transition: transform 1.15s cubic-bezier(.65,0,.2,1); }
+.it { position: absolute; transform-style: preserve-3d; transform: translateZ(var(--z, 0px)); transition: transform .62s cubic-bezier(.25,1.4,.5,1), opacity .35s; }
+.it.up { transform: translateZ(calc(var(--z, 0px) + 380px)); opacity: 0; }
+.snap, .snap * { transition: none !important; }
+.face { position: absolute; }
+
+/* Ground sheet, with thickness and a soft drop shadow */
+.sheet { inset: 0; background: #fafafa; }
+.side-front { left: 0; top: 264px; width: 440px; height: 14px; transform-origin: 0 0; transform: rotateX(-90deg); background: #d6d6d2; }
+.side-left { left: 0; top: 0; width: 14px; height: 264px; transform-origin: 0 0; transform: rotateY(90deg); background: #c2c2be; }
+.drop { position: absolute; inset: 6px; background: rgb(0 0 0 / 22%); filter: blur(16px); transform: translateZ(-34px); }
+/* Option C: the sheet stands on a textured green plinth that frames it. */
+.plinth { display: none; }
+.bg-plinth .plinth, .acc-plinth .plinth { display: block; }
+.bg-plinth .side-front, .bg-plinth .side-left, .acc-plinth .side-front, .acc-plinth .side-left { display: none; }
+.plinth .top { position: absolute; left: -18px; top: -18px; width: 476px; height: 300px; transform: translateZ(-1px); background: var(--texture-light); border-radius: 4px; }
+.plinth .pf { position: absolute; left: -18px; top: 282px; width: 476px; height: 34px; transform-origin: 0 0; transform: translateZ(-1px) rotateX(-90deg); background: var(--texture-light); filter: brightness(.8); }
+.plinth .pl2 { position: absolute; left: -18px; top: -18px; width: 34px; height: 300px; transform-origin: 0 0; transform: translateZ(-1px) rotateY(90deg); background: var(--texture-light); filter: brightness(.65); }
+#ol { transition: stroke-dashoffset 1.1s ease-in-out; }
+.ruler { position: absolute; opacity: 0; transition: opacity .6s; }
+.ruler.on { opacity: 1; }
+
+/* Raised beds and containers */
+.wall { position: absolute; transform-origin: 0 0; }
+.rim { position: absolute; inset: 0; border: 3px solid #a07d58; border-radius: 2px; }
+.soil { position: absolute; inset: 3px; background: #efe7da; }
+.panel { position: absolute; transform-origin: 50% 0; }
+.ring { position: absolute; inset: 0; border-radius: 50%; border: 3px solid #c4805e; }
+.soil.round { border-radius: 50%; }
+.inground { position: absolute; inset: 0; border: 1.5px dashed #7a6650; background: #ece6dc; }
+
+/* Plants */
+.pl { border-radius: 50%; }
+.pl .core { position: absolute; left: 30%; top: 30%; width: 40%; height: 40%; border-radius: 50%; transform: translateZ(4px); }
+
+/* Billboard tags: counter-rotate so they always face the viewer. */
+/* Labels stay one fixed, small size on screen: scale(1 / --s) cancels the scene's zoom. */
+.bb { position: absolute; left: 0; top: 0; transform-origin: 0 0; transform: rotateZ(calc(-1 * var(--rz))) rotateX(calc(-1 * var(--rx))) scale(calc(1 / var(--s))) translate(-50%, calc(-100% - 14px)); white-space: nowrap; transition: transform 1.15s cubic-bezier(.65,0,.2,1); }
+/* A fine annotation: frosted pill, hairline stem, and a pin dot on the object. */
+.tag { position: relative; display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px 4px 8px; border-radius: 999px; font-size: 12px; font-weight: 500; letter-spacing: 0.005em; line-height: 1.25; font-variant-numeric: tabular-nums; color: var(--ink); background: #fff; border: 1px solid #dededb; box-shadow: 0 6px 14px -8px rgb(0 0 0 / 28%); transition: opacity .35s; }
+.tag::before { content: ""; position: absolute; left: 50%; top: 100%; width: 1px; height: 12px; background: rgb(31 66 48 / 45%); }
+.tag::after { content: ""; position: absolute; left: calc(50% - 2px); top: calc(100% + 11px); width: 5px; height: 5px; border-radius: 50%; background: var(--brand); box-shadow: 0 0 0 2px rgb(255 255 255 / 85%); }
+.tag small { font-size: 11.5px; font-weight: 400; color: #5f5f63; }
+.tag.light { color: var(--brand-head); }
+.hide .tag { opacity: 0; }
+.dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; }
+
+/* Floating layers: glass shelves and the shadow each casts on the layer below */
+.plate { position: absolute; inset: -8px; border-radius: 8px; background: rgb(255 255 255 / 45%); border: 1px solid rgb(31 66 48 / 22%); opacity: 0; transition: opacity .6s, border-color .4s, background .4s; transform: translateZ(-1px); }
+.shade { position: absolute; inset: 14px; background: rgb(0 0 0 / 16%); filter: blur(16px); opacity: 0; transition: opacity .8s; }
+.lit .plate, .lit .shade { opacity: 1; }
+.layer.on .plate { border-color: var(--brand); background: rgb(31 66 48 / 8%); border-width: 1.5px; }
+
+/* Numbered markers pinned to each layer's outer corner. They ride with the layer, so they need no column of their own. */
+.mk { position: absolute; left: 0; top: 0; transform-origin: 0 0; transform: rotateZ(calc(-1 * var(--rz))) rotateX(calc(-1 * var(--rx))) scale(calc(1 / var(--s))) translate(18px, -50%); transition: transform 1.15s cubic-bezier(.65,0,.2,1); }
+.mark { position: relative; display: inline-flex; align-items: center; gap: 8px; padding: 4px 12px 4px 4px; border-radius: 999px; white-space: nowrap; background: #fff; border: 1px solid #dededb; box-shadow: 0 8px 18px -10px rgb(0 0 0 / 30%); opacity: 0; transform: translateX(-6px); transition: opacity .45s, transform .45s, border-color .3s, box-shadow .3s; }
+.mark::before { content: ""; position: absolute; left: -15px; top: 50%; width: 12px; border-top: 1px solid rgb(31 66 48 / 55%); }
+.mark::after { content: ""; position: absolute; left: -19px; top: calc(50% - 2px); width: 5px; height: 5px; border-radius: 50%; background: var(--brand); box-shadow: 0 0 0 2px rgb(255 255 255 / 85%); }
+.mark .num { width: 22px; height: 22px; font-size: 11px; border-width: 1.2px; letter-spacing: 0.02em; }
+.mark b { font-size: 13px; font-weight: 500; letter-spacing: 0.005em; color: var(--ink); }
+.mark.vis { opacity: 1; transform: none; }
+.mark.on { border-color: rgb(31 66 48 / 60%); box-shadow: 0 0 0 3px rgb(31 66 48 / 10%), 0 8px 18px -10px rgb(0 0 0 / 30%); }
+</style>
+</head>
+<body>
+
+<div class="tools">
+  <!-- Background A (left textured slab) chosen on 2026-11-18; B strip and C plinth stay in the CSS for reference. -->
+  <!-- Right-side accent: textured frame chosen on 2026-11-18; the other options stay in the CSS and setAcc(). -->
+  <div class="grp"><span>顺序</span>
+    <button data-seq="build" aria-pressed="true">搭 → 拆 → 合</button>
+    <button data-seq="shelves" aria-pressed="false">分层搭 → 合</button>
+  </div>
+  <div class="grp"><span>视角</span>
+    <button data-view="iso" aria-pressed="true">45° 等距</button>
+    <button data-view="front" aria-pressed="false">正面俯视</button>
+  </div>
+  <span class="sp"></span><span>Mockup v3</span>
+</div>
+
+<section class="band bg-slab acc-frame" id="band" aria-labelledby="garden-plan-title">
+  <div class="tex frame"></div>
+  <div class="paper"><div class="dots"></div></div>
+  <div class="tex base"></div>
+  <div class="tex slab"></div>
+  <div class="tex strip"></div>
+  <div class="copy">
+    <p class="kicker"><span>01</span>Garden Plan</p>
+    <h2 id="garden-plan-title">Draw your garden to scale.</h2>
+    <ol class="steps">
+      <li class="step" data-step="0"><span class="num">01</span><div><b>Draw your garden</b><p>Trace your real plot. This one is a 10 × 6 m backyard.</p></div></li>
+      <li class="step" data-step="1"><span class="num">02</span><div><b>Add planting areas</b><p>Raised beds, pots, and in-ground beds, where they really stand.</p></div></li>
+      <li class="step" data-step="2"><span class="num">03</span><div><b>Plant at real spacing</b><p>Each circle is the room a plant needs.</p></div></li>
+    </ol>
+    <p class="summary" id="summary">One plan, from the whole garden down to every plant.</p>
+    <div class="ctas">
+      <button class="btn solid">Try it</button>
+      <button class="btn ghost" id="replay">↻ Replay</button>
+    </div>
+  </div>
+
+  <div class="stage" id="stage">
+    <div class="scene" id="scene">
+      <div class="layer" id="L0"></div>
+      <div class="layer" id="L1"></div>
+      <div class="layer" id="L2"></div>
+    </div>
+  </div>
+</section>
+
+<script>
+const W = 440, H = 264, M = 44; // 44 px = 1 m
+const band = document.getElementById("band"), stage = document.getElementById("stage"), scene = document.getElementById("scene");
+const L = [0, 1, 2].map((i) => document.getElementById("L" + i));
+const EXPLODE = [-130, -10, 110];
+const el = (tag, cls, style, parent) => { const d = document.createElement(tag); if (cls) d.className = cls; if (style) Object.assign(d.style, style); if (parent) parent.appendChild(d); return d; };
+const px = (n) => n + "px";
+const item = (layer, x, y, w, h, z = 0) => { const d = el("div", "it up", { left: px(x), top: px(y), width: px(w), height: px(h) }, layer); d.style.setProperty("--z", px(z)); return d; };
+const billboard = (layer, x, y, z, html, cls = "") => { const d = item(layer, x, y, 0, 0, z); const b = el("div", "bb", null, d); b.innerHTML = `<span class="tag ${cls}">${html}</span>`; return d; };
+
+/* ----- Layer 0: the garden sheet ----- */
+const ground = item(L[0], 0, 0, W, H);
+el("div", "drop", null, ground);
+const plinth = el("div", "plinth", null, ground);
+el("div", "top", null, plinth); el("div", "pf", null, plinth); el("div", "pl2", null, plinth);
+el("div", "face sheet", null, ground);
+el("div", "face side-front", null, ground);
+el("div", "face side-left", null, ground);
+const grid = [];
+for (let x = M; x < W; x += M) grid.push(`<line x1="${x}" y1="0" x2="${x}" y2="${H}"/>`);
+for (let y = M; y < H; y += M) grid.push(`<line x1="0" y1="${y}" x2="${W}" y2="${y}"/>`);
+ground.insertAdjacentHTML("beforeend", `<svg width="${W}" height="${H}" style="position:absolute;inset:0;overflow:visible"><g stroke="#e4e4e1" stroke-width="1">${grid.join("")}</g><rect id="ol" x="1.5" y="1.5" width="${W - 3}" height="${H - 3}" fill="none" stroke="#1f4230" stroke-width="3" stroke-dasharray="1400" stroke-dashoffset="1400"/></svg>`);
+const rulerColor = "#6f6f73";
+const rulerX = el("div", "ruler", { left: 0, top: px(H + 34), width: px(W), height: "20px" }, ground);
+rulerX.innerHTML = `<svg width="${W}" height="20" style="position:absolute;inset:0;overflow:visible"><g stroke="${rulerColor}" stroke-width="0.7"><line x1="0" y1="0" x2="0" y2="12"/><line x1="${W}" y1="0" x2="${W}" y2="12"/><line x1="0" y1="6" x2="${W / 2 - 16}" y2="6"/><line x1="${W / 2 + 16}" y1="6" x2="${W}" y2="6"/></g><text x="${W / 2}" y="11" fill="${rulerColor}" font-size="10.5" font-weight="500" letter-spacing="0.3" text-anchor="middle" font-family="Instrument Sans">10 m</text></svg>`;
+const rulerY = el("div", "ruler", { left: "-48px", top: 0, width: "20px", height: px(H) }, ground);
+rulerY.innerHTML = `<svg width="20" height="${H}" style="position:absolute;inset:0;overflow:visible"><g stroke="${rulerColor}" stroke-width="0.7"><line x1="8" y1="0" x2="20" y2="0"/><line x1="8" y1="${H}" x2="20" y2="${H}"/><line x1="14" y1="0" x2="14" y2="${H / 2 - 14}"/><line x1="14" y1="${H / 2 + 14}" x2="14" y2="${H}"/></g><text x="14" y="${H / 2 + 4}" fill="${rulerColor}" font-size="10.5" font-weight="500" letter-spacing="0.3" text-anchor="middle" font-family="Instrument Sans" transform="rotate(-90 14 ${H / 2})">6 m</text></svg>`;
+const gardenTag = billboard(L[0], 0, H, 6, `Backyard <small>your garden</small>`, "light");
+
+/* ----- Layer 1: planting areas ----- */
+const areas = [];
+function raisedBed(x, y, w, h, hgt = 13) {
+  const d = item(L[1], x, y, w, h);
+  el("div", "face", { inset: 0, background: "#e7dfd2" }, d);
+  [
+    { left: 0, top: px(h), width: px(w), height: px(hgt), transform: "rotateX(90deg)", background: "#9a7752" },
+    { left: 0, top: 0, width: px(w), height: px(hgt), transform: "rotateX(90deg)", background: "#7f6043" },
+    { left: 0, top: 0, width: px(hgt), height: px(h), transform: "rotateY(-90deg)", background: "#6f5239" },
+    { left: px(w), top: 0, width: px(hgt), height: px(h), transform: "rotateY(-90deg)", background: "#86664a" },
+  ].forEach((s) => el("div", "wall", s, d));
+  el("div", "soil", { transform: `translateZ(${hgt - 4}px)` }, d);
+  el("div", "rim", { transform: `translateZ(${hgt}px)` }, d);
+  return d;
+}
+function container(cx, cy, r, hgt = 16) {
+  const d = item(L[1], cx - r, cy - r, r * 2, r * 2);
+  const n = 22, pw = 2 * r * Math.sin(Math.PI / n) + 0.8;
+  for (let i = 0; i < n; i++) {
+    const a = (360 / n) * i, shade = 0.72 + 0.28 * Math.cos(((a - 200) * Math.PI) / 180);
+    el("div", "panel", { left: px(r - pw / 2), top: px(r), width: px(pw), height: px(hgt), background: `rgb(${Math.round(181 * shade)} ${Math.round(112 * shade)} ${Math.round(78 * shade)})`, transform: `rotateZ(${a}deg) translateY(${r}px) rotateX(90deg)` }, d);
+  }
+  el("div", "soil round", { inset: "3px", transform: `translateZ(${hgt - 4}px)` }, d);
+  el("div", "ring", { transform: `translateZ(${hgt}px)` }, d);
+  return d;
+}
+function inGround(x, y, w, h) { const d = item(L[1], x, y, w, h, 1); el("div", "inground", null, d); return d; }
+areas.push({ node: raisedBed(26, 31, 132, 53), tag: [92, 31, 15, `Raised bed <small>3 × 1.2 m</small>`] });
+areas.push({ node: raisedBed(26, 110, 132, 53), tag: [92, 110, 15, `Raised bed <small>3 × 1.2 m</small>`] });
+areas.push({ node: container(246, 60, 25), tag: [246, 35, 18, `Pot <small>Ø 1.1 m</small>`] });
+areas.push({ node: container(318, 64, 17), tag: [318, 47, 18, `Pot <small>Ø 0.8 m</small>`] });
+areas.push({ node: inGround(206, 140, 200, 96), tag: [306, 140, 4, `In-ground bed <small>4.5 × 2.2 m</small>`] });
+const areaTags = areas.map((a) => billboard(L[1], ...a.tag));
+
+/* ----- Layer 2: plants, sized by their spacing, with their names ----- */
+const crops = {
+  tomato: { fill: "#f3b4b8", stroke: "#aa434f", name: "Tomato" },
+  lettuce: { fill: "#d3e4bc", stroke: "#5a8236", name: "Lettuce" },
+  basil: { fill: "#c0dde2", stroke: "#1a7888", name: "Basil" },
+  marigold: { fill: "#ecd08e", stroke: "#7b6310", name: "Marigold" },
+  carrot: { fill: "#f6c39a", stroke: "#93571f", name: "Carrot" },
+};
+const plants = [];
+const plant = (cx, cy, r, crop, z) => {
+  const c = crops[crop], d = item(L[2], cx - r, cy - r, r * 2, r * 2, z);
+  d.classList.add("pl");
+  Object.assign(d.style, { background: c.fill + "e6", border: `1.5px solid ${c.stroke}` });
+  el("div", "core", { background: c.stroke }, d);
+  plants.push({ node: d, crop });
+};
+[59, 92, 125].forEach((x) => plant(x, 57.5, 14, "tomato", 10));
+[44, 69, 94, 119, 144].forEach((x) => plant(x, 136.5, 8, "lettuce", 10));
+plant(246, 60, 12, "basil", 13);
+plant(318, 64, 9, "marigold", 13);
+[0, 1].forEach((row) => [232, 262, 292, 322, 352, 382].forEach((x) => plant(x, 168 + row * 40, 7, "carrot", 1)));
+const tagHtml = (crop, n) => `<span class="dot" style="background:${crops[crop].stroke}"></span>${crops[crop].name} ×${n}`;
+/* Each crop group lands together with its name, so plants and names read as one layer. */
+const plantTags = {
+  tomato: billboard(L[2], 92, 31, 30, tagHtml("tomato", 3)),
+  lettuce: billboard(L[2], 92, 110, 26, tagHtml("lettuce", 5)),
+  basil: billboard(L[2], 246, 40, 30, tagHtml("basil", 1)),
+  marigold: billboard(L[2], 322, 52, 30, tagHtml("marigold", 1)),
+  carrot: billboard(L[2], 306, 150, 12, tagHtml("carrot", 12)),
+};
+
+/* Glass shelves for the two floating layers */
+[1, 2].forEach((i) => {
+  el("div", "plate", null, L[i]);
+  el("div", "shade", { transform: `translateZ(${-(EXPLODE[i] - EXPLODE[i - 1]) + 2}px)` }, L[i]);
+});
+
+/* ----- Markers: the same three steps, pinned to their layers ----- */
+const calloutText = [["01", "Your garden"], ["02", "Planting areas"], ["03", "Plants"]];
+const coEls = L.map((layer, i) => {
+  const anchor = el("div", "", { position: "absolute", left: px(W), top: px(H), transformStyle: "preserve-3d" }, layer);
+  const mk = el("div", "mk", null, anchor);
+  mk.innerHTML = `<span class="mark"><span class="num">${calloutText[i][0]}</span><b>${calloutText[i][1]}</b></span>`;
+  return mk.firstElementChild;
+});
+
+/* ----- Shared state helpers ----- */
+const steps = [...document.querySelectorAll(".step")], summary = document.getElementById("summary");
+const ol = () => document.getElementById("ol");
+let run = 0, seq = "build";
+const wait = (ms, id) => new Promise((r) => setTimeout(() => r(id === run), ms));
+const setZ = (zs) => L.forEach((l, i) => (l.style.transform = `translateZ(${zs[i]}px)`));
+const allItems = () => [...scene.querySelectorAll(".it")];
+const snap = (fn) => { stage.classList.add("snap"); fn(); void stage.offsetWidth; requestAnimationFrame(() => stage.classList.remove("snap")); };
+const rulers = (on) => [rulerX, rulerY].forEach((r) => r.classList.toggle("on", on));
+const callout = (i, on) => coEls[i].classList.toggle("vis", on);
+const shelves = (on) => [1, 2].forEach((i) => L[i].classList.toggle("lit", on));
+/* One step is active at a time: its row, its layer's shelf, and its callout light up together. */
+function setActive(n) {
+  steps.forEach((s, i) => { s.classList.toggle("on", i === n); if (i < n || n === 9) s.classList.add("done"); });
+  L.forEach((l, i) => l.classList.toggle("on", i === n));
+  coEls.forEach((c, i) => c.classList.toggle("on", i === n));
+}
+const collapse = () => { stage.classList.remove("pulled"); setZ([0, 0, 0]); shelves(false); [0, 1, 2].forEach((i) => callout(i, false)); };
+const explode = () => { stage.classList.add("pulled"); setZ(EXPLODE); shelves(true); };
+
+function reset() {
+  snap(() => {
+    collapse(); allItems().forEach((d) => { d.classList.add("up"); d.classList.remove("hide"); });
+    ol().style.strokeDashoffset = 1400; rulers(false); summary.classList.remove("on");
+    steps.forEach((s) => s.classList.remove("on", "done")); setActive(-1);
+  });
+}
+function final(exploded = false) {
+  snap(() => {
+    allItems().forEach((d) => d.classList.remove("up"));
+    areaTags.forEach((t) => t.classList.add("hide"));
+    ol().style.strokeDashoffset = 0; rulers(true); setActive(9); summary.classList.add("on");
+    if (exploded) { explode(); [0, 1, 2].forEach((i) => callout(i, true)); } else collapse();
+  });
+}
+
+/* ----- Step contents, shared by both sequences ----- */
+async function stepGarden(id) {
+  setActive(0); ground.classList.remove("up");
+  if (!(await wait(650, id))) return false;
+  ol().style.strokeDashoffset = 0;
+  if (!(await wait(900, id))) return false;
+  rulers(true); gardenTag.classList.remove("up");
+  return wait(1000, id);
+}
+async function stepAreas(id) {
+  setActive(1);
+  for (let i = 0; i < areas.length; i++) {
+    areas[i].node.classList.remove("up");
+    setTimeout(() => id === run && areaTags[i].classList.remove("up"), 260);
+    if (!(await wait(420, id))) return false;
+  }
+  return wait(700, id);
+}
+async function stepPlants(id) {
+  setActive(2); areaTags.forEach((t) => t.classList.add("hide"));
+  for (const crop of Object.keys(plantTags)) {
+    plantTags[crop].classList.remove("up");
+    for (const p of plants.filter((x) => x.crop === crop)) { p.node.classList.remove("up"); if (!(await wait(45, id))) return false; }
+    if (!(await wait(260, id))) return false;
+  }
+  return wait(900, id);
+}
+
+/* A: build on the ground, then lift the three layers apart and name each one, then close. */
+async function playBuild(id) {
+  if (!(await stepGarden(id)) || !(await stepAreas(id)) || !(await stepPlants(id))) return;
+  setActive(-1); explode();
+  if (!(await wait(900, id))) return;
+  for (let i = 0; i < 3; i++) { callout(i, true); setActive(i); if (!(await wait(1100, id))) return; }
+  setActive(-1);
+  if (!(await wait(500, id))) return;
+  collapse();
+  if (!(await wait(1000, id))) return;
+  setActive(9); summary.classList.add("on");
+}
+/* B: each step fills its own shelf with its callout beside it, then the shelves close together. */
+async function playShelves(id) {
+  snap(() => { explode(); shelves(false); });
+  if (!(await wait(80, id))) return;
+  callout(0, true);
+  if (!(await stepGarden(id))) return;
+  L[1].classList.add("lit"); callout(1, true);
+  if (!(await wait(350, id)) || !(await stepAreas(id))) return;
+  L[2].classList.add("lit"); callout(2, true);
+  if (!(await wait(350, id)) || !(await stepPlants(id))) return;
+  setActive(-1);
+  if (!(await wait(700, id))) return;
+  collapse();
+  if (!(await wait(1000, id))) return;
+  setActive(9); summary.classList.add("on");
+}
+async function play() {
+  const id = ++run; reset();
+  if (!(await wait(250, id))) return;
+  (seq === "build" ? playBuild : playShelves)(id);
+}
+
+/* ----- Mockup switches ----- */
+function bindGroup(attr, apply) {
+  const buttons = [...document.querySelectorAll(`[data-${attr}]`)];
+  buttons.forEach((b) => (b.onclick = () => { buttons.forEach((x) => x.setAttribute("aria-pressed", String(x === b))); apply(b.dataset[attr]); }));
+}
+bindGroup("bg", (v) => { band.classList.remove("bg-slab", "bg-band", "bg-plinth"); band.classList.add(v); });
+bindGroup("seq", (v) => { seq = v; play(); });
+bindGroup("acc", (v) => { band.classList.remove("acc-none", "acc-base", "acc-frame", "acc-plinth"); band.classList.add(v); });
+bindGroup("view", (v) => stage.classList.toggle("front", v === "front"));
+document.getElementById("replay").onclick = play;
+
+// Screenshot hooks: show('final') or show('exploded').
+let manual = false;
+window.show = (name) => { manual = true; run++; final(name === "exploded"); };
+window.setAcc = (v) => { band.classList.remove("acc-none", "acc-base", "acc-frame", "acc-plinth"); band.classList.add(v); };
+window.setBg = (v) => { band.classList.remove("bg-slab", "bg-band", "bg-plinth"); band.classList.add(v); };
+
+if (matchMedia("(prefers-reduced-motion: reduce)").matches) final();
+else {
+  reset();
+  new IntersectionObserver((entries, obs) => { if (entries[0].isIntersecting) { obs.disconnect(); if (!manual) play(); } }, { threshold: 0.4 }).observe(band);
+}
+</script>
+</body>
+</html>
