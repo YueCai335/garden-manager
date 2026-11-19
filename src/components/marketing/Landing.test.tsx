@@ -49,3 +49,25 @@ it("shows the pre-rendered stills when the browser has no WebGL2", () => {
   expect((backdrops[0] as HTMLElement).style.getPropertyValue("--still")).toBe('url("/landing/hero-still.webp")');
   expect((backdrops[1] as HTMLElement).style.getPropertyValue("--still")).toBe('url("/landing/footer-still.webp")');
 });
+
+it("shows the Garden Plan showcase as the finished plan when the browser cannot play it", () => {
+  // jsdom has no IntersectionObserver, like reduced motion: the section shows the end state.
+  renderLanding();
+  const section = screen.getByRole("article", { name: "Draw your garden to scale" });
+  expect(within(section).getAllByRole("listitem").map((item) => item.querySelector("b")?.textContent)).toEqual(["Draw your garden", "Add planting areas", "Plant at real spacing"]);
+  expect(within(section).getByRole("img", { name: /10 by 6 metre sample backyard/ })).toHaveAttribute("data-state", "finished");
+  expect(within(section).getByText("One plan, from the whole garden down to every plant.")).toBeInTheDocument();
+  expect(within(section).getByRole("link", { name: "Try it" })).toHaveAttribute("href", "/gardens");
+  expect(within(section).getByRole("button", { name: "Replay" })).toBeInTheDocument();
+});
+
+it("starts the Garden Plan showcase on the finished plan with reduced motion, and Replay keeps it there", async () => {
+  vi.stubGlobal("IntersectionObserver", class { observe() {} disconnect() {} });
+  vi.stubGlobal("matchMedia", (query: string) => ({ matches: query.includes("reduce"), media: query, addEventListener() {}, removeEventListener() {} }));
+  renderLanding();
+  const stage = screen.getByRole("img", { name: /sample backyard/ });
+  expect(stage).toHaveAttribute("data-state", "finished");
+  screen.getByRole("button", { name: "Replay" }).click();
+  expect(stage).toHaveAttribute("data-state", "finished");
+  vi.unstubAllGlobals();
+});

@@ -4,6 +4,7 @@ import { ShaderBackdrop } from "@/components/marketing/ShaderBackdrop";
 import { heroPreset } from "@/components/marketing/landingShader";
 import { workspaceHomePath } from "@/lib/workspaceRoutes";
 import { landingFeatures } from "@/components/marketing/landingFeatures";
+import { GardenPlanShowcase } from "@/components/marketing/GardenPlanShowcase";
 import styles from "@/components/marketing/Landing.module.css";
 
 const title = "Garden Manager · Draw your garden, log it in one sentence";
@@ -48,9 +49,9 @@ export default function LandingPage() {
         </figure>
       </div>
     </section>
-    {/* One full-width section per feature, in the header's order. Each keeps room for its showcase (S6b). */}
+    {/* One full-width section per feature, in the header's order. A feature with steps plays its showcase (S6b, ADR-0084). */}
     <section id="features" className={`${styles.wrap} ${styles.features}`} aria-label="Features">
-      {landingFeatures.map((feature, index) => <article key={feature.id} id={feature.id} className={styles.feature} aria-labelledby={`feature-${feature.id}`}>
+      {landingFeatures.map((feature, index) => "steps" in feature ? <GardenPlanShowcase key={feature.id} feature={feature} index={index} className={styles.showcase} /> : <article key={feature.id} id={feature.id} className={styles.feature} aria-labelledby={`feature-${feature.id}`}>
         <div>
           <p className={styles.kicker}><span aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>{feature.label}</p>
           <h2 id={`feature-${feature.id}`}>{feature.title}</h2>
