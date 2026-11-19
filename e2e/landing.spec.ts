@@ -7,7 +7,7 @@ const footer = (page: Page) => page.getByRole("contentinfo").locator("[data-rend
 test("the landing page waits on no API request and every entry point opens the app", async ({ page }) => {
   const apiRequests: string[] = [];
   page.on("request", (request) => { if (request.url().startsWith("http://127.0.0.1:8100")) apiRequests.push(request.url()); });
-  for (const width of [1440, 390]) {
+  for (const width of [1440, 768, 390]) {
     await page.setViewportSize({ width, height: 900 });
     await page.goto("/");
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
@@ -50,7 +50,7 @@ test("the landing page waits on no API request and every entry point opens the a
   await expect(page).toHaveURL(workspaceHome);
 });
 
-test("the hero and footer render the leaf photos with WebGL and never download the stills", async ({ page }) => {
+test("the hero and footer render the leaf photos with WebGL and never fall back to the stills", async ({ page }) => {
   const images: string[] = [];
   page.on("request", (request) => { if (request.url().includes("/landing/")) images.push(new URL(request.url()).pathname); });
   // A short window, so the footer starts well below the 300 px look-ahead.
@@ -74,7 +74,10 @@ test("the hero and footer render the leaf photos with WebGL and never download t
   expect(first.y).toBeGreaterThanOrEqual(box.y - first.height);
 
   expect(images).toEqual(expect.arrayContaining(["/landing/hero-ridges.webp", "/landing/footer-veins.webp"]));
-  expect(images.filter((path) => path.includes("still"))).toEqual([]);
+  // The footer never needs its still. The hero still is fetched once as the Garden Plan
+  // showcase's texture (ADR-0084), not as a fallback for the hero.
+  expect(images.filter((path) => path.includes("still"))).toEqual(["/landing/hero-still.webp"]);
+  await expect(hero(page).locator("div").first()).not.toHaveCSS("background-image", /hero-still/);
 });
 
 test("without WebGL2 the bands show the pre-rendered stills, not a blank band", async ({ page }) => {
@@ -103,6 +106,54 @@ test("with reduced motion the bands show the stills and the AI Note lines do not
   expect(background).toContain("/landing/hero-still.webp");
   const animation = await page.getByRole("figure", { name: "AI Note example" }).locator("path").first().evaluate((path) => getComputedStyle(path).animationName);
   expect(animation).toBe("none");
+});
+
+test("the Garden Plan showcase builds once in view, stops on the finished plan, and Replay plays it again", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/");
+  const section = page.getByRole("article", { name: "Draw your garden to scale" });
+  const stage = section.getByRole("img", { name: /sample backyard/ });
+  // It waits off screen, then plays once the stage scrolls into view.
+  await expect(stage).toHaveAttribute("data-state", "building");
+  await stage.scrollIntoViewIfNeeded();
+  await expect(stage).toHaveAttribute("data-state", "exploded", { timeout: 15_000 });
+  await expect(stage).toHaveAttribute("data-state", "finished", { timeout: 15_000 });
+  await expect(section.getByText("One plan, from the whole garden down to every plant.")).toBeVisible();
+  // The finished plan stays in the white stage and never widens the page.
+  const paper = (await stage.boundingBox())!;
+  const tags = await stage.getByText(/×\d+$/).evaluateAll((nodes) => nodes.map((node) => node.getBoundingClientRect().toJSON()));
+  expect(tags).toHaveLength(5);
+  for (const tag of tags) {
+    expect(tag.left).toBeGreaterThanOrEqual(paper.x);
+    expect(tag.right).toBeLessThanOrEqual(paper.x + paper.width);
+  }
+  await section.getByRole("button", { name: "Replay" }).click();
+  await expect(stage).toHaveAttribute("data-state", "building");
+  await expect(stage).toHaveAttribute("data-state", "exploded", { timeout: 15_000 });
+});
+
+test("on a phone the Garden Plan showcase shows letter pins and a legend instead of full plant names", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  const section = page.getByRole("article", { name: "Draw your garden to scale" });
+  const stage = section.getByRole("img", { name: /sample backyard/ });
+  await stage.scrollIntoViewIfNeeded();
+  await expect(stage.getByText(/×\d+$/).first()).toBeHidden();
+  const pins = await stage.getByText(/^[TLBMC]$/).evaluateAll((nodes) => nodes.map((node) => node.getBoundingClientRect().toJSON()));
+  expect(pins).toHaveLength(5);
+  // No two pins overlap.
+  for (const [index, pin] of pins.entries()) for (const other of pins.slice(index + 1)) {
+    expect(pin.right <= other.left || other.right <= pin.left || pin.bottom <= other.top || other.bottom <= pin.top).toBe(true);
+  }
+  await expect(section.locator("li", { hasText: "Carrot ×12" })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
+
+test("with reduced motion the Garden Plan showcase shows the finished plan at once", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/");
+  await expect(page.getByRole("img", { name: /sample backyard/ })).toHaveAttribute("data-state", "finished");
 });
 
 test("the landing page has a social preview and in-page section links", async ({ page }) => {

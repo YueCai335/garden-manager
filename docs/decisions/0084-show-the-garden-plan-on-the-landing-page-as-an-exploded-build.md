@@ -1,7 +1,9 @@
 # ADR-0084: Show the Garden Plan on the Landing Page as an Exploded Build
 
-- Status: Accepted on 2026-11-18. Not implemented. The owner asked to build it
-  together with the AI Note section once that section is designed.
+- Status: Accepted on 2026-11-18. Implemented on 2026-11-18 on the branch
+  `landing-garden-design`, ahead of the AI Note section at the owner's
+  request. The owner chose the phone labeling (option C) from the phone
+  mockup on the same day.
 - Date: 2026-11-18
 - Amends: [ADR-0073](0073-separate-the-landing-page-and-use-a-textured-deep-green-look.md)
   (phase S6b): the form of the Garden Plan showcase was left open. This ADR
@@ -74,6 +76,13 @@ A textured slab on the left holds the text. The right side plays a 2.5D
 7. **Mobile.** Below the desktop layout, the slab stacks above the scene. The
    three steps shrink to one short line each, so the garden appears soon
    after the headline instead of below a tall block of text.
+   On a phone (520 px and narrower) the scene shrinks to under half size while
+   labels keep their size, so full plant names would collide. Each crop group
+   shows a 20 px letter pin in its plant color instead (T, L, B, M, C), and a
+   legend under the stage names each group with its count. A legend chip
+   lights up when its group lands. Layer markers show only their number, and
+   area and garden tags drop their sizes. Phone mockup:
+   [design/landing-garden-section/phone.html](../../design/landing-garden-section/phone.html).
 8. **Color.** The section uses the deep green, the plant colors, and neutrals.
    It does not use the lime accent.
 
@@ -149,8 +158,9 @@ glass were hard to read. Solid white at 12–13 px is the accepted middle.
   transitions, and an intersection observer to start it.
 - The sample garden is fixed data in the component. It does not follow the
   demo workspace, so changes to the demo never break the showcase.
-- The section loads the hero's still texture a second time; the browser serves
-  it from cache.
+- The section's texture is the hero's pre-rendered still (about 300 KB). When
+  WebGL runs, the hero draws its own texture and never requests the still, so
+  this section adds one image download to the landing page.
 - The section's look sets the pattern for the other three landing sections.
   Their design may still ask for small changes here so the four stay
   consistent.
@@ -166,6 +176,27 @@ glass were hard to read. Solid white at 12–13 px is the accepted middle.
   scroll.
 - Confirm the mobile layout with a mockup before building it, including where
   the layer markers go on a narrow screen.
+
+### As built
+
+- `src/components/marketing/gardenPlanScene.ts` holds the sample garden and
+  the timeline as data: a list of timed actions and a pure reducer, so the
+  step order and the finished state are unit-tested without a browser.
+- `GardenPlanShowcase.tsx` renders the scene with CSS Modules and plays the
+  timeline once the stage is 40 % in view. The scene is drawn for a
+  760 × 688 px stage; a `ResizeObserver` sets `--fit` so smaller stages scale
+  the whole scene, and labels divide by the same scale, so they keep their
+  12–13 px size.
+- Plant colors come from `gardenPlantColors` (ADR-0076), as the app would
+  color this garden, so they differ slightly from the mockup's hand-picked
+  swatches.
+- Narrow screens (≤ 860 px) stack the slab above the stage and shrink the
+  steps to their titles. Phones (≤ 520 px) use the letter pins and legend of
+  decision 7, and larger ruler type (19 px in scene units, about 12 px on
+  screen).
+- The ruler labels are HTML text, not SVG `<text>`: on the phone layout
+  Chromium skipped painting SVG text inside the 3D scene until another style
+  change forced a repaint.
 
 ## Reconsideration Conditions
 

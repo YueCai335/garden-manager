@@ -150,7 +150,7 @@
 .records span { color: rgb(255 255 255 / 78%); }
 
 /* Feature sections on the neutral page: one full-width section each, stacked in the header's
-   order. The showcases (S6b) come later; until then each section is text and "Try it". */
+   order. Garden Plan plays its showcase (ADR-0084); the others are text and "Try it" until theirs are designed. */
 .features { padding: 24px 0 64px; }
 .feature {
   display: grid;
@@ -161,7 +161,8 @@
   /* Leaves room for the fixed header when a header link jumps here. */
   scroll-margin-top: 88px;
 }
-.feature:first-child { border-top: 0; }
+.feature:first-child,
+.showcase + .feature { border-top: 0; }
 .kicker { margin: 0 0 14px; color: #1f4230; font-size: 13px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
 .kicker span { margin-right: 10px; color: #8d8d91; }
 .feature h2 { max-width: 16ch; margin: 0; color: #173322; font-family: var(--display); font-size: clamp(1.75rem, 3.4vw, 2.75rem); font-weight: 500; line-height: 1.05; letter-spacing: -0.025em; text-wrap: balance; }

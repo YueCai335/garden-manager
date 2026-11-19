@@ -1,0 +1,293 @@
+/* The landing Garden Plan section (ADR-0084): a white stage inside a textured deep-green
+   frame, a textured slab on the left for the text, and a 45° isometric exploded build of
+   a sample garden. Both textures are the hero's leaf-ridge still under a light wash, so the
+   green reads clearly and never as black. No lime here. */
+.band {
+  --brand: #1f4230;
+  --brand-head: #173322;
+  --ink: #18181a;
+  --texture: linear-gradient(100deg, rgb(9 24 15 / 58%), rgb(9 24 15 / 28%) 55%, rgb(9 24 15 / 42%)), url("/landing/hero-still.webp") center / cover no-repeat #1d3a28;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: 380px minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  gap: 8px;
+  height: 720px;
+  margin: 48px 0 24px;
+  padding: 16px;
+  border-radius: 28px;
+  background: var(--texture);
+  /* Leaves room for the fixed header when a header link jumps here. */
+  scroll-margin-top: 88px;
+}
+.snap *,
+.snap *::before,
+.snap *::after { transition: none !important; }
+.band .slab :focus-visible { outline: 2px solid #ffffff; outline-offset: 3px; }
+
+/* ---------- Text slab ---------- */
+.slab {
+  position: relative;
+  z-index: 3;
+  padding: 40px 24px 40px 36px;
+  border-radius: 22px;
+  background: var(--texture);
+  color: #ffffff;
+}
+.kicker { margin: 0 0 18px; font-size: 12.5px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; }
+.kicker span { margin-right: 10px; }
+.slab h2 { margin: 0 0 30px; font-family: var(--display); font-size: 46px; font-weight: 500; line-height: 1; letter-spacing: -0.03em; }
+.steps { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+/* Frosted step cards on the slab; the active one brightens with its layer and marker. */
+.step {
+  display: grid;
+  grid-template-columns: 30px 1fr;
+  gap: 12px;
+  padding: 12px 12px 12px 10px;
+  border: 1px solid rgb(255 255 255 / 16%);
+  border-radius: 14px;
+  background: rgb(255 255 255 / 7%);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 10%);
+  opacity: 0.62;
+  -webkit-backdrop-filter: blur(12px) saturate(1.2);
+  backdrop-filter: blur(12px) saturate(1.2);
+  transition: background-color 0.35s, opacity 0.35s, border-color 0.35s;
+}
+.step.done { opacity: 1; }
+.step.on { opacity: 1; border-color: rgb(255 255 255 / 48%); background: rgb(255 255 255 / 16%); }
+.num {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1.5px solid rgb(255 255 255 / 75%);
+  border-radius: 50%;
+  font-size: 12.5px;
+  font-weight: 600;
+  transition: background-color 0.3s, color 0.3s;
+}
+.step.on .num { background: #ffffff; color: var(--brand-head); }
+.step b { display: block; margin: 3px 0; font-size: 16.5px; font-weight: 500; }
+.step p { margin: 0; color: rgb(255 255 255 / 80%); font-size: 14px; line-height: 1.5; }
+.summary { margin: 22px 0 0; font-size: 15px; font-weight: 500; line-height: 1.5; opacity: 0; transform: translateY(6px); transition: opacity 0.6s, transform 0.6s; }
+.summary.on { opacity: 1; transform: none; }
+.ctas { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
+.solid,
+.ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 46px;
+  padding: 0 22px;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+}
+.solid { border: 0; background: #ffffff; color: var(--brand-head); }
+.solid:hover { background: #e9efe9; }
+.ghost { border: 1px solid rgb(255 255 255 / 35%); background: rgb(255 255 255 / 8%); color: #ffffff; }
+.ghost:hover { background: rgb(255 255 255 / 16%); }
+
+/* ---------- White stage ---------- */
+.paper { position: relative; border-radius: 18px; background: #ffffff; }
+.paper::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background-image: radial-gradient(#dcdcda 1px, transparent 1.3px);
+  background-size: 18px 18px;
+  -webkit-mask-image: radial-gradient(70% 70% at 52% 52%, #000 40%, transparent 100%);
+  mask-image: radial-gradient(70% 70% at 52% 52%, #000 40%, transparent 100%);
+}
+/* The scene is drawn for a 760 × 688 stage; --fit, --ox, and --oy fit it into the real one. */
+.stage {
+  --fit: 1;
+  --ox: 0px;
+  --oy: 0px;
+  --rx: 60deg;
+  --rz: -45deg;
+  --ease: cubic-bezier(0.65, 0, 0.2, 1);
+  position: absolute;
+  inset: 0;
+  perspective: calc(2600px * var(--fit));
+  perspective-origin: calc(var(--ox) + 308px * var(--fit)) calc(var(--oy) + 308px * var(--fit));
+}
+.scene {
+  --s: calc(1.45 * var(--fit));
+  position: absolute;
+  left: calc(var(--ox) + 35px * var(--fit));
+  top: calc(var(--oy) + 389px * var(--fit));
+  width: 440px;
+  height: 264px;
+  transform-origin: 0 0;
+  transform-style: preserve-3d;
+  transform: scale(var(--s)) rotateX(var(--rx)) rotateZ(var(--rz));
+  transition: transform 1.15s var(--ease), left 1.15s var(--ease), top 1.15s var(--ease);
+}
+/* With the layers apart, the camera pulls back so the markers have room. */
+.pulled .scene {
+  --s: calc(1.1 * var(--fit));
+  left: calc(var(--ox) + 22px * var(--fit));
+  top: calc(var(--oy) + 387px * var(--fit));
+}
+.layer { position: absolute; inset: 0; transform-style: preserve-3d; transition: transform 1.15s var(--ease); }
+.item { position: absolute; transform-style: preserve-3d; transform: translateZ(var(--z, 0px)); transition: transform 0.62s cubic-bezier(0.25, 1.4, 0.5, 1), opacity 0.35s; }
+/* Waiting items hang above the scene, hidden, and drop into place when they land. */
+.item.up { opacity: 0; transform: translateZ(calc(var(--z, 0px) + 380px)); }
+.face { position: absolute; }
+
+/* Layer 01: the garden sheet, with thickness and a soft drop shadow */
+.sheet { position: absolute; inset: 0; background: #fafafa; }
+.sideFront { position: absolute; left: 0; top: 264px; width: 440px; height: 14px; transform-origin: 0 0; transform: rotateX(-90deg); background: #d6d6d2; }
+.sideLeft { position: absolute; left: 0; top: 0; width: 14px; height: 264px; transform-origin: 0 0; transform: rotateY(90deg); background: #c2c2be; }
+.drop { position: absolute; inset: 6px; background: rgb(0 0 0 / 22%); filter: blur(16px); transform: translateZ(-34px); }
+.overlay { position: absolute; inset: 0; overflow: visible; }
+.grid { stroke: #e4e4e1; stroke-width: 1; }
+.outline { fill: none; stroke: var(--brand); stroke-width: 3; stroke-dasharray: 1400; stroke-dashoffset: 1400; transition: stroke-dashoffset 1.1s ease-in-out; }
+.outline.drawn { stroke-dashoffset: 0; }
+.ruler { position: absolute; opacity: 0; transition: opacity 0.6s; }
+.ruler.on { opacity: 1; }
+.ruler line { stroke: #6f6f73; stroke-width: 0.7; }
+.ruler .wide { display: none; }
+/* HTML labels, not SVG text: Chromium can skip painting SVG text inside this 3D scene. */
+.rulerLabel { position: absolute; color: #6f6f73; font-size: 10.5px; font-weight: 500; letter-spacing: 0.3px; line-height: 1; white-space: nowrap; transform: translate(-50%, -50%); }
+.rulerLabel.vertical { transform: translate(-50%, -50%) rotate(-90deg); }
+
+/* Layer 02: raised beds as wooden boxes, pots as cylinders, and a flat in-ground bed */
+.wall { position: absolute; transform-origin: 0 0; }
+.rim { position: absolute; inset: 0; border: 3px solid; border-radius: 2px; }
+.soil { position: absolute; inset: 3px; background: #efe7da; }
+.soil.round { border-radius: 50%; }
+.panel { position: absolute; transform-origin: 50% 0; }
+.ring { position: absolute; inset: 0; border: 3px solid; border-radius: 50%; }
+.inGround { position: absolute; inset: 0; border: 1.5px dashed; }
+
+/* Layer 03: plants as circles sized by their spacing */
+.plant { border: 1.5px solid; border-radius: 50%; }
+.core { position: absolute; left: 30%; top: 30%; width: 40%; height: 40%; border-radius: 50%; transform: translateZ(4px); }
+
+/* Labels face the viewer and keep one small screen size: scale(1 / --s) cancels the zoom. */
+.billboard,
+.markerBillboard {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+  white-space: nowrap;
+  transition: transform 1.15s var(--ease);
+}
+.billboard { transform: rotateZ(calc(-1 * var(--rz))) rotateX(calc(-1 * var(--rx))) scale(calc(1 / var(--s))) translate(-50%, calc(-100% - 14px)); }
+/* Solid white pills with a hairline, a stem, and a pin dot: small, precise, and legible. */
+.tag {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px 4px 8px;
+  border: 1px solid #dededb;
+  border-radius: 999px;
+  background: #ffffff;
+  box-shadow: 0 6px 14px -8px rgb(0 0 0 / 28%);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.005em;
+  line-height: 1.25;
+  font-variant-numeric: tabular-nums;
+  transition: opacity 0.35s;
+}
+.tag::before { content: ""; position: absolute; left: 50%; top: 100%; width: 1px; height: 12px; background: rgb(31 66 48 / 45%); }
+.tag::after { content: ""; position: absolute; left: calc(50% - 2px); top: calc(100% + 11px); width: 5px; height: 5px; border-radius: 50%; background: var(--brand); box-shadow: 0 0 0 2px rgb(255 255 255 / 85%); }
+.tag small { color: #5f5f63; font-size: 11.5px; font-weight: 400; }
+.tag.light { color: var(--brand-head); }
+.hide .tag { opacity: 0; }
+.dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; }
+/* Phone letter pins and their legend; hidden on wider screens. */
+.pin { display: none; position: relative; place-items: center; width: 20px; height: 20px; border-radius: 50%; box-shadow: 0 0 0 2px #ffffff, 0 6px 12px -6px rgb(0 0 0 / 40%); color: #ffffff; font-size: 11px; font-weight: 600; }
+.pin::before { content: ""; position: absolute; left: 50%; top: 100%; width: 1px; height: 10px; background: rgb(31 66 48 / 45%); }
+.pin::after { content: ""; position: absolute; left: calc(50% - 2px); top: calc(100% + 9px); width: 5px; height: 5px; border-radius: 50%; background: var(--brand); box-shadow: 0 0 0 2px rgb(255 255 255 / 85%); }
+.legend { display: none; }
+
+/* Glass shelves under the floating layers, and the shadow each casts on the layer below */
+.plate { position: absolute; inset: -8px; border: 1px solid rgb(31 66 48 / 22%); border-radius: 8px; background: rgb(255 255 255 / 45%); opacity: 0; transform: translateZ(-1px); transition: opacity 0.6s, border-color 0.4s, background-color 0.4s; }
+.shade { position: absolute; inset: 14px; background: rgb(0 0 0 / 16%); filter: blur(16px); opacity: 0; transition: opacity 0.8s; }
+.lit .plate,
+.lit .shade { opacity: 1; }
+.layer.on .plate { border: 1.5px solid var(--brand); background: rgb(31 66 48 / 8%); }
+
+/* Numbered markers pinned to each layer's outer corner. They ride with the layer. */
+.markerAnchor { position: absolute; transform-style: preserve-3d; }
+.markerBillboard { transform: rotateZ(calc(-1 * var(--rz))) rotateX(calc(-1 * var(--rx))) scale(calc(1 / var(--s))) translate(18px, -50%); }
+.mark {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px 4px 4px;
+  border: 1px solid #dededb;
+  border-radius: 999px;
+  background: #ffffff;
+  box-shadow: 0 8px 18px -10px rgb(0 0 0 / 30%);
+  opacity: 0;
+  transform: translateX(-6px);
+  transition: opacity 0.45s, transform 0.45s, border-color 0.3s, box-shadow 0.3s;
+}
+.mark::before { content: ""; position: absolute; left: -15px; top: 50%; width: 12px; border-top: 1px solid rgb(31 66 48 / 55%); }
+.mark::after { content: ""; position: absolute; left: -19px; top: calc(50% - 2px); width: 5px; height: 5px; border-radius: 50%; background: var(--brand); box-shadow: 0 0 0 2px rgb(255 255 255 / 85%); }
+.mark .num { width: 22px; height: 22px; border: 1.2px solid var(--brand); color: var(--brand); background: #ffffff; font-size: 11px; letter-spacing: 0.02em; }
+.mark.on .num { background: var(--brand); color: #ffffff; }
+.mark b { color: var(--ink); font-size: 13px; font-weight: 500; letter-spacing: 0.005em; }
+.mark.visible { opacity: 1; transform: none; }
+.mark.on { border-color: rgb(31 66 48 / 60%); box-shadow: 0 0 0 3px rgb(31 66 48 / 10%), 0 8px 18px -10px rgb(0 0 0 / 30%); }
+
+/* Narrow screens: the slab stacks above the stage, and each step shrinks to one short line
+   so the garden shows soon after the headline. */
+@media (max-width: 860px) {
+  .band { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto; height: auto; margin: 32px 0 8px; padding: 8px; border-radius: 22px; }
+  .slab { padding: 26px 20px 22px; border-radius: 16px; }
+  .slab h2 { margin-bottom: 20px; font-size: 34px; }
+  .steps { gap: 6px; }
+  .step { grid-template-columns: 26px 1fr; align-items: center; gap: 10px; padding: 7px 10px 7px 8px; border-radius: 12px; }
+  .step .num { width: 24px; height: 24px; font-size: 11.5px; }
+  .step b { margin: 0; font-size: 15px; }
+  .step p { display: none; }
+  .summary { margin-top: 16px; }
+  .ctas { margin-top: 16px; }
+  .paper { aspect-ratio: 760 / 640; border-radius: 14px; }
+}
+/* Phones: the scene shrinks to under half size while labels keep theirs, so full plant names
+   would collide. Each crop group shows a letter pin instead, and a legend under the stage names
+   the groups. Markers keep only their number; the step cards above carry the layer names. */
+@media (max-width: 520px) {
+  .paper { display: flex; flex-direction: column; aspect-ratio: auto; }
+  /* The left inset keeps the 6 m ruler inside the paper. */
+  .stage { position: relative; inset: auto; width: calc(100% - 14px); margin-left: 14px; aspect-ratio: 760 / 640; }
+  .mark { padding: 3px; }
+  .mark b { display: none; }
+  .plantTag .tag { display: none; }
+  .plantTag .pin { display: grid; }
+  .plantTag .billboard { transform: rotateZ(calc(-1 * var(--rz))) rotateX(calc(-1 * var(--rx))) scale(calc(1 / var(--s))) translate(-50%, calc(-100% - 10px)); }
+  /* Area and garden tags drop their sizes, so they stay short and leave the 6 m label clear. */
+  .areaTag small { display: none; }
+  /* Ruler type grows with the shrink so it stays about 12 px on screen. */
+  .ruler line { stroke-width: 1.4; }
+  .ruler .gap { display: none; }
+  .ruler .wide { display: inline; }
+  .rulerLabel { font-size: 19px; letter-spacing: 0; }
+  .legend { position: relative; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 0; padding: 4px 12px 12px; list-style: none; }
+  .legend li { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px 3px 4px; border: 1px solid #dededb; border-radius: 999px; background: #ffffff; color: var(--ink); font-size: 12px; font-weight: 500; font-variant-numeric: tabular-nums; opacity: 0.35; transition: opacity 0.35s; }
+  .legend li.on { opacity: 1; }
+  .key { display: grid; place-items: center; width: 16px; height: 16px; border-radius: 50%; color: #ffffff; font-size: 9.5px; font-weight: 600; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .band *,
+  .band *::before,
+  .band *::after { transition: none !important; }
+}

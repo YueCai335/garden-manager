@@ -7,10 +7,12 @@ export type LandingFeature = {
   /** The header link and the section's kicker. */
   label: string;
   title: string;
-  text: string;
-  points: string[];
   links: { label: string; href: string }[];
-};
+} & (
+  | { text: string; points: string[] }
+  /** A section with a guided showcase: numbered steps beside an animation, then one summary line. */
+  | { steps: { title: string; text: string }[]; summary: string }
+);
 
 /**
  * The landing sections in the order of a growing season: plan the garden, log the work,
@@ -21,12 +23,13 @@ export const landingFeatures: LandingFeature[] = [
     id: "garden-plan",
     label: "Garden Plan",
     title: "Draw your garden to scale",
-    text: "Lay out the whole garden on a metric plan, then zoom into one planting area to fill it with plants.",
-    points: [
-      "Raised beds, in-ground beds, and containers at their real size",
-      "Plants placed at their real spacing",
-      "One canvas from the whole garden down to a single bed",
+    // The three steps match the showcase's three layers and the plan's three levels (ADR-0084, ADR-0075).
+    steps: [
+      { title: "Draw your garden", text: "Trace your real plot. This one is a 10 × 6 m backyard." },
+      { title: "Add planting areas", text: "Raised beds, pots, and in-ground beds, where they really stand." },
+      { title: "Plant at real spacing", text: "Each circle is the room a plant needs." },
     ],
+    summary: "One plan, from the whole garden down to every plant.",
     links: [{ label: "Try it", href: workspaceHomePath }],
   },
   {

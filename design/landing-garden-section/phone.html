@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Landing Garden Plan section phone mockup</title>
+<!-- The mockup loads fonts from Google; the app self-hosts them with next/font. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..600&family=Instrument+Sans:wght@400..700&display=swap">
+<style>
+:root { --ink: #18181a; --muted: #5f5f63; --brand: #1f4230; --brand-head: #173322; --rx: 60deg; --rz: -45deg;
+  --texture: linear-gradient(100deg, rgb(9 24 15 / 58%), rgb(9 24 15 / 28%) 55%, rgb(9 24 15 / 42%)), url("../../public/landing/hero-still.webp") center / cover no-repeat #24452f; }
+* { box-sizing: border-box; }
+body { margin: 0; background: #e9e9e7; color: var(--ink); font-family: "Instrument Sans", system-ui, sans-serif; }
+.tools { display: flex; flex-wrap: wrap; gap: 8px 14px; justify-content: center; padding: 14px 12px; font-size: 13px; color: var(--muted); }
+.tools .grp { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.tools button { font: inherit; padding: 6px 12px; border-radius: 999px; border: 1px solid #d6d6d3; background: #fff; cursor: pointer; color: var(--ink); }
+.tools button[aria-pressed="true"] { background: var(--brand); color: #fff; border-color: var(--brand); }
+.note { max-width: 390px; margin: 0 auto 10px; padding: 0 16px; font-size: 13px; line-height: 1.5; color: var(--muted); text-align: center; min-height: 40px; }
+/* A 390 px phone screen */
+.phone { width: 390px; margin: 0 auto 40px; padding: 12px 16px 24px; background: #f4f4f3; border-radius: 28px; box-shadow: 0 30px 60px -30px rgb(0 0 0 / 35%); }
+
+.band { padding: 8px; border-radius: 22px; background: var(--texture); display: grid; gap: 8px; }
+.slab { padding: 22px 18px 18px; border-radius: 16px; background: var(--texture); color: #fff; }
+.kicker { margin: 0 0 12px; font-size: 12px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; }
+.kicker span { margin-right: 10px; }
+h2 { margin: 0 0 16px; font-family: "Bricolage Grotesque", sans-serif; font-size: 32px; font-weight: 500; line-height: 1; letter-spacing: -.03em; }
+.steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.step { display: flex; align-items: center; gap: 10px; padding: 6px 10px 6px 7px; border-radius: 12px; background: rgb(255 255 255 / 7%); border: 1px solid rgb(255 255 255 / 16%); opacity: .62; transition: background .35s, opacity .35s, border-color .35s; }
+.step.done { opacity: 1; }
+.step.on { opacity: 1; background: rgb(255 255 255 / 16%); border-color: rgb(255 255 255 / 48%); }
+.num { width: 24px; height: 24px; flex: none; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 600; border: 1.5px solid rgb(255 255 255 / 75%); color: #fff; transition: background .3s, color .3s; }
+.on .num { background: #fff; color: var(--brand-head); }
+.step b { font-size: 15px; font-weight: 500; }
+.summary { margin: 14px 0 0; font-size: 14px; line-height: 1.45; font-weight: 500; opacity: 0; transition: opacity .6s; }
+.summary.on { opacity: 1; }
+.ctas { display: flex; gap: 8px; margin-top: 14px; }
+.btn { font: inherit; font-size: 14px; font-weight: 500; height: 42px; padding: 0 18px; border-radius: 999px; cursor: pointer; }
+.btn.solid { background: #fff; color: var(--brand-head); border: 0; }
+.btn.ghost { background: rgb(255 255 255 / 8%); color: #fff; border: 1px solid rgb(255 255 255 / 35%); }
+
+/* ---------- White stage: 342 px wide, so the 760 × 688 scene scales by --fit = 0.45 ---------- */
+.paper { position: relative; border-radius: 14px; background: #fff; overflow: hidden; }
+.paper::before { content: ""; position: absolute; inset: 0; background-image: radial-gradient(#dcdcda 1px, transparent 1.3px); background-size: 14px 14px; -webkit-mask-image: radial-gradient(70% 70% at 52% 45%, #000 40%, transparent 100%); mask-image: radial-gradient(70% 70% at 52% 45%, #000 40%, transparent 100%); }
+.stage { --fit: .45; --ox: 0px; --oy: -14px; position: relative; height: 288px; perspective: calc(2600px * var(--fit)); perspective-origin: calc(var(--ox) + 308px * var(--fit)) calc(var(--oy) + 308px * var(--fit)); }
+.scene { --s: calc(1.45 * var(--fit)); position: absolute; left: calc(var(--ox) + 35px * var(--fit)); top: calc(var(--oy) + 389px * var(--fit)); width: 440px; height: 264px; transform-origin: 0 0; transform-style: preserve-3d; transform: scale(var(--s)) rotateX(var(--rx)) rotateZ(var(--rz)); transition: transform 1.15s cubic-bezier(.65,0,.2,1), left 1.15s cubic-bezier(.65,0,.2,1), top 1.15s cubic-bezier(.65,0,.2,1); }
+.pulled .scene { --s: calc(1.1 * var(--fit)); left: calc(var(--ox) + 22px * var(--fit)); top: calc(var(--oy) + 387px * var(--fit)); }
+.layer { position: absolute; inset: 0; transform-style: preserve-3d; transition: transform 1.15s cubic-bezier(.65,0,.2,1); }
+.it { position: absolute; transform-style: preserve-3d; transform: translateZ(var(--z, 0px)); transition: transform .62s cubic-bezier(.25,1.4,.5,1), opacity .35s; }
+.it.up { transform: translateZ(calc(var(--z, 0px) + 380px)); opacity: 0; }
+.snap, .snap * { transition: none !important; }
+.face { position: absolute; }
+.sheet { inset: 0; background: #fafafa; }
+.side-front { left: 0; top: 264px; width: 440px; height: 14px; transform-origin: 0 0; transform: rotateX(-90deg); background: #d6d6d2; }
+.side-left { left: 0; top: 0; width: 14px; height: 264px; transform-origin: 0 0; transform: rotateY(90deg); background: #c2c2be; }
+.drop { position: absolute; inset: 6px; background: rgb(0 0 0 / 22%); filter: blur(16px); transform: translateZ(-34px); }
+#ol { transition: stroke-dashoffset 1.1s ease-in-out; }
+.ruler { position: absolute; opacity: 0; transition: opacity .6s; }
+.ruler.on { opacity: 1; }
+.wall { position: absolute; transform-origin: 0 0; }
+.rim { position: absolute; inset: 0; border: 3px solid #a07d58; border-radius: 2px; }
+.soil { position: absolute; inset: 3px; background: #efe7da; }
+.panel { position: absolute; transform-origin: 50% 0; }
+.ring { position: absolute; inset: 0; border-radius: 50%; border: 3px solid #c4805e; }
+.soil.round { border-radius: 50%; }
+.inground { position: absolute; inset: 0; border: 1.5px dashed #7a6650; background: #ece6dc; }
+.pl { border-radius: 50%; }
+.pl .core { position: absolute; left: 30%; top: 30%; width: 40%; height: 40%; border-radius: 50%; transform: translateZ(4px); }
+
+/* Labels keep one screen size: scale(1 / --s) cancels the zoom. */
+.bb { position: absolute; left: 0; top: 0; transform-origin: 0 0; transform: rotateZ(calc(-1 * var(--rz))) rotateX(calc(-1 * var(--rx))) scale(calc(1 / var(--s))) translate(-50%, calc(-100% - var(--stem, 14px))); white-space: nowrap; transition: transform 1.15s cubic-bezier(.65,0,.2,1); }
+.tag { position: relative; display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px 3px 7px; border-radius: 999px; font-size: 12px; font-weight: 500; line-height: 1.25; font-variant-numeric: tabular-nums; color: var(--ink); background: #fff; border: 1px solid #dededb; box-shadow: 0 6px 14px -8px rgb(0 0 0 / 28%); transition: opacity .35s; }
+.tag::before { content: ""; position: absolute; left: 50%; top: 100%; width: 1px; height: var(--stem, 12px); background: rgb(31 66 48 / 45%); }
+.tag::after { content: ""; position: absolute; left: calc(50% - 2px); top: calc(100% + var(--stem, 12px) - 1px); width: 5px; height: 5px; border-radius: 50%; background: var(--brand); box-shadow: 0 0 0 2px rgb(255 255 255 / 85%); }
+.tag small { font-size: 11px; font-weight: 400; color: #5f5f63; }
+.tag.light { color: var(--brand-head); }
+.hide .tag { opacity: 0; }
+.dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; }
+
+/* Letter pins (option C): one 20 px circle per crop group, in the crop's stroke color. */
+.pin { position: relative; display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; font-size: 11px; font-weight: 600; color: #fff; box-shadow: 0 0 0 2px #fff, 0 6px 12px -6px rgb(0 0 0 / 40%); }
+.pin::before { content: ""; position: absolute; left: 50%; top: 100%; width: 1px; height: 10px; background: rgb(31 66 48 / 45%); }
+.pin::after { content: ""; position: absolute; left: calc(50% - 2px); top: calc(100% + 9px); width: 5px; height: 5px; border-radius: 50%; background: var(--brand); box-shadow: 0 0 0 2px rgb(255 255 255 / 85%); }
+
+/* Plant tags per option: A shows none on the scene, B shows full tags at phone anchors, C shows letter pins. */
+.ptag .pin { display: none; }
+.opt-a .ptag { display: none; }
+.opt-c .ptag .tag { display: none; }
+.opt-c .ptag .pin { display: grid; }
+.opt-a .atag, .opt-c .atag { --stem: 10px; }
+.opt-a .atag small, .opt-c .atag small, .opt-b .atag small { display: none; }
+
+/* Legend under the scene (options A and C); each chip lights up as its crop lands. */
+.legend { display: none; list-style: none; margin: 0; padding: 0 12px 12px; position: relative; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.opt-a .legend, .opt-c .legend { display: flex; }
+.legend li { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px 3px 4px; border-radius: 999px; border: 1px solid #dededb; background: #fff; font-size: 12px; font-weight: 500; color: var(--ink); opacity: .35; transition: opacity .35s; font-variant-numeric: tabular-nums; }
+.legend li.on { opacity: 1; }
+.legend .key { width: 16px; height: 16px; border-radius: 50%; display: grid; place-items: center; font-size: 9.5px; font-weight: 600; color: #fff; }
+.opt-a .legend .key { width: 8px; height: 8px; margin-left: 4px; font-size: 0; }
+
+/* Glass shelves */
+.plate { position: absolute; inset: -8px; border-radius: 8px; background: rgb(255 255 255 / 45%); border: 1px solid rgb(31 66 48 / 22%); opacity: 0; transition: opacity .6s, border-color .4s, background .4s; transform: translateZ(-1px); }
+.shade { position: absolute; inset: 14px; background: rgb(0 0 0 / 16%); filter: blur(16px); opacity: 0; transition: opacity .8s; }
+.lit .plate, .lit .shade { opacity: 1; }
+.layer.on .plate { border-color: var(--brand); background: rgb(31 66 48 / 8%); border-width: 1.5px; }
+
+/* Layer markers: number only on a phone; the step cards carry the names. */
+.mk { position: absolute; left: 0; top: 0; transform-origin: 0 0; transform: rotateZ(calc(-1 * var(--rz))) rotateX(calc(-1 * var(--rx))) scale(calc(1 / var(--s))) translate(14px, -50%); transition: transform 1.15s cubic-bezier(.65,0,.2,1); }
+.mark { position: relative; display: inline-flex; padding: 2px; border-radius: 999px; background: #fff; border: 1px solid #dededb; box-shadow: 0 8px 18px -10px rgb(0 0 0 / 30%); opacity: 0; transition: opacity .45s, border-color .3s, box-shadow .3s; }
+.mark::before { content: ""; position: absolute; left: -11px; top: 50%; width: 9px; border-top: 1px solid rgb(31 66 48 / 55%); }
+.mark .num { width: 22px; height: 22px; font-size: 10.5px; border: 1.2px solid var(--brand); color: var(--brand); background: #fff; }
+.mark.on .num { background: var(--brand); color: #fff; }
+.mark.vis { opacity: 1; }
+.mark.on { border-color: rgb(31 66 48 / 60%); box-shadow: 0 0 0 3px rgb(31 66 48 / 10%); }
+</style>
+</head>
+<body>
+<div class="tools">
+  <div class="grp"><span>植物名字</span>
+    <button data-opt="opt-a" aria-pressed="false">A 图例</button>
+    <button data-opt="opt-b" aria-pressed="false">B 重新摆位</button>
+    <button data-opt="opt-c" aria-pressed="true">C 字母针 + 图例</button>
+  </div>
+  <div class="grp"><span>画面</span>
+    <button data-frame="play" aria-pressed="false">▶ 播放</button>
+    <button data-frame="exploded" aria-pressed="false">拆开</button>
+    <button data-frame="final" aria-pressed="true">定格</button>
+  </div>
+</div>
+<p class="note" id="note"></p>
+
+<div class="phone">
+<section class="band opt-c" id="band">
+  <div class="slab">
+    <p class="kicker"><span>01</span>Garden Plan</p>
+    <h2>Draw your garden to scale</h2>
+    <ol class="steps">
+      <li class="step"><span class="num">01</span><b>Draw your garden</b></li>
+      <li class="step"><span class="num">02</span><b>Add planting areas</b></li>
+      <li class="step"><span class="num">03</span><b>Plant at real spacing</b></li>
+    </ol>
+    <p class="summary" id="summary">One plan, from the whole garden down to every plant.</p>
+    <div class="ctas"><button class="btn solid">Try it</button><button class="btn ghost" id="replay">↻ Replay</button></div>
+  </div>
+  <div class="paper">
+    <div class="stage" id="stage"><div class="scene" id="scene"><div class="layer" id="L0"></div><div class="layer" id="L1"></div><div class="layer" id="L2"></div></div></div>
+    <ul class="legend" id="legend"></ul>
+  </div>
+</section>
+</div>
+
+<script>
+const W = 440, H = 264, M = 44;
+const band = document.getElementById("band"), stage = document.getElementById("stage"), scene = document.getElementById("scene");
+const L = [0, 1, 2].map((i) => document.getElementById("L" + i));
+const EXPLODE = [-130, -10, 110];
+const el = (tag, cls, style, parent) => { const d = document.createElement(tag); if (cls) d.className = cls; if (style) Object.assign(d.style, style); if (parent) parent.appendChild(d); return d; };
+const px = (n) => n + "px";
+const item = (layer, x, y, w, h, z = 0) => { const d = el("div", "it up", { left: px(x), top: px(y), width: px(w), height: px(h) }, layer); d.style.setProperty("--z", px(z)); return d; };
+const billboard = (layer, x, y, z, html, cls = "", wrap = "") => { const d = item(layer, x, y, 0, 0, z); if (wrap) d.classList.add(wrap); const b = el("div", "bb", null, d); b.innerHTML = html.startsWith("<") && html.includes("pin") ? html : `<span class="tag ${cls}">${html}</span>`; return d; };
+
+/* Layer 0 */
+const ground = item(L[0], 0, 0, W, H);
+el("div", "drop", null, ground); el("div", "face sheet", null, ground); el("div", "face side-front", null, ground); el("div", "face side-left", null, ground);
+const grid = [];
+for (let x = M; x < W; x += M) grid.push(`<line x1="${x}" y1="0" x2="${x}" y2="${H}"/>`);
+for (let y = M; y < H; y += M) grid.push(`<line x1="0" y1="${y}" x2="${W}" y2="${y}"/>`);
+ground.insertAdjacentHTML("beforeend", `<svg width="${W}" height="${H}" style="position:absolute;inset:0;overflow:visible"><g stroke="#e4e4e1" stroke-width="1">${grid.join("")}</g><rect id="ol" x="1.5" y="1.5" width="${W - 3}" height="${H - 3}" fill="none" stroke="#1f4230" stroke-width="3" stroke-dasharray="1400" stroke-dashoffset="1400"/></svg>`);
+/* On a phone the rulers get thicker type, since the scene shrinks to under half size. */
+const rc = "#6f6f73";
+const rulerX = el("div", "ruler", { left: 0, top: px(H + 34), width: px(W), height: "20px" }, ground);
+rulerX.innerHTML = `<svg width="${W}" height="20" style="position:absolute;inset:0;overflow:visible"><g stroke="${rc}" stroke-width="1.4"><line x1="0" y1="0" x2="0" y2="12"/><line x1="${W}" y1="0" x2="${W}" y2="12"/><line x1="0" y1="6" x2="${W / 2 - 26}" y2="6"/><line x1="${W / 2 + 26}" y1="6" x2="${W}" y2="6"/></g><text x="${W / 2}" y="13" fill="${rc}" font-size="19" font-weight="500" text-anchor="middle" font-family="Instrument Sans">10 m</text></svg>`;
+const rulerY = el("div", "ruler", { left: "-48px", top: 0, width: "20px", height: px(H) }, ground);
+rulerY.innerHTML = `<svg width="20" height="${H}" style="position:absolute;inset:0;overflow:visible"><g stroke="${rc}" stroke-width="1.4"><line x1="8" y1="0" x2="20" y2="0"/><line x1="8" y1="${H}" x2="20" y2="${H}"/><line x1="14" y1="0" x2="14" y2="${H / 2 - 22}"/><line x1="14" y1="${H / 2 + 22}" x2="14" y2="${H}"/></g><text x="14" y="${H / 2 + 7}" fill="${rc}" font-size="19" font-weight="500" text-anchor="middle" font-family="Instrument Sans" transform="rotate(-90 14 ${H / 2})">6 m</text></svg>`;
+const gardenTag = billboard(L[0], 0, H, 6, `Backyard <small>your garden</small>`, "light");
+
+/* Layer 1 */
+const areas = [];
+function raisedBed(x, y, w, h, hgt = 13) {
+  const d = item(L[1], x, y, w, h);
+  el("div", "face", { inset: 0, background: "#e7dfd2" }, d);
+  [{ left: 0, top: px(h), width: px(w), height: px(hgt), transform: "rotateX(90deg)", background: "#9a7752" },
+   { left: 0, top: 0, width: px(w), height: px(hgt), transform: "rotateX(90deg)", background: "#7f6043" },
+   { left: 0, top: 0, width: px(hgt), height: px(h), transform: "rotateY(-90deg)", background: "#6f5239" },
+   { left: px(w), top: 0, width: px(hgt), height: px(h), transform: "rotateY(-90deg)", background: "#86664a" }].forEach((s) => el("div", "wall", s, d));
+  el("div", "soil", { transform: `translateZ(${hgt - 4}px)` }, d); el("div", "rim", { transform: `translateZ(${hgt}px)` }, d);
+  return d;
+}
+function container(cx, cy, r, hgt = 16) {
+  const d = item(L[1], cx - r, cy - r, r * 2, r * 2);
+  const n = 22, pw = 2 * r * Math.sin(Math.PI / n) + 0.8;
+  for (let i = 0; i < n; i++) { const a = (360 / n) * i, s = 0.72 + 0.28 * Math.cos(((a - 200) * Math.PI) / 180);
+    el("div", "panel", { left: px(r - pw / 2), top: px(r), width: px(pw), height: px(hgt), background: `rgb(${Math.round(181 * s)} ${Math.round(112 * s)} ${Math.round(78 * s)})`, transform: `rotateZ(${a}deg) translateY(${r}px) rotateX(90deg)` }, d); }
+  el("div", "soil round", { inset: "3px", transform: `translateZ(${hgt - 4}px)` }, d); el("div", "ring", { transform: `translateZ(${hgt}px)` }, d);
+  return d;
+}
+function inGround(x, y, w, h) { const d = item(L[1], x, y, w, h, 1); el("div", "inground", null, d); return d; }
+areas.push({ node: raisedBed(26, 31, 132, 53), tag: [92, 31, 15, `Raised bed <small>3 × 1.2 m</small>`] });
+areas.push({ node: raisedBed(26, 110, 132, 53), tag: [92, 110, 15, `Raised bed <small>3 × 1.2 m</small>`] });
+areas.push({ node: container(246, 60, 25), tag: [246, 35, 18, `Pot <small>Ø 1.1 m</small>`] });
+areas.push({ node: container(318, 64, 17), tag: [318, 47, 18, `Pot <small>Ø 0.8 m</small>`] });
+areas.push({ node: inGround(206, 140, 200, 96), tag: [306, 140, 4, `In-ground bed <small>4.5 × 2.2 m</small>`] });
+const areaTags = areas.map((a) => billboard(L[1], ...a.tag, "", "atag"));
+
+/* Layer 2: colors from the app's gardenPlantColors for this garden */
+const crops = {
+  tomato: { fill: "#f0c6c7", stroke: "#ab4e59", name: "Tomato", n: 3, key: "T" },
+  lettuce: { fill: "#e1e1b3", stroke: "#777923", name: "Lettuce", n: 5, key: "L" },
+  basil: { fill: "#c6e2ca", stroke: "#438054", name: "Basil", n: 1, key: "B" },
+  marigold: { fill: "#f6c39a", stroke: "#93571f", name: "Marigold", n: 1, key: "M" },
+  carrot: { fill: "#f1ceb0", stroke: "#9f632f", name: "Carrot", n: 12, key: "C" },
+};
+const plants = [];
+const plant = (cx, cy, r, crop, z) => { const c = crops[crop], d = item(L[2], cx - r, cy - r, r * 2, r * 2, z); d.classList.add("pl");
+  Object.assign(d.style, { background: c.fill + "e6", border: `1.5px solid ${c.stroke}` }); el("div", "core", { background: c.stroke }, d); plants.push({ node: d, crop }); };
+[59, 92, 125].forEach((x) => plant(x, 57.5, 14, "tomato", 10));
+[44, 69, 94, 119, 144].forEach((x) => plant(x, 136.5, 8, "lettuce", 10));
+plant(246, 60, 12, "basil", 13); plant(318, 64, 9, "marigold", 13);
+[0, 1].forEach((row) => [232, 262, 292, 322, 352, 382].forEach((x) => plant(x, 168 + row * 40, 7, "carrot", 1)));
+
+/* Desktop anchors (A and C) and phone anchors that spread the tags apart (B). */
+const anchors = {
+  desk: { tomato: [92, 31, 30], lettuce: [92, 110, 26], basil: [246, 40, 30], marigold: [322, 52, 30], carrot: [306, 150, 12] },
+  phone: { tomato: [59, 44, 30], lettuce: [140, 150, 26], basil: [235, 52, 30], marigold: [330, 56, 30], carrot: [352, 205, 12] },
+};
+const plantTags = {};
+for (const [crop, c] of Object.entries(crops)) {
+  const d = billboard(L[2], ...anchors.desk[crop], `<span class="tag"><span class="dot" style="background:${c.stroke}"></span>${c.name} ×${c.n}</span><span class="pin" style="background:${c.stroke}">${c.key}</span>`, "", "ptag");
+  plantTags[crop] = d;
+}
+const placeTags = (set) => { for (const [crop, d] of Object.entries(plantTags)) { const [x, y, z] = anchors[set][crop]; d.style.left = px(x); d.style.top = px(y); d.style.setProperty("--z", px(z)); } };
+
+/* Legend */
+const legend = document.getElementById("legend");
+const legendItems = {};
+for (const [crop, c] of Object.entries(crops)) {
+  const li = el("li", "", null, legend);
+  li.innerHTML = `<span class="key" style="background:${c.stroke}">${c.key}</span>${c.name} ×${c.n}`;
+  legendItems[crop] = li;
+}
+
+[1, 2].forEach((i) => { el("div", "plate", null, L[i]); el("div", "shade", { transform: `translateZ(${-(EXPLODE[i] - EXPLODE[i - 1]) + 2}px)` }, L[i]); });
+const coEls = L.map((layer, i) => { const a = el("div", "", { position: "absolute", left: px(W), top: px(H), transformStyle: "preserve-3d" }, layer); const mk = el("div", "mk", null, a); mk.innerHTML = `<span class="mark"><span class="num">0${i + 1}</span></span>`; return mk.firstElementChild; });
+
+/* Sequence (same as the desktop build) */
+const steps = [...document.querySelectorAll(".step")], summary = document.getElementById("summary");
+const ol = () => document.getElementById("ol");
+let run = 0;
+const wait = (ms, id) => new Promise((r) => setTimeout(() => r(id === run), ms));
+const setZ = (zs) => L.forEach((l, i) => (l.style.transform = `translateZ(${zs[i]}px)`));
+const allItems = () => [...scene.querySelectorAll(".it")];
+const snap = (fn) => { stage.classList.add("snap"); band.classList.add("snap"); fn(); void stage.offsetWidth; requestAnimationFrame(() => { stage.classList.remove("snap"); band.classList.remove("snap"); }); };
+const rulers = (on) => [rulerX, rulerY].forEach((r) => r.classList.toggle("on", on));
+const callout = (i, on) => coEls[i].classList.toggle("vis", on);
+const shelves = (on) => [1, 2].forEach((i) => L[i].classList.toggle("lit", on));
+const legendOn = (crop, on) => legendItems[crop].classList.toggle("on", on);
+function setActive(n) {
+  steps.forEach((s, i) => { s.classList.toggle("on", i === n); if (i < n || n === 9) s.classList.add("done"); });
+  L.forEach((l, i) => l.classList.toggle("on", i === n)); coEls.forEach((c, i) => c.classList.toggle("on", i === n));
+}
+const collapse = () => { stage.classList.remove("pulled"); setZ([0, 0, 0]); shelves(false); [0, 1, 2].forEach((i) => callout(i, false)); };
+const explode = () => { stage.classList.add("pulled"); setZ(EXPLODE); shelves(true); };
+function reset() { snap(() => { collapse(); allItems().forEach((d) => { d.classList.add("up"); d.classList.remove("hide"); }); ol().style.strokeDashoffset = 1400; rulers(false); summary.classList.remove("on"); steps.forEach((s) => s.classList.remove("on", "done")); setActive(-1); Object.keys(crops).forEach((c) => legendOn(c, false)); }); }
+function final(exploded) { run++; snap(() => { allItems().forEach((d) => d.classList.remove("up")); areaTags.forEach((t) => t.classList.add("hide")); ol().style.strokeDashoffset = 0; rulers(true); setActive(9); summary.classList.add("on"); Object.keys(crops).forEach((c) => legendOn(c, true));
+  if (exploded) { explode(); [0, 1, 2].forEach((i) => callout(i, true)); setActive(1); } else collapse(); }); }
+async function play() {
+  const id = ++run; reset();
+  if (!(await wait(250, id))) return;
+  setActive(0); ground.classList.remove("up");
+  if (!(await wait(650, id))) return; ol().style.strokeDashoffset = 0;
+  if (!(await wait(900, id))) return; rulers(true); gardenTag.classList.remove("up");
+  if (!(await wait(1000, id))) return;
+  setActive(1);
+  for (let i = 0; i < areas.length; i++) { areas[i].node.classList.remove("up"); setTimeout(() => id === run && areaTags[i].classList.remove("up"), 260); if (!(await wait(420, id))) return; }
+  if (!(await wait(700, id))) return;
+  setActive(2); areaTags.forEach((t) => t.classList.add("hide"));
+  for (const crop of Object.keys(crops)) {
+    plantTags[crop].classList.remove("up"); legendOn(crop, true);
+    for (const p of plants.filter((x) => x.crop === crop)) { p.node.classList.remove("up"); if (!(await wait(45, id))) return; }
+    if (!(await wait(260, id))) return;
+  }
+  if (!(await wait(900, id))) return;
+  setActive(-1); explode();
+  if (!(await wait(900, id))) return;
+  for (let i = 0; i < 3; i++) { callout(i, true); setActive(i); if (!(await wait(1100, id))) return; }
+  setActive(-1);
+  if (!(await wait(500, id))) return; collapse();
+  if (!(await wait(1000, id))) return; setActive(9); summary.classList.add("on");
+}
+
+/* Switches */
+const notes = {
+  "opt-a": "A 图例：场景上不放植物名字，名字在下面一行图例里，用颜色对应。最干净，但 Marigold 和 Carrot 两种橙色很接近，只靠颜色分不清。",
+  "opt-b": "B 重新摆位：保留和电脑版一样的名字标签，但在手机上把它们挪到不互相挡住的位置（比如 Lettuce 放到床的另一头）。最像电脑版，但空间很挤。",
+  "opt-c": "C 字母针 + 图例：场景上每组植物只放一个小圆针，写首字母（T、L、B、M、C）；下面图例写全名和数量。不会重叠，颜色接近也能靠字母分清。",
+};
+function bind(attr, apply) { const bs = [...document.querySelectorAll(`[data-${attr}]`)]; bs.forEach((b) => (b.onclick = () => { if (attr === "opt") bs.forEach((x) => x.setAttribute("aria-pressed", String(x === b))); else bs.forEach((x) => x.setAttribute("aria-pressed", String(x === b))); apply(b.dataset[attr]); })); }
+let frame = "final";
+const show = (f) => { frame = f; if (f === "play") play(); else final(f === "exploded"); };
+const setOpt = (v) => { band.classList.remove("opt-a", "opt-b", "opt-c"); band.classList.add(v); placeTags(v === "opt-b" ? "phone" : "desk"); document.getElementById("note").textContent = notes[v]; if (frame !== "play") show(frame); };
+bind("opt", setOpt); bind("frame", show);
+document.getElementById("replay").onclick = () => { document.querySelector('[data-frame="play"]').click(); };
+window.setOpt = setOpt; window.show = show;
+setOpt("opt-c"); show("final");
+</script>
+</body>
+</html>
