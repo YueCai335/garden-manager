@@ -1,13 +1,14 @@
-import { isCalendarDate, plantGroupDisplayName } from "./careRecords";
-import type { CareEvent, CareEventTargetScope, CareEventType, GardenWorkspace } from "./gardenWorkspace";
-import type { CareNoteBatchDraftResponse } from "./gardenWorkspaceApi";
+import { careDetailsFromForm, emptyCareDetailsForm, isCalendarDate, plantGroupDisplayName, type CareDetailsForm } from "./careRecords";
+import { careEventTypes, type CareDetailField, type CareEvent, type CareEventTargetScope, type CareEventType, type GardenWorkspace } from "./gardenWorkspace";
+import { CARE_NOTE_BATCH_LIMIT, type CareNoteBatchDraftResponse } from "./gardenWorkspaceApi";
 
-export type CareDraftRow = {
+export type CareDraftRow = CareDetailsForm & {
   draftId: string; eventId: string; included: boolean; sourceText: string; note: string;
   gardenId: string; type: CareEventType | ""; date: string; targetScope: CareEventTargetScope | "";
-  growingAreaId: string; plantingRecordId: string;
-  fertilizerProduct: string; fertilizerAmount: string; fertilizerUnit: string; reviewNotes: string[];
+  growingAreaId: string; plantingRecordId: string; reviewNotes: string[];
 };
+/** Error field IDs keep their earlier names: "amount" for the fertilizer amount, "count" for plants. */
+const detailErrorField: Partial<Record<CareDetailField, string>> = { fertilizerAmount: "amount", plantCount: "count" };
 export const batchFieldId = (row: CareDraftRow, field: string) => `batch-${row.draftId}-${field}`;
 
 /** Allocate identity on an explicit action, never inside a React updater. */
@@ -17,8 +18,8 @@ export function newCareDraft(draft?: CareNoteBatchDraftResponse["drafts"][number
     sourceText: draft?.sourceText ?? "", note: draft?.sourceText ?? "", gardenId: draft?.gardenId ?? "",
     type: draft?.type ?? "", date: draft?.date ?? "", targetScope: draft?.targetScope ?? "",
     growingAreaId: draft?.growingAreaId ?? "", plantingRecordId: draft?.plantingRecordId ?? "",
-    fertilizerProduct: draft?.fertilizerProduct ?? "", fertilizerAmount: draft?.fertilizerAmount?.toString() ?? "",
-    fertilizerUnit: draft?.fertilizerUnit ?? "", reviewNotes: draft?.reviewNotes ?? [],
+    ...Object.fromEntries(Object.entries(emptyCareDetailsForm()).map(([field]) => [field, draft?.[field as CareDetailField]?.toString() ?? ""])) as CareDetailsForm,
+    reviewNotes: draft?.reviewNotes ?? [],
   };
 }
 
@@ -29,7 +30,7 @@ export function batchRowsErrors(workspace: GardenWorkspace, rows: CareDraftRow[]
     const set = (field: string, message: string) => { errors[batchFieldId(row, field)] = message; };
     if (!row.eventId || ids.has(row.eventId)) set("type", "This draft has a duplicate record identity. Remove it and add a new draft.");
     ids.add(row.eventId);
-    if (!["watering", "fertilizing"].includes(row.type)) set("type", "Choose a care type.");
+    if (!careEventTypes.some((type) => type === row.type)) set("type", "Choose a care type.");
     if (!isCalendarDate(row.date)) set("date", "Enter a valid care date.");
     const garden = workspace.gardens.find((item) => item.id === row.gardenId);
     if (row.targetScope !== "all-gardens" && !garden) set("garden", "Choose an existing garden.");
@@ -37,7 +38,8 @@ export function batchRowsErrors(workspace: GardenWorkspace, rows: CareDraftRow[]
     if (row.targetScope === "planting-area" && !garden?.growingAreas.some((item) => item.id === row.growingAreaId)) set("target", "Choose an existing planting area in this garden.");
     if (row.targetScope === "plant-group" && !garden?.plantings.some((item) => item.id === row.plantingRecordId)) set("target", "Choose an existing plant group in this garden.");
     if (row.note.length > 5000) set("note", "Shorten this record note to 5000 characters.");
-    if (row.type === "fertilizing" && row.fertilizerAmount.trim() && (!Number.isFinite(Number(row.fertilizerAmount)) || Number(row.fertilizerAmount) <= 0)) set("amount", "Enter an amount greater than zero, or leave it empty.");
+    const details = row.type ? careDetailsFromForm(row.type, row) : { details: {} };
+    if ("error" in details) set(detailErrorField[details.field] ?? details.field, details.field === "fertilizerAmount" ? "Enter an amount greater than zero, or leave it empty." : details.error);
   }
   return errors;
 }
@@ -50,11 +52,8 @@ function rowEvent(workspace: GardenWorkspace, row: CareDraftRow): CareEvent {
     id: row.eventId, type: row.type as CareEventType, date: row.date, note: row.note.trim(), targetScope: row.targetScope as CareEventTargetScope,
     ...(row.targetScope === "planting-area" ? { growingAreaId: area!.id, growingAreaName: area!.name } : {}),
     ...(row.targetScope === "plant-group" ? { plantingRecordId: planting!.id, plantingRecordName: plantGroupDisplayName(planting!, garden!) } : {}),
-    ...(row.type === "fertilizing" ? {
-      ...(row.fertilizerProduct.trim() ? { fertilizerProduct: row.fertilizerProduct.trim() } : {}),
-      ...(row.fertilizerAmount.trim() ? { fertilizerAmount: Number(row.fertilizerAmount) } : {}),
-      ...(row.fertilizerUnit.trim() ? { fertilizerUnit: row.fertilizerUnit.trim() } : {}),
-    } : {}),
+    // Rows were validated first, so the details parse; a bad value never reaches a record.
+    ...(() => { const result = careDetailsFromForm(row.type as CareEventType, row); return "details" in result ? result.details : {}; })(),
   };
 }
 
@@ -66,7 +65,7 @@ export function batchRowsPresent(workspace: GardenWorkspace, rows: CareDraftRow[
 export function applyCareDraftBatch(workspace: GardenWorkspace, rows: CareDraftRow[]) {
   const selected = rows.filter((row) => row.included);
   const errors = batchRowsErrors(workspace, rows);
-  if (!selected.length || selected.length > 6) errors.batch = "Select between 1 and 6 records to save.";
+  if (!selected.length || selected.length > CARE_NOTE_BATCH_LIMIT) errors.batch = `Select between 1 and ${CARE_NOTE_BATCH_LIMIT} records to save.`;
   if (Object.keys(errors).length) return { workspace, errors, added: 0 };
   const pending: Array<{ row: CareDraftRow; event: CareEvent }> = [];
   for (const row of selected) {

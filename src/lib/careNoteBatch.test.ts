@@ -57,3 +57,30 @@ describe("atomic care batch application", () => {
     expect(result.workspace.gardens[1].careEvents.at(-1)?.growingAreaName).toBe("New area name");
   });
 });
+
+describe("batch rows with five care types (ADR-0085 N3)", () => {
+  const draft = { sourceText: "Pruned side shoots", gardenId: "front", type: "pruning" as const, date: "2026-11-11", targetScope: "garden" as const, growingAreaId: null, plantingRecordId: null, reviewNotes: [], pruneDetail: "side shoots" };
+
+  it("keeps a new type's details from the AI draft through to the saved record", () => {
+    const fromAi = newCareDraft(draft);
+    expect(fromAi).toMatchObject({ type: "pruning", pruneDetail: "side shoots", plantCount: "" });
+    const result = applyCareDraftBatch(careFixture(), [fromAi]);
+    expect(result.errors).toEqual({});
+    expect(result.workspace.gardens[0].careEvents.at(-1)).toMatchObject({ type: "pruning", pruneDetail: "side shoots" });
+  });
+
+  it("saves only the chosen type's details and checks a plant count", () => {
+    const planting = { ...row("front"), type: "planting" as const, plantName: "Basil", plantCount: "1.5", pestProblem: "Aphids" };
+    const rejected = applyCareDraftBatch(careFixture(), [planting]);
+    expect(Object.entries(rejected.errors)).toEqual([[`batch-${planting.draftId}-count`, "Enter a whole number of plants from 1 to 999."]]);
+    const saved = applyCareDraftBatch(careFixture(), [{ ...planting, plantCount: "2" }]).workspace.gardens[0].careEvents.at(-1);
+    expect(saved).toMatchObject({ type: "planting", plantName: "Basil", plantCount: 2 });
+    expect(saved).not.toHaveProperty("pestProblem");
+  });
+
+  it("saves up to 12 records at once", () => {
+    const rows = Array.from({ length: 13 }, () => row("front"));
+    expect(applyCareDraftBatch(careFixture(), rows).errors.batch).toBe("Select between 1 and 12 records to save.");
+    expect(applyCareDraftBatch(careFixture(), rows.slice(0, 12)).added).toBe(12);
+  });
+});

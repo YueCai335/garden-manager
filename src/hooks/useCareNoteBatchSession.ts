@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { useWorkspaceSync } from "./useWorkspaceSync";
 import { todayDate } from "@/lib/gardenWorkspace";
-import { AI_CARE_NOTE_MAX_LENGTH, createAiCareNoteBatch, featureErrorMessage, type CareNoteBatchDraftResponse } from "@/lib/gardenWorkspaceApi";
+import { AI_CARE_NOTE_MAX_LENGTH, CARE_NOTE_BATCH_LIMIT, createAiCareNoteBatch, featureErrorMessage, type CareNoteBatchDraftResponse } from "@/lib/gardenWorkspaceApi";
 import { applyCareDraftBatch, batchRowsPresent, newCareDraft, type CareDraftRow } from "@/lib/careNoteBatch";
 
 type Receipt = { status: "applied" | "saved" | "discarded"; rows: CareDraftRow[]; note: string; sourceNote: string };
@@ -52,7 +52,7 @@ export function useCareNoteBatchSession(sync: ReturnType<typeof useWorkspaceSync
     try {
       const result = await createAiCareNoteBatch(sync.serverWorkspaceId, note.trim(), todayDate());
       if (request !== sequence.current || sourceNote !== latestNote.current) return;
-      if (result.drafts.length > 6) throw new Error("Oversized batch");
+      if (result.drafts.length > CARE_NOTE_BATCH_LIMIT) throw new Error("Oversized batch");
       const rows = result.drafts.map(newCareDraft);
       update((old) => ({ ...old, rows, notices: result.notices, sourceNote, receipt: undefined }));
     } catch (error) {
@@ -68,7 +68,7 @@ export function useCareNoteBatchSession(sync: ReturnType<typeof useWorkspaceSync
     update((old) => ({ ...old, errors: {}, rows: old.rows.map((row) => row.draftId === draftId ? { ...row, ...patch, draftId: row.draftId, eventId: row.eventId } : row) }));
   };
   const addRow = () => {
-    if (current.current.rows.length >= 6 || current.current.receipt?.status === "applied") return;
+    if (current.current.rows.length >= CARE_NOTE_BATCH_LIMIT || current.current.receipt?.status === "applied") return;
     const row = newCareDraft();
     sequence.current += 1;
     update((old) => ({ ...old, rows: [...old.rows, row], sourceNote: old.rows.length ? old.sourceNote : note, receipt: undefined, errors: {} }));

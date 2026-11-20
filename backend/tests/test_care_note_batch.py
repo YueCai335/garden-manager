@@ -25,7 +25,8 @@ GARDENS = {
 
 def event(source, **fields):
     return {"kind": "completed", "sourceText": source, "gardenName": None, "type": "watering", "date": None,
-            "targetScope": None, "targetName": None, "fertilizerProduct": None, "fertilizerAmount": None, "fertilizerUnit": None, **fields}
+            "targetScope": None, "targetName": None, "fertilizerProduct": None, "fertilizerAmount": None, "fertilizerUnit": None,
+            "plantName": None, "plantCount": None, "pruneDetail": None, "pestProblem": None, "pestTreatment": None, **fields}
 
 
 def extraction(*events, **fields):
@@ -138,14 +139,15 @@ def test_shared_date_only_comes_from_an_unambiguous_leading_phrase():
     assert drafts("今天给前院浇水了，Watered 后院 last Tuesday.", event("Watered 后院 last Tuesday."), sharedDateText="今天")["drafts"][0]["date"] is None
 
 
-def test_six_records_succeed_seven_and_overflow_reject_whole_batch():
+def test_twelve_records_succeed_thirteen_and_overflow_reject_whole_batch():
+    # ADR-0085 raises the limit from 6 to 12 completed jobs per note.
     text = "今天浇水了"
-    assert len(drafts(text, *[event(text) for _ in range(6)])["drafts"]) == 6
-    for events, overflow in [([event(text)] * 7, False), ([event(text)], True)]:
+    assert len(drafts(text, *[event(text) for _ in range(12)])["drafts"]) == 12
+    for events, overflow in [([event(text)] * 13, False), ([event(text)], True)]:
         with pytest.raises(HTTPException) as caught:
             drafts(text, *events, overflow=overflow)
         assert caught.value.status_code == 422
-        assert "at most 6" in caught.value.detail
+        assert "at most 12" in caught.value.detail
 
 
 def test_model_ids_extra_keys_and_invented_evidence_are_rejected():
@@ -187,7 +189,7 @@ def test_openai_one_bounded_request_and_incomplete_bad_schema_rejection():
     client.responses.create.return_value = response(value)
     extractor.extract("今天浇水了", [], TODAY)
     params = client.responses.create.call_args.kwargs
-    assert params["max_output_tokens"] == 4096 and params["store"] is False
+    assert params["max_output_tokens"] == 8192 and params["store"] is False
     assert params["text"]["format"]["strict"] is True
     client.responses.create.assert_called_once()
     for invalid in [response(value, status="incomplete"), response({"events": []})]:
@@ -224,8 +226,8 @@ def test_ollama_timeout_tokens_and_output_limits(monkeypatch):
     monkeypatch.setattr(batch, "urlopen", send)
     extractor = batch.OllamaCareNoteBatchExtractor("http://example.invalid", "test")
     extractor.extract("今天浇水了", [], TODAY)
-    assert send.call_args.kwargs["timeout"] == 30
-    assert json.loads(send.call_args.args[0].data)["options"]["num_predict"] == 4096
+    assert send.call_args.kwargs["timeout"] == 90
+    assert json.loads(send.call_args.args[0].data)["options"]["num_predict"] == 8192
     context.read.assert_called_with(batch.MAX_RESPONSE_BYTES + 1)
     send.reset_mock()
     context.read.return_value = b"x" * (batch.MAX_RESPONSE_BYTES + 1)

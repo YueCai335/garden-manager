@@ -6,10 +6,22 @@ import { useConfirmation } from "@/components/ConfirmDialog";
 import { FeedbackForm, FormField, InlineNotice } from "@/components/forms/FormFeedback";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { batchFieldId, batchRowsErrors, type CareDraftRow } from "@/lib/careNoteBatch";
-import { AI_CARE_NOTE_MAX_LENGTH } from "@/lib/gardenWorkspaceApi";
-import type { GardenWorkspace } from "@/lib/gardenWorkspace";
+import { AI_CARE_NOTE_MAX_LENGTH, CARE_NOTE_BATCH_LIMIT } from "@/lib/gardenWorkspaceApi";
+import { careDetailFields, careEventTypes, type CareDetailField, type GardenWorkspace } from "@/lib/gardenWorkspace";
+import { careTypeName } from "@/lib/careLabels";
 import styles from "./BatchGardenNote.module.css";
 import dialogStyles from "./GardenNoteDialog.module.css";
+
+/** The new types' detail fields in this review (ADR-0085 N3); plan step N5 redraws the whole screen. */
+const BATCH_DETAIL_ID: Record<CareDetailField, string> = {
+  fertilizerProduct: "product", fertilizerAmount: "amount", fertilizerUnit: "unit",
+  plantName: "plant", plantCount: "count", pruneDetail: "prune", pestProblem: "problem", pestTreatment: "treatment",
+};
+const BATCH_DETAIL_LABEL: Record<CareDetailField, string> = {
+  fertilizerProduct: "Fertilizer product", fertilizerAmount: "Amount (optional)", fertilizerUnit: "Unit",
+  plantName: "Plant (optional)", plantCount: "How many plants (optional)", pruneDetail: "What was cut (optional)",
+  pestProblem: "Problem (optional)", pestTreatment: "Treatment used (optional)",
+};
 
 export function BatchGardenNote({ onClose }: { onClose?: () => void }) {
   const sync = useWorkspace();
@@ -68,13 +80,13 @@ export function BatchGardenNote({ onClose }: { onClose?: () => void }) {
         <p>Unchecked drafts are kept for later review.</p>
         {batch.rows.map((row, index) => <DraftRow key={row.draftId} row={row} index={index} workspace={workspace} errors={batch.errors} patch={(patch) => batch.patchRow(row.draftId, patch)} remove={() => requestConfirmation({ message: `Remove draft ${index + 1}? The original note stays available.`, confirmLabel: "Remove draft", fallbackFocusId: titleId, onConfirm: () => batch.removeRow(row.draftId) })} />)}
       </FeedbackForm> : batch.sourceNote && <p>No completed care records were extracted. Check any notes needing attention, revise your note, or add a record manually.</p>}
-      {batch.rows.length >= 6 && <p>Up to 6 records per batch.</p>}
+      {batch.rows.length >= CARE_NOTE_BATCH_LIMIT && <p>Up to {CARE_NOTE_BATCH_LIMIT} records per batch.</p>}
       <div className={actionClass}>
         {onClose && (batch.note || batch.rows.length > 0 || batch.notices.length > 0) && <Button variant="text" disabled={batch.loading} onClick={() => requestConfirmation({
           message: "Discard this note and all of its unsaved drafts?", confirmLabel: "Discard note", tone: "danger",
           fallbackFocusId: titleId, onConfirm: () => batch.recordMore(),
         })}>Discard note</Button>}
-        <Button disabled={batch.rows.length >= 6} onClick={batch.addRow}>Add record</Button>
+        <Button disabled={batch.rows.length >= CARE_NOTE_BATCH_LIMIT} onClick={batch.addRow}>Add record</Button>
         <Button variant={batch.rows.length ? "secondary" : "primary"} type="submit" form="batch-note-source"
           disabled={!sync.isSynced || !noteLength || tooLong} loading={batch.loading} loadingLabel="Creating drafts…">{batch.rows.length ? "Generate again" : "Create drafts"}</Button>
         {batch.rows.length > 0 && <Button variant="primary" type="submit" form="batch-note-review" disabled={!selected.length || batch.loading}>Save {recordCount(selected.length)}</Button>}
@@ -92,7 +104,7 @@ function DraftRow({ row, index, workspace, patch, remove, errors }: {
   const area = garden?.growingAreas.find((item) => item.id === row.growingAreaId);
   const plant = garden?.plantings.find((item) => item.id === row.plantingRecordId);
   const location = row.targetScope === "all-gardens" ? "All gardens" : [garden?.name, row.targetScope === "planting-area" ? area?.name : row.targetScope === "plant-group" ? plant?.commonName : undefined].filter(Boolean).join(" / ");
-  const title = row.type === "watering" ? "Watering" : row.type === "fertilizing" ? "Fertilizing" : `Record ${index + 1}`;
+  const title = row.type ? careTypeName[row.type] : `Record ${index + 1}`;
   const rowProblems = Object.values(batchRowsErrors(workspace, [{ ...row, included: true }]));
   return <article className={styles.row} aria-label={`Draft ${index + 1}`}>
     <div className={styles.rowHeading}>
@@ -110,7 +122,7 @@ function DraftRow({ row, index, workspace, patch, remove, errors }: {
           {workspace.gardens.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
         </select>
       </FormField>
-      <FormField id={id("type")} label="Care type" hint={errors[id("type")]}><select id={id("type")} required value={row.type} onChange={(event) => patch({ type: event.target.value as CareDraftRow["type"] })}><option value="">Choose a care type</option><option value="watering">Watering</option><option value="fertilizing">Fertilizing</option></select></FormField>
+      <FormField id={id("type")} label="Care type" hint={errors[id("type")]}><select id={id("type")} required value={row.type} onChange={(event) => patch({ type: event.target.value as CareDraftRow["type"] })}><option value="">Choose a care type</option>{careEventTypes.map((type) => <option key={type} value={type}>{careTypeName[type]}</option>)}</select></FormField>
       <FormField id={id("date")} label="Date"><input id={id("date")} required type="date" value={row.date} onChange={(event) => patch({ date: event.target.value })} /></FormField>
       <FormField id={id("target")} label="Target">
         <select id={id("target")} required value={target} onChange={(event) => {
@@ -121,6 +133,14 @@ function DraftRow({ row, index, workspace, patch, remove, errors }: {
           {row.targetScope === "all-gardens" ? <option value="all-gardens">All gardens</option> : garden && <><option value="garden">{garden.name} · Whole garden</option>{garden.growingAreas.map((area) => <option key={`area:${area.id}`} value={`planting-area:${area.id}`}>{garden.name} / {area.name}</option>)}{garden.plantings.map((plant) => <option key={`plant:${plant.id}`} value={`plant-group:${plant.id}`}>{garden.name} / {garden.growingAreas.find((area) => area.id === plant.growingAreaId)?.name ?? "Plants"} / {plant.commonName}</option>)}</>}
         </select>
       </FormField>
+      {row.type && row.type !== "fertilizing" && careDetailFields[row.type].length > 0 && <details className={styles.fullWidth} open={careDetailFields[row.type].some((field) => row[field])}>
+        <summary>{careTypeName[row.type]} details</summary>
+        <div className={styles.fields}>
+          {careDetailFields[row.type].map((field) => <FormField key={field} id={id(BATCH_DETAIL_ID[field])} label={BATCH_DETAIL_LABEL[field]} hint={errors[id(BATCH_DETAIL_ID[field])]}>
+            <input id={id(BATCH_DETAIL_ID[field])} inputMode={field === "plantCount" ? "numeric" : undefined} value={row[field]} onChange={(event) => patch({ [field]: event.target.value })} />
+          </FormField>)}
+        </div>
+      </details>}
       {row.type === "fertilizing" && <details className={styles.fullWidth}>
         <summary>Fertilizer details</summary>
         <div className={styles.fields}>

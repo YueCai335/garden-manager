@@ -1,7 +1,7 @@
 # AI Garden Note 重新设计：实施计划
 
 - 日期：2026-11-19（America/Toronto）
-- 状态：N1、N2 已完成（2026-11-20），N3–N8 未开始。决定记录在 [ADR-0085](decisions/0085-split-one-garden-note-into-reviewed-records-across-gardens.md)。
+- 状态：N1、N2、N3 已完成（2026-11-20），N4–N8 未开始。决定记录在 [ADR-0085](decisions/0085-split-one-garden-note-into-reviewed-records-across-gardens.md)。
 - 本文读者：负责实现的工程师或 Agent。请先读完本文，再打开第 2 节的设计稿对照。
 - 设计稿是视觉的唯一依据。本文与设计稿冲突时，外观以设计稿为准，行为规则以本文为准；仍有疑问就问用户，不要自己猜。
 - 付费模型评估和公开 demo 的改动放在最后一步（N8），每一步都要先得到用户同意。N0–N7 都不花钱。
@@ -121,6 +121,8 @@
 - 服务器端检查照旧：名字只按已存记录和原文证据解析，日期要有原文证据，不知道的留空。
 - 新的固定测试用例：多花园、五种操作、计划、提问、超出 12 件、中英混写。
 - 用本地 Ollama 跑一遍冒烟测试，把结果写进交接说明（不花钱）。
+- 实现时决定（2026-11-20）：提问类片段用新的 `kind: "question"`；计划片段的预填放在提示（notice）的 `task` 字段里；本地 Ollama 的超时从 30 秒放宽到 90 秒，输出预算从 4096 提到 8192。离线用例写在 `backend/tests/test_care_note_batch_types.py`；给付费评估用的冻结用例（`backend/evaluation/care_note/` 的新批次）放到 N8 再写，因为那套评估工具还要先改成新格式。
+- 现有的批量审核界面先做到能接住新类型和细节、不丢数据；N5 会整体重做这个界面。
 
 ### N4 任务匹配和"加为待办"
 

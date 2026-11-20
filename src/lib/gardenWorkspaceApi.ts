@@ -1,4 +1,4 @@
-import type { CareEventTargetScope, CareEventType, GardenWorkspace, GrowingAreaKind, HealthAssessment, HealthSeverity, PlantingCropFamily } from "@/lib/gardenWorkspace";
+import type { CareDetailField, CareDetails, CareEventTargetScope, CareEventType, GardenWorkspace, GrowingAreaKind, HealthAssessment, HealthSeverity, PlantingCropFamily } from "@/lib/gardenWorkspace";
 import type { SeasonAllocationResult } from "@/lib/seasonAllocation";
 
 const apiBaseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000").replace(/\/$/, "");
@@ -39,17 +39,27 @@ export type CareNoteBatchDraftResponse = {
     targetScope: CareEventTargetScope | null;
     growingAreaId: string | null;
     plantingRecordId: string | null;
-    fertilizerProduct: string | null;
-    fertilizerAmount: number | null;
-    fertilizerUnit: string | null;
     reviewNotes: string[];
-  }>;
+  } & CareNoteBatchDetails>;
   notices: Array<{
     sourceText: string;
-    reason: "planned" | "negated" | "unrelated" | "ambiguous" | "unsupported";
+    reason: "planned" | "negated" | "unrelated" | "question" | "ambiguous" | "unsupported";
     message: string;
+    /** A planned job's values for "Add as a task" (ADR-0085); null for every other reason. */
+    task?: CareNoteBatchTaskSuggestion | null;
   }>;
 };
+/** The details a batch draft or task suggestion carries; each was found in the note's own words (ADR-0085). */
+export type CareNoteBatchDetails = { [Field in CareDetailField]?: CareDetails[Field] | null };
+export type CareNoteBatchTaskSuggestion = CareNoteBatchDetails & {
+  gardenId: string | null;
+  type: CareEventType | null;
+  dueDate: string | null;
+  targetScope: CareEventTargetScope | null;
+  growingAreaId: string | null;
+  plantingRecordId: string | null;
+};
+export const CARE_NOTE_BATCH_LIMIT = 12;
 
 export async function createAiCareNoteBatch(workspaceId: string, note: string, today: string): Promise<CareNoteBatchDraftResponse> {
   const response = await fetch(apiUrl(`/workspaces/${encodeURIComponent(workspaceId)}/ai/care-note-drafts`), {
@@ -58,7 +68,7 @@ export async function createAiCareNoteBatch(workspaceId: string, note: string, t
   if (!response.ok) {
     if (response.status === 422) {
       const body = await response.json().catch(() => ({}));
-      const split = "This note has too many events. Split it into notes with at most 6 completed care records.";
+      const split = `This note has too many events. Split it into notes with at most ${CARE_NOTE_BATCH_LIMIT} completed care records.`;
       throw new FeatureRequestError(body?.detail === split ? split : "Check your note and device date, then try again.");
     }
     if (response.status === 413) throw new FeatureRequestError("This workspace is too large for one AI note request. Enter the records manually.");
