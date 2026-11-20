@@ -222,6 +222,8 @@ class OpenAICareNoteBatchExtractor:
         return {
             "model": self.sender.model, "store": False, "instructions": BATCH_INSTRUCTIONS,
             "input": batch_input(note, context, today), "max_output_tokens": MAX_OUTPUT_TOKENS,
+            # Like the local model: the same note should split the same way every time (ADR-0085 N8).
+            "temperature": 0,
             "text": {"format": {"type": "json_schema", "name": "care_note_batch", "strict": True, "schema": batch_output_schema()}},
         }
 
@@ -403,7 +405,9 @@ def settle_details(event: BatchEventExtraction, fertilizer_events: list[BatchEve
     text = event.source_text
     if event.type == "fertilizing":
         product = event.fertilizer_product if mentioned(event.fertilizer_product, text) else None
-        unit = event.fertilizer_unit if event.fertilizer_unit and event.fertilizer_unit.casefold() in text.casefold() else None
+        # A unit with stray JSON punctuation ("ml},{", seen in batches 4 and 5) is read without it.
+        raw_unit = re.sub(r"[^\w%°]+$", "", event.fertilizer_unit or "")
+        unit = raw_unit if raw_unit and raw_unit.casefold() in text.casefold() else None
         amount = None
         overlapping = any(other is not event and (text in other.source_text or other.source_text in text) for other in fertilizer_events)
         if shared_total or overlapping:
@@ -472,10 +476,13 @@ def planned_date(event: BatchEventExtraction, today: date) -> date | None:
         return None
 
 
+FUTURE_WORDS = re.compile(r"明天|后天|打算|计划|准备|\b(?:tomorrow|will|going to|plan(?:ning)? to)\b")
+NEGATION_WORDS = re.compile(r"没|尚未|还未|未(?:曾|给|浇|施|完成)|别|不要|\b(?:not|never|didn['’]?t|don['’]?t|won['’]?t|skipped)\b")
 PLANTING_WORDS = re.compile(r"种|播|栽|定植|\b(?:plant(?:ed|ing)?|sow(?:ed|n|ing)?|seed(?:ed|s)?|transplant(?:ed|ing)?|set out)\b", re.I)
 HARVEST_WORDS = re.compile(r"摘|采|收获|收了|\b(?:harvest(?:ed|ing)?|pick(?:ed|ing)?)\b", re.I)
 CLAUSE_BREAKS = re.compile(r"[,，;；。！？!?]|\.(?=\s|$)")
 SENTENCE_BREAKS = re.compile(r"[;；。！？!?]|\.(?=\s|$)")
+OVERFLOW_CHECK_MESSAGE = "The AI thought this note might hold more than 12 jobs. Check that every job is listed, or split the note and try again."
 UNMATCHED_MESSAGE = "Part of this note could not be matched to its own words, so no record was drafted for it. Check the note and add anything missing by hand."
 
 
@@ -492,9 +499,20 @@ def requote(event: BatchEventExtraction, note: str) -> BatchEventExtraction | No
     reads that real text, never the rewritten one.
     """
     names = [name for name in (event.garden_name, event.target_name) if name and mentioned(name, note)]
+    if event.source_text in note and event.kind == "planned" and not DATE_WORDS.search(event.source_text):
+        # "给 Backyard 浇水" quoted from "后天给 Backyard 浇水": the day belongs to the task.
+        found = {piece for piece in note_pieces(note, CLAUSE_BREAKS) if event.source_text in piece and DATE_WORDS.search(piece)}
+        if len(found) == 1:
+            event = event.model_copy(update={"source_text": found.pop()})
     if event.source_text in note:
-        if all(mentioned(name, event.source_text) for name in names):
+        # An every-garden event with no garden named needs its every-garden words; a named garden
+        # is handled as that garden in resolve_target.
+        wants_all = event.target_scope == "all-gardens" and not names and not note_says_all_gardens(event.source_text)
+        if all(mentioned(name, event.source_text) for name in names) and not wants_all:
             return event
+        if wants_all:
+            found = {piece for piece in note_pieces(note, SENTENCE_BREAKS) if event.source_text in piece and note_says_all_gardens(piece)}
+            return event.model_copy(update={"source_text": found.pop()}) if len(found) == 1 else event
         # A quote too narrow for the names it was given ("用肥皂水喷了一遍" for the Kale in Community
         # Garden) widens to the one sentence holding both the quote and the names.
         found = {piece for piece in note_pieces(note, SENTENCE_BREAKS) if event.source_text in piece and all(mentioned(name, piece) for name in names)}
@@ -527,9 +545,26 @@ def tidy_event(event: BatchEventExtraction, gardens: dict[str, CareNoteGarden]) 
         plants = [plant for plant in garden.plantings if plant.common_name.casefold() == name] if garden else []
         if len(areas) + len(plants) == 1:
             update["target_scope"] = "planting-area" if areas else "plant-group"
-    if event.kind == "completed" and event.type == "planting" and not PLANTING_WORDS.search(event.source_text):
+    garden_name = update.get("garden_name", event.garden_name)
+    target_name = update.get("target_name", event.target_name)
+    scope = update.get("target_scope", event.target_scope)
+    if garden_name and not target_name and scope != "all-gardens" and event.kind in ("completed", "planned"):
+        # A scope without its name ("planting-area" for "watered the Front Yard"): the quote decides.
+        # One bed or plant of that garden named in the quote is the target; none means the garden,
+        # which still needs the garden-level evidence in resolve_target; several stay for the gardener.
+        garden = next((item for item in gardens.values() if item.name.casefold() == garden_name.casefold()), None)
+        if garden:
+            areas = [area.name for area in garden.areas if mentioned(area.name, event.source_text)]
+            plants = [plant.common_name for plant in garden.plantings if mentioned(plant.common_name, event.source_text)]
+            if len(areas) + len(plants) == 1:
+                update.update(target_name=(areas or plants)[0], target_scope="planting-area" if areas else "plant-group")
+            elif not areas and not plants:
+                update["target_scope"] = "garden"
+    if event.kind == "completed" and event.type in ("planting", None) and HARVEST_WORDS.search(event.source_text) and not PLANTING_WORDS.search(event.source_text):
+        update.update(kind="unsupported", type=None)
+    elif event.kind == "completed" and event.type == "planting" and not PLANTING_WORDS.search(event.source_text):
         # Planting needs its own verb; "摘了 Pepper" (picked) is a harvest, which is not a care type.
-        update.update(kind="unsupported" if HARVEST_WORDS.search(event.source_text) else "ambiguous", type=None)
+        update.update(kind="ambiguous", type=None)
     return event.model_copy(update=update) if update else event
 
 
@@ -550,10 +585,11 @@ def settle_events(gardens: dict[str, CareNoteGarden], note: str, extraction: Bat
 
 
 def drafts_from_batch(gardens: dict[str, CareNoteGarden], note: str, extraction: BatchExtraction, today: date) -> dict:
-    # The limit counts the model's own completed events, before repeats collapse.
-    if extraction.overflow or sum(event.kind == "completed" for event in extraction.events) > MAX_DRAFTS:
-        raise HTTPException(status_code=422, detail=SPLIT_MESSAGE)
+    # The limit counts the jobs left after repeats collapse. The model's own overflow flag is not
+    # trusted to refuse a note (gpt-4o-mini set it on one-job notes); it only asks for a check.
     events, lost = settle_events(gardens, note, extraction)
+    if sum(event.kind == "completed" for event in events) > MAX_DRAFTS:
+        raise HTTPException(status_code=422, detail=SPLIT_MESSAGE)
     extraction = extraction.model_copy(update={"events": events})
     drafts, notices = [], []
     fertilizer_events = [event for event in extraction.events if event.kind == "completed" and event.type == "fertilizing"]
@@ -563,7 +599,15 @@ def drafts_from_batch(gardens: dict[str, CareNoteGarden], note: str, extraction:
         # Unlike a bare 未 substring, these markers do not negate 未知花园 (unknown garden).
         contradiction = re.search(r"没|尚未|还未|未(?:曾|给|浇|施|完成)|别|不要|明天|后天|打算|计划|准备", event.source_text) or ENGLISH_NOT_COMPLETED_MARKERS.search(event.source_text.casefold())
         if kind == "completed" and contradiction:
-            kind = "ambiguous"
+            # The quote's own words say it was not done (ADR-0085 N8): no record either way, but the
+            # notice says why, and planned work can still become a task.
+            text = event.source_text.casefold()
+            if FUTURE_WORDS.search(text):
+                kind = "planned"
+            elif NEGATION_WORDS.search(text):
+                kind = "negated"
+            else:
+                kind = "ambiguous"
         if kind == "planned":
             # ADR-0085: a planned job carries what the note states, so the gardener can add it as a task.
             target = resolve_target(event, gardens)
@@ -587,6 +631,8 @@ def drafts_from_batch(gardens: dict[str, CareNoteGarden], note: str, extraction:
         drafts.append({"sourceText": event.source_text, **target, "type": event.type, "date": event_date, **details, "reviewNotes": review})
     if lost:
         notices.append({"sourceText": note, "reason": "ambiguous", "message": UNMATCHED_MESSAGE})
+    if extraction.overflow:
+        notices.append({"sourceText": note, "reason": "ambiguous", "message": OVERFLOW_CHECK_MESSAGE})
     if not drafts and not notices:
         notices.append({"sourceText": note, "reason": "ambiguous", "message": "No care events were identified. Clarify the note or enter records manually."})
     return {"drafts": drafts, "notices": notices}

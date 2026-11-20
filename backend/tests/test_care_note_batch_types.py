@@ -198,3 +198,63 @@ def test_a_planned_fragment_does_not_stop_the_done_work_taking_todays_date():
                     event("Tomorrow I will prune 后院", kind="planned", type="pruning", gardenName="后院", targetScope="garden"))
     assert result["drafts"][0]["date"] == "2026-11-11"
     assert result["notices"][0]["task"]["dueDate"] == "2026-11-12"
+
+
+# --- ADR-0085 N8: what batch 5 showed. Offline fakes only. ---
+
+
+def test_one_event_per_bed_for_a_garden_level_note_collapses_to_each_garden():
+    note = "今天给前院和后院都浇了水"
+    events = [event("今天给前院浇了水", gardenName="前院", targetScope="planting-area", targetName="高床"),
+              *[event("今天给后院浇了水", gardenName="后院", targetScope="planting-area", targetName=name) for name in ("高床", "Kale")]]
+    rows = drafts(note, *events)["drafts"]
+    assert [(row["gardenId"], row["targetScope"]) for row in rows] == [("front", "garden"), ("back", "garden")]
+
+
+@pytest.mark.parametrize("source, scope, target, expected", [
+    ("今天给前院浇了水", "planting-area", None, ("garden", None, None)),
+    ("今天给后院的 Kale 施了肥", "planting-area", "高床", ("plant-group", None, "back-kale")),
+    ("今天给后院的高床和 Kale 施了肥", None, None, (None, None, None)),
+])
+def test_a_scope_without_its_name_is_decided_by_the_quote(source, scope, target, expected):
+    row = drafts(source, event(source, gardenName=source[3:5] if source[3:5] in ("前院", "后院") else None, targetScope=scope, targetName=target))["drafts"][0]
+    assert (row["targetScope"], row["growingAreaId"], row["plantingRecordId"]) == expected
+
+
+def test_a_harvest_without_a_care_type_is_unsupported():
+    note = "今天在后院摘了 Kale"
+    result = drafts(note, event(note, type=None, gardenName="后院"))
+    assert result["drafts"] == [] and result["notices"][0]["reason"] == "unsupported"
+
+
+def test_an_all_gardens_quote_widens_to_the_sentence_that_says_so():
+    note = "今天所有花园都浇了水"
+    rows = drafts(note, *[event("浇了水", gardenName=name, targetScope="all-gardens") for name in ("前院", "后院", "社区花园")])["drafts"]
+    assert [(row["gardenId"], row["targetScope"], row["sourceText"]) for row in rows] == [(None, "all-gardens", note)]
+
+
+def test_the_openai_request_asks_for_deterministic_answers():
+    params = batch.OpenAICareNoteBatchExtractor("key", "model", client=object()).request_params("今天浇水了", [], TODAY)
+    assert params["temperature"] == 0
+
+
+@pytest.mark.parametrize("note, reason", [("今天没给前院浇水", "negated"), ("Skipped watering 前院 today", "negated"), ("明天给前院浇水", "planned")])
+def test_a_job_called_completed_whose_words_say_otherwise_gets_the_right_notice(note, reason):
+    result = drafts(note, event(note, gardenName="前院", targetScope="garden"))
+    assert result["drafts"] == [] and result["notices"][0]["reason"] == reason
+    if reason == "planned":
+        assert result["notices"][0]["task"]["dueDate"] == "2026-11-12"
+
+
+def test_a_planned_quote_without_its_day_takes_its_clause():
+    note = "明天给前院施肥，后天给后院浇水"
+    result = drafts(note, event("给后院浇水", kind="planned", gardenName="后院", targetScope="garden"))
+    assert result["notices"][0]["sourceText"] == "后天给后院浇水"
+    assert result["notices"][0]["task"]["dueDate"] == "2026-11-13"
+
+
+def test_a_unit_with_stray_punctuation_is_read_without_it():
+    note = "今天给后院的 Kale 施了 20 ml 鱼肥"
+    row = drafts(note, event(note, type="fertilizing", gardenName="后院", targetScope="plant-group", targetName="Kale",
+                             fertilizerProduct="鱼肥", fertilizerAmount=20, fertilizerUnit="ml},{"))["drafts"][0]
+    assert (row["fertilizerAmount"], row["fertilizerUnit"]) == (20, "ml")

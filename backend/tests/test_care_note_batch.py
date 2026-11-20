@@ -139,18 +139,25 @@ def test_shared_date_only_comes_from_an_unambiguous_leading_phrase():
     assert drafts("今天给前院浇水了，Watered 后院 last Tuesday.", event("Watered 后院 last Tuesday."), sharedDateText="今天")["drafts"][0]["date"] is None
 
 
-def test_twelve_records_succeed_thirteen_and_overflow_reject_whole_batch():
+def test_twelve_records_succeed_and_thirteen_reject_the_whole_batch():
     # ADR-0085 raises the limit from 6 to 12 completed jobs per note.
-    text = "今天浇水了"
-    beds = "今天浇水了 " + " ".join(f"Bed {index}" for index in range(12))
+    beds = "今天浇水了 " + " ".join(f"Bed {index}" for index in range(13))
     assert len(drafts(beds, *[event(beds, targetName=f"Bed {index}") for index in range(12)])["drafts"]) == 12
-    # An exact repeat of one event is one record (ADR-0085 N8), but still counts toward the limit below.
-    assert len(drafts(text, *[event(text) for _ in range(12)])["drafts"]) == 1
-    for events, overflow in [([event(text)] * 13, False), ([event(text)], True)]:
-        with pytest.raises(HTTPException) as caught:
-            drafts(text, *events, overflow=overflow)
-        assert caught.value.status_code == 422
-        assert "at most 12" in caught.value.detail
+    with pytest.raises(HTTPException) as caught:
+        drafts(beds, *[event(beds, targetName=f"Bed {index}") for index in range(13)])
+    assert caught.value.status_code == 422
+    assert "at most 12" in caught.value.detail
+    # The limit counts jobs after exact repeats collapse (ADR-0085 N8).
+    text = "今天浇水了"
+    assert len(drafts(text, *[event(text) for _ in range(13)])["drafts"]) == 1
+
+
+def test_the_models_overflow_flag_asks_for_a_check_instead_of_refusing_the_note():
+    # gpt-4o-mini set overflow on one-job notes in batch 5 (ADR-0085 N8).
+    text = "今天浇水了"
+    result = drafts(text, event(text), overflow=True)
+    assert len(result["drafts"]) == 1
+    assert [item["message"] for item in result["notices"]] == [batch.OVERFLOW_CHECK_MESSAGE]
 
 
 def test_model_ids_extra_keys_and_invented_evidence_are_rejected():

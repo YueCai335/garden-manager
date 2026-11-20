@@ -285,6 +285,18 @@ each one under its step.
 - **Batch 5** keeps batch 4's 26 cases and adds 12 holdout cases written
   before any batch-5 request, with the same gate shares (34 of 38, 14 of 15
   ordinary).
+- **Batch 5** (39 requests, about $0.014) passed 19 of 38 and missed the
+  gates, again with no wrong value. The tighter prompt made `gpt-4o-mini`
+  less steady: it set the overflow flag on one-job notes and listed every bed
+  of a garden-level note. The requests had no `temperature`, so the model
+  sampled at its default of 1. A second round of server rules followed: the
+  job limit counts settled jobs and the overflow flag only asks for a check, a
+  scope without its name is decided by the quote, a harvest without a type is
+  unsupported, a job whose words say it is planned or not done gets that
+  notice, and a planned quote keeps its day. The OpenAI request now sets
+  `temperature: 0`. Replaying batch 5's answers passes 33 of 38, one short of
+  its gate, with no hard-gate failure and no wrong value. Details:
+  `backend/evaluation/care_note/batch-5/README.md`.
 - **Public demo.** The owner wants the public demo to offer this flow on the
   low-cost paid model, with request limits that keep the spend small. It moves
   only after a later batch, with new frozen cases added, meets the gates; the
