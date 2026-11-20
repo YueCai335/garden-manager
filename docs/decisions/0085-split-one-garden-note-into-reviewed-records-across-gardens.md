@@ -1,6 +1,7 @@
 # ADR-0085: Split One Garden Note into Reviewed Records Across Gardens
 
-- Status: Accepted on 2026-11-19. Not implemented.
+- Status: Accepted on 2026-11-19. Implemented on 2026-11-20 (steps N1–N7 of
+  the plan). The paid evaluation and the public demo change are pending (N8).
 - Date: 2026-11-19
 - Supersedes in part:
   - [ADR-0068](0068-extract-bounded-workspace-care-note-batches.md): the limit
@@ -201,6 +202,54 @@ then decides with the owner whether the public demo moves to this flow.
   growth. All of it stops under `prefers-reduced-motion`.
 - A note with many jobs needs a larger output budget and takes longer on the
   local model.
+
+## Implementation notes
+
+These choices were made during implementation (2026-11-20). The plan records
+each one under its step.
+
+- **Workspace format (N1).** The browser workspace stays at `version: 10`. The
+  change only adds care types and optional fields, so every older workspace is
+  already valid and needs no migration function. The database gains nullable
+  columns in one Alembic migration (`20261119_10`).
+- **Extraction contract (N3).** A plant question is a notice with
+  `reason: "question"`. A planned job carries its prefilled values in the
+  notice's `task` field. The batch limits are 12 drafts and 24 fragments. The
+  local Ollama timeout is 90 seconds and the output budget is 8192 tokens. The
+  offline cases are in `backend/tests/test_care_note_batch_types.py`; frozen
+  cases for the paid evaluation wait for N8, because the evaluation harness
+  must first move to the new format.
+- **Named gardens (N5).** The local model sometimes marks a record for one
+  named garden as "all gardens". The server keeps the garden that the note
+  names, and a test covers it.
+- **Task matching (N4).** `src/lib/noteTaskMatch.ts` matches at the moment of
+  saving, against the latest workspace, so a target the gardener changes in
+  review changes the match. One record can complete several tasks, such as a
+  garden watering task and a bed watering task in that garden. An all-gardens
+  task that every garden's records cover finishes without a history record of
+  its own, because each garden's record is already history. Only records
+  written by this save finish tasks, so saving the same batch again never
+  advances a repeating task twice.
+- **Dialog (N5).** The new screens replace the contents of
+  `BatchGardenNote.tsx`; styles are in `NoteFlow.module.css`, the branches in
+  `NoteFan.tsx`, and sentence splitting and garden grouping in
+  `src/lib/noteFragments.ts`. Each record's editor is a native `<details>`, so
+  a failed save opens a collapsed row and focuses the field with the problem.
+  In the dialog, the heading and Close sit on the green strip and scroll with
+  the content. The `/notes` page uses the same component.
+- **Home card (N6).** Only the local card follows the draft's state; the public
+  demo's single-note card and its button text stay until N8. While the note is
+  being read the card shows **Continue**, and while saving it shows **View
+  status**. Each state's button has its own React key, so closing the dialog
+  returns focus to a button that still exists; the dialog reads its fallback
+  focus target when it closes, not when it opens.
+- **Final checks (N7).** `e2e/garden-note-flow.spec.ts` walks the whole flow
+  from the home card to Care and History. The review was checked at 320, 390,
+  768, and 1440 px and at 200% zoom, and by keyboard. The sticky footer had
+  covered controls reached by Tab, so focusable elements now keep a scroll
+  margin equal to the measured footer height. The saved home card's two
+  actions now wrap at 320 px. White text on the green strip and footer
+  measured at least 6.4:1 against the photo behind it.
 
 ## Reconsideration
 

@@ -241,7 +241,7 @@
 .noteError { margin: -6px 0 0; font-size: 13.5px; font-weight: 600; color: var(--color-error-on-dark); }
 .noteFoot { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; }
 .noteFootHint { max-width: 30ch; font-size: 13.5px; line-height: 1.45; color: rgb(255 255 255 / 88%); }
-.noteActions { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 18px; margin-left: auto; }
+.noteActions { flex: 0 1 auto; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 18px; margin-left: auto; }
 .noteTextButton { min-height: 44px; padding: 0 6px; border: 0; background: none; color: #fff; font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; }
 .noteTextButton:hover { text-decoration: underline; }
 

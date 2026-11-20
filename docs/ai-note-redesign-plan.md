@@ -1,7 +1,7 @@
 # AI Garden Note 重新设计：实施计划
 
 - 日期：2026-11-19（America/Toronto）
-- 状态：N1–N6 已完成（2026-11-20），N7、N8 未开始。决定记录在 [ADR-0085](decisions/0085-split-one-garden-note-into-reviewed-records-across-gardens.md)。
+- 状态：N1–N7 已完成（2026-11-20），N8 未开始。决定记录在 [ADR-0085](decisions/0085-split-one-garden-note-into-reviewed-records-across-gardens.md)。
 - 本文读者：负责实现的工程师或 Agent。请先读完本文，再打开第 2 节的设计稿对照。
 - 设计稿是视觉的唯一依据。本文与设计稿冲突时，外观以设计稿为准，行为规则以本文为准；仍有疑问就问用户，不要自己猜。
 - 付费模型评估和公开 demo 的改动放在最后一步（N8），每一步都要先得到用户同意。N0–N7 都不花钱。
@@ -153,6 +153,7 @@
 - 端到端：首页写一段话 → 审核 → 保存 → Care 里待办被划掉、History 里出现新记录。
 - 390、768、1440 宽度和 200% 缩放下没有横向滚动；对比度检查；键盘可以走完整个流程。
 - 更新 README 的功能说明和截图，在 ADR-0085 补 "Implementation notes"，改决策索引里的状态。
+- 实现时决定（2026-11-20）：端到端测试在 `e2e/garden-note-flow.spec.ts`，从首页卡片写笔记一直走到 Care 和 History。检查中发现两个问题并修好：用 Tab 键聚焦的控件会被固定在底部的深绿底栏挡住，现在每个可聚焦元素都留出和底栏一样高的滚动边距（`--foot-height`，由 `BatchGardenNote.tsx` 测量）；首页卡片"刚保存"状态的两个按钮在 320px 宽时超出卡片，现在会换行。深绿条和底栏上的白字对照背后的照片实测对比度不低于 6.4:1。README 原本没有这个功能的截图，所以只改了文字。
 
 ### N8 付费评估和公开 demo（需要用户逐步同意）
 

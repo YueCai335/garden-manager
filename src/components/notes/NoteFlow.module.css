@@ -5,6 +5,9 @@
  */
 .flow { position: relative; isolation: isolate; display: flex; flex-direction: column; min-height: 100%; background: var(--color-page); color: var(--color-text); }
 .flow :focus-visible { outline: 2px solid var(--color-brand); outline-offset: 2px; }
+/* A control reached by Tab scrolls clear of the sticky footer instead of hiding under it. */
+.flow :is(a, button, input, select, textarea, summary) { scroll-margin-bottom: calc(var(--foot-height, 80px) + 12px); }
+.foot :is(a, button) { scroll-margin-bottom: 0; }
 .visuallyHidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
 /* The strip: the landing hero's photo on the band colour, ending where --strip-height says. */

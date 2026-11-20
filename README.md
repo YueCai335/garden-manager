@@ -27,13 +27,16 @@ plan the next season, and ask source-grounded plant questions.
 - **Garden operations:** multiple gardens, raised beds, in-ground beds,
   containers, and greenhouses on one metric plan canvas, with direct
   placement, autosave, undo, and a guided first-run setup.
-- **Current records:** plants, care history, recurring care tasks, and
+- **Current records:** plants, care history, recurring care tasks across five
+  care types (watering, fertilizing, planting, pruning, pest treatment), and
   reviewable plant-health records.
 - **Seasonal planning:** crop-family rotation guidance by growing area and a
   separate next-season plan with companion-planting notes.
-- **Applied AI:** Chinese and English care-note extraction, local RAG-backed
-  Plant Guide answers, visible citations, and user review before records
-  are saved.
+- **Applied AI:** AI Garden Note splits one Chinese or English note about a
+  day's work into reviewed care records across gardens, and plain code ticks
+  off the Care tasks they complete. Plant Guide gives local RAG-backed answers
+  with visible citations. The gardener reviews every AI result before it is
+  saved.
 - **Tool-calling agent:** an Allocation Assistant that calls two read-only
   tools, revises its plan from rotation feedback, and returns a draft the
   gardener confirms. It has a hand-written loop, a byte-bounded cost per run,
@@ -70,8 +73,11 @@ The API sleeps on the free tier, so the first request can take about a minute.
 5. Return to **Gardens** and open **Next Season**. Each row shows what the area grew and which families it rests from;
    choose a plant on the dark 2027 column, or select **Plan with AI** to review an AI draft or the recorded demo run.
 6. Open **Care** to create a task or record a completed care event.
-7. After completing [Enable local AI features](#enable-local-ai-features), open
-   **Plant Guide** to ask a Chinese or English question and inspect the cited source cards.
+7. After completing [Enable local AI features](#enable-local-ai-features), write
+   a note about a day's work on the Gardens page's **AI Garden Notes** card and
+   select **Split into records**. Review the records grouped by garden, then
+   save them and check **Care** and its **History**.
+8. Open **Plant Guide** to ask a Chinese or English question and inspect the cited source cards.
 
 The demo uses generic data and can be loaded repeatedly. It replaces the
 gardens saved in the current browser workspace.
@@ -142,14 +148,34 @@ AI Garden Note has its own provider setting, `CARE_NOTE_AI_PROVIDER` (default
 `ollama`), so switching it does not change Plant Doctor
 ([ADR-0058](docs/decisions/0058-classify-care-notes-before-filling-a-draft.md)).
 
-In the local app, the homepage note can produce up to six review drafts across
-gardens. Review each action, date and target, edit or exclude individual rows,
-and save the selection together. Manual entry remains available. Drafts stay
-in the current tab while navigating; keep the tab open until saving finishes.
-Failed synchronization retries the same records. The public demo retains its
-single-event restrictions. Batch provider compatibility and extraction quality
-still need real-model evaluation; current automated checks use mocks
-([ADR-0068](docs/decisions/0068-extract-bounded-workspace-care-note-batches.md)).
+In the local app, AI Garden Note turns one note into up to 12 care records
+across gardens
+([ADR-0085](docs/decisions/0085-split-one-garden-note-into-reviewed-records-across-gardens.md)).
+Write or dictate a few sentences on the Gardens page's **AI Garden Notes** card
+or from the header's **+ Note**, then select **Split into records**:
+
+- The model splits the note into records of five care types: watering,
+  fertilizing, planting, pruning, and pest treatment, with each type's own
+  details, such as the fertilizer amount or what was pruned. Unknown fields
+  stay empty for you to fill.
+- The review groups the records by garden under lime branches from the note.
+  Hover a record, a sentence, or a garden to see what belongs together; edit or
+  exclude any record.
+- Plain code, not the model, matches each record to open Care tasks that are
+  due today or overdue, by care type, target, and date. A matched task is
+  ticked off when you save, and you can untick it first.
+- Planned jobs ("will feed the tomatoes tomorrow") are not recorded. When the
+  note gives the type, date, and garden, **Add as a task** creates the Care
+  task. Plant questions link to Plant Doctor.
+- One save writes every record, finishes the matched tasks, and adds the new
+  ones. A note with more than 12 finished jobs is returned whole with a request
+  to split it.
+
+The note keeps its draft while you move around the app; keep the tab open until
+saving finishes. Failed synchronization retries the same records. Manual entry
+remains available. The public demo keeps its single-record note until the new
+extraction passes a paid-model evaluation; current automated checks use mocks
+and a local Ollama smoke run.
 
 The Allocation Assistant uses the OpenAI API whatever `AI_PROVIDER` is set to.
 Put `OPENAI_API_KEY` in the API's environment to run it live; without a key it

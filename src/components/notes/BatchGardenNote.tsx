@@ -114,6 +114,9 @@ export function BatchGardenNote({ onClose, header, status }: { onClose?: () => v
     const height = card ? card.getBoundingClientRect().top - top + card.offsetHeight / 2
       : note ? note.getBoundingClientRect().top - top + Math.min(note.offsetHeight * 0.4, 96) : 200;
     node.style.setProperty("--strip-height", `${Math.round(height)}px`);
+    // The footer is sticky, so a field focused by Tab must scroll clear of it (see .flow scroll-margin).
+    const foot = node.querySelector<HTMLElement>("[data-note-foot]");
+    if (foot) node.style.setProperty("--foot-height", `${foot.offsetHeight}px`);
   }, []);
   useLayoutEffect(() => {
     fitStrip();
@@ -146,7 +149,7 @@ export function BatchGardenNote({ onClose, header, status }: { onClose?: () => v
     {top}
     {fan}
     <div className={styles.body}>{status}{body}</div>
-    <div className={styles.foot}>{foot}</div>
+    <div className={styles.foot} data-note-foot="">{foot}</div>
   </div>;
   const headText = (title: string, sub?: ReactNode) => <div className={styles.headText}>
     <h3 className={styles.headline} tabIndex={-1} ref={focusRef}>{title}</h3>
