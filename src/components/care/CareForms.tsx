@@ -2,9 +2,11 @@
 
 import type { FormEvent, ReactNode } from "react";
 import { FeedbackForm, FormField } from "@/components/forms/FormFeedback";
-import { careTargetLabel, isCalendarDate, plantGroupDisplayName, type CareForm, type CareTaskForm } from "@/lib/careRecords";
-import type { CareEvent, CareEventTargetScope, CareEventType, CareTask, Garden } from "@/lib/gardenWorkspace";
+import { careTypeName } from "@/lib/careLabels";
+import { careDetailsChanged, careDetailsFromForm, careTargetLabel, isCalendarDate, plantGroupDisplayName, type CareDetailsForm, type CareForm, type CareTaskForm } from "@/lib/careRecords";
+import { careDetailFields, careEventTypes, type CareDetailField, type CareEvent, type CareEventTargetScope, type CareEventType, type CareTask, type Garden } from "@/lib/gardenWorkspace";
 import styles from "./Care.module.css";
+import { CareIcon } from "./CareMarks";
 
 /**
  * The task, completion, and record forms (ADR-0080 D7 puts them in dialogs). Fields, validation,
@@ -73,14 +75,57 @@ function CareTargetSelect<F extends CareForm | CareTaskForm>({ id, form, garden,
   );
 }
 
-function TypeSelect({ id, value, onChange }: { id: string; value: CareEventType; onChange: (type: CareEventType) => void }) {
-  return <div className="field">
-    <label htmlFor={id}>Care type</label>
-    <select id={id} onChange={(event) => onChange(event.target.value as CareEventType)} value={value}>
-      <option value="watering">Watering</option>
-      <option value="fertilizing">Fertilizing</option>
-    </select>
-  </div>;
+/** Five icon pills for the care type (ADR-0085). They are radio buttons, so arrow keys move between them. */
+function CareTypePicker({ name, value, onChange }: { name: string; value: CareEventType; onChange: (type: CareEventType) => void }) {
+  return <fieldset className={`${styles.wide} ${styles.typePicker}`}>
+    <legend>Care type</legend>
+    <div className={styles.typeOptions}>
+      {careEventTypes.map((type) => <label key={type} className={styles.typeOption}>
+        <input type="radio" name={name} value={type} checked={value === type} onChange={() => onChange(type)} />
+        <CareIcon type={type} />
+        {careTypeName[type]}
+      </label>)}
+    </div>
+  </fieldset>;
+}
+
+type Tense = "done" | "planned";
+const detailIdPart: Record<CareDetailField, string> = {
+  fertilizerProduct: "fertilizer-product", fertilizerAmount: "fertilizer-amount", fertilizerUnit: "fertilizer-unit",
+  plantName: "plant-name", plantCount: "plant-count", pruneDetail: "prune-detail", pestProblem: "pest-problem", pestTreatment: "pest-treatment",
+};
+const detailLabel = (field: CareDetailField, tense: Tense) => ({
+  fertilizerProduct: "Fertilizer product", fertilizerAmount: "Fertilizer amount", fertilizerUnit: "Fertilizer unit",
+  plantName: "Plant", plantCount: "How many plants",
+  pruneDetail: tense === "done" ? "What was cut" : "What to cut",
+  pestProblem: "Problem", pestTreatment: tense === "done" ? "Treatment used" : "Treatment to use",
+})[field] + " (optional)";
+const detailPlaceholder: Partial<Record<CareDetailField, string>> = {
+  fertilizerUnit: "e.g. g, tbsp, mL", plantName: "e.g. Basil", pruneDetail: "e.g. Side shoots", pestProblem: "e.g. Aphids", pestTreatment: "e.g. Soap spray",
+};
+/** Record fields keep their earlier IDs ("fertilizer-amount"); task fields add "care-task-". */
+export const careDetailId = (prefix: string, field: CareDetailField) => `${prefix}${detailIdPart[field]}`;
+
+/** The chosen type's optional details. A form kept from before ADR-0085 may lack a field, so it reads as empty. */
+function CareDetailFields({ type, form, prefix, tense, onChange }: {
+  type: CareEventType; form: Partial<CareDetailsForm>; prefix: string; tense: Tense; onChange: (field: CareDetailField, value: string) => void;
+}) {
+  return <>{careDetailFields[type].map((field) => {
+    const id = careDetailId(prefix, field);
+    const numeric = field === "fertilizerAmount" || field === "plantCount";
+    return <FormField key={field} id={id} className="field">
+      <label htmlFor={id}>{detailLabel(field, tense)}</label>
+      <input id={id} value={form[field] ?? ""} onChange={(event) => onChange(field, event.target.value)}
+        {...(numeric ? { type: "number", min: field === "plantCount" ? "1" : "0", step: field === "plantCount" ? "1" : "any" } : {})}
+        {...(detailPlaceholder[field] ? { placeholder: detailPlaceholder[field] } : {})} />
+    </FormField>;
+  })}</>;
+}
+
+/** The detail error for the form's validation, keyed by the field's ID. */
+function detailErrors(type: CareEventType, form: Partial<CareDetailsForm>, prefix: string) {
+  const result = careDetailsFromForm(type, form);
+  return "error" in result ? { [careDetailId(prefix, result.field)]: result.error } : {};
 }
 
 export function CareTaskFormFields({ garden, form, editingCareTaskId, locationControl, onSave, onCancel, onSetForm, extraActions }: {
@@ -103,21 +148,24 @@ export function CareTaskFormFields({ garden, form, editingCareTaskId, locationCo
       form.targetScope !== historicalTarget.targetScope ||
       form.growingAreaId !== (historicalTarget.growingAreaId ?? "") ||
       form.plantingRecordId !== (historicalTarget.plantingRecordId ?? "") ||
-      form.repeatIntervalDays !== String(historicalTarget.repeatIntervalDays ?? "")
+      form.repeatIntervalDays !== String(historicalTarget.repeatIntervalDays ?? "") ||
+      careDetailsChanged(form.type, form, historicalTarget)
     ),
   );
   return (
     <FeedbackForm className={styles.form} onSubmit={onSave} validate={() => ({
       "care-task-due-date": !isCalendarDate(form.dueDate) ? "Enter a valid due date." : undefined,
       "care-task-target": careTargetError(garden, form, historicalTarget),
+      ...detailErrors(form.type, form, "care-task-"),
     })}>
       {locationControl}
-      <TypeSelect id="care-task-type" value={form.type} onChange={(type) => onSetForm({ ...form, type })} />
+      <CareTypePicker name="care-task-type" value={form.type} onChange={(type) => onSetForm({ ...form, type })} />
       <FormField id="care-task-due-date" className="field">
         <label htmlFor="care-task-due-date">Due date</label>
         <input data-autofocus id="care-task-due-date" onChange={(event) => onSetForm({ ...form, dueDate: event.target.value })} required type="date" value={form.dueDate} />
       </FormField>
       <CareTargetSelect id="care-task-target" form={form} garden={garden} historicalTarget={historicalTarget} onSetForm={onSetForm} />
+      <CareDetailFields type={form.type} form={form} prefix="care-task-" tense="planned" onChange={(field, value) => onSetForm({ ...form, [field]: value })} />
       <FormField id="care-task-repeat" className="field">
         <label htmlFor="care-task-repeat">Repeat every whole days (optional)</label>
         <input id="care-task-repeat" min="1" onChange={(event) => onSetForm({ ...form, repeatIntervalDays: event.target.value })} step="1" type="number" value={form.repeatIntervalDays} />
@@ -179,40 +227,23 @@ export function CareRecordFormFields({ garden, form, editingCareEventId, locatio
       form.targetScope !== historicalTarget.targetScope ||
       form.growingAreaId !== (historicalTarget.growingAreaId ?? "") ||
       form.plantingRecordId !== (historicalTarget.plantingRecordId ?? "") ||
-      form.fertilizerProduct !== (historicalTarget.fertilizerProduct ?? "") ||
-      form.fertilizerAmount !== String(historicalTarget.fertilizerAmount ?? "") ||
-      form.fertilizerUnit !== (historicalTarget.fertilizerUnit ?? "")
+      careDetailsChanged(form.type, form, historicalTarget)
     ),
   );
   return (
     <FeedbackForm className={styles.form} onSubmit={onSave} validate={() => ({
       "care-date": !isCalendarDate(form.date) ? "Enter a valid care date." : undefined,
       "care-target": careTargetError(garden, form, historicalTarget),
-      "fertilizer-amount": form.type === "fertilizing" && form.fertilizerAmount.trim() && Number(form.fertilizerAmount) <= 0 ? "Enter a fertilizer amount greater than zero." : undefined,
+      ...detailErrors(form.type, form, ""),
     })}>
       {locationControl}
-      <TypeSelect id="care-type" value={form.type} onChange={(type) => onSetForm({ ...form, type })} />
+      <CareTypePicker name="care-type" value={form.type} onChange={(type) => onSetForm({ ...form, type })} />
       <FormField id="care-date" className="field">
         <label htmlFor="care-date">Date</label>
         <input data-autofocus id="care-date" required onChange={(event) => onSetForm({ ...form, date: event.target.value })} type="date" value={form.date} />
       </FormField>
       <CareTargetSelect id="care-target" form={form} garden={garden} historicalTarget={historicalTarget} onSetForm={onSetForm} />
-      {form.type === "fertilizing" ? (
-        <>
-          <div className="field">
-            <label htmlFor="fertilizer-product">Fertilizer product (optional)</label>
-            <input id="fertilizer-product" onChange={(event) => onSetForm({ ...form, fertilizerProduct: event.target.value })} value={form.fertilizerProduct} />
-          </div>
-          <FormField id="fertilizer-amount" className="field">
-            <label htmlFor="fertilizer-amount">Fertilizer amount (optional)</label>
-            <input id="fertilizer-amount" min="0" onChange={(event) => onSetForm({ ...form, fertilizerAmount: event.target.value })} step="any" type="number" value={form.fertilizerAmount} />
-          </FormField>
-          <div className="field">
-            <label htmlFor="fertilizer-unit">Fertilizer unit (optional)</label>
-            <input id="fertilizer-unit" onChange={(event) => onSetForm({ ...form, fertilizerUnit: event.target.value })} placeholder="e.g. g, tbsp, mL" value={form.fertilizerUnit} />
-          </div>
-        </>
-      ) : null}
+      <CareDetailFields type={form.type} form={form} prefix="" tense="done" onChange={(field, value) => onSetForm({ ...form, [field]: value })} />
       <div className={`field ${styles.wide}`}>
         <label htmlFor="care-note">Note (optional)</label>
         <input id="care-note" onChange={(event) => onSetForm({ ...form, note: event.target.value })} value={form.note} />

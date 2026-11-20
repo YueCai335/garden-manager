@@ -11,7 +11,7 @@ import { CareCompletionForm, CareLocation, CareRecordFormFields, CareTaskFormFie
 import { CareDialog } from "./care/CareParts";
 import { careBoard, CARE_WINDOW_DAYS } from "@/lib/careBoard";
 import { careHistory, HISTORY_PAGE, type HistoryType } from "@/lib/careHistory";
-import { calendarLabel, careTypeNoun } from "@/lib/careLabels";
+import { calendarLabel, careTypeName, careTypeNoun } from "@/lib/careLabels";
 
 import {
   addDays,
@@ -23,6 +23,8 @@ import {
   type Garden,
 } from "@/lib/gardenWorkspace";
 import {
+  careDetailsForm,
+  careDetailsFromForm,
   emptyCareForm,
   emptyCareTaskForm,
   isCalendarDate,
@@ -30,6 +32,9 @@ import {
   type CareForm,
   type CareTaskForm,
 } from "@/lib/careRecords";
+
+/** "Pruning event added.", "Pest treatment task completed." */
+const careTypeLabelCapitalized = (type: CareEventType) => careTypeName[type];
 
 export type CareView = "tasks" | "history";
 
@@ -165,9 +170,7 @@ export function CareWorkspace({
       targetScope: event.targetScope,
       growingAreaId: event.growingAreaId ?? "",
       plantingRecordId: event.plantingRecordId ?? "",
-      fertilizerProduct: event.fertilizerProduct ?? "",
-      fertilizerAmount: event.fertilizerAmount ? String(event.fertilizerAmount) : "",
-      fertilizerUnit: event.fertilizerUnit ?? "",
+      ...careDetailsForm(event),
     });
     setEditingCareEventId(event.id);
     setIsFormOpen(true);
@@ -212,16 +215,8 @@ export function CareWorkspace({
     )
       return onMessage("Choose an existing plant group.");
 
-    const fertilizerProduct = form.fertilizerProduct.trim();
-    const fertilizerUnit = form.fertilizerUnit.trim();
-    const hasFertilizerAmount = Boolean(form.fertilizerAmount.trim());
-    const fertilizerAmount = Number(form.fertilizerAmount);
-    if (
-      form.type === "fertilizing" &&
-      hasFertilizerAmount &&
-      (!Number.isFinite(fertilizerAmount) || fertilizerAmount <= 0)
-    )
-      return onMessage("Enter a fertilizer amount greater than zero.");
+    const parsed = careDetailsFromForm(form.type, form);
+    if ("error" in parsed) return onMessage(parsed.error);
 
     const event: CareEvent = {
       id: editingCareEventId ?? createId("care"),
@@ -246,13 +241,7 @@ export function CareWorkspace({
             ...(planting ? {} : { targetPlantingRecordDeleted: true }),
           }
         : {}),
-      ...(form.type === "fertilizing"
-        ? {
-            ...(fertilizerProduct ? { fertilizerProduct } : {}),
-            ...(hasFertilizerAmount ? { fertilizerAmount } : {}),
-            ...(fertilizerUnit ? { fertilizerUnit } : {}),
-          }
-        : {}),
+      ...parsed.details,
     };
     const action = editingCareEventId ? "updated" : "added";
     onUpdateRecords((records) => ({
@@ -262,7 +251,7 @@ export function CareWorkspace({
         : [...records.careEvents, event],
     }), careOwner(garden));
     cancelCare();
-    onMessage(`${form.type === "watering" ? "Watering" : "Fertilizing"} event ${action}.`);
+    onMessage(`${careTypeLabelCapitalized(form.type)} event ${action}.`);
   };
 
   const removeCare = (row: CareRow<CareEvent>) => {
@@ -302,6 +291,7 @@ export function CareWorkspace({
       repeatIntervalDays: task.repeatIntervalDays
         ? String(task.repeatIntervalDays)
         : "",
+      ...careDetailsForm(task),
     });
     setEditingCareTaskId(task.id);
     setIsTaskFormOpen(true);
@@ -353,6 +343,8 @@ export function CareWorkspace({
       (!Number.isInteger(repeatIntervalDays) || repeatIntervalDays < 1)
     )
       return onMessage("Enter a whole-day repeat interval of at least 1.");
+    const parsedDetails = careDetailsFromForm(taskForm.type, taskForm);
+    if ("error" in parsedDetails) return onMessage(parsedDetails.error);
 
     const task: CareTask = {
       id: editingCareTaskId ?? createId("care-task"),
@@ -377,6 +369,7 @@ export function CareWorkspace({
           }
         : {}),
       ...(hasRepeatInterval ? { repeatIntervalDays } : {}),
+      ...parsedDetails.details,
     };
     const action = editingCareTaskId ? "updated" : "added";
     const later = task.dueDate > addDays(todayDate(), CARE_WINDOW_DAYS);
@@ -390,7 +383,7 @@ export function CareWorkspace({
     // Care shows seven days ahead (ADR-0080 D5), so say when a later task will appear.
     onMessage(later
       ? `Task ${action}. It will appear here 7 days before ${calendarLabel(task.dueDate, { month: "long", day: "numeric", year: "numeric" })}.`
-      : `${task.type === "watering" ? "Watering" : "Fertilizing"} task ${action}.`);
+      : `${careTypeLabelCapitalized(task.type)} task ${action}.`);
   };
 
   const openCompleteCareTask = (row: CareRow<CareTask>) => {
@@ -424,7 +417,7 @@ export function CareWorkspace({
     const event = careEventForTask(task, completionDate, owner, createId("care"));
     onUpdateRecords((records) => applyTaskCompletion(records, task, event), owner);
     cancelCompletion();
-    onMessage(`${task.type === "watering" ? "Watering" : "Fertilizing"} task completed.`);
+    onMessage(`${careTypeLabelCapitalized(task.type)} task completed.`);
   };
 
   const removeCareTask = (row: CareRow<CareTask>) => {

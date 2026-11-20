@@ -1,7 +1,7 @@
 # AI Garden Note 重新设计：实施计划
 
 - 日期：2026-11-19（America/Toronto）
-- 状态：N1 已完成（2026-11-20），N2–N8 未开始。决定记录在 [ADR-0085](decisions/0085-split-one-garden-note-into-reviewed-records-across-gardens.md)。
+- 状态：N1、N2 已完成（2026-11-20），N3–N8 未开始。决定记录在 [ADR-0085](decisions/0085-split-one-garden-note-into-reviewed-records-across-gardens.md)。
 - 本文读者：负责实现的工程师或 Agent。请先读完本文，再打开第 2 节的设计稿对照。
 - 设计稿是视觉的唯一依据。本文与设计稿冲突时，外观以设计稿为准，行为规则以本文为准；仍有疑问就问用户，不要自己猜。
 - 付费模型评估和公开 demo 的改动放在最后一步（N8），每一步都要先得到用户同意。N0–N7 都不花钱。

@@ -40,8 +40,8 @@ export function FeedbackForm({ children, validate, error, notice, onSubmit, onCh
     <form {...props} noValidate onChange={(event) => {
       const target = event.target;
       setChanged(true);
-      // A choice can hide dependent fields (for example fertilizer amount).
-      if (target instanceof HTMLSelectElement) setErrors({});
+      // A choice can hide dependent fields (for example fertilizer amount): a select or a radio button.
+      if (target instanceof HTMLSelectElement || (target instanceof HTMLInputElement && target.type === "radio")) setErrors({});
       else if (target instanceof HTMLElement && target.id) setErrors((current) => ({ ...current, [target.id]: undefined }));
       onChange?.(event);
     }} onSubmit={(event) => {

@@ -25,6 +25,9 @@ span.tick { cursor: default; }
 .row button.tick:focus-visible .tickCircle { outline: 2px solid var(--color-brand); outline-offset: 2px; }
 .careIcon { flex: none; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--color-soft); color: var(--color-care-watering); }
 .careIcon[data-type="fertilizing"] { color: var(--color-care-fertilizing); }
+.careIcon[data-type="planting"] { color: var(--color-care-planting); }
+.careIcon[data-type="pruning"] { color: var(--color-care-pruning); }
+.careIcon[data-type="pest-treatment"] { color: var(--color-care-pest-treatment); }
 .rowTitle { font-size: 15px; font-weight: 600; line-height: 1.35; }
 .row[data-done] .rowTitle { text-decoration: line-through; font-weight: 500; color: var(--color-done-ink); }
 .row[data-done] .careIcon { opacity: 0.55; }
@@ -37,6 +40,9 @@ span.tick { cursor: default; }
 .onDark .row button.tick:focus-visible .tickCircle { outline-color: #fff; }
 .onDark .careIcon { background: rgb(255 255 255 / 12%); color: var(--color-care-watering-on-dark); }
 .onDark .careIcon[data-type="fertilizing"] { color: var(--color-care-fertilizing-on-dark); }
+.onDark .careIcon[data-type="planting"] { color: var(--color-care-planting-on-dark); }
+.onDark .careIcon[data-type="pruning"] { color: var(--color-care-pruning-on-dark); }
+.onDark .careIcon[data-type="pest-treatment"] { color: var(--color-care-pest-treatment-on-dark); }
 
 @media (prefers-reduced-motion: reduce) {
   .progressFill, .tickCircle { transition: none; }

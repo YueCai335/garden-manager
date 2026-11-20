@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { careTypeDoneVerb, careTypeNoun, careTypeVerb } from "./careLabels";
+import { careDoneTitle, careLocalTitle, careTitle, careTypeDoneVerb, careTypeName, careTypeNoun, careTypeVerb } from "./careLabels";
+import { careDetailsChanged, careDetailsForm, careDetailsFromForm, careDetailsText, emptyCareDetailsForm } from "./careRecords";
 import { careEventTypes } from "./careTypes";
 import { careEventForTask } from "./careViews";
 import {
   careDetailsOf,
+  createGarden,
   createGardenWorkspace,
   hasValidCareDetails,
   readGardenWorkspace,
@@ -88,5 +90,59 @@ describe("care types and details", () => {
     expect(careHistoryType("pest-treatment")).toBe("pest-treatment");
     expect(careHistoryType("harvesting")).toBe("all");
     expect(careHistoryPath("all", "pruning")).toBe("/care?view=history&type=pruning");
+  });
+});
+
+describe("care type words and details (N2)", () => {
+  const garden = { ...createGarden("Front Yard") };
+
+  it.each([
+    [{ type: "watering", targetScope: "garden" }, "Water Front Yard", "Watered Front Yard"],
+    [{ type: "pruning", targetScope: "garden" }, "Prune Front Yard", "Pruned Front Yard"],
+    [{ type: "planting", targetScope: "garden", plantName: "Basil" }, "Plant Basil in Front Yard", "Planted Basil in Front Yard"],
+    [{ type: "planting", targetScope: "garden" }, "Plant in Front Yard", "Planted in Front Yard"],
+    [{ type: "pest-treatment", targetScope: "all-gardens" }, "Treat pests in all gardens", "Treated pests in all gardens"],
+  ] as const)("titles %o", (record, title, done) => {
+    expect(careTitle(record, garden)).toBe(title);
+    expect(careDoneTitle(record, garden)).toBe(done);
+  });
+
+  it("drops the garden name inside a garden card", () => {
+    expect(careLocalTitle({ type: "pruning", targetScope: "plant-group" }, { area: "Bed 1", plant: "Pepper" })).toBe("Prune Pepper");
+    expect(careLocalTitle({ type: "planting", targetScope: "planting-area", plantName: "Basil" }, { area: "Planter" })).toBe("Plant Basil");
+    expect(careLocalTitle({ type: "pest-treatment", targetScope: "plant-group" }, { plant: "Kale" })).toBe("Treat pests on Kale");
+    expect(careLocalTitle({ type: "pest-treatment", targetScope: "garden" }, {})).toBe("Treat pests in whole garden");
+    expect(careLocalTitle({ type: "watering", targetScope: "garden" }, {})).toBe("Water whole garden");
+  });
+
+  it("writes each type's details as one short line", () => {
+    expect(careDetailsText({ type: "fertilizing", fertilizerProduct: "Fish emulsion", fertilizerAmount: 50, fertilizerUnit: "ml" })).toBe("Fish emulsion · 50 ml");
+    expect(careDetailsText({ type: "planting", plantName: "Basil", plantCount: 1 })).toBe("1 plant");
+    expect(careDetailsText({ type: "planting", plantCount: 3 })).toBe("3 plants");
+    expect(careDetailsText({ type: "pruning", pruneDetail: "Side shoots" })).toBe("Side shoots");
+    expect(careDetailsText({ type: "pest-treatment", pestProblem: "Aphids", pestTreatment: "Soap spray" })).toBe("Aphids · Soap spray");
+    expect(careDetailsText({ type: "watering" })).toBe("");
+  });
+
+  it("reads only the chosen type's details from the form", () => {
+    const form = { ...emptyCareDetailsForm(), plantName: " Basil ", plantCount: "2", pestProblem: "Aphids" };
+    expect(careDetailsFromForm("planting", form)).toEqual({ details: { plantName: "Basil", plantCount: 2 } });
+    expect(careDetailsFromForm("watering", form)).toEqual({ details: {} });
+    expect(careDetailsFromForm("planting", { plantCount: "0" })).toEqual({ error: "Enter a whole number of plants from 1 to 999.", field: "plantCount" });
+    expect(careDetailsFromForm("fertilizing", { fertilizerAmount: "-1" })).toEqual({ error: "Enter a fertilizer amount greater than zero.", field: "fertilizerAmount" });
+    // A draft kept from before ADR-0085 has no new fields; it reads as empty.
+    expect(careDetailsFromForm("pruning", {})).toEqual({ details: {} });
+  });
+
+  it("round-trips details through the form and notices a change", () => {
+    const record = { type: "pest-treatment" as const, pestProblem: "Aphids" };
+    const form = careDetailsForm(record);
+    expect(form.pestProblem).toBe("Aphids");
+    expect(careDetailsChanged("pest-treatment", form, record)).toBe(false);
+    expect(careDetailsChanged("pest-treatment", { ...form, pestTreatment: "Soap spray" }, record)).toBe(true);
+  });
+
+  it("names each type for forms and filters", () => {
+    expect(careEventTypes.map((type) => careTypeName[type])).toEqual(["Watering", "Fertilizing", "Planting", "Pruning", "Pest treatment"]);
   });
 });
