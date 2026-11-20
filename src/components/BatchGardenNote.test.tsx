@@ -266,4 +266,28 @@ describe("global batch note review", () => {
     await user.click(screen.getByRole("button", { name: "Replace drafts" }));
     await waitFor(() => expect(api.requests).toHaveLength(3));
   });
+
+  it("ticks off matched tasks unless unticked, and adds a planned job as a task (ADR-0085)", async () => {
+    const api = seed();
+    const planned = { sourceText: "Water front tomorrow", reason: "planned" as const, message: "This action is planned, so no completed care record was drafted.",
+      task: { gardenId: "front", type: "watering" as const, dueDate: "2026-11-12", targetScope: "garden" as const, growingAreaId: null, plantingRecordId: null } };
+    vi.mocked(fetch).mockImplementation(((original) => async (url: string, init?: RequestInit) =>
+      url.endsWith("/care-note-drafts") ? response({ ...extraction, notices: [planned] }) : original(url, init))(vi.mocked(fetch).getMockImplementation()!) as typeof fetch);
+    const user = userEvent.setup();
+    render(<GardenWorkspace />);
+    await start(user);
+    const front = within(screen.getByRole("article", { name: "Draft 1" }));
+    const back = within(screen.getByRole("article", { name: "Draft 2" }));
+    expect(front.getByRole("checkbox", { name: /Completes “Water Front garden” · due Jun 1/ })).toBeChecked();
+    await user.click(back.getByRole("checkbox", { name: /Completes “Water Back garden”/ }));
+    await user.click(screen.getByRole("button", { name: "Add as a task for Nov 12" }));
+    await user.click(screen.getByRole("button", { name: "Save 2 records" }));
+    await screen.findByText("Ticked off 1 task · Added 1 task");
+    await waitFor(() => expect(api.remote().gardens[0].careTasks.map((task) => task.id)).toEqual([expect.stringMatching(/^care-task-/)]));
+    const added = api.remote().gardens[0].careTasks[0];
+    expect(added).toMatchObject({ type: "watering", dueDate: "2026-11-12", targetScope: "garden", note: "Water front tomorrow" });
+    // The unticked back-garden task stays as it was; the record itself is still saved.
+    expect(api.remote().gardens[1].careTasks).toEqual(careFixture().gardens[1].careTasks);
+    expect(api.remote().gardens[1].careEvents).toHaveLength(4);
+  });
 });

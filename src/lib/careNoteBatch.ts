@@ -1,12 +1,18 @@
 import { careDetailsFromForm, emptyCareDetailsForm, isCalendarDate, plantGroupDisplayName, type CareDetailsForm } from "./careRecords";
-import { careEventTypes, type CareDetailField, type CareEvent, type CareEventTargetScope, type CareEventType, type GardenWorkspace } from "./gardenWorkspace";
-import { CARE_NOTE_BATCH_LIMIT, type CareNoteBatchDraftResponse } from "./gardenWorkspaceApi";
+import { finishCareTask, updateCareOwner, type CareOwner } from "./careViews";
+import { careDetailsOf, careEventTypes, type CareDetailField, type CareDetails, type CareEvent, type CareEventTargetScope, type CareEventType, type CareTask, type GardenWorkspace } from "./gardenWorkspace";
+import { CARE_NOTE_BATCH_LIMIT, type CareNoteBatchDraftResponse, type CareNoteBatchTaskSuggestion } from "./gardenWorkspaceApi";
+import { matchNoteTasks, type TaskRef } from "./noteTaskMatch";
 
 export type CareDraftRow = CareDetailsForm & {
   draftId: string; eventId: string; included: boolean; sourceText: string; note: string;
   gardenId: string; type: CareEventType | ""; date: string; targetScope: CareEventTargetScope | "";
   growingAreaId: string; plantingRecordId: string; reviewNotes: string[];
+  /** Matched tasks the gardener unticked; every other match is completed on save (ADR-0085). */
+  skippedTaskKeys?: string[];
 };
+/** A planned job the gardener chose to add as a Care task, with its ID allocated on that click. */
+export type TaskDraft = { taskId: string; sourceText: string; suggestion: CareNoteBatchTaskSuggestion };
 /** Error field IDs keep their earlier names: "amount" for the fertilizer amount, "count" for plants. */
 const detailErrorField: Partial<Record<CareDetailField, string>> = { fertilizerAmount: "amount", plantCount: "count" };
 export const batchFieldId = (row: CareDraftRow, field: string) => `batch-${row.draftId}-${field}`;
@@ -57,16 +63,53 @@ function rowEvent(workspace: GardenWorkspace, row: CareDraftRow): CareEvent {
   };
 }
 
+/** The open tasks each included row would complete, keyed by draft ID, from one workspace snapshot. */
+export function rowTaskMatches(workspace: GardenWorkspace, rows: CareDraftRow[]): Map<string, TaskRef[]> {
+  return matchNoteTasks(workspace, rows.filter((row) => row.included).map((row) => ({ ...row, key: row.draftId })));
+}
+
+const detailsFromSuggestion = (suggestion: CareNoteBatchTaskSuggestion, type: CareEventType): CareDetails =>
+  careDetailsOf({ type, ...Object.fromEntries(Object.entries(suggestion).filter(([, value]) => value !== null && value !== undefined)) } as CareDetails & { type: CareEventType });
+
+/**
+ * A Care task from a planned job's suggestion, or undefined when the note left out the type, the due
+ * date, or a target that still exists. The job's own words become the task's note.
+ */
+export function taskFromSuggestion(workspace: GardenWorkspace, draft: TaskDraft): { owner: CareOwner; task: CareTask } | undefined {
+  const { suggestion } = draft;
+  if (!suggestion.type || !suggestion.dueDate || !isCalendarDate(suggestion.dueDate) || !suggestion.targetScope) return undefined;
+  const base = { id: draft.taskId, type: suggestion.type, dueDate: suggestion.dueDate, note: draft.sourceText, ...detailsFromSuggestion(suggestion, suggestion.type) };
+  if (suggestion.targetScope === "all-gardens") return { owner: { ownerScope: "workspace" }, task: { ...base, targetScope: "all-gardens" } };
+  const garden = workspace.gardens.find((item) => item.id === suggestion.gardenId);
+  if (!garden) return undefined;
+  const owner: CareOwner = { ownerScope: "garden", gardenId: garden.id };
+  if (suggestion.targetScope === "garden") return { owner, task: { ...base, targetScope: "garden" } };
+  if (suggestion.targetScope === "planting-area") {
+    const area = garden.growingAreas.find((item) => item.id === suggestion.growingAreaId);
+    return area ? { owner, task: { ...base, targetScope: "planting-area", growingAreaId: area.id, growingAreaName: area.name } } : undefined;
+  }
+  const planting = garden.plantings.find((item) => item.id === suggestion.plantingRecordId);
+  return planting ? { owner, task: { ...base, targetScope: "plant-group", plantingRecordId: planting.id, plantingRecordName: plantGroupDisplayName(planting, garden) } } : undefined;
+}
+
 export function batchRowsPresent(workspace: GardenWorkspace, rows: CareDraftRow[]) {
   return rows.every((row) => (row.targetScope === "all-gardens" ? workspace.careEvents : workspace.gardens.find((garden) => garden.id === row.gardenId)?.careEvents)?.some((event) => event.id === row.eventId));
 }
 
-/** Validate the whole selection against the latest snapshot before writing any row. */
-export function applyCareDraftBatch(workspace: GardenWorkspace, rows: CareDraftRow[]) {
+/**
+ * Validate the whole selection against the latest snapshot before writing any row. A saved row also
+ * finishes the open tasks it matches (ADR-0085): the row is that task's history record, so no second
+ * record is written. Chosen planned jobs become new tasks in the same save.
+ */
+export function applyCareDraftBatch(workspace: GardenWorkspace, rows: CareDraftRow[], taskDrafts: TaskDraft[] = []) {
   const selected = rows.filter((row) => row.included);
   const errors = batchRowsErrors(workspace, rows);
-  if (!selected.length || selected.length > CARE_NOTE_BATCH_LIMIT) errors.batch = `Select between 1 and ${CARE_NOTE_BATCH_LIMIT} records to save.`;
-  if (Object.keys(errors).length) return { workspace, errors, added: 0 };
+  const none = { workspace, errors, added: 0, tasksCompleted: 0, tasksAdded: 0 };
+  if ((!selected.length && !taskDrafts.length) || selected.length > CARE_NOTE_BATCH_LIMIT) errors.batch = `Select between 1 and ${CARE_NOTE_BATCH_LIMIT} records to save.`;
+  const newTasks = taskDrafts.map((draft) => taskFromSuggestion(workspace, draft));
+  if (newTasks.some((item) => !item)) errors.batch = "A planned job is missing its type, date, or target. Add it in Care instead.";
+  if (Object.keys(errors).length) return none;
+  const matches = rowTaskMatches(workspace, rows);
   const pending: Array<{ row: CareDraftRow; event: CareEvent }> = [];
   for (const row of selected) {
     const event = rowEvent(workspace, row);
@@ -82,15 +125,29 @@ export function applyCareDraftBatch(workspace: GardenWorkspace, rows: CareDraftR
       }
     } else pending.push({ row, event });
   }
-  if (Object.keys(errors).length || !pending.length) return { workspace, errors, added: 0 };
-  return {
-    workspace: {
-      ...workspace,
-      careEvents: [...workspace.careEvents, ...pending.filter(({ row }) => row.targetScope === "all-gardens").map(({ event }) => event)],
-      gardens: workspace.gardens.map((garden) => {
-        const additions = pending.filter(({ row }) => row.targetScope !== "all-gardens" && row.gardenId === garden.id).map(({ event }) => event);
-        return additions.length ? { ...garden, careEvents: [...garden.careEvents, ...additions] } : garden;
-      }),
-    }, errors, added: pending.length,
+  if (Object.keys(errors).length || (!pending.length && !taskDrafts.length)) return none;
+  let next: GardenWorkspace = {
+    ...workspace,
+    careEvents: [...workspace.careEvents, ...pending.filter(({ row }) => row.targetScope === "all-gardens").map(({ event }) => event)],
+    gardens: workspace.gardens.map((garden) => {
+      const additions = pending.filter(({ row }) => row.targetScope !== "all-gardens" && row.gardenId === garden.id).map(({ event }) => event);
+      return additions.length ? { ...garden, careEvents: [...garden.careEvents, ...additions] } : garden;
+    }),
   };
+  // Only rows written now finish tasks, so a replay of saved rows never advances a task twice.
+  let tasksCompleted = 0;
+  for (const { row } of pending) {
+    for (const ref of matches.get(row.draftId) ?? []) {
+      if (row.skippedTaskKeys?.includes(ref.key)) continue;
+      next = updateCareOwner(next, ref.owner, (records) => finishCareTask(records, ref.task.id, row.date));
+      tasksCompleted += 1;
+    }
+  }
+  let tasksAdded = 0;
+  for (const item of newTasks) {
+    // A replay keeps the task its ID already added instead of adding it twice.
+    next = updateCareOwner(next, item!.owner, (records) => records.careTasks.some((task) => task.id === item!.task.id) ? records
+      : (tasksAdded += 1, { ...records, careTasks: [...records.careTasks, item!.task] }));
+  }
+  return { workspace: next, errors, added: pending.length, tasksCompleted, tasksAdded };
 }

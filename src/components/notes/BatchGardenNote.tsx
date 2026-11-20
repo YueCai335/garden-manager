@@ -5,10 +5,13 @@ import { useWorkspace } from "@/components/workspace/WorkspaceProvider";
 import { useConfirmation } from "@/components/ConfirmDialog";
 import { FeedbackForm, FormField, InlineNotice } from "@/components/forms/FormFeedback";
 import { Button, ButtonLink } from "@/components/ui/Button";
-import { batchFieldId, batchRowsErrors, type CareDraftRow } from "@/lib/careNoteBatch";
+import { batchFieldId, batchRowsErrors, rowTaskMatches, taskFromSuggestion, type CareDraftRow } from "@/lib/careNoteBatch";
+import { calendarLabel, careTitle, careTypeName } from "@/lib/careLabels";
+import { workspaceCareGarden } from "@/lib/careViews";
+import type { TaskRef } from "@/lib/noteTaskMatch";
 import { AI_CARE_NOTE_MAX_LENGTH, CARE_NOTE_BATCH_LIMIT } from "@/lib/gardenWorkspaceApi";
 import { careDetailFields, careEventTypes, type CareDetailField, type GardenWorkspace } from "@/lib/gardenWorkspace";
-import { careTypeName } from "@/lib/careLabels";
+
 import styles from "./BatchGardenNote.module.css";
 import dialogStyles from "./GardenNoteDialog.module.css";
 
@@ -37,6 +40,10 @@ export function BatchGardenNote({ onClose }: { onClose?: () => void }) {
   }, [onClose, stage]);
   if (!workspace) return <section className="operations-content">{!onClose && <h2>AI Garden Note</h2>}<Link href="/gardens/new">Create a garden to start recording care</Link></section>;
   const recordCount = (count: number) => `${count} ${count === 1 ? "record" : "records"}`;
+  const taskCount = (count: number) => `${count} ${count === 1 ? "task" : "tasks"}`;
+  // ADR-0085: the tasks each row would tick off, from the latest workspace.
+  const matches = rowTaskMatches(sync.getLatestWorkspace() ?? workspace, batch.rows);
+  const chosenTasks = batch.taskDrafts.length;
   const selected = batch.rows.filter((row) => row.included);
   const locations = selected.some((row) => row.targetScope === "all-gardens") ? " · Includes all-gardens care" : "";
   const gardenCount = new Set(selected.filter((row) => row.targetScope !== "all-gardens" && row.gardenId).map((row) => row.gardenId)).size;
@@ -54,6 +61,7 @@ export function BatchGardenNote({ onClose }: { onClose?: () => void }) {
     {!onClose && <h2 id={titleId} tabIndex={-1}>AI Garden Note</h2>}
     {receipt && receipt.status !== "discarded" ? <section aria-label="Batch result">
       <h3 tabIndex={-1} ref={(node) => { stageFocus.current = node; }}>{receipt.status === "saved" ? `Saved ${recordCount(receipt.rows.length)}` : `Added ${recordCount(receipt.rows.length)} to this workspace`}</h3>
+      {(receipt.tasksCompleted > 0 || receipt.tasksAdded > 0) && <p>{[receipt.tasksCompleted && `Ticked off ${taskCount(receipt.tasksCompleted)}`, receipt.tasksAdded && `Added ${taskCount(receipt.tasksAdded)}`].filter(Boolean).join(" · ")}</p>}
       <p role="status">{receipt.status === "saved" ? "Your reviewed records are saved." : "Waiting for workspace sync. You can close this window while saving continues."}</p>
       <details><summary>Original note</summary><p className={styles.quote}>{receipt.note}</p>{receipt.sourceNote !== receipt.note && <><strong>Draft source note</strong><p className={styles.quote}>{receipt.sourceNote}</p></>}</details>
       {receipt.status === "saved" && <div className={actionClass}>
@@ -74,11 +82,18 @@ export function BatchGardenNote({ onClose }: { onClose?: () => void }) {
       </FeedbackForm>
       {batch.stale && <InlineNotice tone="warning">Your note changed after these drafts were created. Review them against the original text below, or choose Generate again to replace them.<span className={styles.originalNote}>{batch.sourceNote}</span></InlineNotice>}
       {receipt?.status === "discarded" && <InlineNotice>Reloading removed some or all of this batch. No new records have been added. Check these drafts before saving again.</InlineNotice>}
-      {batch.notices.length > 0 && <section aria-label="Notes needing attention"><h3>Notes needing attention</h3>{batch.notices.map((notice, index) => <div key={index}><p className={styles.quote}>{notice.sourceText}</p><p>{notice.message}</p></div>)}</section>}
+      {batch.notices.length > 0 && <section aria-label="Notes needing attention"><h3>Notes needing attention</h3>{batch.notices.map((notice, index) => {
+        const suggested = notice.task ? taskFromSuggestion(workspace, { taskId: "check", sourceText: notice.sourceText, suggestion: notice.task }) : undefined;
+        const chosen = batch.taskDrafts.some((item) => item.noticeIndex === index);
+        return <div key={index}><p className={styles.quote}>{notice.sourceText}</p><p>{notice.message}</p>
+          {suggested && <Button aria-pressed={chosen} onClick={() => batch.toggleTask(index)}>{chosen ? "Task will be added · Undo" : `Add as a task for ${calendarLabel(suggested.task.dueDate, { month: "short", day: "numeric" })}`}</Button>}
+          {notice.task && !suggested && <p>Add it in Care to set a reminder; the note did not say enough for a task.</p>}
+        </div>;
+      })}</section>}
       {batch.rows.length ? <FeedbackForm id="batch-note-review" notice="" error={batch.errors.batch} validate={() => batchRowsErrors(sync.getLatestWorkspace() ?? workspace, batch.rows)} onSubmit={batch.apply}>
         <h3 tabIndex={-1} ref={(node) => { stageFocus.current = node; }}>Review {recordCount(selected.length)}{gardenCount ? ` across ${gardenCount} ${gardenCount === 1 ? "garden" : "gardens"}` : ""}{locations}</h3>
         <p>Unchecked drafts are kept for later review.</p>
-        {batch.rows.map((row, index) => <DraftRow key={row.draftId} row={row} index={index} workspace={workspace} errors={batch.errors} patch={(patch) => batch.patchRow(row.draftId, patch)} remove={() => requestConfirmation({ message: `Remove draft ${index + 1}? The original note stays available.`, confirmLabel: "Remove draft", fallbackFocusId: titleId, onConfirm: () => batch.removeRow(row.draftId) })} />)}
+        {batch.rows.map((row, index) => <DraftRow key={row.draftId} row={row} index={index} workspace={workspace} errors={batch.errors} tasks={matches.get(row.draftId) ?? []} patch={(patch) => batch.patchRow(row.draftId, patch)} remove={() => requestConfirmation({ message: `Remove draft ${index + 1}? The original note stays available.`, confirmLabel: "Remove draft", fallbackFocusId: titleId, onConfirm: () => batch.removeRow(row.draftId) })} />)}
       </FeedbackForm> : batch.sourceNote && <p>No completed care records were extracted. Check any notes needing attention, revise your note, or add a record manually.</p>}
       {batch.rows.length >= CARE_NOTE_BATCH_LIMIT && <p>Up to {CARE_NOTE_BATCH_LIMIT} records per batch.</p>}
       <div className={actionClass}>
@@ -89,15 +104,18 @@ export function BatchGardenNote({ onClose }: { onClose?: () => void }) {
         <Button disabled={batch.rows.length >= CARE_NOTE_BATCH_LIMIT} onClick={batch.addRow}>Add record</Button>
         <Button variant={batch.rows.length ? "secondary" : "primary"} type="submit" form="batch-note-source"
           disabled={!sync.isSynced || !noteLength || tooLong} loading={batch.loading} loadingLabel="Creating drafts…">{batch.rows.length ? "Generate again" : "Create drafts"}</Button>
-        {batch.rows.length > 0 && <Button variant="primary" type="submit" form="batch-note-review" disabled={!selected.length || batch.loading}>Save {recordCount(selected.length)}</Button>}
+        {batch.rows.length > 0 && <Button variant="primary" type="submit" form="batch-note-review" disabled={(!selected.length && !chosenTasks) || batch.loading}>Save {recordCount(selected.length)}</Button>}
+        {!batch.rows.length && chosenTasks > 0 && <Button variant="primary" onClick={batch.apply} disabled={batch.loading}>Add {taskCount(chosenTasks)}</Button>}
       </div>
     </>}
   </section>;
 }
 
-function DraftRow({ row, index, workspace, patch, remove, errors }: {
-  row: CareDraftRow; index: number; workspace: GardenWorkspace; patch: (patch: Partial<CareDraftRow>) => void; remove: () => void; errors: Record<string, string>;
+function DraftRow({ row, index, workspace, tasks, patch, remove, errors }: {
+  row: CareDraftRow; index: number; workspace: GardenWorkspace; tasks: TaskRef[]; patch: (patch: Partial<CareDraftRow>) => void; remove: () => void; errors: Record<string, string>;
 }) {
+  const skipped = row.skippedTaskKeys ?? [];
+  const taskTitle = (ref: TaskRef) => careTitle(ref.task, ref.owner.ownerScope === "workspace" ? workspaceCareGarden(workspace) : workspace.gardens.find((garden) => ref.owner.ownerScope === "garden" && garden.id === ref.owner.gardenId)!);
   const id = (field: string) => batchFieldId(row, field);
   const garden = workspace.gardens.find((item) => item.id === row.gardenId);
   const target = row.targetScope === "planting-area" ? `planting-area:${row.growingAreaId}` : row.targetScope === "plant-group" ? `plant-group:${row.plantingRecordId}` : row.targetScope;
@@ -113,6 +131,9 @@ function DraftRow({ row, index, workspace, patch, remove, errors }: {
       <Button variant="text" onClick={remove}>Remove draft</Button>
     </div>
     {row.included && rowProblems.length > 0 && <p className={styles.needsReview}>Needs attention: {rowProblems.join(" ")}</p>}
+    {row.included && tasks.map((ref) => <label key={ref.key}><input type="checkbox" checked={!skipped.includes(ref.key)}
+      onChange={(event) => patch({ skippedTaskKeys: event.target.checked ? skipped.filter((key) => key !== ref.key) : [...skipped, ref.key] })} />
+      {` Completes “${taskTitle(ref)}” · due ${calendarLabel(ref.task.dueDate, { month: "short", day: "numeric" })}`}</label>)}
     <fieldset disabled={!row.included} className={styles.fields}>
       <legend className={styles.legend}>Details for record {index + 1}</legend>
       <FormField id={id("garden")} label="Garden" hint={errors[id("garden")]}>

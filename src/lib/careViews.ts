@@ -61,13 +61,17 @@ export function careEventForTask(task: CareTask, date: string, owner: CareOwner,
 }
 
 /** A one-time task leaves the list; a repeating task moves to its next date from the day it was done. */
-export function completeCareTask(records: CareRecords, task: CareTask, event: CareEvent): CareRecords {
+export function finishCareTask(records: CareRecords, taskId: string, doneDate: string): CareRecords {
   return {
     ...records,
-    careEvents: [...records.careEvents, event],
-    careTasks: records.careTasks.flatMap((item) => item.id !== task.id ? [item]
-      : item.repeatIntervalDays ? [{ ...item, dueDate: addDays(event.date, item.repeatIntervalDays) }] : []),
+    careTasks: records.careTasks.flatMap((item) => item.id !== taskId ? [item]
+      : item.repeatIntervalDays ? [{ ...item, dueDate: addDays(doneDate, item.repeatIntervalDays) }] : []),
   };
+}
+
+/** ADR-0023: completing a task writes its one history record and finishes the task. */
+export function completeCareTask(records: CareRecords, task: CareTask, event: CareEvent): CareRecords {
+  return finishCareTask({ ...records, careEvents: [...records.careEvents, event] }, task.id, event.date);
 }
 
 /** Reverses completeCareTask: removes its history record and puts the task back as it was. */
