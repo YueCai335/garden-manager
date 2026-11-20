@@ -1,22 +1,31 @@
 import { careTargetLabel } from "./careRecords";
 import { carePathLabel } from "./careViews";
-import { addDays, type CareEvent, type CareTask, type Garden } from "./gardenWorkspace";
+import { addDays, type CareEvent, type CareEventType, type CareTask, type Garden } from "./gardenWorkspace";
 
 /**
  * The words Gardens (ADR-0081) and Care (ADR-0080) both use for a care row, so the two pages
  * describe the same task the same way.
  */
 
+/** The five care types (ADR-0085) as a task verb, a done verb, and a lowercase noun. */
+export const careTypeVerb: Record<CareEventType, string> = {
+  watering: "Water", fertilizing: "Fertilize", planting: "Plant", pruning: "Prune", "pest-treatment": "Treat pests",
+};
+export const careTypeDoneVerb: Record<CareEventType, string> = {
+  watering: "Watered", fertilizing: "Fertilized", planting: "Planted", pruning: "Pruned", "pest-treatment": "Treated pests",
+};
+export const careTypeNoun: Record<CareEventType, string> = {
+  watering: "watering", fertilizing: "fertilizing", planting: "planting", pruning: "pruning", "pest-treatment": "pest treatment",
+};
+
 /** Verb and place, for example "Water Front garden" or "Fertilize all gardens". */
 export function careTitle(record: CareTask | CareEvent, garden: Garden) {
-  const verb = record.type === "watering" ? "Water" : "Fertilize";
-  return `${verb} ${record.targetScope === "all-gardens" ? "all gardens" : garden.name}`;
+  return `${careTypeVerb[record.type]} ${record.targetScope === "all-gardens" ? "all gardens" : garden.name}`;
 }
 
 /** History's past tense: "Watered Front garden", "Fertilized all gardens". */
 export function careDoneTitle(record: CareEvent, garden: Garden) {
-  const verb = record.type === "watering" ? "Watered" : "Fertilized";
-  return `${verb} ${record.targetScope === "all-gardens" ? "all gardens" : garden.name}`;
+  return `${careTypeDoneVerb[record.type]} ${record.targetScope === "all-gardens" ? "all gardens" : garden.name}`;
 }
 
 /** The part below the garden: a planting area, an area and a plant group, or the whole garden. */

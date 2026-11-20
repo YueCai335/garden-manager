@@ -16,7 +16,7 @@ from .ai import (
     care_note_output_text, care_note_request_bytes, ENGLISH_NOT_COMPLETED_MARKERS,
     note_date_evidence, note_says_all_gardens, note_says_whole_garden,
 )
-from .schemas import ApiModel, CareNoteDraftRequest, CareType, TargetScope, care_note_output_schema
+from .schemas import ApiModel, CareNoteDraftRequest, NoteCareType, TargetScope, care_note_output_schema
 from .service import CareNoteGarden, check_client_today, load_workspace, resolve_care_note_target, stored_care_note_garden
 
 MAX_DRAFTS = 6
@@ -34,7 +34,7 @@ class BatchEventExtraction(ApiModel):
     kind: Literal["completed", "planned", "negated", "unrelated", "ambiguous", "unsupported"]
     source_text: str = Field(alias="sourceText", min_length=1, max_length=500)
     garden_name: str | None = Field(alias="gardenName", max_length=200)
-    type: CareType | None
+    type: NoteCareType | None
     date: str | None = Field(max_length=10)
     target_scope: TargetScope | None = Field(alias="targetScope")
     target_name: str | None = Field(alias="targetName", max_length=200)
@@ -53,7 +53,7 @@ class BatchExtraction(ApiModel):
 class BatchDraft(ApiModel):
     source_text: str = Field(alias="sourceText")
     garden_id: str | None = Field(alias="gardenId")
-    type: CareType | None
+    type: NoteCareType | None
     date: date | None
     target_scope: TargetScope | None = Field(alias="targetScope")
     growing_area_id: str | None = Field(default=None, alias="growingAreaId")

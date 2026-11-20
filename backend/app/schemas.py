@@ -6,7 +6,9 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 GardenAreaKind = Literal["raised-bed", "in-ground", "container", "greenhouse"]
 CropFamily = Literal["nightshade", "brassica", "cucurbit", "legume", "allium", "root", "leafy", "other"]
-CareType = Literal["watering", "fertilizing"]
+CareType = Literal["watering", "fertilizing", "planting", "pruning", "pest-treatment"]
+# The AI note extraction still reads only these two until its contract changes (ADR-0085, plan N3).
+NoteCareType = Literal["watering", "fertilizing"]
 TargetScope = Literal["all-gardens", "garden", "planting-area", "plant-group"]
 CareNoteKind = Literal["completed", "planned", "negated", "multiple", "unrelated"]
 CARE_NOTE_MAX_LENGTH = 500
@@ -117,26 +119,49 @@ class CareTargetInput(ApiModel):
         return self
 
 
-class CareEventInput(CareTargetInput):
-    id: str = Field(min_length=1, max_length=120)
+# The optional details each care type keeps (ADR-0085). A detail on any other type is rejected.
+CARE_DETAIL_FIELDS: dict[str, tuple[str, ...]] = {
+    "watering": (),
+    "fertilizing": ("fertilizer_product", "fertilizer_amount", "fertilizer_unit"),
+    "planting": ("plant_name", "plant_count"),
+    "pruning": ("prune_detail",),
+    "pest-treatment": ("pest_problem", "pest_treatment"),
+}
+ALL_CARE_DETAIL_FIELDS = tuple(field for fields in CARE_DETAIL_FIELDS.values() for field in fields)
+
+
+class CareDetailsInput(ApiModel):
     type: CareType
-    date: Date
-    note: str = Field(max_length=5000)
-    fertilizer_product: str | None = Field(default=None, serialization_alias="fertilizerProduct", validation_alias="fertilizerProduct")
+    fertilizer_product: str | None = Field(default=None, min_length=1, max_length=200, serialization_alias="fertilizerProduct", validation_alias="fertilizerProduct")
     fertilizer_amount: float | None = Field(default=None, gt=0, serialization_alias="fertilizerAmount", validation_alias="fertilizerAmount")
-    fertilizer_unit: str | None = Field(default=None, serialization_alias="fertilizerUnit", validation_alias="fertilizerUnit")
+    fertilizer_unit: str | None = Field(default=None, min_length=1, max_length=80, serialization_alias="fertilizerUnit", validation_alias="fertilizerUnit")
+    plant_name: str | None = Field(default=None, min_length=1, max_length=200, serialization_alias="plantName", validation_alias="plantName")
+    plant_count: int | None = Field(default=None, gt=0, le=999, serialization_alias="plantCount", validation_alias="plantCount")
+    prune_detail: str | None = Field(default=None, min_length=1, max_length=200, serialization_alias="pruneDetail", validation_alias="pruneDetail")
+    pest_problem: str | None = Field(default=None, min_length=1, max_length=200, serialization_alias="pestProblem", validation_alias="pestProblem")
+    pest_treatment: str | None = Field(default=None, min_length=1, max_length=200, serialization_alias="pestTreatment", validation_alias="pestTreatment")
 
     @model_validator(mode="after")
-    def fertilizer_details_match_type(self):
-        details = (self.fertilizer_product, self.fertilizer_amount, self.fertilizer_unit)
-        if self.type == "watering" and any(value is not None for value in details):
-            raise ValueError("watering events cannot include fertilizer details")
+    def details_match_type(self):
+        allowed = CARE_DETAIL_FIELDS[self.type]
+        foreign = [field for field in ALL_CARE_DETAIL_FIELDS if field not in allowed and getattr(self, field) is not None]
+        if foreign:
+            raise ValueError(f"{self.type} care cannot include {', '.join(foreign)}")
         return self
 
+    def care_details(self) -> dict:
+        """The detail columns to store, keyed by column name."""
+        return {field: getattr(self, field) for field in ALL_CARE_DETAIL_FIELDS}
 
-class CareTaskInput(CareTargetInput):
+
+class CareEventInput(CareDetailsInput, CareTargetInput):
     id: str = Field(min_length=1, max_length=120)
-    type: CareType
+    date: Date
+    note: str = Field(max_length=5000)
+
+
+class CareTaskInput(CareDetailsInput, CareTargetInput):
+    id: str = Field(min_length=1, max_length=120)
     due_date: Date = Field(serialization_alias="dueDate", validation_alias="dueDate")
     note: str = Field(max_length=5000)
     repeat_interval_days: int | None = Field(default=None, gt=0, serialization_alias="repeatIntervalDays", validation_alias="repeatIntervalDays")
@@ -287,7 +312,7 @@ class CareNoteExtraction(ApiModel):
     """Model output. Every field is required; a note that omits a detail gives null (ADR-0058)."""
 
     kind: CareNoteKind
-    type: CareType | None
+    type: NoteCareType | None
     date: Date | None
     target_scope: TargetScope | None = Field(serialization_alias="targetScope", validation_alias="targetScope")
     target_name: str | None = Field(max_length=200, serialization_alias="targetName", validation_alias="targetName")
@@ -312,7 +337,7 @@ def care_note_output_schema() -> dict:
 
     properties = {
         "kind": {"type": "string", "enum": list(get_args(CareNoteKind))},
-        "type": nullable_enum(get_args(CareType)),
+        "type": nullable_enum(get_args(NoteCareType)),
         "date": {**nullable("string"), "description": "YYYY-MM-DD"},
         "targetScope": nullable_enum(get_args(TargetScope)),
         "targetName": nullable("string"),
@@ -330,7 +355,7 @@ def care_note_output_schema() -> dict:
 
 class CareNoteDraftResponse(ApiModel):
     kind: CareNoteKind
-    type: CareType | None = None
+    type: NoteCareType | None = None
     date: Date | None = None
     note: str
     # None until the gardener chooses a target; nothing defaults to the whole garden.

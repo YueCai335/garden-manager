@@ -11,13 +11,14 @@ import { CareCompletionForm, CareLocation, CareRecordFormFields, CareTaskFormFie
 import { CareDialog } from "./care/CareParts";
 import { careBoard, CARE_WINDOW_DAYS } from "@/lib/careBoard";
 import { careHistory, HISTORY_PAGE, type HistoryType } from "@/lib/careHistory";
-import { calendarLabel } from "@/lib/careLabels";
+import { calendarLabel, careTypeNoun } from "@/lib/careLabels";
 
 import {
   addDays,
   createId,
   todayDate,
   type CareEvent,
+  type CareEventType,
   type CareTask,
   type Garden,
 } from "@/lib/gardenWorkspace";
@@ -456,7 +457,7 @@ export function CareWorkspace({
   const taskRow = (ownerId?: string, taskId?: string) => careRows(sources, "careTasks").find((row) => row.garden.id === ownerId && row.record.id === taskId);
   const editingTaskRow = taskRow(taskOwnerId, editingCareTaskId);
   const completionTask = completionGarden?.careTasks.find((task) => task.id === completingCareTaskId);
-  const careTypeLabel = (type: "watering" | "fertilizing") => type === "watering" ? "watering" : "fertilizing";
+  const careTypeLabel = (type: CareEventType) => careTypeNoun[type];
 
   const actions: CareBoardActions = {
     onTick: (row, region) => {

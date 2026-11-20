@@ -1,7 +1,7 @@
 # AI Garden Note 重新设计：实施计划
 
 - 日期：2026-11-19（America/Toronto）
-- 状态：计划已写好，还没有开始实现。决定记录在 [ADR-0085](decisions/0085-split-one-garden-note-into-reviewed-records-across-gardens.md)。
+- 状态：N1 已完成（2026-11-20），N2–N8 未开始。决定记录在 [ADR-0085](decisions/0085-split-one-garden-note-into-reviewed-records-across-gardens.md)。
 - 本文读者：负责实现的工程师或 Agent。请先读完本文，再打开第 2 节的设计稿对照。
 - 设计稿是视觉的唯一依据。本文与设计稿冲突时，外观以设计稿为准，行为规则以本文为准；仍有疑问就问用户，不要自己猜。
 - 付费模型评估和公开 demo 的改动放在最后一步（N8），每一步都要先得到用户同意。N0–N7 都不花钱。
@@ -81,7 +81,7 @@
 | fertilizing | `fertilizerProduct`、`fertilizerAmount`、`fertilizerUnit` | 不变 |
 | planting | `plantName`（≤ 200 字）、`plantCount`（正整数，≤ 999） | 都可选 |
 | pruning | `pruneDetail`（≤ 200 字） | 可选 |
-| pest | `pestProblem`、`pestTreatment`（各 ≤ 200 字） | 都可选 |
+| pest-treatment | `pestProblem`、`pestTreatment`（各 ≤ 200 字） | 都可选 |
 
 某个字段只能出现在它自己的类型上，前后端都校验，和现在"浇水不能带肥料"一样。待办现在没有肥料字段，这次一起补上。
 
@@ -102,7 +102,7 @@
 
 ### N1 数据模型：五种操作和细节字段
 
-- 前端：`careEventTypes` 加 `planting`、`pruning`、`pest`；`CareEvent` 和 `CareTask` 加第 5.1 节的字段；工作区格式升到 `version: 11`，旧数据原样读入。
+- 前端：`careEventTypes` 加 `planting`、`pruning`、`pest-treatment`；`CareEvent` 和 `CareTask` 加第 5.1 节的字段；旧数据原样读入。（实现时决定：工作区格式保持 `version: 10`。这次改动只增不减，旧数据本来就合法，不需要迁移函数。）
 - 后端：`CareType` 加三种；四张表加新列（都可为空），写一个 Alembic 迁移；同步读写新字段；校验字段只属于自己的类型。
 - 测试：前端规范化和往返测试；后端 schema 校验、同步往返、迁移升级和回退（`test_migrations.py`）。
 - 用户看不到变化。

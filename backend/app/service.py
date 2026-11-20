@@ -501,9 +501,7 @@ def write_workspace(workspace: Workspace, payload: WorkspaceImport) -> None:
                 event_type=event_input.type,
                 occurred_on=event_input.date,
                 note=event_input.note,
-                fertilizer_product=event_input.fertilizer_product,
-                fertilizer_amount=event_input.fertilizer_amount,
-                fertilizer_unit=event_input.fertilizer_unit,
+                **event_input.care_details(),
             )
         )
     for position, task_input in enumerate(payload.care_tasks):
@@ -515,6 +513,7 @@ def write_workspace(workspace: Workspace, payload: WorkspaceImport) -> None:
                 due_date=task_input.due_date,
                 note=task_input.note,
                 repeat_interval_days=task_input.repeat_interval_days,
+                **task_input.care_details(),
             )
         )
     for garden_position, garden_input in enumerate(payload.gardens):
@@ -581,9 +580,7 @@ def write_workspace(workspace: Workspace, payload: WorkspaceImport) -> None:
                     event_type=event_input.type,
                     occurred_on=event_input.date,
                     note=event_input.note,
-                    fertilizer_product=event_input.fertilizer_product,
-                    fertilizer_amount=event_input.fertilizer_amount,
-                    fertilizer_unit=event_input.fertilizer_unit,
+                    **event_input.care_details(),
                     **target_fields(event_input),
                 )
             )
@@ -596,6 +593,7 @@ def write_workspace(workspace: Workspace, payload: WorkspaceImport) -> None:
                     due_date=task_input.due_date,
                     note=task_input.note,
                     repeat_interval_days=task_input.repeat_interval_days,
+                    **task_input.care_details(),
                     **target_fields(task_input),
                 )
             )
@@ -712,6 +710,24 @@ def target_response(record) -> dict:
     return fields
 
 
+# Column name to API field for the optional care details (ADR-0085).
+CARE_DETAIL_RESPONSE_FIELDS = {
+    "fertilizer_product": "fertilizerProduct",
+    "fertilizer_amount": "fertilizerAmount",
+    "fertilizer_unit": "fertilizerUnit",
+    "plant_name": "plantName",
+    "plant_count": "plantCount",
+    "prune_detail": "pruneDetail",
+    "pest_problem": "pestProblem",
+    "pest_treatment": "pestTreatment",
+}
+
+
+def care_details_response(record) -> dict:
+    """Only the details a record or task actually has, so unset fields stay out of the JSON."""
+    return {name: getattr(record, column) for column, name in CARE_DETAIL_RESPONSE_FIELDS.items() if getattr(record, column) is not None}
+
+
 def care_event_response(event: CareEvent) -> dict:
     return {
         "id": event.external_id,
@@ -719,9 +735,7 @@ def care_event_response(event: CareEvent) -> dict:
         "date": event.occurred_on.isoformat(),
         "note": event.note,
         **target_response(event),
-        **({"fertilizerProduct": event.fertilizer_product} if event.fertilizer_product is not None else {}),
-        **({"fertilizerAmount": event.fertilizer_amount} if event.fertilizer_amount is not None else {}),
-        **({"fertilizerUnit": event.fertilizer_unit} if event.fertilizer_unit is not None else {}),
+        **care_details_response(event),
     }
 
 
@@ -733,6 +747,7 @@ def care_task_response(task: CareTask) -> dict:
         "note": task.note,
         **target_response(task),
         **({"repeatIntervalDays": task.repeat_interval_days} if task.repeat_interval_days is not None else {}),
+        **care_details_response(task),
     }
 
 
@@ -755,9 +770,7 @@ def workspace_care_event_response(event: WorkspaceCareEvent) -> dict:
         "date": event.occurred_on.isoformat(),
         "note": event.note,
         "targetScope": "all-gardens",
-        **({"fertilizerProduct": event.fertilizer_product} if event.fertilizer_product is not None else {}),
-        **({"fertilizerAmount": event.fertilizer_amount} if event.fertilizer_amount is not None else {}),
-        **({"fertilizerUnit": event.fertilizer_unit} if event.fertilizer_unit is not None else {}),
+        **care_details_response(event),
     }
 
 
@@ -769,4 +782,5 @@ def workspace_care_task_response(task: WorkspaceCareTask) -> dict:
         "note": task.note,
         "targetScope": "all-gardens",
         **({"repeatIntervalDays": task.repeat_interval_days} if task.repeat_interval_days is not None else {}),
+        **care_details_response(task),
     }

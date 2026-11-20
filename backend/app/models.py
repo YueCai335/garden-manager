@@ -143,6 +143,19 @@ class PlannedPlanting(Base):
     growing_area: Mapped[GrowingArea] = relationship()
 
 
+class CareDetailColumns:
+    """Optional details each care type keeps (ADR-0085); the schema allows only its own type's."""
+
+    fertilizer_product: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    fertilizer_amount: Mapped[float | None] = mapped_column(Float, nullable=True)
+    fertilizer_unit: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    plant_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    plant_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    prune_detail: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    pest_problem: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    pest_treatment: Mapped[str | None] = mapped_column(String(200), nullable=True)
+
+
 class CareTargetFields:
     target_scope: Mapped[str] = mapped_column(String(32))
     growing_area_external_id: Mapped[str | None] = mapped_column(String(120), nullable=True)
@@ -153,7 +166,7 @@ class CareTargetFields:
     target_planting_deleted: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
 
 
-class CareEvent(CareTargetFields, Base):
+class CareEvent(CareDetailColumns, CareTargetFields, Base):
     __tablename__ = "care_events"
     __table_args__ = (UniqueConstraint("garden_id", "external_id"),)
 
@@ -164,13 +177,10 @@ class CareEvent(CareTargetFields, Base):
     event_type: Mapped[str] = mapped_column(String(32))
     occurred_on: Mapped[date] = mapped_column(Date)
     note: Mapped[str] = mapped_column(Text)
-    fertilizer_product: Mapped[str | None] = mapped_column(String(200), nullable=True)
-    fertilizer_amount: Mapped[float | None] = mapped_column(Float, nullable=True)
-    fertilizer_unit: Mapped[str | None] = mapped_column(String(80), nullable=True)
     garden: Mapped[Garden] = relationship(back_populates="care_events")
 
 
-class CareTask(CareTargetFields, Base):
+class CareTask(CareDetailColumns, CareTargetFields, Base):
     __tablename__ = "care_tasks"
     __table_args__ = (UniqueConstraint("garden_id", "external_id"),)
 
@@ -230,7 +240,7 @@ class KnowledgeChunk(Base):
     source: Mapped[KnowledgeSource] = relationship(back_populates="chunks")
 
 
-class WorkspaceCareEvent(Base):
+class WorkspaceCareEvent(CareDetailColumns, Base):
     __tablename__ = "workspace_care_events"
     __table_args__ = (UniqueConstraint("workspace_id", "external_id"),)
 
@@ -241,13 +251,10 @@ class WorkspaceCareEvent(Base):
     event_type: Mapped[str] = mapped_column(String(32))
     occurred_on: Mapped[date] = mapped_column(Date)
     note: Mapped[str] = mapped_column(Text)
-    fertilizer_product: Mapped[str | None] = mapped_column(String(200), nullable=True)
-    fertilizer_amount: Mapped[float | None] = mapped_column(Float, nullable=True)
-    fertilizer_unit: Mapped[str | None] = mapped_column(String(80), nullable=True)
     workspace: Mapped[Workspace] = relationship(back_populates="care_events")
 
 
-class WorkspaceCareTask(Base):
+class WorkspaceCareTask(CareDetailColumns, Base):
     __tablename__ = "workspace_care_tasks"
     __table_args__ = (UniqueConstraint("workspace_id", "external_id"),)
 

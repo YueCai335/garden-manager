@@ -1,5 +1,5 @@
 import { careTargetLabel } from "./careRecords";
-import { addDays, plantDisplayName, type CareEvent, type CareTask, type Garden, type GardenWorkspace } from "./gardenWorkspace";
+import { addDays, careDetailsOf, plantDisplayName, type CareEvent, type CareTask, type Garden, type GardenWorkspace } from "./gardenWorkspace";
 
 export type CareOwner = { ownerScope: "workspace" } | { ownerScope: "garden"; gardenId: string };
 export type CareRow<T> = { key: string; record: T; owner: CareOwner; garden: Garden; targetLabel: string };
@@ -55,6 +55,8 @@ export function careEventForTask(task: CareTask, date: string, owner: CareOwner,
     ...(task.targetScope === "plant-group"
       ? { plantingRecordId: task.plantingRecordId, plantingRecordName: task.plantingRecordName, ...(task.targetPlantingRecordDeleted ? { targetPlantingRecordDeleted: true } : {}) }
       : {}),
+    // A task's details ("Plant basil × 2") become the record's details when it is done (ADR-0085).
+    ...careDetailsOf(task),
   };
 }
 
