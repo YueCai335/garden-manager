@@ -16,7 +16,8 @@ the same cases and halted at its first request (see `../batch-3/README.md`).
 - Allowance: 27 requests: one compatibility request (500 of the costliest
   character, the largest request the API accepts), then each case once.
 - Cost bound: $0.155 with every input at its byte bound plus 1,000 format
-  tokens and every output at the 8,192-token cap. Status: **unrun**.
+  tokens and every output at the 8,192-token cap. Status: **ran on 2026-11-20;
+  the gates were not met** (see Results).
 
 ## What each case checks
 
@@ -80,3 +81,93 @@ cd backend && .venv/bin/python scripts/care_note_batch_live.py evaluate --confir
 ```bash
 cd backend && .venv/bin/python scripts/care_note_batch_live.py report
 ```
+
+## Results (2026-11-20, commit `f0cc1e8`)
+
+All 27 requests ran once with known usage: 26,870 input and 11,492 output
+tokens, about **$0.011** at the published prices. Batch 3's one failed request
+reported no usage. The median request took 5.7 s and the slowest 30.7 s, so
+the 90-second timeout was needed.
+
+| Gate | Result |
+| --- | --- |
+| Cases passed (at least 23 of 26) | **11** |
+| Ordinary cases passed (at least 9 of 10) | **4** |
+| Hard-gate failures (none allowed) | **1**: `b3-zh-harvest-unsupported` |
+| Wrong values (none allowed) | 0 |
+| Drafts the app would reject (none allowed) | 0 |
+| Usage unknown (none allowed) | 0 |
+
+Expected drafts found: 16 of 37. Extra drafts: 5. Fields left empty that the
+note supports: 10.
+
+### What failed
+
+1. **Rewritten quotes refuse the whole note (3 cases).** The model rewrote
+   `sourceText` instead of quoting it, for example "今天给 Backyard 都浇了水"
+   for "今天给 Backyard 和 Front Yard 都浇了水", or "I watered the Backyard"
+   with an added "I". The server refuses the whole batch when any quote is
+   not in the note. The twelve-job note also lost one job.
+2. **Padding events break parsing (2 cases).** The model added 11 and 14
+   empty `unrelated` events with an empty `sourceText`, which fails the
+   one-character minimum.
+3. **A long `sharedDateText` breaks parsing (2 cases).** The model copied the
+   whole note into `sharedDateText`, past its 40-character limit.
+4. **One event per garden (2 cases).** For "今天所有花园都浇了水" and for
+   "Today I watered the Eggplant." the model returned one event per garden,
+   so the server made three drafts with empty targets.
+5. **Harvest recorded as planting (hard gate).** "在 Backyard 摘了 Pepper"
+   became a completed planting record.
+6. **Empty dates and targets the note supports (6 cases).** Quotes that drop
+   "Today" or "今天" lose their date evidence; a garden name the note does not
+   state empties the whole target (`b3-en-unique-plant-no-garden`); a garden
+   repeated as `targetName` empties the garden target; one pruning detail
+   repeated the plant name.
+
+What worked: negated work, plant questions, small talk, the prompt injection,
+and the 13-job refusal were all handled, no draft carried a value that
+contradicts the note, and planned jobs produced their task suggestions when
+the batch parsed.
+
+The public demo does not use this flow while the gates are unmet. A later
+batch needs new frozen cases as well as these, so changes are not tuned to
+the cases that found the problems.
+
+## Replay after the server fixes (no requests)
+
+`scripts/care_note_batch_live.py replay --batch batch-4` scores the saved
+answers again with the current server rules. Nothing is sent, the run records
+stay unchanged, and the result is in `replays/`. A replay measures the server
+rules only; it cannot measure the prompt changes, which need a new paid batch.
+
+| | Recorded | Replayed |
+| --- | --- | --- |
+| Cases passed | 11 | 21 |
+| Ordinary cases passed | 4 | 9 |
+| Expected drafts found | 16 of 37 | 36 of 37 |
+| Extra drafts | 5 | 0 |
+| Hard-gate failures | 1 | 0 |
+| Wrong values | 0 | 0 |
+| Unusable answers | 7 | 0 |
+
+The server rules that changed (`app/care_note_batch.py`):
+
+1. Empty padding events are dropped, and a shared date hint longer than 40
+   characters is ignored, before strict parsing.
+2. A quote that is not in the note takes the one clause, or the one sentence,
+   that names every garden and target the event names. A quote that matches
+   none drafts nothing and adds one notice; the rest of the note still counts.
+   A quote too narrow for its names widens to its sentence.
+3. A garden or target name that the quote does not state is ignored, and a
+   target name that is a garden's name is dropped; exact repeats collapse, so
+   one event copied per garden becomes one.
+4. A target name that is one bed or one plant in its named garden sets that
+   target kind when the model labelled it "garden".
+5. A completed planting needs a planting word; a harvest becomes an
+   unsupported notice.
+6. A fragment with no date words takes the note's one date, when every date
+   word in the note (planned fragments aside) is one the rules read.
+
+The five cases that still fail after the replay come from the answers themselves:
+a missing amount, a malformed unit, a pruning detail that repeats the plant
+name, a missing target scope, and one job left out of the twelve.
