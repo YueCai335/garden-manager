@@ -1,7 +1,8 @@
 # ADR-0085: Split One Garden Note into Reviewed Records Across Gardens
 
 - Status: Accepted on 2026-11-19. Implemented on 2026-11-20 (steps N1–N7 of
-  the plan). The paid evaluation and the public demo change are pending (N8).
+  the plan). The first paid evaluation ran on 2026-11-20 and missed its gates;
+  the public demo keeps ADR-0060's flow until a later batch passes (N8).
 - Date: 2026-11-19
 - Supersedes in part:
   - [ADR-0068](0068-extract-bounded-workspace-care-note-batches.md): the limit
@@ -250,6 +251,45 @@ each one under its step.
   margin equal to the measured footer height. The saved home card's two
   actions now wrap at 320 px. White text on the green strip and footer
   measured at least 6.4:1 against the photo behind it.
+
+## Paid evaluation and the public demo (N8)
+
+- **Harness.** `app/care_note_batch_live.py` and
+  `scripts/care_note_batch_live.py` evaluate the batch contract with the same
+  ledger rules as ADR-0059: each request is recorded before it is sent, failures
+  count, nothing retries, and a usage problem halts the batch. The request is
+  the one the app sends; the cases use the three showcase gardens of the public
+  demo. `OpenAICareNoteBatchExtractor` gained `request_params`, and its OpenAI
+  timeout is 90 seconds, like the local model's.
+- **Batch 3** halted at its first request: the OpenAI key had expired, and the
+  tool did not yet record provider errors. It now records the error class,
+  status, and code, never the message.
+- **Batch 4** (`gpt-4o-mini-2024-07-18`, 26 cases, 27 requests, about $0.011)
+  passed 11 of 26 cases and missed the gates. No draft carried a value that
+  contradicts the note, and negated work, questions, the prompt injection, and
+  the 13-job refusal held. One case recorded a harvest as planting. Most other
+  failures came from the model rewriting quotes, padding with empty events, and
+  over-long shared date text, each of which made the server refuse the whole
+  note. The details are in `backend/evaluation/care_note/batch-4/README.md`.
+- **Server fixes after batch 4.** The server now drops empty padding
+  events and an over-long shared date hint, re-anchors a rewritten quote to
+  the one clause or sentence of the note that names its gardens and targets,
+  ignores names the quote does not state, collapses exact repeats, reads a
+  named bed or plant labelled "garden" as that target, needs a planting word
+  for a planting record, and gives an undated fragment the note's one date
+  when every date word in the note is one it reads. Every check still reads
+  the note's own words. A quote that matches nothing drafts nothing and adds a
+  notice, and the rest of the note still counts. Replaying batch 4's saved
+  answers with these rules passes 21 of 26 with no hard-gate failure and no
+  wrong value; a replay cannot measure the prompt changes.
+- **Batch 5** keeps batch 4's 26 cases and adds 12 holdout cases written
+  before any batch-5 request, with the same gate shares (34 of 38, 14 of 15
+  ordinary).
+- **Public demo.** The owner wants the public demo to offer this flow on the
+  low-cost paid model, with request limits that keep the spend small. It moves
+  only after a later batch, with new frozen cases added, meets the gates; the
+  opening then follows `docs/portfolio-demo-deployment.md`, closed first and
+  opened in small steps. Until then the public demo keeps ADR-0060's flow.
 
 ## Reconsideration
 

@@ -12,7 +12,7 @@ from pydantic import ConfigDict, Field
 from sqlalchemy.orm import Session
 
 from .ai import (
-    DEFAULT_CARE_NOTE_OPENAI_MODEL, CareNoteProviderError, OpenAICareNoteExtractor,
+    CHINESE_DATE_WORDS, DEFAULT_CARE_NOTE_OPENAI_MODEL, ENGLISH_DATE_PHRASES, ISO_DATE, CareNoteProviderError, OpenAICareNoteExtractor,
     care_note_output_text, care_note_request_bytes, ENGLISH_NOT_COMPLETED_MARKERS,
     note_date_evidence, note_says_all_gardens, note_says_whole_garden,
 )
@@ -53,7 +53,7 @@ class BatchEventExtraction(ApiModel):
 class BatchExtraction(ApiModel):
     model_config = ConfigDict(extra="forbid", strict=True)
     overflow: bool
-    shared_date_text: str | None = Field(alias="sharedDateText", max_length=40)
+    shared_date_text: str | None = Field(alias="sharedDateText", max_length=40)  # SHARED_DATE_MAX_LENGTH
     events: list[BatchEventExtraction] = Field(max_length=MAX_FRAGMENTS)
 
 
@@ -148,15 +148,21 @@ BATCH_INSTRUCTIONS = (
     "Return all fragments, with at most twelve completed records and twenty-four fragments in total; set overflow "
     "true if either limit would be exceeded. Do not silently omit fragments. Split named gardens into separate "
     "events, never all-gardens unless the note explicitly says every garden. One record has one target. "
-    "sourceText must be an exact contiguous quote from the note, including the action and its negation/time. "
-    "Several targets may share sourceText. Use only exact gardenName/targetName from context, never IDs. "
-    "Unknown fields are null; do not default to the current garden. "
+    "sourceText must be an exact contiguous quote from the note, including the action and its negation/time: copy "
+    "it character for character and never add, drop, translate or reorder words. When one clause names several "
+    "targets, every one of those events uses that whole clause as sourceText. Never pad events with empty fragments. "
+    "Use only exact gardenName/targetName from context, never IDs. gardenName is the garden the fragment itself "
+    "names; when it names none, gardenName is null and the fragment is one event, never one event per garden. An "
+    "all-gardens event has a null gardenName. targetName is a planting area or plant group, never a garden name. "
+    "Unknown fields are null; do not default to the current garden. Harvesting or picking produce is unsupported, "
+    "never planting or pruning. "
     "For completed and planned fragments fill type, garden, target and date when the note states them; for every "
     "other kind keep all event fields null. date uses YYYY-MM-DD; bind each date to its own event. sharedDateText "
-    "may quote a leading date phrase only when it applies to all the events. Missing or ambiguous dates are null. "
+    "is only the leading date words, such as 今天 or Today, and only when they apply to all the events; never a "
+    "sentence. Missing or ambiguous dates are null. "
     "Details are copied exactly as written in the note, never translated, invented or converted: fertilizerProduct, "
-    "fertilizerAmount and fertilizerUnit for fertilizing; plantName and plantCount for planting; pruneDetail (what "
-    "was cut) for pruning; pestProblem and pestTreatment for pest-treatment. Leave other types' details null. "
+    "fertilizerAmount and fertilizerUnit for fertilizing; plantName and plantCount for planting; pruneDetail (the part "
+    "that was cut, such as side shoots, never the plant's name) for pruning; pestProblem and pestTreatment for pest-treatment. Leave other types' details null. "
     "A total fertilizer amount shared across targets is not a per-target amount: leave amounts null and preserve "
     "the quote. Return only JSON matching the schema."
 )
@@ -175,11 +181,33 @@ def check_request_size(params: dict) -> None:
         raise HTTPException(status_code=413, detail="This workspace is too large for one AI note request. Enter the records manually.")
 
 
+SHARED_DATE_MAX_LENGTH = 40
+
+
+def tidy_batch_json(text: str) -> str:
+    """Drop what carries no evidence before strict parsing (ADR-0085 N8, seen with gpt-4o-mini).
+
+    Events with an empty quote say nothing about the note, and a shared date hint
+    longer than a date phrase is unusable as a hint; neither should make the whole
+    answer unusable. Everything else is still parsed strictly.
+    """
+    data = json.loads(text)
+    if not isinstance(data, dict):
+        return text
+    events = data.get("events")
+    if isinstance(events, list):
+        data["events"] = [item for item in events if not (isinstance(item, dict) and isinstance(item.get("sourceText"), str) and not item["sourceText"].strip())]
+    shared = data.get("sharedDateText")
+    if isinstance(shared, str) and len(shared) > SHARED_DATE_MAX_LENGTH:
+        data["sharedDateText"] = None
+    return json.dumps(data, ensure_ascii=False)
+
+
 def parse_batch(text: str) -> BatchExtraction:
     if len(text.encode("utf-8")) > MAX_RESPONSE_BYTES:
         raise CareNoteProviderError("The AI response exceeded the batch limit.")
     try:
-        return BatchExtraction.model_validate_json(text)
+        return BatchExtraction.model_validate_json(tidy_batch_json(text))
     except ValueError as error:
         raise CareNoteProviderError("The AI service returned an unusable care batch.") from error
 
@@ -301,9 +329,42 @@ def resolve_target(event: BatchEventExtraction, gardens: dict[str, CareNoteGarde
     return owned
 
 
+UNSUPPORTED_DATES = re.compile(r"\blast\s+(?:\w+)|\b\d+\s+(?:days?|weeks?|months?|years?)\s+ago\b|上周|上星期|上个月|去年|大前天|\d+天前", re.I)
+# Any wording that may name a day. A fragment with none of it can take the note's one date.
+DATE_WORDS = re.compile(
+    r"yesterday|today|tomorrow|tonight|morning|afternoon|evening|night|\bago\b|\blast\b|\bnext\b|week|month|year|"
+    r"monday|tuesday|wednesday|thursday|friday|saturday|sunday|\d{1,4}[-/]\d{1,2}|\d+\s*(?:st|nd|rd|th)\b|"
+    r"今|昨|明|前天|后天|周|星期|礼拜|月|号|上午|下午|晚上|早上",
+    re.I,
+)
+
+
+def note_wide_date(note: str, extraction: BatchExtraction, today: date) -> date | None:
+    """The note's one date, when every date word in it is a recognized one (ADR-0085 N8).
+
+    Planned fragments are set aside, since their days are in the future. Any other
+    wording that may name a day (上周三, 11月18日, this morning) leaves it None.
+    """
+    text = note
+    for event in extraction.events:
+        if event.kind == "planned":
+            text = text.replace(event.source_text, " ")
+    text = text.casefold()
+    if UNSUPPORTED_DATES.search(text):
+        return None
+    found = note_date_evidence(text, today)
+    if found is None:
+        return None
+    rest = text
+    for pattern, _days in ENGLISH_DATE_PHRASES:
+        rest = pattern.sub(" ", rest)
+    for word, _days in CHINESE_DATE_WORDS:
+        rest = rest.replace(word, " ")
+    return None if DATE_WORDS.search(ISO_DATE.sub(" ", rest)) else found
+
+
 def draft_date(event: BatchEventExtraction, extraction: BatchExtraction, note: str, today: date) -> date | None:
-    unsupported = r"\blast\s+(?:\w+)|\b\d+\s+(?:days?|weeks?|months?|years?)\s+ago\b|上周|上星期|上个月|去年|大前天|\d+天前"
-    if re.search(unsupported, event.source_text, re.I):
+    if UNSUPPORTED_DATES.search(event.source_text):
         return None
     evidence = note_date_evidence(event.source_text, today)
     shared = extraction.shared_date_text
@@ -312,6 +373,9 @@ def draft_date(event: BatchEventExtraction, extraction: BatchExtraction, note: s
         # A conflicting date inside the fragment may not be replaced by shared evidence.
         if note_date_evidence(note, today) == note_date_evidence(shared, today):
             evidence = note_date_evidence(shared, today)
+    if evidence is None and not DATE_WORDS.search(event.source_text):
+        # The model often quotes "watered Backyard" without the note's leading "Today".
+        evidence = note_wide_date(note, extraction, today)
     if event.date is None:
         return evidence
     try:
@@ -408,11 +472,89 @@ def planned_date(event: BatchEventExtraction, today: date) -> date | None:
         return None
 
 
+PLANTING_WORDS = re.compile(r"种|播|栽|定植|\b(?:plant(?:ed|ing)?|sow(?:ed|n|ing)?|seed(?:ed|s)?|transplant(?:ed|ing)?|set out)\b", re.I)
+HARVEST_WORDS = re.compile(r"摘|采|收获|收了|\b(?:harvest(?:ed|ing)?|pick(?:ed|ing)?)\b", re.I)
+CLAUSE_BREAKS = re.compile(r"[,，;；。！？!?]|\.(?=\s|$)")
+SENTENCE_BREAKS = re.compile(r"[;；。！？!?]|\.(?=\s|$)")
+UNMATCHED_MESSAGE = "Part of this note could not be matched to its own words, so no record was drafted for it. Check the note and add anything missing by hand."
+
+
+def note_pieces(note: str, breaks: re.Pattern) -> list[str]:
+    return [piece.strip() for piece in breaks.split(note) if piece.strip()]
+
+
+def requote(event: BatchEventExtraction, note: str) -> BatchEventExtraction | None:
+    """The event with a quote that is really in the note, or None (ADR-0085 N8).
+
+    A model may rewrite its quote ("I fertilized..." for "fertilized..."). The
+    event then takes the one clause, or failing that the one sentence, of the
+    note that names every garden and target the event names. Every later check
+    reads that real text, never the rewritten one.
+    """
+    names = [name for name in (event.garden_name, event.target_name) if name and mentioned(name, note)]
+    if event.source_text in note:
+        if all(mentioned(name, event.source_text) for name in names):
+            return event
+        # A quote too narrow for the names it was given ("用肥皂水喷了一遍" for the Kale in Community
+        # Garden) widens to the one sentence holding both the quote and the names.
+        found = {piece for piece in note_pieces(note, SENTENCE_BREAKS) if event.source_text in piece and all(mentioned(name, piece) for name in names)}
+        return event.model_copy(update={"source_text": found.pop()}) if len(found) == 1 else event
+    if not names:
+        return None
+    for breaks in (CLAUSE_BREAKS, SENTENCE_BREAKS):
+        found = {piece for piece in note_pieces(note, breaks) if all(mentioned(name, piece) for name in names)}
+        if len(found) == 1:
+            return event.model_copy(update={"source_text": found.pop()})
+    return None
+
+
+def tidy_event(event: BatchEventExtraction, gardens: dict[str, CareNoteGarden]) -> BatchEventExtraction:
+    """Drop names the quote does not support, so they cannot empty a target the quote does support."""
+    update = {}
+    if event.garden_name and not mentioned(event.garden_name, event.source_text):
+        # Also undoes one copy per garden of an event that names no garden; the copies then collapse.
+        update["garden_name"] = None
+    if event.target_name and (
+        not mentioned(event.target_name, event.source_text)
+        or any(garden.name.casefold() == event.target_name.casefold() for garden in gardens.values())
+    ):
+        update["target_name"] = None
+    elif event.target_name and event.target_scope == "garden" and event.garden_name:
+        # "Backyard 的 Greenhouse 1" labelled garden: the name itself says which kind of target it is.
+        garden = next((item for item in gardens.values() if item.name.casefold() == event.garden_name.casefold()), None)
+        name = event.target_name.casefold()
+        areas = [area for area in garden.areas if area.name.casefold() == name] if garden else []
+        plants = [plant for plant in garden.plantings if plant.common_name.casefold() == name] if garden else []
+        if len(areas) + len(plants) == 1:
+            update["target_scope"] = "planting-area" if areas else "plant-group"
+    if event.kind == "completed" and event.type == "planting" and not PLANTING_WORDS.search(event.source_text):
+        # Planting needs its own verb; "摘了 Pepper" (picked) is a harvest, which is not a care type.
+        update.update(kind="unsupported" if HARVEST_WORDS.search(event.source_text) else "ambiguous", type=None)
+    return event.model_copy(update=update) if update else event
+
+
+def settle_events(gardens: dict[str, CareNoteGarden], note: str, extraction: BatchExtraction) -> tuple[list[BatchEventExtraction], bool]:
+    """Events with real quotes and supported names, without exact repeats; and whether any completed job was lost."""
+    events, seen, lost = [], set(), False
+    for raw in extraction.events:
+        event = requote(raw, note)
+        if event is None:
+            lost = lost or raw.kind in ("completed", "planned")
+            continue
+        event = tidy_event(event, gardens)
+        key = json.dumps(event.model_dump(), sort_keys=True, ensure_ascii=False)
+        if key not in seen:
+            seen.add(key)
+            events.append(event)
+    return events, lost
+
+
 def drafts_from_batch(gardens: dict[str, CareNoteGarden], note: str, extraction: BatchExtraction, today: date) -> dict:
+    # The limit counts the model's own completed events, before repeats collapse.
     if extraction.overflow or sum(event.kind == "completed" for event in extraction.events) > MAX_DRAFTS:
         raise HTTPException(status_code=422, detail=SPLIT_MESSAGE)
-    if any(event.source_text not in note for event in extraction.events):
-        raise CareNoteProviderError("The AI response did not preserve the original evidence.")
+    events, lost = settle_events(gardens, note, extraction)
+    extraction = extraction.model_copy(update={"events": events})
     drafts, notices = [], []
     fertilizer_events = [event for event in extraction.events if event.kind == "completed" and event.type == "fertilizing"]
     shared_total = len(fertilizer_events) > 1 and bool(re.search(r"\b(total|altogether|combined|between)\b|一共|总共|合计|总量", note, re.I))
@@ -443,6 +585,8 @@ def drafts_from_batch(gardens: dict[str, CareNoteGarden], note: str, extraction:
             review.append("Choose the garden and target for this action; the names were missing, unknown or ambiguous.")
         details = settle_details(event, fertilizer_events, shared_total, review)
         drafts.append({"sourceText": event.source_text, **target, "type": event.type, "date": event_date, **details, "reviewNotes": review})
+    if lost:
+        notices.append({"sourceText": note, "reason": "ambiguous", "message": UNMATCHED_MESSAGE})
     if not drafts and not notices:
         notices.append({"sourceText": note, "reason": "ambiguous", "message": "No care events were identified. Clarify the note or enter records manually."})
     return {"drafts": drafts, "notices": notices}

@@ -127,7 +127,7 @@ changes, mark the old record as superseded and add a new record.
 | [ADR-0082](0082-show-next-season-as-a-rotation-sheet-with-a-dark-plan-lane.md) | Show Next Season as a rotation sheet with a dark plan lane | Accepted 2026-11-16; implemented 2026-11-18 |
 | [ADR-0083](0083-close-app-pages-with-a-compact-footer.md) | Close app pages with a compact footer | Accepted; implemented 2026-11-17 |
 | [ADR-0084](0084-show-the-garden-plan-on-the-landing-page-as-an-exploded-build.md) | Show the Garden Plan on the landing page as an exploded build | Accepted 2026-11-18; not implemented (to be built with the AI Note section) |
-| [ADR-0085](0085-split-one-garden-note-into-reviewed-records-across-gardens.md) | Split one garden note into reviewed records across gardens | Accepted 2026-11-19; implemented 2026-11-20 (N1–N7); paid evaluation and public demo pending (N8) |
+| [ADR-0085](0085-split-one-garden-note-into-reviewed-records-across-gardens.md) | Split one garden note into reviewed records across gardens | Accepted 2026-11-19; implemented 2026-11-20 (N1–N7); first paid evaluation (batch 4) missed its gates; server fixes replay at 21/26; batch 5 with holdout cases is next, and the public demo keeps ADR-0060 until a batch passes (N8) |
 
 ## Interview Use
 

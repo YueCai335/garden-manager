@@ -109,3 +109,92 @@ def test_a_named_garden_wins_over_an_all_gardens_label_the_text_does_not_support
     assert row["gardenId"] == "front" and row["targetScope"] == "garden"
     # Without a named garden, an all-gardens label still needs explicit every-garden wording.
     assert drafts(note, event(note, targetScope="all-gardens"))["drafts"][0]["targetScope"] is None
+
+
+# --- ADR-0085 N8: what the first paid run (batch 4) showed. Offline fakes only. ---
+
+
+def test_empty_padding_events_and_a_long_date_hint_do_not_spoil_the_answer():
+    note = "今天给前院浇了水"
+    raw = {"overflow": False, "sharedDateText": note * 6, "events": [event(note, gardenName="前院", targetScope="garden"), {**event(""), "kind": "unrelated"}]}
+    parsed = batch.parse_batch(__import__("json").dumps(raw, ensure_ascii=False))
+    assert len(parsed.events) == 1 and parsed.shared_date_text is None
+
+
+def test_a_rewritten_quote_takes_the_clause_of_the_note_that_names_its_targets():
+    note = "今天给前院浇了水，fertilized the 后院 Kale with 5 ml fish emulsion"
+    result = drafts(note, event("今天给前院浇了水", gardenName="前院", targetScope="garden"),
+                    event("I fertilized the 后院 Kale with 5 ml fish emulsion", type="fertilizing", gardenName="后院", targetScope="plant-group",
+                          targetName="Kale", fertilizerProduct="fish emulsion", fertilizerAmount=5, fertilizerUnit="ml"))
+    row = result["drafts"][1]
+    assert row["sourceText"] == "fertilized the 后院 Kale with 5 ml fish emulsion"
+    assert (row["plantingRecordId"], row["fertilizerAmount"], row["date"]) == ("back-kale", 5, "2026-11-11")
+    assert result["notices"] == []
+
+
+def test_a_quote_that_matches_no_single_clause_drafts_nothing_and_says_so():
+    note = "今天给前院浇了水，给后院浇了水"
+    result = drafts(note, event("给前院和后院都浇了水", gardenName="社区花园", targetScope="garden"))
+    assert result["drafts"] == []
+    assert result["notices"][0]["message"] == batch.UNMATCHED_MESSAGE
+
+
+def test_a_quote_too_narrow_for_its_names_widens_to_its_sentence():
+    note = "今天发现前院的番茄有蚜虫，用肥皂水喷了一遍"
+    row = drafts(note, event("用肥皂水喷了一遍", type="pest-treatment", gardenName="前院", targetScope="plant-group", targetName="番茄",
+                             pestProblem="蚜虫", pestTreatment="肥皂水"))["drafts"][0]
+    assert row["sourceText"] == note and row["plantingRecordId"] == "front-tomato" and row["pestProblem"] == "蚜虫"
+
+
+def test_one_copy_per_garden_of_an_unnamed_event_collapses_into_one():
+    note = "今天所有花园都浇了水"
+    rows = drafts(note, *[event(note, gardenName=name, targetScope="all-gardens") for name in ("前院", "后院", "社区花园")])["drafts"]
+    assert [(row["gardenId"], row["targetScope"]) for row in rows] == [(None, "all-gardens")]
+    note = "Today I watered Kale"
+    rows = drafts(note, *[event(note, gardenName=name, targetScope="plant-group", targetName="Kale") for name in ("前院", "后院")])["drafts"]
+    assert [(row["gardenId"], row["plantingRecordId"]) for row in rows] == [("back", "back-kale")]
+
+
+def test_names_the_quote_does_not_state_are_ignored_not_trusted():
+    row = drafts("Today I watered Kale", event("Today I watered Kale", gardenName="前院", targetScope="plant-group", targetName="Kale"))["drafts"][0]
+    assert (row["gardenId"], row["plantingRecordId"]) == ("back", "back-kale")
+    row = drafts("今天给前院浇了水", event("今天给前院浇了水", gardenName="前院", targetScope="garden", targetName="高床"))["drafts"][0]
+    assert (row["gardenId"], row["targetScope"]) == ("front", "garden")
+    row = drafts("今天给前院浇了水", event("今天给前院浇了水", gardenName="前院", targetScope="garden", targetName="前院"))["drafts"][0]
+    assert row["targetScope"] == "garden"
+
+
+def test_a_named_bed_or_plant_labelled_garden_becomes_that_target():
+    row = drafts("今天给后院的 Kale 浇了水", event("今天给后院的 Kale 浇了水", gardenName="后院", targetScope="garden", targetName="Kale"))["drafts"][0]
+    assert (row["targetScope"], row["plantingRecordId"]) == ("plant-group", "back-kale")
+    # 高床 names an area in 后院, so the label becomes planting-area; a name that is both an area and a plant would stay unresolved.
+    row = drafts("今天给后院的高床浇了水", event("今天给后院的高床浇了水", gardenName="后院", targetScope="garden", targetName="高床"))["drafts"][0]
+    assert (row["targetScope"], row["growingAreaId"]) == ("planting-area", "back-bed")
+
+
+@pytest.mark.parametrize("note, reason", [("今天在后院摘了 Kale", "unsupported"), ("Picked Kale in 后院 today", "unsupported"), ("今天在后院弄了 Kale", "ambiguous")])
+def test_planting_needs_a_planting_word(note, reason):
+    result = drafts(note, event(note, type="planting", gardenName="后院", targetScope="plant-group", targetName="Kale", plantName="Kale"))
+    assert result["drafts"] == [] and result["notices"][0]["reason"] == reason
+    assert drafts("今天在后院种了 Kale", event("今天在后院种了 Kale", type="planting", gardenName="后院", targetScope="garden"))["drafts"]
+
+
+@pytest.mark.parametrize("note, source, expected", [
+    ("Today: watered 前院; fertilized 后院", "fertilized 后院", "2026-11-11"),
+    ("昨天给前院浇了水，给后院施了肥", "给后院施了肥", "2026-11-10"),
+    # A date word the rules cannot read anywhere in the note keeps every undated fragment empty.
+    ("今天给前院浇了水，11月9日给后院施了肥", "给后院施了肥", None),
+    ("上周三给后院施了肥，今天给前院浇了水", "给后院施了肥", None),
+    ("今天给前院浇了水，昨天给后院施了肥", "给后院施了肥", None),
+])
+def test_an_undated_fragment_takes_the_notes_one_date(note, source, expected):
+    rows = drafts(note, event(source, type="fertilizing", gardenName="后院", targetScope="garden"))["drafts"]
+    assert rows[0]["date"] == expected
+
+
+def test_a_planned_fragment_does_not_stop_the_done_work_taking_todays_date():
+    note = "Today I watered 前院. Tomorrow I will prune 后院"
+    result = drafts(note, event("I watered 前院", gardenName="前院", targetScope="garden"),
+                    event("Tomorrow I will prune 后院", kind="planned", type="pruning", gardenName="后院", targetScope="garden"))
+    assert result["drafts"][0]["date"] == "2026-11-11"
+    assert result["notices"][0]["task"]["dueDate"] == "2026-11-12"

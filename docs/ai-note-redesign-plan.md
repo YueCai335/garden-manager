@@ -1,7 +1,7 @@
 # AI Garden Note 重新设计：实施计划
 
 - 日期：2026-11-19（America/Toronto）
-- 状态：N1–N7 已完成（2026-11-20），N8 未开始。决定记录在 [ADR-0085](decisions/0085-split-one-garden-note-into-reviewed-records-across-gardens.md)。
+- 状态：N1–N7 已完成（2026-11-20）。N8 进行中：第一次付费评估（batch-4，花费约 $0.011）只过了 11/26，没达到门槛，公开 demo 暂不换。决定记录在 [ADR-0085](decisions/0085-split-one-garden-note-into-reviewed-records-across-gardens.md)。
 - 本文读者：负责实现的工程师或 Agent。请先读完本文，再打开第 2 节的设计稿对照。
 - 设计稿是视觉的唯一依据。本文与设计稿冲突时，外观以设计稿为准，行为规则以本文为准；仍有疑问就问用户，不要自己猜。
 - 付费模型评估和公开 demo 的改动放在最后一步（N8），每一步都要先得到用户同意。N0–N7 都不花钱。
@@ -160,7 +160,7 @@
 - 用新的固定用例对 `gpt-4o-mini` 跑付费评估，记录花费和结果。
 - 和用户一起决定公开 demo 是否换成新流程；如果换，按 `docs/portfolio-demo-deployment.md` 的步骤先关着部署，再小批量打开。
 - 这一步涉及花钱、密钥和部署，每一项都要先问用户。
-- 实现时决定（2026-11-20）：新格式的付费评估是一套单独的工具（`backend/app/care_note_batch_live.py`、`backend/scripts/care_note_batch_live.py`），旧的 `care_note_live.py` 留作 ADR-0059 的记录。冻结用例在 `backend/evaluation/care_note/batch-4/`（batch-3 用同样的用例，第一次请求就被 OpenAI 拒绝并停下，当时没记下原因）：26 条笔记，花园用公开 demo 的三个展示花园；共 27 次请求（1 次最大请求的兼容检查 + 每条用例 1 次），上限花费 $0.155。门槛见那里的 README。为了让评估发出的请求和 App 完全一样，`OpenAICareNoteBatchExtractor` 新增 `request_params`，OpenAI 批量请求的超时和本地模型一样改为 90 秒。
+- 实现时决定（2026-11-20）：新格式的付费评估是一套单独的工具（`backend/app/care_note_batch_live.py`、`backend/scripts/care_note_batch_live.py`），旧的 `care_note_live.py` 留作 ADR-0059 的记录。冻结用例在 `backend/evaluation/care_note/batch-4/`（batch-3 用同样的用例，第一次请求就被 OpenAI 拒绝并停下，当时没记下原因）：26 条笔记，花园用公开 demo 的三个展示花园；共 27 次请求（1 次最大请求的兼容检查 + 每条用例 1 次），上限花费 $0.155。门槛见那里的 README。结果（2026-11-20）：过了 11/26，未达门槛；主要问题是模型改写原文引用、补空事件、`sharedDateText` 过长，任何一条都会让服务器整条退回；另有一条把采收记成定植。用户的方向：评估通过后，公开 demo 改用便宜的付费模型并限制次数。随后的修复（同一天）：服务器丢掉空事件和过长的日期提示；改写过的引用重新对到原文里唯一点名这些花园和目标的那一句；不认原文没写的名字；完全重复的事件合并；定植必须有“种、播”之类的词，采收变成不支持的提示；没写日期的片段在全文只有一个能读懂的日期时用这个日期。提示词也补了几句。免费重放 batch-4 的已存回答：21/26，硬性失败 0，填错 0。batch-5 = 原 26 条 + 12 条新的 holdout 用例，门槛比例不变（34/38，普通组 14/15）。为了让评估发出的请求和 App 完全一样，`OpenAICareNoteBatchExtractor` 新增 `request_params`，OpenAI 批量请求的超时和本地模型一样改为 90 秒。
 
 ## 7. 每步都要跑的检查
 

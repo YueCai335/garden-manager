@@ -1,9 +1,9 @@
 """Run the batch Garden Note's paid evaluation against the real OpenAI API (ADR-0085 N8).
 
-The batch lives in backend/evaluation/care_note/batch-4/: frozen cases, the
-ledger, and one run record per request. It allows 27 requests: one
-compatibility request at the largest size the API accepts, then each of the 26
-cases once.
+The batch lives in backend/evaluation/care_note/batch-5/: frozen cases, the
+ledger, and one run record per request. It allows 39 requests: one
+compatibility request at the largest size the API accepts, then each of the 38
+cases once (batch 4's 26 and 12 holdout cases).
 
 Paid commands need --confirm-spend, hold the ledger lock for their whole run,
 and refuse to run while anything except the batch's ledger and run records is
@@ -14,6 +14,7 @@ backend/.env and is never printed.
     python scripts/care_note_batch_live.py validate      # no API call: cases, sizes, cost bound
     python scripts/care_note_batch_live.py status        # no API call
     python scripts/care_note_batch_live.py report        # no API call
+    python scripts/care_note_batch_live.py replay --batch batch-4   # no API call: current rules on saved answers
     python scripts/care_note_batch_live.py compatibility --confirm-spend
     python scripts/care_note_batch_live.py evaluate --confirm-spend
     python scripts/care_note_batch_live.py resolve-interrupted --unit N --note "what the usage page showed"
@@ -39,6 +40,7 @@ from app.care_note_batch_live import (  # noqa: E402
     batch_fingerprint,
     cost_bound,
     evaluation_records,
+    replay_evaluation,
     load_cases,
     request_sizes,
     run_compatibility,
@@ -112,6 +114,28 @@ def print_report() -> None:
     print(json.dumps(summarize(evaluation_records(RUNS)), indent=2))
 
 
+def current_version() -> str:
+    """The commit, marked when the working tree has other changes; a replay costs nothing, so it never refuses."""
+    commit = git("rev-parse", "--short", "HEAD").strip()
+    return commit + ("+uncommitted" if blocking_changes(git("status", "--porcelain", "--untracked-files=all")) else "")
+
+
+def write_replay(batch: str) -> None:
+    replay = replay_evaluation(batch, code_version=current_version(), evaluation_dir=EVALUATION_PATH)
+    path = EVALUATION_PATH / batch / "replays" / f"replay-{replay['source']}.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(replay, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    for item in replay["cases"]:
+        mark = "PASS" if item["replayed_passed"] else "FAIL"
+        changed = "" if item["recorded_passed"] == item["replayed_passed"] else f" (recorded {'PASS' if item['recorded_passed'] else 'FAIL'})"
+        score = item["replayed_score"]
+        print(f"  {item['id']:<34} {mark}{changed} {score['outcome']} drafts {score['actual_drafts']}/{score['expected_drafts']} "
+              f"extra={score['extra_drafts']} empty={score['missing_fields']} wrong={score['wrong_values']} quoted={score['quoted_differently']} "
+              f"notices-missing={score['missing_notices']}{' HARD-GATE' if score['hard_gate_failure'] else ''}")
+    print(json.dumps({"recorded": replay["recorded_summary"], "replayed": replay["replayed_summary"]}, indent=2))
+    print(f"Wrote {path.relative_to(EVALUATION_PATH)} at {replay['code_version']}.")
+
+
 def run_paid(command: str, ledger: BatchNoteLedger, cases: dict, version: str) -> None:
     ledger.check_ready()
     extractor = real_extractor()
@@ -126,7 +150,8 @@ def run_paid(command: str, ledger: BatchNoteLedger, cases: dict, version: str) -
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("command", choices=["validate", "status", "report", "compatibility", "evaluate", "resolve-interrupted"])
+    parser.add_argument("command", choices=["validate", "status", "report", "replay", "compatibility", "evaluate", "resolve-interrupted"])
+    parser.add_argument("--batch", default="batch-4", help="replay: the batch whose saved answers to score again")
     parser.add_argument("--confirm-spend", action="store_true", help="required for commands that call OpenAI")
     parser.add_argument("--unit", type=int, help="resolve-interrupted: the request that did not finish")
     parser.add_argument("--note", default="", help="resolve-interrupted: what the usage check found")
@@ -141,6 +166,9 @@ def main() -> None:
         return
     if args.command == "report":
         print_report()
+        return
+    if args.command == "replay":
+        write_replay(args.batch)
         return
     if args.command in {"compatibility", "evaluate"} and not args.confirm_spend:
         sys.exit(f"{args.command} calls the paid API. Re-run with --confirm-spend.")

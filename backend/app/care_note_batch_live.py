@@ -3,9 +3,9 @@
 One note becomes up to 12 reviewed records across gardens and five care types
 (app/care_note_batch.py). The earlier paid checks (app/care_note_live.py,
 ADR-0059) scored the single-draft contract and no longer apply. This batch,
-backend/evaluation/care_note/batch-4/, has its own cases, ledger, and run
-records and keeps the same rules (batch 3 halted at its first request, whose
-provider error the tool did not yet record):
+backend/evaluation/care_note/batch-5/, has its own cases, ledger, and run
+records and keeps the same rules. Batch 3 halted at its first request (an
+expired key); batch 4 ran and missed its gates; batch 5 adds holdout cases:
 
 - A request is written down before it is sent; a failed or interrupted
   request still counts, and nothing is retried.
@@ -57,17 +57,18 @@ from .service import CareNoteArea, CareNoteGarden, CareNotePlanting
 
 APPROVED_MODEL = DEFAULT_CARE_NOTE_OPENAI_MODEL
 EVALUATION_DIR = Path(__file__).resolve().parents[1] / "evaluation" / "care_note"
-BATCH = "batch-4"
+BATCH = "batch-5"
 COMPATIBILITY_CHECKS = ("near-maximum",)
-GROUP_SIZES = {"ordinary": 10, "missing": 5, "planned": 2, "not_completed": 6, "boundary": 3}
+GROUP_SIZES = {"ordinary": 15, "missing": 7, "planned": 3, "not_completed": 8, "boundary": 5}
+HOLDOUT_CASES = 12
 EVALUATION_CASES = sum(GROUP_SIZES.values())
 STAGES = {"compatibility": len(COMPATIBILITY_CHECKS), "evaluation": EVALUATION_CASES}
 # This batch's own allowance. ADR-0059's 42 local requests were for the
 # single-draft contract and are used up; they are not drawn on here.
 UNIT_LIMIT = sum(STAGES.values())
-# Gates, fixed before the first request (see the batch README).
-MIN_PASSED = 23
-MIN_ORDINARY_PASSED = 9
+# Gates, fixed before the first request (see the batch README); the same shares as batch 4 (23 of 26, 9 of 10).
+MIN_PASSED = 34
+MIN_ORDINARY_PASSED = 14
 
 APP_DIR = Path(__file__).resolve().parent
 # Every file whose code builds the request, turns the response into drafts, or scores them.
@@ -169,6 +170,8 @@ def validate_cases(cases_doc: dict) -> None:
         if case["hardGate"] and expect["outcome"] != "drafts":
             raise ValueError(f"Case {case['id']} is hard-gated but expects {expect['outcome']}.")
         BatchExtraction.model_validate(case["ideal"])
+    if sum(bool(case.get("holdout")) for case in cases) != HOLDOUT_CASES:
+        raise ValueError(f"Cases must mark {HOLDOUT_CASES} holdout notes.")
     if not any(case["expect"]["outcome"] == "split" for case in cases):
         raise ValueError("One case must exceed the draft limit.")
     if not any(len(case["expect"]["drafts"]) == MAX_DRAFTS for case in cases):
@@ -404,6 +407,8 @@ def summarize(case_records: list[dict]) -> dict:
         "invalid_drafts": [key for key, score in scores.items() if score["invalid_drafts"]],
         "unusable": [key for key, score in scores.items() if score["outcome"] in {"unusable", "no_response"}],
         "usage_unknown": [record["case"]["id"] for record in case_records if record.get("input_tokens") is None],
+        "holdout_cases": sum(bool(record["case"].get("holdout")) for record in case_records),
+        "holdout_passed": sum(bool(record["case"].get("holdout")) and record["score"]["passed"] for record in case_records),
     }
     summary["gates_met"] = (
         summary["cases"] == EVALUATION_CASES
@@ -567,4 +572,40 @@ def spend(ledger_data: dict) -> dict:
         "input_tokens": input_tokens,
         "output_tokens": output_tokens,
         "estimated_cost_usd": round(input_tokens * INPUT_PRICE_PER_TOKEN + output_tokens * OUTPUT_PRICE_PER_TOKEN, 6),
+    }
+
+
+# --- Replay: current rules on saved answers, no requests ---
+
+
+def replay_evaluation(batch: str, *, code_version: str, evaluation_dir: Path = EVALUATION_DIR) -> dict:
+    """Score the saved answers of a batch again with today's server rules.
+
+    Nothing is sent and the saved records stay as they are: this measures what
+    the current rules make of answers the model already gave, which is not a
+    new evaluation of the model, and the same answers cannot test a prompt change.
+    """
+    directory = evaluation_dir / batch
+    cases_doc = json.loads((directory / "cases.json").read_text(encoding="utf-8"))
+    gardens = case_gardens(cases_doc)
+    records = evaluation_records(directory / "runs")
+    items, replayed = [], []
+    for record in records:
+        case = record["case"]
+        if "output_text" in record:
+            result = server_result(gardens, case["note"], record["output_text"], date.fromisoformat(record["today"]))
+        else:
+            result = {"outcome": "no_response"}
+        score = score_case(case, result, gardens)
+        replayed.append({"case": case, "score": score, "input_tokens": record.get("input_tokens")})
+        items.append({"id": case["id"], "recorded_passed": record["score"]["passed"], "replayed_passed": score["passed"], "replayed_score": score})
+    return {
+        "description": "Current server rules applied to saved model answers. No request was sent; the recorded results stay as they are.",
+        "batch": batch,
+        "recorded_at": now(),
+        "code_version": code_version,
+        "source": source_digest(SOURCE_FILES),
+        "recorded_summary": summarize(records),
+        "replayed_summary": summarize(replayed),
+        "cases": items,
     }
