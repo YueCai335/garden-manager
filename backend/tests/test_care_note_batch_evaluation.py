@@ -107,9 +107,9 @@ def test_malformed_cases_are_refused_before_any_spending(break_cases):
 
 def test_the_cost_bound_covers_every_request_at_its_caps():
     bound = live.cost_bound(CASES)
-    assert bound["requests"] == live.UNIT_LIMIT == 39
-    assert bound["max_output_tokens"] == 39 * 8192
-    assert bound["max_cost_usd"] < 0.25
+    assert bound["requests"] == live.UNIT_LIMIT == 49
+    assert bound["max_output_tokens"] == 49 * 8192
+    assert bound["max_cost_usd"] < 0.3
 
 
 def test_changing_cases_or_prompt_changes_the_batch(monkeypatch):
@@ -121,9 +121,9 @@ def test_changing_cases_or_prompt_changes_the_batch(monkeypatch):
 
 
 @pytest.mark.parametrize("line, blocks", [
-    (" M backend/evaluation/care_note/batch-5/ledger.json", False),
-    ("?? backend/evaluation/care_note/batch-5/runs/02-evaluation-b3-zh-negated.json", False),
-    (" M backend/evaluation/care_note/batch-5/cases.json", True),
+    (" M backend/evaluation/care_note/batch-6/ledger.json", False),
+    ("?? backend/evaluation/care_note/batch-6/runs/02-evaluation-b3-zh-negated.json", False),
+    (" M backend/evaluation/care_note/batch-6/cases.json", True),
     (" M backend/app/care_note_batch.py", True),
 ])
 def test_only_the_ledger_and_run_records_may_be_uncommitted_during_a_paid_run(line, blocks):
@@ -176,7 +176,7 @@ def test_thirteen_jobs_pass_only_when_the_note_is_refused_whole():
     assert len(case("b3-en-twelve-jobs")["expect"]["drafts"]) == MAX_DRAFTS
 
 
-def records(passed=38, ordinary=15, **score_changes):
+def records(passed=48, ordinary=19, **score_changes):
     built = []
     for index, item in enumerate(CASES["cases"]):
         score = live.score_case(item, ideal_result(item), GARDENS)
@@ -191,9 +191,9 @@ def records(passed=38, ordinary=15, **score_changes):
 
 def test_the_gates_need_every_condition():
     assert live.summarize(records())["gates_met"]
-    assert live.summarize(records(passed=34))["gates_met"]
-    assert not live.summarize(records(passed=33))["gates_met"]
-    assert not live.summarize(records(ordinary=13))["gates_met"]
+    assert live.summarize(records(passed=43))["gates_met"]
+    assert not live.summarize(records(passed=42))["gates_met"]
+    assert not live.summarize(records(ordinary=17))["gates_met"]
     assert not live.summarize(records(**{"b3-zh-negated": {"hard_gate_failure": True}}))["gates_met"]
     assert not live.summarize(records(**{"b3-zh-two-dates": {"wrong_values": ["date"]}}))["gates_met"]
     assert not live.summarize(records(**{"b3-zh-two-dates": {"invalid_drafts": 1}}))["gates_met"]
@@ -282,19 +282,19 @@ def test_an_unusable_answer_still_counts_and_is_not_retried(tmp_path):
     assert len(responses.requests) == 1
 
 
-def test_the_whole_batch_is_39_requests_and_a_rerun_never_repeats_a_case(tmp_path):
+def test_the_whole_batch_is_49_requests_and_a_rerun_never_repeats_a_case(tmp_path):
     with ledger_at(tmp_path) as ledger:
         compatibility_passes(ledger, tmp_path)
         extractor, responses = extractor_with(*[response_for(item["ideal"]) for item in CASES["cases"]])
         outcomes = live.run_evaluation(ledger, extractor, CASES, runs_dir=tmp_path / "runs", code_version="test")
-        assert len(outcomes) == 38 and all(outcome.passed for outcome in outcomes)
+        assert len(outcomes) == 48 and all(outcome.passed for outcome in outcomes)
         assert live.run_evaluation(ledger, extractor, CASES, runs_dir=tmp_path / "runs", code_version="test") == []
         with pytest.raises(LedgerRefused):
             ledger.reserve("evaluation", "extra")
-    assert ledger.used == 39 and len(responses.requests) == 38
+    assert ledger.used == 49 and len(responses.requests) == 48
     summary = live.summarize(live.evaluation_records(tmp_path / "runs"))
-    assert summary["gates_met"] and summary["passed"] == 38 and summary["holdout_passed"] == 12
-    assert live.spend(ledger.data)["requests"] == 39
+    assert summary["gates_met"] and summary["passed"] == 48 and summary["holdout_passed"] == 10
+    assert live.spend(ledger.data)["requests"] == 49
 
 
 def test_a_different_model_or_batch_is_refused(tmp_path):
@@ -332,8 +332,8 @@ def test_the_replay_scores_saved_answers_again_without_changing_them():
     assert {path.name: path.read_text() for path in runs.glob("*.json")} == before
 
 
-def test_batch_5_keeps_batch_4s_cases_and_adds_twelve_holdout_notes():
-    old = json.loads((live.EVALUATION_DIR / "batch-4" / "cases.json").read_text())
+def test_batch_6_keeps_batch_5s_cases_and_adds_ten_holdout_notes():
+    old = json.loads((live.EVALUATION_DIR / "batch-5" / "cases.json").read_text())
     kept = [{key: value for key, value in item.items() if key != "holdout"} for item in CASES["cases"] if not item["holdout"]]
-    assert kept == old["cases"] and CASES["gardens"] == old["gardens"] and CASES["today"] == old["today"]
-    assert sum(item["holdout"] for item in CASES["cases"]) == 12
+    assert kept == [{key: value for key, value in item.items() if key != "holdout"} for item in old["cases"]] and CASES["gardens"] == old["gardens"] and CASES["today"] == old["today"]
+    assert sum(item["holdout"] for item in CASES["cases"]) == 10
