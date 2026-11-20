@@ -261,10 +261,11 @@ def care_note_request_bytes(params: dict) -> int:
 
 
 class OpenAICareNoteExtractor:
-    def __init__(self, api_key: str, model: str, client=None):
+    def __init__(self, api_key: str, model: str, client=None, timeout: float = CARE_NOTE_TIMEOUT_SECONDS):
         self.api_key = api_key
         self.model = model
         self.client = client
+        self.timeout = timeout
 
     def request_params(self, note: str, garden_context: dict[str, object], today: date) -> dict:
         """Every parameter sent to responses.create, exactly as sent."""
@@ -283,7 +284,7 @@ class OpenAICareNoteExtractor:
         from openai import OpenAI
 
         # max_retries=0: one generation sends at most one request.
-        client = self.client or OpenAI(api_key=self.api_key, max_retries=0, timeout=CARE_NOTE_TIMEOUT_SECONDS)
+        client = self.client or OpenAI(api_key=self.api_key, max_retries=0, timeout=self.timeout)
         try:
             return client.responses.create(**params)
         except openai.APITimeoutError as error:

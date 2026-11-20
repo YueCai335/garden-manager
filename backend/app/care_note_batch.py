@@ -186,14 +186,19 @@ def parse_batch(text: str) -> BatchExtraction:
 
 class OpenAICareNoteBatchExtractor:
     def __init__(self, api_key: str, model: str, client=None):
-        self.sender = OpenAICareNoteExtractor(api_key, model, client)
+        # A twelve-job answer takes longer than one draft, so the batch shares the local model's timeout.
+        self.sender = OpenAICareNoteExtractor(api_key, model, client, timeout=TIMEOUT_SECONDS)
 
-    def extract(self, note: str, context: list[dict], today: date) -> BatchExtraction:
-        params = {
+    def request_params(self, note: str, context: list[dict], today: date) -> dict:
+        """Every parameter sent to responses.create, exactly as sent; the paid evaluation sends the same."""
+        return {
             "model": self.sender.model, "store": False, "instructions": BATCH_INSTRUCTIONS,
             "input": batch_input(note, context, today), "max_output_tokens": MAX_OUTPUT_TOKENS,
             "text": {"format": {"type": "json_schema", "name": "care_note_batch", "strict": True, "schema": batch_output_schema()}},
         }
+
+    def extract(self, note: str, context: list[dict], today: date) -> BatchExtraction:
+        params = self.request_params(note, context, today)
         check_request_size(params)
         try:
             return parse_batch(care_note_output_text(self.sender.send(params)))

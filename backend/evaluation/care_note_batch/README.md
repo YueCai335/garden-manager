@@ -1,5 +1,7 @@
 # Batch Garden Note evaluation corpus
 
+Superseded on 2026-11-20 by [`care_note/batch-3`](../care_note/batch-3/README.md), which covers ADR-0085's contract (five care types, up to 12 drafts, questions, and planned task suggestions). This corpus stays as ADR-0068's record and was never run.
+
 `cases.json` freezes 16 bilingual notes and review criteria for ADR-0068. It is
 **unrun**: these are expected outcomes, not provider results or measured scores.
 Omitted expected fields are still reviewed against the original note; they are
