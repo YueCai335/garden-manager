@@ -1,0 +1,36 @@
+{
+  "unit_limit": 27,
+  "batch": {
+    "model": "gpt-4o-mini-2024-07-18",
+    "cases": "a3c5c9e8c7c23a44",
+    "request_template": "df7109eae127df7a",
+    "source": "87b718c0be67b24f",
+    "limits": {
+      "max_request_bytes": 32768,
+      "format_token_allowance": 1000,
+      "max_output_tokens": 8192,
+      "max_drafts": 12,
+      "max_fragments": 24,
+      "timeout_seconds": 90
+    }
+  },
+  "halted": {
+    "reason": "near-maximum failed at the provider without usage: The AI service could not create a care draft.",
+    "at": "2026-11-20T19:53:51+00:00"
+  },
+  "entries": [
+    {
+      "unit": 1,
+      "kind": "compatibility",
+      "label": "near-maximum",
+      "status": "halted",
+      "started_at": "2026-11-20T19:53:50+00:00",
+      "finished_at": "2026-11-20T19:53:51+00:00",
+      "bytes": 7802,
+      "input_tokens": null,
+      "output_tokens": null,
+      "duration_ms": 716,
+      "code_version": "117d99c8f152267162bd13e607d238ba33753ab7"
+    }
+  ]
+}

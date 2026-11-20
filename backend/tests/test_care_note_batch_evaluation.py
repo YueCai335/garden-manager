@@ -120,9 +120,9 @@ def test_changing_cases_or_prompt_changes_the_batch(monkeypatch):
 
 
 @pytest.mark.parametrize("line, blocks", [
-    (" M backend/evaluation/care_note/batch-3/ledger.json", False),
-    ("?? backend/evaluation/care_note/batch-3/runs/02-evaluation-b3-zh-negated.json", False),
-    (" M backend/evaluation/care_note/batch-3/cases.json", True),
+    (" M backend/evaluation/care_note/batch-4/ledger.json", False),
+    ("?? backend/evaluation/care_note/batch-4/runs/02-evaluation-b3-zh-negated.json", False),
+    (" M backend/evaluation/care_note/batch-4/cases.json", True),
     (" M backend/app/care_note_batch.py", True),
 ])
 def test_only_the_ledger_and_run_records_may_be_uncommitted_during_a_paid_run(line, blocks):
@@ -251,6 +251,21 @@ def test_a_provider_error_is_counted_and_halts_the_ledger(tmp_path):
         with pytest.raises(BatchHalted):
             live.run_compatibility(ledger, extractor, CASES, runs_dir=tmp_path / "runs", code_version="test")
     assert ledger.used == 1 and ledger.data["halted"] and len(responses.requests) == 1
+    record = json.loads(next((tmp_path / "runs").glob("01-*.json")).read_text())
+    assert record["provider_error"] == {"type": "APIConnectionError", "status_code": None, "code": None}
+
+
+def test_a_provider_status_error_records_its_status_and_code_but_never_its_message(tmp_path):
+    body = {"error": {"message": "Incorrect API key provided: sk-abc...wxyz", "code": "invalid_api_key"}}
+    response = SimpleNamespace(status_code=401, headers={}, request=SimpleNamespace(method="POST", url="https://example.invalid"))
+    error = openai.AuthenticationError("Incorrect API key provided: sk-abc...wxyz", response=response, body=body["error"])
+    with ledger_at(tmp_path) as ledger:
+        extractor, _ = extractor_with(error)
+        with pytest.raises(BatchHalted, match="invalid_api_key"):
+            live.run_compatibility(ledger, extractor, CASES, runs_dir=tmp_path / "runs", code_version="test")
+    text = next((tmp_path / "runs").glob("01-*.json")).read_text()
+    assert json.loads(text)["provider_error"] == {"type": "AuthenticationError", "status_code": 401, "code": "invalid_api_key"}
+    assert "sk-" not in text and "sk-" not in json.dumps(ledger.data)
 
 
 def test_an_unusable_answer_still_counts_and_is_not_retried(tmp_path):

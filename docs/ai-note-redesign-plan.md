@@ -160,7 +160,7 @@
 - 用新的固定用例对 `gpt-4o-mini` 跑付费评估，记录花费和结果。
 - 和用户一起决定公开 demo 是否换成新流程；如果换，按 `docs/portfolio-demo-deployment.md` 的步骤先关着部署，再小批量打开。
 - 这一步涉及花钱、密钥和部署，每一项都要先问用户。
-- 实现时决定（2026-11-20）：新格式的付费评估是一套单独的工具（`backend/app/care_note_batch_live.py`、`backend/scripts/care_note_batch_live.py`），旧的 `care_note_live.py` 留作 ADR-0059 的记录。冻结用例在 `backend/evaluation/care_note/batch-3/`：26 条笔记，花园用公开 demo 的三个展示花园；共 27 次请求（1 次最大请求的兼容检查 + 每条用例 1 次），上限花费 $0.155。门槛见那里的 README。为了让评估发出的请求和 App 完全一样，`OpenAICareNoteBatchExtractor` 新增 `request_params`，OpenAI 批量请求的超时和本地模型一样改为 90 秒。
+- 实现时决定（2026-11-20）：新格式的付费评估是一套单独的工具（`backend/app/care_note_batch_live.py`、`backend/scripts/care_note_batch_live.py`），旧的 `care_note_live.py` 留作 ADR-0059 的记录。冻结用例在 `backend/evaluation/care_note/batch-4/`（batch-3 用同样的用例，第一次请求就被 OpenAI 拒绝并停下，当时没记下原因）：26 条笔记，花园用公开 demo 的三个展示花园；共 27 次请求（1 次最大请求的兼容检查 + 每条用例 1 次），上限花费 $0.155。门槛见那里的 README。为了让评估发出的请求和 App 完全一样，`OpenAICareNoteBatchExtractor` 新增 `request_params`，OpenAI 批量请求的超时和本地模型一样改为 90 秒。
 
 ## 7. 每步都要跑的检查
 

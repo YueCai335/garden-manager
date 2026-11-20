@@ -1,6 +1,6 @@
 """Run the batch Garden Note's paid evaluation against the real OpenAI API (ADR-0085 N8).
 
-The batch lives in backend/evaluation/care_note/batch-3/: frozen cases, the
+The batch lives in backend/evaluation/care_note/batch-4/: frozen cases, the
 ledger, and one run record per request. It allows 27 requests: one
 compatibility request at the largest size the API accepts, then each of the 26
 cases once.

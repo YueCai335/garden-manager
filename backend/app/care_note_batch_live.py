@@ -3,8 +3,9 @@
 One note becomes up to 12 reviewed records across gardens and five care types
 (app/care_note_batch.py). The earlier paid checks (app/care_note_live.py,
 ADR-0059) scored the single-draft contract and no longer apply. This batch,
-backend/evaluation/care_note/batch-3/, has its own cases, ledger, and run
-records and keeps the same rules:
+backend/evaluation/care_note/batch-4/, has its own cases, ledger, and run
+records and keeps the same rules (batch 3 halted at its first request, whose
+provider error the tool did not yet record):
 
 - A request is written down before it is sent; a failed or interrupted
   request still counts, and nothing is retried.
@@ -56,7 +57,7 @@ from .service import CareNoteArea, CareNoteGarden, CareNotePlanting
 
 APPROVED_MODEL = DEFAULT_CARE_NOTE_OPENAI_MODEL
 EVALUATION_DIR = Path(__file__).resolve().parents[1] / "evaluation" / "care_note"
-BATCH = "batch-3"
+BATCH = "batch-4"
 COMPATIBILITY_CHECKS = ("near-maximum",)
 GROUP_SIZES = {"ordinary": 10, "missing": 5, "planned": 2, "not_completed": 6, "boundary": 3}
 EVALUATION_CASES = sum(GROUP_SIZES.values())
@@ -434,6 +435,17 @@ def server_result(gardens: dict[str, CareNoteGarden], note: str, text: str, toda
 # --- Paid requests ---
 
 
+def provider_error(error: Exception) -> dict:
+    """The SDK error's class, HTTP status, and error code. Never its message, which can quote part of the key."""
+    cause = error.__cause__
+    code = getattr(cause, "code", None)
+    return {
+        "type": type(cause).__name__ if cause is not None else None,
+        "status_code": getattr(cause, "status_code", None),
+        "code": code if isinstance(code, str) else None,
+    }
+
+
 @dataclass
 class UnitOutcome:
     passed: bool
@@ -471,7 +483,8 @@ def run_unit(
         response = extractor.sender.send(params)
     except CareNoteProviderError as error:
         # Usage is unknown, so the request may still have been billed.
-        halted = f"{label} failed at the provider without usage: {error}"
+        record["provider_error"] = provider_error(error)
+        halted = f"{label} failed at the provider without usage: {error} {json.dumps(record['provider_error'])}"
     record["duration_ms"] = round((time.monotonic() - started) * 1000)
     usage = getattr(response, "usage", None)
     record.update(
