@@ -30,8 +30,9 @@ export function GardenNoteDialog({ onClose, opener, fallbackOpener, batchAvailab
     fitViewport();
     viewport?.addEventListener("resize", fitViewport);
     viewport?.addEventListener("scroll", fitViewport);
-    const fallback = fallbackOpener.current;
-    const close = openModalDialog(node, () => (trigger?.isConnected && !trigger.disabled ? trigger : fallback));
+    // Read the fallback when the dialog closes: the home card swaps its button as the note moves from
+    // writing to waiting for review (ADR-0085), so the button seen at opening may be gone by then.
+    const close = openModalDialog(node, () => (trigger?.isConnected && !trigger.disabled ? trigger : fallbackOpener.current));
     heading.current?.focus();
     return () => {
       close();

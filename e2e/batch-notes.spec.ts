@@ -3,11 +3,11 @@ import { careFixture } from "../src/test/careFixture";
 import { todayDate, type GardenWorkspace } from "../src/lib/gardenWorkspace";
 import { openWorkspace, workspaceHome } from "./workspace";
 
-// "Generate draft" appears once the workspace is synced and batch drafting is enabled.
-// Waiting for it ensures "Open note editor" opens the batch review, not the single-record fallback.
+// "Split into records" appears on the home card once batch drafting is enabled; after that the
+// header's "+ Note" opens the batch review, not the single-record fallback (ADR-0085 N6).
 async function openNoteEditor(page: Page) {
-  await expect(page.getByRole("button", { name: "Generate draft" })).toBeVisible();
-  await page.getByRole("button", { name: "Open note editor" }).click();
+  await expect(page.getByRole("button", { name: "Split into records" })).toBeVisible();
+  await page.getByRole("banner").getByRole("button", { name: "Note", exact: true }).click();
 }
 
 for (const width of [390, 1440]) {
@@ -57,8 +57,9 @@ for (const width of [390, 1440]) {
     await first.locator("summary").click();
     await first.getByLabel("Record note").fill("Reviewed front watering");
     await page.keyboard.press("Escape");
-    const resume = page.getByRole("button", { name: "Continue note · 2 drafts" });
-    await expect(resume).toBeFocused();
+    const resume = page.getByRole("button", { name: "Continue review" });
+    // Escape returns focus to the button that opened the note: here the header's "+ Note".
+    await expect(page.getByRole("banner").getByRole("button", { name: "Note", exact: true })).toBeFocused();
     await resume.click();
     await expect(first.getByLabel("Record note")).toHaveValue("Reviewed front watering");
     await second.locator("summary").click();
@@ -125,7 +126,7 @@ test("mobile review keeps six drafts and retries a failed save inside the dialog
   await dialog.getByRole("button", { name: "Save 6 records" }).click();
   await expect(dialog.getByText("Changes not synced")).toBeVisible();
   await dialog.getByRole("button", { name: "Close", exact: true }).click();
-  await page.getByRole("button", { name: "View note status" }).click();
+  await page.getByRole("button", { name: "View status" }).click();
   await dialog.getByRole("button", { name: "Retry", exact: true }).click();
   await expect(dialog.getByRole("heading", { name: "Saved 6 records" })).toBeVisible();
   expect(attempts).toBe(2);

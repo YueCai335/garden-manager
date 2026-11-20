@@ -36,11 +36,12 @@ function seed() {
   resetTestRouter("/gardens");
   return { control, puts, requests, remote: () => server };
 }
-// Before sync finishes, the primary button reads "Open note editor" and then becomes "Generate draft".
-// Wait for the synced state so the click reaches the dedicated editor button.
+// The home card shows its batch placeholder once batch drafting is enabled, and the header's
+// "+ Note" opens the batch dialog from then on (ADR-0085 N6). Wait for sync too.
 async function openEditor(user: ReturnType<typeof userEvent.setup>) {
-  await screen.findByRole("button", { name: "Generate draft" });
-  await user.click(screen.getByRole("button", { name: "Open note editor" }));
+  await screen.findByPlaceholderText(/Write it your way, e\.g\./);
+  await screen.findByText("All changes saved");
+  await user.click(screen.getByRole("button", { name: "Note" }));
 }
 /** Rows start collapsed (ADR-0085); opening one shows its fields. */
 async function expand(user: ReturnType<typeof userEvent.setup>, article: HTMLElement) {
@@ -51,8 +52,9 @@ async function expand(user: ReturnType<typeof userEvent.setup>, article: HTMLEle
 async function start(user: ReturnType<typeof userEvent.setup>) {
   const input = await screen.findByRole("textbox", { name: "Quick garden note" });
   fireEvent.change(input, { target: { value: "Watered front today; Watered back today" } });
-  const generate = await screen.findByRole("button", { name: "Generate draft" });
-  await user.click(generate);
+  const split = await screen.findByRole("button", { name: "Split into records" });
+  await waitFor(() => expect(split).toBeEnabled());
+  await user.click(split);
   await screen.findByRole("article", { name: "Draft 1" });
 }
 
@@ -92,7 +94,7 @@ describe("global batch note review", () => {
     const first = await expand(user, screen.getByRole("article", { name: "Draft 1" }));
     fireEvent.change(first.getByLabelText("Record note"), { target: { value: "Edited front note" } });
     await user.click(screen.getByRole("button", { name: "Close" }));
-    await user.click(await screen.findByRole("button", { name: "Continue note · 2 drafts" }));
+    await user.click(await screen.findByRole("button", { name: "Continue review" }));
     expect(within(await screen.findByRole("article", { name: "Draft 1" })).getByLabelText("Record note")).toHaveValue("Edited front note");
     await user.dblClick(screen.getByRole("button", { name: "Save 2 records" }));
     expect(await screen.findByRole("heading", { name: "Saved 2 records" })).toBeVisible();
@@ -197,7 +199,7 @@ describe("global batch note review", () => {
     expect(screen.queryByRole("button", { name: "Save 2 records" })).not.toBeInTheDocument();
     api.control.fail = false;
     await user.click(within(dialog).getByRole("button", { name: "Close" }));
-    await user.click(screen.getByRole("button", { name: "View note status" }));
+    await user.click(screen.getByRole("button", { name: "View status" }));
     await user.dblClick(within(screen.getByRole("dialog", { name: "Garden Note" })).getByRole("button", { name: "Retry" }));
     await screen.findByRole("heading", { name: "Saved 2 records" });
     expect(api.puts).toHaveLength(2);
@@ -266,7 +268,7 @@ describe("global batch note review", () => {
     await user.click(screen.getByRole("button", { name: "Split into records" }));
     await screen.findByRole("heading", { name: "Reading your note" });
     await user.click(screen.getByRole("button", { name: "Close" }));
-    await user.click(screen.getByRole("button", { name: "Continue note" }));
+    await user.click(screen.getByRole("button", { name: "Continue" }));
     await screen.findByRole("button", { name: "Splitting…" });
     // Cancel stops waiting; the late answer is ignored once the note changes.
     await user.click(screen.getByRole("button", { name: "Cancel" }));
@@ -398,5 +400,32 @@ describe("note flow screens (ADR-0085 N5)", () => {
     expect(await screen.findByRole("heading", { name: "That's a lot for one note" })).toBeVisible();
     await user.click(screen.getByRole("button", { name: "Edit note" }));
     expect(screen.getByLabelText("Care note")).toHaveValue("Watered front today");
+  });
+
+  it("shows the draft's state on the home card: waiting for review, then saved (ADR-0085 N6)", async () => {
+    seed();
+    const user = userEvent.setup();
+    render(<GardenWorkspace />);
+    await start(user);
+    await user.click(screen.getByRole("button", { name: "Close" }));
+    const card = within(screen.getByRole("region", { name: "AI Garden Notes" }));
+    // The card swapped its button while the note was read; focus returns to the new one.
+    await waitFor(() => expect(card.getByRole("button", { name: "Continue review" })).toHaveFocus());
+    expect(card.getByText("2 records waiting for review")).toBeVisible();
+    expect(card.getByText("Front garden")).toBeVisible();
+    expect(card.getByText("Back garden")).toBeVisible();
+    expect(card.getByText("Completes 2 tasks")).toBeVisible();
+    expect(card.queryByRole("textbox", { name: "Quick garden note" })).not.toBeInTheDocument();
+    await user.click(card.getByRole("button", { name: "Discard" }));
+    await user.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Cancel" }));
+    await user.click(card.getByRole("button", { name: "Continue review" }));
+    await user.click(screen.getByRole("button", { name: "Save 2 records" }));
+    await screen.findByRole("heading", { name: "Saved 2 records" });
+    await user.click(screen.getByRole("button", { name: "Close" }));
+    expect(card.getByText("Saved 2 records")).toBeVisible();
+    expect(card.getByText("Ticked off 2 tasks")).toBeVisible();
+    expect(card.getByRole("link", { name: "View records" })).toHaveAttribute("href", "/care?view=history");
+    await user.click(card.getByRole("button", { name: "Write another note" }));
+    expect(card.getByRole("textbox", { name: "Quick garden note" })).toHaveValue("");
   });
 });

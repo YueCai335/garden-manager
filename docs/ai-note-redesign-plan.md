@@ -1,7 +1,7 @@
 # AI Garden Note 重新设计：实施计划
 
 - 日期：2026-11-19（America/Toronto）
-- 状态：N1–N5 已完成（2026-11-20），N6–N8 未开始。决定记录在 [ADR-0085](decisions/0085-split-one-garden-note-into-reviewed-records-across-gardens.md)。
+- 状态：N1–N6 已完成（2026-11-20），N7、N8 未开始。决定记录在 [ADR-0085](decisions/0085-split-one-garden-note-into-reviewed-records-across-gardens.md)。
 - 本文读者：负责实现的工程师或 Agent。请先读完本文，再打开第 2 节的设计稿对照。
 - 设计稿是视觉的唯一依据。本文与设计稿冲突时，外观以设计稿为准，行为规则以本文为准；仍有疑问就问用户，不要自己猜。
 - 付费模型评估和公开 demo 的改动放在最后一步（N8），每一步都要先得到用户同意。N0–N7 都不花钱。
@@ -146,6 +146,7 @@
 
 - `OverviewGardenNote.tsx`：按钮改名、去掉 "Open note editor"、显示 等待审核 / 刚保存 两种状态。
 - 点 "Split into records" 打开弹窗并直接进入 Reading。
+- 实现时决定（2026-11-20）：只改本地批量模式的卡片；公开 demo 的单条笔记卡片和它的按钮文字到 N8 前不变。卡片在"读取中"显示 Continue，保存中显示 View status。每个状态的按钮都有自己的 key，避免 React 复用同一个按钮元素，否则关闭弹窗时焦点会落到别的按钮上；弹窗也改成关闭时才读取备用的返回目标。
 
 ### N7 收尾检查和文档
 
