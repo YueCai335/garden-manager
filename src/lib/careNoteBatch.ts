@@ -104,7 +104,7 @@ export function batchRowsPresent(workspace: GardenWorkspace, rows: CareDraftRow[
 export function applyCareDraftBatch(workspace: GardenWorkspace, rows: CareDraftRow[], taskDrafts: TaskDraft[] = []) {
   const selected = rows.filter((row) => row.included);
   const errors = batchRowsErrors(workspace, rows);
-  const none = { workspace, errors, added: 0, tasksCompleted: 0, tasksAdded: 0 };
+  const none = { workspace, errors, added: 0, tasksCompleted: 0, tasksAdded: 0, completedTasks: [] as TaskRef[], addedTasks: [] as TaskRef[] };
   if ((!selected.length && !taskDrafts.length) || selected.length > CARE_NOTE_BATCH_LIMIT) errors.batch = `Select between 1 and ${CARE_NOTE_BATCH_LIMIT} records to save.`;
   const newTasks = taskDrafts.map((draft) => taskFromSuggestion(workspace, draft));
   if (newTasks.some((item) => !item)) errors.batch = "A planned job is missing its type, date, or target. Add it in Care instead.";
@@ -135,19 +135,19 @@ export function applyCareDraftBatch(workspace: GardenWorkspace, rows: CareDraftR
     }),
   };
   // Only rows written now finish tasks, so a replay of saved rows never advances a task twice.
-  let tasksCompleted = 0;
+  const completedTasks: TaskRef[] = [];
   for (const { row } of pending) {
     for (const ref of matches.get(row.draftId) ?? []) {
       if (row.skippedTaskKeys?.includes(ref.key)) continue;
       next = updateCareOwner(next, ref.owner, (records) => finishCareTask(records, ref.task.id, row.date));
-      tasksCompleted += 1;
+      completedTasks.push(ref);
     }
   }
-  let tasksAdded = 0;
+  const addedTasks: TaskRef[] = [];
   for (const item of newTasks) {
     // A replay keeps the task its ID already added instead of adding it twice.
     next = updateCareOwner(next, item!.owner, (records) => records.careTasks.some((task) => task.id === item!.task.id) ? records
-      : (tasksAdded += 1, { ...records, careTasks: [...records.careTasks, item!.task] }));
+      : (addedTasks.push({ key: item!.task.id, owner: item!.owner, task: item!.task }), { ...records, careTasks: [...records.careTasks, item!.task] }));
   }
-  return { workspace: next, errors, added: pending.length, tasksCompleted, tasksAdded };
+  return { workspace: next, errors, added: pending.length, tasksCompleted: completedTasks.length, tasksAdded: addedTasks.length, completedTasks, addedTasks };
 }

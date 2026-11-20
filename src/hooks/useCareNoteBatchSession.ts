@@ -3,8 +3,12 @@ import type { useWorkspaceSync } from "./useWorkspaceSync";
 import { todayDate } from "@/lib/gardenWorkspace";
 import { AI_CARE_NOTE_MAX_LENGTH, CARE_NOTE_BATCH_LIMIT, createAiCareNoteBatch, featureErrorMessage, type CareNoteBatchDraftResponse } from "@/lib/gardenWorkspaceApi";
 import { applyCareDraftBatch, batchRowsPresent, newCareDraft, type CareDraftRow, type TaskDraft } from "@/lib/careNoteBatch";
+import type { TaskRef } from "@/lib/noteTaskMatch";
 
-type Receipt = { status: "applied" | "saved" | "discarded"; rows: CareDraftRow[]; note: string; sourceNote: string; tasksCompleted: number; tasksAdded: number };
+type Receipt = {
+  status: "applied" | "saved" | "discarded"; rows: CareDraftRow[]; note: string; sourceNote: string;
+  tasksCompleted: number; tasksAdded: number; completedTasks: TaskRef[]; addedTasks: TaskRef[];
+};
 /** A planned job chosen with "Add as a task", tied to the notice it came from. */
 export type ChosenTask = TaskDraft & { noticeIndex: number };
 type BatchState = {
@@ -80,6 +84,12 @@ export function useCareNoteBatchSession(sync: ReturnType<typeof useWorkspaceSync
     sequence.current += 1;
     update((old) => ({ ...old, rows: old.rows.filter((row) => row.draftId !== id), errors: {} }));
   };
+  /** Stops waiting for the current request; a late answer is ignored because the sequence moved on. */
+  const cancel = () => {
+    if (!current.current.loading) return;
+    sequence.current += 1;
+    update((old) => ({ ...old, loading: false }));
+  };
   /** Adds or removes a planned job's task; its ID is allocated on this click, never in an updater. */
   const toggleTask = (noticeIndex: number) => {
     if (current.current.receipt?.status === "applied") return;
@@ -101,7 +111,7 @@ export function useCareNoteBatchSession(sync: ReturnType<typeof useWorkspaceSync
       return;
     }
     sequence.current += 1;
-    update((old) => ({ ...old, error: "", errors: {}, receipt: { status: "applied", rows: old.rows.filter((row) => row.included), note, sourceNote: old.sourceNote, tasksCompleted: result.tasksCompleted, tasksAdded: result.tasksAdded } }));
+    update((old) => ({ ...old, error: "", errors: {}, receipt: { status: "applied", rows: old.rows.filter((row) => row.included), note, sourceNote: old.sourceNote, tasksCompleted: result.tasksCompleted, tasksAdded: result.tasksAdded, completedTasks: result.completedTasks, addedTasks: result.addedTasks } }));
     sync.setWorkspace(result.workspace);
   };
   const recordMore = (keepRemaining = false) => {
@@ -110,7 +120,7 @@ export function useCareNoteBatchSession(sync: ReturnType<typeof useWorkspaceSync
     setNote(keepRemaining ? current.current.sourceNote : "");
     update((old) => keepRemaining ? { ...old, receipt: undefined, error: "", errors: {} } : empty());
   };
-  return { ...state, note, setText, generate, patchRow, addRow, removeRow, toggleTask, apply, recordMore,
+  return { ...state, note, setText, generate, cancel, patchRow, addRow, removeRow, toggleTask, apply, recordMore,
     stale: Boolean(state.rows.length && state.sourceNote !== note),
     hasDrafts: Boolean(state.rows.length && state.receipt?.status !== "applied"),
   };

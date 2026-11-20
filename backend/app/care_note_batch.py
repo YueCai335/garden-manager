@@ -258,6 +258,10 @@ def has_narrow_target(text: str, garden: CareNoteGarden) -> bool:
 
 def resolve_target(event: BatchEventExtraction, gardens: dict[str, CareNoteGarden]) -> dict:
     empty = {"gardenId": None, "targetScope": None}
+    if event.target_scope == "all-gardens" and event.garden_name and mentioned(event.garden_name, event.source_text):
+        # A model that names one garden the text also names cannot mean every garden; read it as that
+        # garden, with the same checks as any garden-level event (ADR-0085 N5, seen with a small local model).
+        event = event.model_copy(update={"target_scope": "garden"})
     if event.target_scope == "all-gardens":
         return {**empty, "targetScope": "all-gardens"} if (
             note_says_all_gardens(event.source_text) and not event.garden_name and not event.target_name

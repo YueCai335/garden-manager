@@ -1,7 +1,7 @@
 # AI Garden Note 重新设计：实施计划
 
 - 日期：2026-11-19（America/Toronto）
-- 状态：N1–N4 已完成（2026-11-20），N5–N8 未开始。决定记录在 [ADR-0085](decisions/0085-split-one-garden-note-into-reviewed-records-across-gardens.md)。
+- 状态：N1–N5 已完成（2026-11-20），N6–N8 未开始。决定记录在 [ADR-0085](decisions/0085-split-one-garden-note-into-reviewed-records-across-gardens.md)。
 - 本文读者：负责实现的工程师或 Agent。请先读完本文，再打开第 2 节的设计稿对照。
 - 设计稿是视觉的唯一依据。本文与设计稿冲突时，外观以设计稿为准，行为规则以本文为准；仍有疑问就问用户，不要自己猜。
 - 付费模型评估和公开 demo 的改动放在最后一步（N8），每一步都要先得到用户同意。N0–N7 都不花钱。
@@ -140,6 +140,7 @@
 - 手机版：全屏、底栏固定、迷你分叉。
 - `/notes` 页面用同一套组件。
 - 测试：组件测试覆盖每个画面和键盘操作；焦点规则沿用 ADR-0069。
+- 实现时决定（2026-11-20）：每条记录的编辑区用原生 `<details>`，保存时表单能自动展开折叠的行并聚焦出错的字段；弹窗在批量模式下把标题和 Close 放在深绿条上、跟内容一起滚动；新组件替换了 `BatchGardenNote.tsx` 的内容（文件名不变），样式在 `NoteFlow.module.css`，分叉线在 `NoteFan.tsx`，句子切分和按花园分组在 `src/lib/noteFragments.ts`。本地小模型会把点名的花园标成"所有花园"，后端现在按原文里点名的那个花园处理（有测试）。
 
 ### N6 首页入口
 

@@ -40,21 +40,28 @@ export function GardenNoteDialog({ onClose, opener, fallbackOpener, batchAvailab
     };
   }, [opener, fallbackOpener]);
 
+  // ADR-0085: the batch note draws its own green strip, so its heading and Close sit on it and scroll with it.
+  const title = <h2 ref={heading} id="garden-note-title" tabIndex={-1}>Garden Note</h2>;
   return createPortal(
-    <dialog id="garden-note-dialog" ref={dialog} className={styles.dialog} aria-modal="true" aria-labelledby="garden-note-title"
+    <dialog id="garden-note-dialog" ref={dialog} className={`${styles.dialog} ${batchAvailable ? styles.flowDialog : ""}`} aria-modal="true" aria-labelledby="garden-note-title"
       onCancel={(event) => {
         if (event.target !== event.currentTarget) return;
         event.preventDefault();
         onClose();
       }}>
-      <header className={styles.header}>
-        <h2 ref={heading} id="garden-note-title" tabIndex={-1}>Garden Note</h2>
-        <Button variant="text" onClick={onClose}>Close</Button>
-      </header>
-      <div className={styles.body}>
-        <SyncStatus recoveryOnly />
-        <WorkspaceGardenNote onClose={onClose} batchAvailable={batchAvailable} initialGardenId={initialGardenId} />
-      </div>
+      {batchAvailable ? <div className={styles.flowScroll}>
+        <WorkspaceGardenNote onClose={onClose} batchAvailable initialGardenId={initialGardenId} status={<SyncStatus recoveryOnly />}
+          header={<header className={styles.flowHeader}>{title}<button type="button" className={styles.flowClose} onClick={onClose}>Close</button></header>} />
+      </div> : <>
+        <header className={styles.header}>
+          {title}
+          <Button variant="text" onClick={onClose}>Close</Button>
+        </header>
+        <div className={styles.body}>
+          <SyncStatus recoveryOnly />
+          <WorkspaceGardenNote onClose={onClose} batchAvailable={batchAvailable} initialGardenId={initialGardenId} />
+        </div>
+      </>}
     </dialog>, document.body,
   );
 }

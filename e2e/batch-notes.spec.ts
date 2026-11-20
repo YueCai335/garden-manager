@@ -35,7 +35,7 @@ for (const width of [390, 1440]) {
     await expect(dialog).toBeVisible();
     await expect(page).toHaveURL(workspaceHome);
     await page.getByLabel("Care note").fill("Watered front today; Watered back today");
-    await page.getByRole("button", { name: "Create drafts", exact: true }).click();
+    await page.getByRole("button", { name: "Split into records", exact: true }).click();
     const first = page.getByRole("article", { name: "Draft 1" });
     const second = page.getByRole("article", { name: "Draft 2" });
     await expect(second).toBeVisible();
@@ -53,12 +53,15 @@ for (const width of [390, 1440]) {
     }
     const before = await remote();
     expect(before.gardens.map((garden) => garden.careEvents.length)).toEqual([2, 3]);
+    // Rows start collapsed (ADR-0085); the summary opens a row's fields.
+    await first.locator("summary").click();
     await first.getByLabel("Record note").fill("Reviewed front watering");
     await page.keyboard.press("Escape");
     const resume = page.getByRole("button", { name: "Continue note · 2 drafts" });
     await expect(resume).toBeFocused();
     await resume.click();
     await expect(first.getByLabel("Record note")).toHaveValue("Reviewed front watering");
+    await second.locator("summary").click();
     await second.getByLabel("Date", { exact: true }).fill("");
     await page.getByRole("button", { name: "Save 2 records", exact: true }).click();
     await expect(second.getByLabel("Date", { exact: true })).toBeFocused();
@@ -76,7 +79,7 @@ for (const width of [390, 1440]) {
     expect(after.gardens[0].careEvents.at(-1)?.note).toBe("Reviewed front watering");
     expect(after.careEvents).toEqual(before.careEvents);
     expect(extractions).toBe(1);
-    await page.getByRole("link", { name: "View records", exact: true }).click();
+    await page.getByRole("link", { name: "View in Care history", exact: true }).click();
     await expect(page).toHaveURL("/care?view=history");
     await expect(page.getByText("Reviewed front watering", { exact: true })).toBeVisible();
     await page.reload();
@@ -100,9 +103,10 @@ test("mobile review keeps six drafts and retries a failed save inside the dialog
   await expect(dialog).toHaveCSS("width", "390px");
   await expect(dialog).toHaveCSS("height", "844px");
   await dialog.getByLabel("Care note").fill("Watered plants 1, 2, 3, 4, 5 and 6 today");
-  await dialog.getByRole("button", { name: "Create drafts" }).click();
+  await dialog.getByRole("button", { name: "Split into records" }).click();
   await expect(dialog.getByRole("article")).toHaveCount(6);
   const last = dialog.getByRole("article", { name: "Draft 6" });
+  await last.locator("summary").click();
   await last.getByLabel("Record note").fill("Reviewed the sixth record");
   await expect(dialog.getByRole("button", { name: "Save 6 records" })).toBeInViewport();
   await last.getByRole("button", { name: "Remove draft" }).click();
@@ -125,7 +129,7 @@ test("mobile review keeps six drafts and retries a failed save inside the dialog
   await dialog.getByRole("button", { name: "Retry", exact: true }).click();
   await expect(dialog.getByRole("heading", { name: "Saved 6 records" })).toBeVisible();
   expect(attempts).toBe(2);
-  await dialog.getByRole("button", { name: "Done and close" }).click();
+  await dialog.getByRole("button", { name: "Done", exact: true }).click();
   await expect(dialog).toBeHidden();
   await expect(page).toHaveURL(workspaceHome);
 });

@@ -101,3 +101,11 @@ def test_schema_offers_five_types_and_a_whole_number_plant_count():
     assert item["plantCount"] == {"type": ["integer", "null"]}
     assert "question" in item["kind"]["enum"]
     assert TODAY.isoformat() == "2026-11-11"
+
+
+def test_a_named_garden_wins_over_an_all_gardens_label_the_text_does_not_support():
+    note = "今天给前院浇水了"
+    row = drafts(note, event(note, gardenName="前院", targetScope="all-gardens"))["drafts"][0]
+    assert row["gardenId"] == "front" and row["targetScope"] == "garden"
+    # Without a named garden, an all-gardens label still needs explicit every-garden wording.
+    assert drafts(note, event(note, targetScope="all-gardens"))["drafts"][0]["targetScope"] is None
