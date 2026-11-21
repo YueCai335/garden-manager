@@ -11,7 +11,8 @@ the old ones.
 - Model: `gpt-4o-mini-2024-07-18`, the request the app sends, now with
   `temperature: 0`.
 - Allowance: 49 requests: one compatibility request, then each case once.
-- Cost bound: $0.286 at every cap; expected about $0.02. Status: **unrun**.
+- Cost bound: $0.286 at every cap; expected about $0.02. Status: **ran on
+  2026-11-20; the gates were not met** (see Results).
 
 ## Holdout cases
 
@@ -51,3 +52,37 @@ cd backend && .venv/bin/python scripts/care_note_batch_live.py evaluate --confir
 ```bash
 cd backend && .venv/bin/python scripts/care_note_batch_live.py report
 ```
+
+## Results (2026-11-20, commit `02ec2e2`)
+
+All 49 requests ran once with known usage: 53,992 input and 16,277 output
+tokens, about **$0.018**.
+
+| Gate | Result |
+| --- | --- |
+| Cases passed (at least 43 of 48) | **40** |
+| Ordinary cases passed (at least 18 of 19) | **14** |
+| Holdout cases passed | 8 of 10 |
+| Hard-gate failures (none allowed) | 0 |
+| Wrong values (none allowed) | 0 |
+| Drafts the app would reject (none allowed) | 0 |
+| Usage unknown (none allowed) | 0 |
+
+Expected drafts found: 59 of 60, with no extra draft and no unusable answer.
+Every safety gate held. The eight failures:
+
+| Case | What the answer did |
+| --- | --- |
+| `b3-en-prune-detail` | Pruning detail "the dead heads off" for "dead heads". |
+| `b3-en-unique-plant-no-garden` | Pruning detail "pruned the Panicle hydrangea" where the note gives none. |
+| `b5-zh-pest-bt` | Treatment "喷了苏云金杆菌" for "苏云金杆菌". |
+| `b6-zh-prune-old-leaves` | Pruning detail "老叶剪掉了" for "老叶". |
+| `b5-mixed-fertilize-spoons` | The amount "2" (tbsp) left out. |
+| `b5-zh-prune-then-water` | The second clause's garden, named only in the first clause, left out. |
+| `b3-en-twelve-jobs` | One of the twelve jobs (Greenhouse 1) left out. |
+| `b6-zh-observation` | A note that birds ate the lettuce read as a question, not unrelated. |
+
+Four of the eight are free-text details quoted wider than expected. Counting
+those as passing when the quote contains the expected words, a reading
+decided only after this run and therefore not a gate, gives 43 of 48 cases
+but 17 of 19 ordinary cases, still below the ordinary gate.

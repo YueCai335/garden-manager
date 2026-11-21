@@ -297,6 +297,14 @@ each one under its step.
   `temperature: 0`. Replaying batch 5's answers passes 33 of 38, one short of
   its gate, with no hard-gate failure and no wrong value. Details:
   `backend/evaluation/care_note/batch-5/README.md`.
+- **Batch 6** (49 requests, about $0.018; batch 5's 38 cases and 10 new
+  holdout cases; `temperature: 0`) passed 40 of 48 and 14 of 19 ordinary
+  cases, short of 43 and 18. Every safety gate held: no hard-gate failure, no
+  wrong value, no extra draft, and 59 of 60 expected drafts found. Four
+  failures are free-text details quoted wider than expected; the rest are an
+  amount, a garden named only in an earlier clause, one of twelve jobs left
+  out, and an observation read as a question. Details:
+  `backend/evaluation/care_note/batch-6/README.md`.
 - **Public demo.** The owner wants the public demo to offer this flow on the
   low-cost paid model, with request limits that keep the spend small. It moves
   only after a later batch, with new frozen cases added, meets the gates; the
