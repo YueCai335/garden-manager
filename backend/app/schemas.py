@@ -414,6 +414,8 @@ class RuntimeConfigResponse(BaseModel):
     care_note_public_available: bool = Field(default=False, serialization_alias="careNotePublicAvailable")
     # Capability, not a provider health check. Never true in the public demo.
     care_note_batch_available: bool = Field(default=False, serialization_alias="careNoteBatchAvailable")
+    # Whether the configuration allows public AI note batches; quotas are checked per request (ADR-0086).
+    care_note_batch_public_available: bool = Field(default=False, serialization_alias="careNoteBatchPublicAvailable")
 
 
 class SeasonAllocationRequest(ApiModel):

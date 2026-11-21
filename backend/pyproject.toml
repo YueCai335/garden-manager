@@ -31,7 +31,7 @@ include = ["app*"]
 
 [tool.setuptools.package-data]
 # The public demo reads this fixed garden instead of stored data (ADR-0056, ADR-0059).
-app = ["demo_garden.json"]
+app = ["demo_garden.json", "showcase_gardens.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

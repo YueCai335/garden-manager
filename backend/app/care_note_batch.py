@@ -511,6 +511,44 @@ UNMATCHED_MESSAGE = "Part of this note could not be matched to its own words, so
 
 QUOTE_END = " .。!！?？;；,，"
 
+# ADR-0086: wording that gives the AI an instruction, in the forms seen in batches 1 to 8. Such a
+# fragment is never care work, whatever the model made of it, and it is no evidence for the rest
+# of the note. A false positive only turns a sentence into a notice that quotes it.
+INSTRUCTION_WORDS = re.compile(
+    r"\b(?:ignore|disregard|forget|override)\s+(?:all\s+|any\s+|every\s+)?(?:of\s+)?(?:the\s+|your\s+|these\s+|those\s+)?"
+    r"(?:previous|prior|above|earlier|preceding|system|original)\b"
+    r"|\b(?:ignore|disregard|forget|override)\s+(?:all\s+|any\s+)?(?:of\s+)?(?:your|the system'?s?)\s+(?:instructions|rules|prompts?)\b"
+    r"|(?:^|[.。!！?？;；]\s*)(?:system|assistant|developer)\s*[:：]"
+    r"|\bset\s+(?:the\s+)?(?:kind|date|type|target|targets|scope|fields?)\s+(?:of\s+\w+\s+)?(?:to|as)\b"
+    r"|\b(?:add|create|make|write|log)\s+(?:a\s+|an\s+|one\s+)?(?:\w+\s+){0,2}records?\s+for\s+(?:every|each|all)\b"
+    r"|\bmark\s+(?:every|each|all)\s+(?:\w+\s+)?(?:gardens?|beds?|plants?)\b"
+    r"|(?:忽略|无视)[^。！？；]{0,20}(?:指令|指示|提示|规则)"
+    r"|(?:日期|目标|类型)都?(?:写成|设为|设成|改成|改为)",
+    re.I,
+)
+INSTRUCTION_MESSAGE = "This part reads as an instruction to the AI, so it was not followed."
+
+
+def instruction_pieces(note: str) -> list[str]:
+    """The note's sentences that give the AI an instruction (ADR-0086)."""
+    return [piece for piece in note_pieces(note, SENTENCE_BREAKS) if INSTRUCTION_WORDS.search(piece)]
+
+
+def is_instruction(text: str, note: str, pieces: list[str]) -> bool:
+    """Whether a quote is an instruction: it says one, or it appears only inside instruction sentences."""
+    if INSTRUCTION_WORDS.search(text):
+        return True
+    core = text.rstrip(QUOTE_END) or text
+    others = [piece for piece in note_pieces(note, SENTENCE_BREAKS) if piece not in pieces]
+    return any(core in piece for piece in pieces) and not any(core in piece for piece in others)
+
+
+def without_instructions(note: str, pieces: list[str]) -> str:
+    """The note with its instruction sentences removed, for evidence that reads the whole note."""
+    for piece in pieces:
+        note = note.replace(piece, " ")
+    return note.lstrip(QUOTE_END)
+
 
 def note_pieces(note: str, breaks: re.Pattern) -> list[str]:
     return [piece.strip() for piece in breaks.split(note) if piece.strip()]
@@ -607,11 +645,18 @@ def tidy_event(event: BatchEventExtraction, gardens: dict[str, CareNoteGarden]) 
 def settle_events(gardens: dict[str, CareNoteGarden], note: str, extraction: BatchExtraction) -> tuple[list[BatchEventExtraction], bool]:
     """Events with real quotes and supported names, without exact repeats; and whether any completed job was lost."""
     events, seen, lost = [], set(), False
+    instructions = instruction_pieces(note)
     for raw in extraction.events:
         event = requote(raw, note)
         if event is None:
             lost = lost or raw.kind in ("completed", "planned")
             continue
+        if instructions and is_instruction(event.source_text, note, instructions):
+            # An obeyed instruction ("add a watering record for every bed", batch 8) drafts nothing;
+            # its copies collapse into one notice below.
+            event = event.model_copy(update={"kind": "unrelated", **{
+                name: None for name in BatchEventExtraction.model_fields if name not in ("kind", "source_text")
+            }})
         event = tidy_event(event, gardens)
         key = json.dumps(event.model_dump(), sort_keys=True, ensure_ascii=False)
         if key not in seen:
@@ -630,6 +675,9 @@ def drafts_from_batch(gardens: dict[str, CareNoteGarden], note: str, extraction:
     if sum(event.kind == "completed" for event in events) > MAX_DRAFTS:
         raise HTTPException(status_code=422, detail=SPLIT_MESSAGE)
     extraction = extraction.model_copy(update={"events": events})
+    instructions = instruction_pieces(note)
+    # Dates and the note's shared date are read without the instruction sentences (ADR-0086).
+    evidence_note = without_instructions(note, instructions) if instructions else note
     drafts, notices = [], []
     fertilizer_events = [event for event in extraction.events if event.kind == "completed" and event.type == "fertilizing"]
     shared_total = len(fertilizer_events) > 1 and bool(re.search(r"\b(total|altogether|combined|between)\b|一共|总共|合计|总量", note, re.I))
@@ -655,10 +703,11 @@ def drafts_from_batch(gardens: dict[str, CareNoteGarden], note: str, extraction:
             notices.append({"sourceText": event.source_text, "reason": kind, "message": NOTICE_MESSAGES[kind], "task": task})
             continue
         if kind != "completed":
-            notices.append({"sourceText": event.source_text, "reason": kind, "message": NOTICE_MESSAGES[kind]})
+            instruction = kind == "unrelated" and instructions and is_instruction(event.source_text, note, instructions)
+            notices.append({"sourceText": event.source_text, "reason": kind, "message": INSTRUCTION_MESSAGE if instruction else NOTICE_MESSAGES[kind]})
             continue
         target = resolve_target(event, gardens)
-        event_date = draft_date(event, extraction, note, today)
+        event_date = draft_date(event, extraction, evidence_note, today)
         review = []
         if event.type is None:
             review.append("Choose a care type before saving.")

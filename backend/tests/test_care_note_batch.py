@@ -329,13 +329,16 @@ def test_api_provider_failure_keeps_history_and_revision(client, fake_extractor)
     assert client.get("/workspaces/local-workspace-1").json() == before
 
 
-def test_public_batch_denied_before_provider_configuration(client, monkeypatch):
+def test_public_batch_is_closed_by_default_and_never_configures_the_local_provider(client, monkeypatch):
     monkeypatch.setenv("PORTFOLIO_DEMO_MODE", "true")
     configure = Mock(side_effect=AssertionError("must not configure a provider"))
     monkeypatch.setattr("app.main.configured_batch_extractor", configure)
-    assert client.get("/runtime-config").json()["careNoteBatchAvailable"] is False
+    config = client.get("/runtime-config").json()
+    assert config["careNoteBatchAvailable"] is False and config["careNoteBatchPublicAvailable"] is False
     result = client.post(URL, json={"note": "Today I watered all gardens.", "today": date.today().isoformat()})
-    assert result.status_code == 403
+    # ADR-0086: the demo's batch path exists but stays closed until its switch and limit are set.
+    assert result.status_code == 503
+    assert result.json()["detail"].startswith("AI notes are not available in the demo")
     configure.assert_not_called()
 
 
