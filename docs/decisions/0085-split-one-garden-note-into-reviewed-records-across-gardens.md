@@ -342,6 +342,11 @@ each one under its step.
   only after a later batch, with new frozen cases added, meets the gates; the
   opening then follows `docs/portfolio-demo-deployment.md`, closed first and
   opened in small steps. Until then the public demo keeps ADR-0060's flow.
+- **Follow-up (2026-11-20).** No batch met the completeness gates.
+  [ADR-0086](0086-open-the-public-note-demo-on-its-safety-record.md)
+  (accepted 2026-11-21) opens the public demo on the safety record instead, with a
+  prompt-injection guard, its own request budget, and a staged opening. The
+  gates and scores above stay as recorded.
 
 ## Reconsideration
 
