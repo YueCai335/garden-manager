@@ -439,6 +439,7 @@ def settle_details(event: BatchEventExtraction, fertilizer_events: list[BatchEve
     return details
 
 
+DATE_FILLER = re.compile(r"\b(?:this|the|on|in|at|by)\b", re.I)
 PRUNE_VERB = re.compile(r"^(?:cut|pruned?|trimmed|trim|snipped|pinched|removed)\s+", re.I)
 PRUNE_PARTICLE = re.compile(r"(?:^|\s+)(?:off|back|away|out)$", re.I)
 
@@ -452,6 +453,9 @@ def prune_detail(event: BatchEventExtraction) -> str | None:
     """
     detail = PRUNE_PARTICLE.sub("", PRUNE_VERB.sub("", (event.prune_detail or "").strip())).strip()
     if not mentioned(detail, event.source_text):
+        return None
+    if not DATE_FILLER.sub(" ", DATE_WORDS.sub(" ", detail)).strip(" ,.，。"):
+        # "next week" is when, not what was cut (batch 7).
         return None
     if event.target_name and mentioned(event.target_name, detail):
         return None
@@ -505,6 +509,9 @@ OVERFLOW_CHECK_MESSAGE = "The AI thought this note might hold more than 12 jobs.
 UNMATCHED_MESSAGE = "Part of this note could not be matched to its own words, so no record was drafted for it. Check the note and add anything missing by hand."
 
 
+QUOTE_END = " .。!！?？;；,，"
+
+
 def note_pieces(note: str, breaks: re.Pattern) -> list[str]:
     return [piece.strip() for piece in breaks.split(note) if piece.strip()]
 
@@ -518,9 +525,11 @@ def requote(event: BatchEventExtraction, note: str) -> BatchEventExtraction | No
     reads that real text, never the rewritten one.
     """
     names = [name for name in (event.garden_name, event.target_name) if name and mentioned(name, note)]
+    # Pieces are split at their punctuation, so a quote is looked for in them without its own end mark (batch 7).
+    core = event.source_text.rstrip(QUOTE_END) or event.source_text
     if event.source_text in note and event.kind == "planned" and not DATE_WORDS.search(event.source_text):
         # "给 Backyard 浇水" quoted from "后天给 Backyard 浇水": the day belongs to the task.
-        found = {piece for piece in note_pieces(note, CLAUSE_BREAKS) if event.source_text in piece and DATE_WORDS.search(piece)}
+        found = {piece for piece in note_pieces(note, CLAUSE_BREAKS) if core in piece and DATE_WORDS.search(piece)}
         if len(found) == 1:
             event = event.model_copy(update={"source_text": found.pop()})
     if event.source_text in note:
@@ -530,11 +539,11 @@ def requote(event: BatchEventExtraction, note: str) -> BatchEventExtraction | No
         if all(mentioned(name, event.source_text) for name in names) and not wants_all:
             return event
         if wants_all:
-            found = {piece for piece in note_pieces(note, SENTENCE_BREAKS) if event.source_text in piece and note_says_all_gardens(piece)}
+            found = {piece for piece in note_pieces(note, SENTENCE_BREAKS) if core in piece and note_says_all_gardens(piece)}
             return event.model_copy(update={"source_text": found.pop()}) if len(found) == 1 else event
         # A quote too narrow for the names it was given ("用肥皂水喷了一遍" for the Kale in Community
         # Garden) widens to the one sentence holding both the quote and the names.
-        found = {piece for piece in note_pieces(note, SENTENCE_BREAKS) if event.source_text in piece and all(mentioned(name, piece) for name in names)}
+        found = {piece for piece in note_pieces(note, SENTENCE_BREAKS) if core in piece and all(mentioned(name, piece) for name in names)}
         return event.model_copy(update={"source_text": found.pop()}) if len(found) == 1 else event
     if not names:
         return None
@@ -579,6 +588,14 @@ def tidy_event(event: BatchEventExtraction, gardens: dict[str, CareNoteGarden]) 
                 update.update(target_name=(areas or plants)[0], target_scope="planting-area" if areas else "plant-group")
             elif not areas and not plants:
                 update["target_scope"] = "garden"
+    if event.type == "planting" and event.kind in ("completed", "planned"):
+        # New plants go into a bed. "Planted 3 Basil in Raised bed 1" labelled the Basil plant group
+        # would join the Basil already growing in another bed (batch 7), so a bed the quote names wins.
+        pool = [garden for garden in gardens.values() if not garden_name or garden.name.casefold() == garden_name.casefold()]
+        beds = {area.name for garden in pool for area in garden.areas if not area.name.isdigit() and mentioned(area.name, event.source_text)}
+        beds = {name for name in beds if not any(name != other and name.casefold() in other.casefold() for other in beds)}
+        if len({name.casefold() for name in beds}) == 1:
+            update.update(target_scope="planting-area", target_name=beds.pop())
     if event.kind == "completed" and event.type in ("planting", None) and HARVEST_WORDS.search(event.source_text) and not PLANTING_WORDS.search(event.source_text):
         update.update(kind="unsupported", type=None)
     elif event.kind == "completed" and event.type == "planting" and not PLANTING_WORDS.search(event.source_text):

@@ -324,7 +324,11 @@ each one under its step.
   extra draft. Three of the four failures are server rules: a planting must
   target the bed it names, the quote widening must ignore the quote's end
   punctuation, and a detail of date words only ("next week") is not a detail.
-  Details: `backend/evaluation/care_note/batch-7/README.md`.
+  Details: `backend/evaluation/care_note/batch-7/README.md`. With these
+  three rules, replaying batch 7 passes 39 of 40 with no wrong value.
+- **Batch 8** keeps batch 7's 40 cases and adds 14 English holdout cases
+  written before any batch-8 request, with the same gate shares (48 of 54, 20
+  of 21 ordinary).
 - **Public demo.** The owner wants the public demo to offer this flow on the
   low-cost paid model, with request limits that keep the spend small. It moves
   only after a later batch, with new frozen cases added, meets the gates; the

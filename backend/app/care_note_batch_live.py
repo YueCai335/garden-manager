@@ -3,11 +3,11 @@
 One note becomes up to 12 reviewed records across gardens and five care types
 (app/care_note_batch.py). The earlier paid checks (app/care_note_live.py,
 ADR-0059) scored the single-draft contract and no longer apply. This batch,
-backend/evaluation/care_note/batch-7/, has its own cases, ledger, and run
+backend/evaluation/care_note/batch-8/, has its own cases, ledger, and run
 records and keeps the same rules. Batch 3 halted at its first request (an
-expired key); batches 4, 5 and 6 ran and missed their gates. Batch 7 scores
-English notes only, since the demo's visitors write in English, and adds new
-English holdout cases:
+expired key); batches 4 to 7 ran and missed their gates. Batches 7 and 8 score
+English notes only, since the demo's visitors write in English; batch 8 keeps
+batch 7's cases and adds new English holdout cases:
 
 - A request is written down before it is sent; a failed or interrupted
   request still counts, and nothing is retried.
@@ -59,10 +59,10 @@ from .service import CareNoteArea, CareNoteGarden, CareNotePlanting
 
 APPROVED_MODEL = DEFAULT_CARE_NOTE_OPENAI_MODEL
 EVALUATION_DIR = Path(__file__).resolve().parents[1] / "evaluation" / "care_note"
-BATCH = "batch-7"
+BATCH = "batch-8"
 COMPATIBILITY_CHECKS = ("near-maximum",)
-GROUP_SIZES = {"ordinary": 15, "missing": 8, "planned": 5, "not_completed": 8, "boundary": 4}
-HOLDOUT_CASES = 21
+GROUP_SIZES = {"ordinary": 21, "missing": 10, "planned": 7, "not_completed": 10, "boundary": 6}
+HOLDOUT_CASES = 14
 EVALUATION_CASES = sum(GROUP_SIZES.values())
 STAGES = {"compatibility": len(COMPATIBILITY_CHECKS), "evaluation": EVALUATION_CASES}
 # This batch's own allowance. ADR-0059's 42 local requests were for the
@@ -70,9 +70,9 @@ STAGES = {"compatibility": len(COMPATIBILITY_CHECKS), "evaluation": EVALUATION_C
 UNIT_LIMIT = sum(STAGES.values())
 # Gates, fixed before the first request (see the batch README). Each batch allows about one failing case
 # in nine and one failing ordinary case: 23 of 26 and 9 of 10 (batch 4), 34 of 38 and 14 of 15 (batch 5),
-# 43 of 48 and 18 of 19 (batch 6), 36 of 40 and 14 of 15 (batch 7).
-MIN_PASSED = 36
-MIN_ORDINARY_PASSED = 14
+# 43 of 48 and 18 of 19 (batch 6), 36 of 40 and 14 of 15 (batch 7), 48 of 54 and 20 of 21 (batch 8).
+MIN_PASSED = 48
+MIN_ORDINARY_PASSED = 20
 
 APP_DIR = Path(__file__).resolve().parent
 # Every file whose code builds the request, turns the response into drafts, or scores them.

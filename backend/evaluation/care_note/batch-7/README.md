@@ -110,3 +110,9 @@ The four failures:
 The first three are server rules, not model limits: a planting that names its
 bed must target that bed, the widening must ignore the quote's own end
 punctuation, and a detail made only of date words says nothing about the job.
+
+## Replay under batch 8's server rules
+
+`replays/` holds the saved answers scored again under the fourth server fixes
+(see `../batch-8/README.md`): 39 of 40 cases and 15 of 15 ordinary cases pass,
+with no hard-gate failure and no wrong value.

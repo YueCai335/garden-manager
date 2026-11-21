@@ -2,6 +2,7 @@
 import pytest
 
 from app import care_note_batch as batch
+from app.service import CareNoteArea, CareNoteGarden, CareNotePlanting
 from tests.test_care_note_batch import TODAY, drafts, event
 
 
@@ -288,3 +289,37 @@ def test_a_jobs_own_words_also_called_unrelated_add_no_notice():
 def test_common_english_times_of_day_name_their_date(note, expected):
     row = only_draft(note, gardenName="后院", targetScope="garden", date=expected)
     assert row["date"] == expected
+
+
+BED_GARDENS = {
+    "back": CareNoteGarden("后院", (CareNoteArea("bed-1", "Raised bed 1"), CareNoteArea("bed-2", "Raised bed 2"), CareNoteArea("one", "1")),
+                                 (CareNotePlanting("basil", "Basil", "bed-2"),)),
+}
+
+
+def test_a_planting_that_names_its_bed_goes_into_that_bed_not_onto_the_same_plant_elsewhere():
+    note = "Planted 3 Basil in 后院 Raised bed 1 today"
+    row = drafts(note, event(note, type="planting", gardenName="后院", targetScope="plant-group", targetName="Basil", plantName="Basil", plantCount=3),
+                 gardens=BED_GARDENS)["drafts"][0]
+    assert (row["targetScope"], row["growingAreaId"], row["plantingRecordId"]) == ("planting-area", "bed-1", None)
+
+
+def test_a_planting_without_a_bed_keeps_its_plant_group():
+    note = "Planted more Basil in 后院 today"
+    row = drafts(note, event(note, type="planting", gardenName="后院", targetScope="plant-group", targetName="Basil", plantName="Basil"),
+                 gardens=BED_GARDENS)["drafts"][0]
+    assert (row["targetScope"], row["plantingRecordId"]) == ("plant-group", "basil")
+
+
+def test_a_quote_with_its_own_full_stop_still_widens_to_the_sentence_with_its_names():
+    note = "Found aphids on the Kale in 后院 and sprayed them with neem oil today."
+    row = drafts(note, event("sprayed them with neem oil today.", type="pest-treatment", gardenName="后院", targetScope="plant-group",
+                             targetName="Kale", pestProblem="aphids", pestTreatment="neem oil"))["drafts"][0]
+    assert (row["gardenId"], row["plantingRecordId"], row["pestProblem"]) == ("back", "back-kale", "aphids")
+
+
+def test_a_detail_made_of_date_words_is_left_empty():
+    note = "Need to prune the Kale in 后院 next week"
+    task = drafts(note, event(note, kind="planned", type="pruning", gardenName="后院", targetScope="plant-group", targetName="Kale",
+                              pruneDetail="next week"))["notices"][0]["task"]
+    assert task["pruneDetail"] is None and task["plantingRecordId"] == "back-kale"
