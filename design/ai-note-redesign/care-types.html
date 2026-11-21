@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Care with five care types</title>
+<!-- The mockup loads fonts from Google; the app self-hosts them with next/font. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..600&family=Instrument+Sans:wght@400..700&display=swap">
+<link rel="stylesheet" href="../care-redesign/mockup.css">
+<style>
+:root { --plant: #4a6a12; --prune: #44506a; --pest: #8f3a1c; --plant-dk: #d2e6a0; --prune-dk: #cdd4e6; --pest-dk: #f4bda6; }
+.care-icon.planting { color: var(--plant); } .care-icon.pruning { color: var(--prune); } .care-icon.pest { color: var(--pest); }
+.glass .care-icon.planting { color: var(--plant-dk); } .glass .care-icon.pruning { color: var(--prune-dk); } .glass .care-icon.pest { color: var(--pest-dk); }
+.form-panel { display: grid; gap: 24px; max-width: 760px; padding: 32px; border-radius: 20px; background: var(--surface); border: 1px solid var(--line); }
+.form-panel h3 { font-size: 22px; font-weight: 500; letter-spacing: -0.02em; color: var(--heading); }
+.type-pills { display: flex; flex-wrap: wrap; gap: 8px; }
+.type-pill { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px 0 8px; border-radius: 999px; border: 1px solid var(--line); background: #fff; font: inherit; font-size: 15px; font-weight: 500; cursor: pointer; }
+.type-pill .care-icon { width: 30px; height: 30px; }
+.type-pill[aria-pressed="true"] { border-color: var(--brand); box-shadow: inset 0 0 0 1px var(--brand); font-weight: 600; }
+.fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.fields label { display: grid; gap: 6px; font-size: 13.5px; font-weight: 600; }
+.fields input, .fields select { min-height: 44px; border: 1px solid var(--subtle); border-radius: 8px; padding: 0 12px; font: inherit; font-size: 15px; background: #fff; }
+.fields .hint { font-weight: 400; color: var(--muted); font-size: 12.5px; }
+.filter-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.filter-chip { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line); background: #fff; font: inherit; font-size: 14px; font-weight: 500; }
+.filter-chip i { width: 9px; height: 9px; border-radius: 50%; background: var(--c); }
+.filter-chip[aria-pressed="true"] { background: var(--brand); border-color: var(--brand); color: #fff; }
+.filter-chip[aria-pressed="true"] i { background: #fff; }
+</style>
+</head>
+<body>
+
+<header class="appbar">
+  <div class="appbar-inner">
+    <a class="brand" href="#">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21c-4.2-2.2-6.5-5.6-6.5-9.6C5.5 7.2 8.2 4.3 12 3c3.8 1.3 6.5 4.2 6.5 8.4 0 4-2.3 7.4-6.5 9.6z"/><path d="M12 21V9"/></svg>
+      Garden Manager
+    </a>
+    <nav class="nav" aria-label="Workspace sections">
+      <a href="#">Gardens</a>
+      <a href="care.html" aria-current="page">Care</a>
+      <a href="#">Next Season</a>
+      <span class="divider"></span>
+      <a href="#">Plant Doctor</a>
+      <a href="#">Plant Guide</a>
+    </nav>
+    <span class="note-button">+ Note</span>
+    <span class="sync">All changes saved</span>
+  </div>
+</header>
+
+<main class="page">
+
+  <!-- 1. Today band -->
+  <section class="band today" aria-labelledby="today-heading">
+    <div class="band-main">
+      <div class="band-intro">
+        <p class="band-kicker">Today · Monday, Nov 16</p>
+        <h1 class="band-headline" id="today-heading"></h1>
+        <p class="band-summary" id="today-summary"></p>
+        <div class="progress">
+          <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+          <span class="progress-label" id="progress-label"></span>
+        </div>
+      </div>
+      <div>
+        <p class="tiles-label">Today by garden</p>
+        <div class="tiles" id="tiles"></div>
+      </div>
+      <div class="band-actions">
+        <button class="button-white" type="button">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg>
+          Add task
+        </button>
+        <a class="button-ghost" href="#">History</a>
+      </div>
+    </div>
+    <div class="glass todo">
+      <p class="group-label" id="todo-label"></p>
+      <ul id="todo-list"></ul>
+      <p class="group-label todo-done-label" id="done-label"></p>
+      <ul id="done-list"></ul>
+    </div>
+  </section>
+
+  <!-- 2. Upcoming: seven-day ribbon -->
+  <section class="block" aria-labelledby="upcoming-heading">
+    <div class="block-head">
+      <p class="kicker">Next 7 days</p>
+      <h2 class="block-title" id="upcoming-heading">Upcoming</h2>
+    </div>
+    <div class="ribbon"><div class="ribbon-grid" id="ribbon"></div></div>
+  </section>
+
+  <!-- 3. Gardens -->
+  <section class="block" aria-labelledby="gardens-heading">
+    <div class="block-head">
+      <p class="kicker">By garden</p>
+      <h2 class="block-title" id="gardens-heading">Coming up in each garden</h2>
+    </div>
+    <div class="card all-gardens">
+      <div class="all-gardens-head">
+        <span class="all-gardens-mark" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="2" width="5.5" height="5.5" rx="1.5"/><rect x="10.5" y="2" width="5.5" height="5.5" rx="1.5"/><rect x="2" y="10.5" width="5.5" height="5.5" rx="1.5"/><rect x="10.5" y="10.5" width="5.5" height="5.5" rx="1.5"/></svg>
+        </span>
+        <div>
+          <h3 class="garden-name">All gardens</h3>
+          <p class="row-sub">Applies to every garden</p>
+        </div>
+      </div>
+      <ul id="all-gardens-list"></ul>
+    </div>
+    <div class="garden-grid" id="garden-grid"></div>
+  </section>
+
+
+  <!-- 4. New: add-task type picker and History filter with five types -->
+  <section class="block" aria-labelledby="types-heading">
+    <div class="block-head"><p class="kicker">New care types</p><h2 class="block-title" id="types-heading">Add task · History filter</h2></div>
+    <div class="form-panel">
+      <h3>Add care task</h3>
+      <div class="type-pills" id="type-pills"></div>
+      <div class="fields" id="type-fields"></div>
+    </div>
+    <div class="filter-row" role="group" aria-label="History filter">
+      <button class="filter-chip" aria-pressed="true" style="--c:var(--ink)">All types</button>
+      <button class="filter-chip" style="--c:var(--water)"><i></i>Watering</button>
+      <button class="filter-chip" style="--c:var(--feed)"><i></i>Fertilizing</button>
+      <button class="filter-chip" style="--c:var(--plant)"><i></i>Planting</button>
+      <button class="filter-chip" style="--c:var(--prune)"><i></i>Pruning</button>
+      <button class="filter-chip" style="--c:var(--pest)"><i></i>Pest treatment</button>
+    </div>
+  </section>
+</main>
+
+<script>
+// Sample data for the mockup only. "Today" is Monday 2026-11-16.
+const WATER = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5c3 3.6 5.5 6.3 5.5 9.6a5.5 5.5 0 0 1-11 0c0-3.3 2.5-6 5.5-9.6z"/></svg>';
+const FEED = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20v-8"/><path d="M12 12c0-3-2-5-6-5 0 3 2 5 6 5z"/><path d="M12 14.5c0-2.5 2-4.5 6-4.5 0 2.5-2 4.5-6 4.5z"/></svg>';
+const PLANT = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.5 3.5l7 7-7 7a4.95 4.95 0 0 1-7-7z"/><path d="M3.5 20.5l4.2-4.2"/></svg>';
+const PRUNE = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4L8.1 15.9M14.5 14.5L20 20M8.1 8.1L12 12"/></svg>';
+const PEST = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="7" width="8" height="13" rx="4"/><path d="M12 7V4.5M9.5 4 8 2.5M14.5 4 16 2.5M8 11H4.5M8 15H4.5M16 11h3.5M16 15h3.5"/></svg>';
+const CHECK = '<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 6.5l2.5 2.5 4.5-5.5"/></svg>';
+const DOTS = '<svg width="18" height="18" viewBox="0 0 18 18" fill="currentColor" aria-hidden="true"><circle cx="3.5" cy="9" r="1.5"/><circle cx="9" cy="9" r="1.5"/><circle cx="14.5" cy="9" r="1.5"/></svg>';
+
+const TASKS = [
+  { id: 't1', type: 'watering', g: 'backyard', place: 'Backyard', area: 'Raised bed A', plant: 'Pepper', when: 'overdue' },
+  { id: 't2', type: 'pruning', g: 'front', place: 'Front Yard', area: 'Border', plant: 'Panicle hydrangea', when: 'today' },
+  { id: 't3', type: 'fertilizing', g: 'community', place: 'Community Garden', area: 'Bed 2', plant: 'Eggplant', repeat: 'Every 14 days', when: 'today' },
+  { id: 't4', type: 'pest', g: 'community', place: 'Community Garden', area: 'Bed 4', plant: 'Kale', repeat: 'Every 3 days', when: 'today' },
+  { id: 't5', type: 'watering', g: 'community', place: 'Community Garden', when: 'today' },
+  { id: 't6', type: 'watering', g: 'backyard', place: 'Backyard', area: 'Herb pots', plant: 'Meadow sage', when: 'today' },
+  { id: 'u1', type: 'watering', g: 'community', place: 'Community Garden', area: 'Bed 4', plant: 'Kale', when: 'up', day: 0 },
+  { id: 'u2', type: 'planting', g: 'front', place: 'Front Yard', area: 'Planter', plant: 'Basil', when: 'up', day: 1 },
+  { id: 'u3', type: 'watering', g: 'backyard', place: 'Backyard', area: 'Raised bed A', plant: 'Pepper', when: 'up', day: 1 },
+  { id: 'u4', type: 'fertilizing', g: 'all', place: 'all gardens', repeat: 'Every 7 days', when: 'up', day: 3 },
+  { id: 'u5', type: 'pruning', g: 'backyard', place: 'Backyard', area: 'Raised bed A', plant: 'Pepper', when: 'up', day: 1 },
+  { id: 'u6', type: 'fertilizing', g: 'front', place: 'Front Yard', area: 'Planter', plant: 'Marigold', when: 'up', day: 5 },
+];
+const DAYS = [['Tue', 17], ['Wed', 18], ['Thu', 19], ['Fri', 20], ['Sat', 21], ['Sun', 22], ['Mon', 23]];
+const GARDENS = [
+  { key: 'backyard', name: 'Backyard', meta: '10 planting areas', beds: ['left:9%;top:26px;width:5%;height:50px', 'left:16.5%;top:26px;width:5%;height:50px', 'left:24%;top:26px;width:5%;height:50px', 'left:32.5%;top:26px;width:5%;height:50px', 'left:40%;top:26px;width:5%;height:50px', 'left:53%;top:24px;width:18px;height:18px;border-radius:50%', 'left:66%;top:30px;width:18px;height:12px;border-radius:50%', 'left:13%;top:92px;width:20px;height:20px;border-radius:50%', 'left:30%;top:84px;width:13%;height:32px', 'left:58%;top:76px;width:10%;height:38px'] },
+  { key: 'community', name: 'Community Garden', meta: '6 planting areas', beds: ['left:30%;top:18px;width:8%;height:44px', 'left:44%;top:18px;width:8%;height:44px', 'left:58%;top:28px;width:22px;height:22px;border-radius:50%', 'left:30%;top:74px;width:8%;height:44px', 'left:44%;top:74px;width:8%;height:44px', 'left:58%;top:84px;width:22px;height:22px;border-radius:50%'] },
+  { key: 'front', name: 'Front Yard', meta: '3 planting areas', beds: ['left:38%;top:20px;width:40%;height:34px', 'left:38%;top:54px;width:7%;height:46px', 'left:18%;top:100px;width:22%;height:16px'] },
+];
+const done = new Set(['t5', 't6']);
+
+const VERB = { watering: 'Water', fertilizing: 'Fertilize', planting: 'Plant', pruning: 'Prune', pest: 'Treat pests on' };
+const verb = (t) => VERB[t.type];
+const ICONS = { watering: WATER, fertilizing: FEED, planting: PLANT, pruning: PRUNE, pest: PEST };
+const icon = (t) => `<span class="care-icon ${t.type}">${ICONS[t.type]}</span>`;
+// Workspace-wide lists name the garden in the title and the target below it.
+const title = (t) => t.type === 'planting' ? `Plant ${t.plant.toLowerCase()} in ${t.place}` : t.type === 'pest' ? `Treat pests in ${t.place}` : `${verb(t)} ${t.place}`;
+const sub = (t) => [[t.area, t.plant].filter(Boolean).join(' · ') || (t.g === 'all' ? '' : 'Whole garden'), t.repeat].filter(Boolean).join(' · ');
+// Inside a garden card the garden name is dropped.
+const localTitle = (t) => (t.g === 'all' ? 'Fertilize all gardens' : `${verb(t)} ${t.plant || t.area || 'whole garden'}`);
+const localSub = (t) => [t.plant ? t.area : '', t.repeat].filter(Boolean).join(' · ');
+const tick = (t) => `<button class="tick" type="button" role="checkbox" aria-checked="${done.has(t.id)}" aria-label="${title(t)}" data-toggle="${t.id}"><span class="tick-circle">${CHECK}</span></button>`;
+
+function render() {
+  const todays = TASKS.filter((t) => t.when !== 'up');
+  const upcoming = TASKS.filter((t) => t.when === 'up');
+  const open = todays.filter((t) => !done.has(t.id));
+  const finished = todays.filter((t) => done.has(t.id));
+  const late = open.filter((t) => t.when === 'overdue').length;
+  const n = open.length;
+
+  document.getElementById('today-heading').textContent = n === 0 ? 'All done for today.' : n === 1 ? '1 thing left today.' : `${n} things left today.`;
+  document.getElementById('today-summary').textContent = [late && `${late} overdue`, n - late && `${n - late} due today`, `${finished.length} already done`].filter(Boolean).join(' · ');
+  document.getElementById('progress-fill').style.width = `${Math.round((finished.length / todays.length) * 100)}%`;
+  document.getElementById('progress-label').textContent = `${finished.length} of ${todays.length} done`;
+
+  document.getElementById('tiles').innerHTML = GARDENS.map((g) => {
+    const mine = todays.filter((t) => t.g === g.key);
+    const left = mine.filter((t) => !done.has(t.id)).length;
+    return `<a class="tile" href="#garden-${g.key}"><span class="tile-name">${g.name}</span><span class="tile-count">${left ? `${left} left` : mine.length ? 'All done' : 'Nothing'}</span><span class="tile-sub">${mine.length ? `${mine.length - left} of ${mine.length} done` : 'No care today'}</span></a>`;
+  }).join('');
+
+  document.getElementById('todo-label').textContent = `To do · ${n}`;
+  document.getElementById('todo-list').innerHTML = n ? open.map((t) => `<li class="row">${tick(t)}${icon(t)}<span class="row-text"><span class="row-title">${title(t)}</span><span class="row-sub">${sub(t)}</span>${t.when === 'overdue' ? '<span class="late-inline">Due yesterday</span>' : ''}</span>${t.when === 'overdue' ? '<span class="late-chip">Due yesterday</span>' : ''}<button class="more" type="button" aria-label="More actions for ${title(t)}">${DOTS}</button></li>`).join('')
+    : '<li class="todo-empty">Nothing left. Everything for today is done.</li>';
+  document.getElementById('done-label').textContent = `Done today · ${finished.length}`;
+  document.getElementById('done-list').innerHTML = finished.length ? finished.map((t) => `<li class="row done">${tick(t)}${icon(t)}<span class="row-text"><span class="row-title">${title(t)}</span><span class="row-sub">${sub(t)}</span></span></li>`).join('')
+    : '<li class="todo-empty">Nothing ticked off yet.</li>';
+
+  document.getElementById('ribbon').innerHTML = DAYS.map(([name, number], index) => {
+    const items = upcoming.filter((t) => t.day === index);
+    return `<div class="day"><div class="day-head"><span class="day-name">${name}</span><span class="day-number">${number}</span></div>${items.length
+      ? `<div class="day-items">${items.map((t) => `<div class="mini">${icon(t)}<span class="mini-text"><span class="mini-title">${title(t)}</span><span class="row-sub">${sub(t)}</span></span></div>`).join('')}</div>`
+      : '<p class="day-empty">Nothing planned</p>'}</div>`;
+  }).join('');
+
+  const upcomingRow = (t) => `<li class="row"><span class="date-col"><span class="date-col-name">${DAYS[t.day][0]}</span><span class="date-col-number">${DAYS[t.day][1]}</span></span>${icon(t)}<span class="row-text"><span class="row-title">${localTitle(t)}</span><span class="row-sub">${localSub(t)}</span></span></li>`;
+  document.getElementById('all-gardens-list').innerHTML = upcoming.filter((t) => t.g === 'all').map(upcomingRow).join('');
+  document.getElementById('garden-grid').innerHTML = GARDENS.map((g) => {
+    const mine = todays.filter((t) => t.g === g.key);
+    const next = upcoming.filter((t) => t.g === g.key);
+    const left = mine.filter((t) => !done.has(t.id)).length;
+    return `<article class="card garden-card" id="garden-${g.key}">
+      <div class="garden-map" role="img" aria-label="Plan of ${g.name}">${g.beds.map((bed) => `<span style="${bed}"></span>`).join('')}</div>
+      <header class="garden-head"><div><h3 class="garden-name">${g.name}</h3><p class="row-sub">${g.meta}</p></div><span class="count-chip${left ? ' open' : ''}">${left ? `${left} to do today` : mine.length ? 'Done for today' : 'Nothing today'}</span></header>
+      <div class="garden-section"><p class="group-label">Today</p>${mine.length ? `<ul>${mine.map((t) => `<li class="row${done.has(t.id) ? ' done' : ''}">${tick(t)}${icon(t)}<span class="row-text"><span class="row-title">${localTitle(t)}</span><span class="row-sub">${localSub(t)}</span></span>${t.when === 'overdue' && !done.has(t.id) ? '<span class="late-chip">Overdue</span>' : ''}</li>`).join('')}</ul>` : '<p class="garden-empty">Nothing due today.</p>'}</div>
+      <div class="garden-section"><p class="group-label">Upcoming</p>${next.length ? `<ul>${next.map(upcomingRow).join('')}</ul>` : '<p class="garden-empty">Nothing in the next 7 days.</p>'}</div>
+      <footer class="garden-foot"><a class="garden-link" href="#">Open ${g.name} →</a></footer>
+    </article>`;
+  }).join('');
+}
+
+document.addEventListener('click', (event) => {
+  const button = event.target.closest('[data-toggle]');
+  if (!button) return;
+  const id = button.dataset.toggle;
+  if (done.has(id)) done.delete(id); else done.add(id);
+  render();
+});
+render();
+
+// ---------- Add-task type picker (mockup) ----------
+const TYPES = [['watering', 'Watering'], ['fertilizing', 'Fertilizing'], ['planting', 'Planting'], ['pruning', 'Pruning'], ['pest', 'Pest treatment']];
+const EXTRA = {
+  watering: '',
+  fertilizing: '<label>Fertilizer <input value="Fish emulsion"></label><label>Amount <span class="hint">optional</span><input value="50 ml per plant"></label>',
+  planting: '<label>Plant <input value="Basil"></label><label>How many <span class="hint">optional</span><input value="2"></label>',
+  pruning: '<label>What to cut <span class="hint">optional</span><input value="Side shoots"></label><span></span>',
+  pest: '<label>Problem <input value="Aphids"></label><label>Treatment <span class="hint">optional</span><input value="Soap spray"></label>',
+};
+let pick = 'planting';
+function renderForm() {
+  document.getElementById('type-pills').innerHTML = TYPES.map(([k, l]) => `<button class="type-pill" aria-pressed="${k === pick}" data-pick="${k}"><span class="care-icon ${k}">${ICONS[k]}</span>${l}</button>`).join('');
+  document.getElementById('type-fields').innerHTML = `<label>Garden<select><option>Front Yard</option></select></label><label>Target<select><option>Planter</option></select></label><label>Due date<input type="date" value="2026-11-20"></label><label>Repeat every <span class="hint">days, optional</span><input value=""></label>${EXTRA[pick]}`;
+  document.querySelectorAll('[data-pick]').forEach(b => b.onclick = () => { pick = b.dataset.pick; renderForm(); });
+}
+renderForm();
+</script>
+</body>
+</html>

@@ -21,7 +21,8 @@ from .agent.openai_model import DEFAULT_MODEL, OpenAIAllocationModel
 from .agent.service import camel_case_response, season_allocation
 from .ai import DEFAULT_CARE_NOTE_OPENAI_MODEL, CareNoteExtractor, CareNoteProviderError, OpenAICareNoteExtractor, EmbeddingClient, PlantHealthAssessor, PlantKnowledgeAnswerer, configured_care_note_extractor, configured_embedding_client, configured_plant_health_assessor, configured_plant_knowledge_answerer
 from .care_note_public import REQUEST_ID_HEADER, new_request_id, public_care_note_draft, public_generation_available
-from .care_note_batch import CareNoteBatchDraftResponse, CareNoteBatchExtractor, care_note_batch, configured_batch_extractor
+from .care_note_batch import CareNoteBatchDraftResponse, CareNoteBatchExtractor, OpenAICareNoteBatchExtractor, care_note_batch, configured_batch_extractor
+from .care_note_batch_public import public_batch_available, public_care_note_batch
 from .database import get_session
 from .schemas import CareNoteDraftRequest, CareNoteDraftResponse, HealthResponse, PlantHealthAssessmentRequest, PlantHealthAssessmentResponse, PlantKnowledgeAnswer, PlantKnowledgeQuestion, RotationGuidanceRequest, RotationGuidanceResponse, RuntimeConfigResponse, SeasonAllocationRequest, WorkspaceImport, WorkspaceSave
 from .service import care_note_draft, import_workspace, load_workspace, plant_health_assessment, plant_knowledge_answer, rotation_guidance, update_workspace, workspace_response
@@ -32,7 +33,7 @@ def configure_agent_logging() -> None:
     Uvicorn configures only its own loggers and leaves the root at WARNING, so
     INFO records from these loggers would otherwise be dropped.
     """
-    for name in ("app.agent", "app.care_note_public"):
+    for name in ("app.agent", "app.care_note_public", "app.care_note_batch_public"):
         paid_logger = logging.getLogger(name)
         paid_logger.setLevel(logging.INFO)
         if not any(handler.get_name() == name for handler in paid_logger.handlers):
@@ -97,6 +98,8 @@ def runtime_config() -> RuntimeConfigResponse:
         portfolio_demo=is_portfolio_demo(),
         care_note_public_available=is_portfolio_demo() and public_generation_available(),
         care_note_batch_available=not is_portfolio_demo(),
+        # The public demo's batch path (ADR-0086); the browser shows it only behind its own build flag.
+        care_note_batch_public_available=is_portfolio_demo() and public_batch_available(),
     )
 
 
@@ -122,13 +125,22 @@ def get_care_note_extractor() -> CareNoteExtractor | None:
         raise HTTPException(status_code=503, detail=str(error)) from error
 
 
-def get_care_note_batch_extractor() -> CareNoteBatchExtractor:
+def get_care_note_batch_extractor() -> CareNoteBatchExtractor | None:
     if is_portfolio_demo():
-        raise HTTPException(status_code=403, detail="Cross-garden AI note batches are unavailable in the public demo. Use the single-record or manual workflow.")
+        # The public path builds its own OpenAI extractor (ADR-0086).
+        return None
     try:
         return configured_batch_extractor()
     except CareNoteProviderError as error:
         raise HTTPException(status_code=503, detail="AI Garden Note is unavailable. Enter records manually or try again later.") from error
+
+
+def get_public_care_note_batch_extractor() -> OpenAICareNoteBatchExtractor | None:
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not is_portfolio_demo() or not api_key:
+        return None
+    # public_batch_available() refuses any model other than the approved one.
+    return OpenAICareNoteBatchExtractor(api_key, os.getenv("CARE_NOTE_OPENAI_MODEL", DEFAULT_CARE_NOTE_OPENAI_MODEL))
 
 
 def get_public_care_note_extractor() -> OpenAICareNoteExtractor | None:
@@ -211,13 +223,33 @@ def get_rotation_guidance(
 def create_care_note_batch(
     workspace_id: str,
     payload: CareNoteDraftRequest,
-    extractor: CareNoteBatchExtractor = Depends(get_care_note_batch_extractor),
+    request: Request,
+    response: Response,
+    extractor: CareNoteBatchExtractor | None = Depends(get_care_note_batch_extractor),
+    public_extractor: OpenAICareNoteBatchExtractor | None = Depends(get_public_care_note_batch_extractor),
     session: Session = Depends(get_session),
 ):
-    # The route also enforces scope when a test/deployment overrides its dependency.
+    server_today = datetime.now(timezone.utc).date()
     if is_portfolio_demo():
-        raise HTTPException(status_code=403, detail="Cross-garden AI note batches are unavailable in the public demo.")
-    return care_note_batch(session, workspace_id, payload, extractor, datetime.now(timezone.utc).date())
+        # The fixed showcase gardens, not the workspace in the path, are the model's context (ADR-0086).
+        request_id = new_request_id()
+        try:
+            result = public_care_note_batch(
+                payload,
+                public_extractor,
+                server_today=server_today,
+                # Uvicorn sets this from forwarding headers only for trusted proxies (FORWARDED_ALLOW_IPS).
+                client_ip=request.client.host if request.client else "unknown",
+                request_id=request_id,
+            )
+        except HTTPException as error:
+            error.headers = {**(error.headers or {}), REQUEST_ID_HEADER: request_id}
+            raise
+        response.headers[REQUEST_ID_HEADER] = request_id
+        return result
+    if extractor is None:
+        raise HTTPException(status_code=503, detail="AI Garden Note is unavailable. Enter records manually or try again later.")
+    return care_note_batch(session, workspace_id, payload, extractor, server_today)
 
 
 @app.post(

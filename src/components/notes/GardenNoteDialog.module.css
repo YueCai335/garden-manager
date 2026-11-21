@@ -64,3 +64,15 @@
   .body { padding: 16px 16px 0; }
   .footer { padding-bottom: max(12px, env(safe-area-inset-bottom)); }
 }
+
+/* The batch note (ADR-0085): one scroll area; the note draws its strip behind this header. */
+.flowDialog { width: min(820px, calc(100% - 48px)); border: 0; border-radius: 22px; background: var(--color-page); box-shadow: 0 40px 80px -40px rgb(0 0 0 / 60%); }
+.flowScroll { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.flowHeader { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 28px 0; }
+.flowHeader h2:focus { outline: none; }
+.flowClose { border: 0; background: none; padding: 6px 2px; font: inherit; font-size: 15px; font-weight: 600; color: #fff; cursor: pointer; }
+.flowClose:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+@media (max-width: 600px) {
+  .flowDialog { width: 100%; border-radius: 0; }
+  .flowHeader { padding: max(14px, env(safe-area-inset-top)) 16px 0; }
+}

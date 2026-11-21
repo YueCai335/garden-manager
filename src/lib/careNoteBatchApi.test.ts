@@ -14,7 +14,7 @@ describe("workspace care-note batch API", () => {
   });
 
   it.each([
-    [422, "This note has too many events. Split it into notes with at most 6 completed care records.", "at most 6"],
+    [422, "This note has too many events. Split it into notes with at most 12 completed care records.", "at most 12"],
     [422, "internal provider configuration", "Check your note and device date"],
     [413, "internal context directory", "workspace is too large"],
     [403, "public batch closed", "unavailable in this demo"],

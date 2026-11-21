@@ -31,6 +31,13 @@ services:
         value: "false"
       - key: CARE_NOTE_PUBLIC_RUN_LIMIT
         value: "0"
+      # Public AI note batches on the showcase gardens (ADR-0086). Closed until
+      # the deploy and preview checks pass: 3 for the preview check, then at
+      # most 300, a cap fixed in code.
+      - key: CARE_NOTE_BATCH_PUBLIC_ENABLED
+        value: "false"
+      - key: CARE_NOTE_BATCH_PUBLIC_RUN_LIMIT
+        value: "0"
       - key: CARE_NOTE_AI_PROVIDER
         value: openai
       - key: CARE_NOTE_OPENAI_MODEL

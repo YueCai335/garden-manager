@@ -22,6 +22,7 @@ import os
 import threading
 import time
 from collections import deque
+from dataclasses import dataclass
 from datetime import date
 from typing import Literal
 from uuid import uuid4
@@ -72,21 +73,48 @@ REQUEST_ID_HEADER = "X-Care-Note-Request"
 Reservation = Literal["reserved", "used_up", "daily_limit", "unavailable"]
 
 
+@dataclass(frozen=True)
+class PublicBudget:
+    """One public AI path's quota rows and caps. The single-note path and the batch path (ADR-0086) each have one."""
+
+    name: str
+    daily_prefix: str
+    hard_cap: int
+    daily_limit: int
+
+
+SINGLE_NOTE_BUDGET = PublicBudget(CUMULATIVE_BUDGET_NAME, DAILY_BUDGET_PREFIX, HARD_RUN_CAP, DAILY_RUN_LIMIT)
+
+
 # --- Configuration ---
 
 
-def public_run_limit() -> int | None:
-    """CARE_NOTE_PUBLIC_RUN_LIMIT as an integer from 0 to HARD_RUN_CAP; anything else is None (closed)."""
-    raw = os.getenv("CARE_NOTE_PUBLIC_RUN_LIMIT")
+def run_limit_from_env(variable: str, hard_cap: int) -> int | None:
+    """An environment variable as an integer from 0 to hard_cap; anything else is None (closed)."""
+    raw = os.getenv(variable)
     try:
         limit = int(raw) if raw is not None else None
     except ValueError:
         limit = None
-    if limit is None or not 0 <= limit <= HARD_RUN_CAP:
+    if limit is None or not 0 <= limit <= hard_cap:
         if raw is not None:
-            logger.error("CARE_NOTE_PUBLIC_RUN_LIMIT=%r is not an integer from 0 to %d; public generation is closed.", raw, HARD_RUN_CAP)
+            logger.error("%s=%r is not an integer from 0 to %d; public generation is closed.", variable, raw, hard_cap)
         return None
     return limit
+
+
+def public_run_limit() -> int | None:
+    """CARE_NOTE_PUBLIC_RUN_LIMIT as an integer from 0 to HARD_RUN_CAP; anything else is None (closed)."""
+    return run_limit_from_env("CARE_NOTE_PUBLIC_RUN_LIMIT", HARD_RUN_CAP)
+
+
+def openai_note_settings_ready() -> bool:
+    """The provider, the approved model, and the key that every public note path needs."""
+    return (
+        os.getenv("CARE_NOTE_AI_PROVIDER", "").lower() == "openai"
+        and os.getenv("CARE_NOTE_OPENAI_MODEL", APPROVED_MODEL) == APPROVED_MODEL
+        and bool(os.getenv("OPENAI_API_KEY"))
+    )
 
 
 def public_generation_available() -> bool:
@@ -94,9 +122,7 @@ def public_generation_available() -> bool:
     return (
         os.getenv("CARE_NOTE_PUBLIC_ENABLED", "").lower() in {"1", "true", "yes"}
         and bool(public_run_limit())
-        and os.getenv("CARE_NOTE_AI_PROVIDER", "").lower() == "openai"
-        and os.getenv("CARE_NOTE_OPENAI_MODEL", APPROVED_MODEL) == APPROVED_MODEL
-        and bool(os.getenv("OPENAI_API_KEY"))
+        and openai_note_settings_ready()
     )
 
 
@@ -115,31 +141,31 @@ def demo_care_note_garden() -> CareNoteGarden:
 # --- Persistent quota ---
 
 
-def daily_budget_name(quota_date: date) -> str:
-    return f"{DAILY_BUDGET_PREFIX}{quota_date.isoformat()}"
+def daily_budget_name(quota_date: date, budget: PublicBudget = SINGLE_NOTE_BUDGET) -> str:
+    return f"{budget.daily_prefix}{quota_date.isoformat()}"
 
 
-def reserve_public_request(limit: int, quota_date: date, session_factory=None) -> Reservation:
+def reserve_public_request(limit: int, quota_date: date, session_factory=None, budget: PublicBudget = SINGLE_NOTE_BUDGET) -> Reservation:
     """Count one request against the cumulative and daily limits in one transaction.
 
     The cumulative row is always updated first, so concurrent reservations
     take the two row locks in the same order. If the daily limit is reached,
     the cumulative increment rolls back with it.
     """
-    if not 0 < limit <= HARD_RUN_CAP:
+    if not 0 < limit <= budget.hard_cap:
         return "unavailable"
-    daily_name = daily_budget_name(quota_date)
+    daily_name = daily_budget_name(quota_date, budget)
     try:
         with (session_factory or database.SessionLocal)() as session:
             cumulative = session.execute(
                 update(AgentRunBudget)
-                .where(AgentRunBudget.name == CUMULATIVE_BUDGET_NAME, AgentRunBudget.used_runs < limit)
+                .where(AgentRunBudget.name == budget.name, AgentRunBudget.used_runs < limit)
                 .values(used_runs=AgentRunBudget.used_runs + 1)
             ).rowcount
             if cumulative != 1:
                 session.rollback()
-                if session.get(AgentRunBudget, CUMULATIVE_BUDGET_NAME) is None:
-                    logger.error("The %s budget row is missing; public generation is closed.", CUMULATIVE_BUDGET_NAME)
+                if session.get(AgentRunBudget, budget.name) is None:
+                    logger.error("The %s budget row is missing; public generation is closed.", budget.name)
                     return "unavailable"
                 return "used_up"
             # The first request of a UTC day creates its row; the primary key
@@ -150,7 +176,7 @@ def reserve_public_request(limit: int, quota_date: date, session_factory=None) -
             )
             daily = session.execute(
                 update(AgentRunBudget)
-                .where(AgentRunBudget.name == daily_name, AgentRunBudget.used_runs < DAILY_RUN_LIMIT)
+                .where(AgentRunBudget.name == daily_name, AgentRunBudget.used_runs < budget.daily_limit)
                 .values(used_runs=AgentRunBudget.used_runs + 1)
             ).rowcount
             if daily != 1:
@@ -163,7 +189,7 @@ def reserve_public_request(limit: int, quota_date: date, session_factory=None) -
         return "unavailable"
 
 
-def exhaust_public_allocation(session_factory=None) -> bool:
+def exhaust_public_allocation(session_factory=None, budget: PublicBudget = SINGLE_NOTE_BUDGET) -> bool:
     """Raise the cumulative counter to the hard cap; True only when that is committed.
 
     The counter never goes down, so a concurrent reservation cannot be undone.
@@ -172,10 +198,10 @@ def exhaust_public_allocation(session_factory=None) -> bool:
         with (session_factory or database.SessionLocal)() as session:
             changed = session.execute(
                 update(AgentRunBudget)
-                .where(AgentRunBudget.name == CUMULATIVE_BUDGET_NAME)
+                .where(AgentRunBudget.name == budget.name)
                 .values(
                     used_runs=case(
-                        (AgentRunBudget.used_runs < HARD_RUN_CAP, HARD_RUN_CAP), else_=AgentRunBudget.used_runs
+                        (AgentRunBudget.used_runs < budget.hard_cap, budget.hard_cap), else_=AgentRunBudget.used_runs
                     )
                 )
             ).rowcount
@@ -189,9 +215,9 @@ def exhaust_public_allocation(session_factory=None) -> bool:
         return False
 
 
-def public_used_runs(session_factory=None) -> int | None:
+def public_used_runs(session_factory=None, budget: PublicBudget = SINGLE_NOTE_BUDGET) -> int | None:
     with (session_factory or database.SessionLocal)() as session:
-        return session.scalar(select(AgentRunBudget.used_runs).where(AgentRunBudget.name == CUMULATIVE_BUDGET_NAME))
+        return session.scalar(select(AgentRunBudget.used_runs).where(AgentRunBudget.name == budget.name))
 
 
 # --- Short-term IP limit ---
@@ -233,7 +259,7 @@ public_rate_limiter = RollingRateLimiter()
 # --- Usage check ---
 
 
-def usage_problem(response, request_bytes: int) -> str | None:
+def usage_problem(response, request_bytes: int, max_output_tokens: int = CARE_NOTE_MAX_OUTPUT_TOKENS) -> str | None:
     """Why a response's usage breaks the cost assumptions, or None when it fits."""
     usage = getattr(response, "usage", None)
     input_tokens = getattr(usage, "input_tokens", None)
@@ -242,17 +268,17 @@ def usage_problem(response, request_bytes: int) -> str | None:
         return "missing_or_invalid_usage"
     if input_tokens > request_bytes + FORMAT_TOKEN_ALLOWANCE:
         return "input_above_allowance"
-    if output_tokens > CARE_NOTE_MAX_OUTPUT_TOKENS:
+    if output_tokens > max_output_tokens:
         return "output_above_cap"
     return None
 
 
-def log_request(**record) -> None:
+def log_request(event: str = "care_note_public_request", **record) -> None:
     input_tokens, output_tokens = record.get("input_tokens"), record.get("output_tokens")
     if isinstance(input_tokens, int) and isinstance(output_tokens, int):
         record["estimated_cost_usd"] = round(input_tokens * INPUT_PRICE_PER_TOKEN + output_tokens * OUTPUT_PRICE_PER_TOKEN, 6)
     # Never the note text or the key.
-    logger.info(json.dumps({"event": "care_note_public_request", **record}))
+    logger.info(json.dumps({"event": event, **record}))
 
 
 # --- Request flow ---

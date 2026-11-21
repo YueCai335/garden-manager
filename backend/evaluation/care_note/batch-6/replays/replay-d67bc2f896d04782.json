@@ -1,0 +1,1131 @@
+{
+  "description": "Current server rules applied to saved model answers. No request was sent; the recorded results stay as they are.",
+  "batch": "batch-6",
+  "recorded_at": "2026-11-21T02:01:21+00:00",
+  "code_version": "b85f815+uncommitted",
+  "source": "d67bc2f896d04782",
+  "recorded_summary": {
+    "cases": 48,
+    "passed": 40,
+    "ordinary_passed": 14,
+    "expected_drafts": 60,
+    "found_drafts": 59,
+    "extra_drafts": 0,
+    "missing_fields": 4,
+    "hard_gate_failures": [],
+    "wrong_values": [],
+    "invalid_drafts": [],
+    "unusable": [],
+    "usage_unknown": [],
+    "holdout_cases": 10,
+    "holdout_passed": 8,
+    "gates_met": false
+  },
+  "replayed_summary": {
+    "cases": 48,
+    "passed": 42,
+    "ordinary_passed": 15,
+    "expected_drafts": 60,
+    "found_drafts": 59,
+    "extra_drafts": 0,
+    "missing_fields": 4,
+    "hard_gate_failures": [],
+    "wrong_values": [],
+    "invalid_drafts": [],
+    "unusable": [],
+    "usage_unknown": [],
+    "holdout_cases": 10,
+    "holdout_passed": 8,
+    "gates_met": false
+  },
+  "cases": [
+    {
+      "id": "b3-zh-water-two-gardens",
+      "recorded_passed": true,
+      "replayed_passed": true,
+      "replayed_score": {
+        "passed": true,
+        "outcome": "drafts",
+        "outcome_ok": true,
+        "expected_drafts": 2,
+        "actual_drafts": 2,
+        "missing_drafts": 0,
+        "extra_drafts": 0,
+        "missing_fields": [],
+        "wrong_values": [],
+        "quoted_differently": [],
+        "missing_notices": [],
+        "task_missing_fields": [],
+        "extra_notices": [],
+        "hard_gate_failure": false,
+        "invalid_drafts": 0
+      }
+    },
+    {
+      "id": "b3-en-three-gardens-three-types",
+      "recorded_passed": true,
+      "replayed_passed": true,
+      "replayed_score": {
+        "passed": true,
+        "outcome": "drafts",
+        "outcome_ok": true,
+        "expected_drafts": 3,
+        "actual_drafts": 3,
+        "missing_drafts": 0,
+        "extra_drafts": 0,
+        "missing_fields": [],
+        "wrong_values": [],
+        "quoted_differently": [],
+        "missing_notices": [],
+        "task_missing_fields": [],
+        "extra_notices": [],
+        "hard_gate_failure": false,
+        "invalid_drafts": 0
+      }
+    },
+    {
+      "id": "b3-zh-plant-count-area",
+      "recorded_passed": true,
+      "replayed_passed": true,
+      "replayed_score": {
+        "passed": true,
+        "outcome": "drafts",
+        "outcome_ok": true,
+        "expected_drafts": 1,
+        "actual_drafts": 1,
+        "missing_drafts": 0,
+        "extra_drafts": 0,
+        "missing_fields": [],
+        "wrong_values": [],
+        "quoted_differently": [],
+        "missing_notices": [],
+        "task_missing_fields": [],
+        "extra_notices": [],
+        "hard_gate_failure": false,
+        "invalid_drafts": 0
+      }
+    },
+    {
+      "id": "b3-en-sow-area",
+      "recorded_passed": true,
+      "replayed_passed": true,
+      "replayed_score": {
+        "passed": true,
+        "outcome": "drafts",
+        "outcome_ok": true,
+        "expected_drafts": 1,
+        "actual_drafts": 1,
+        "missing_drafts": 0,
+        "extra_drafts": 0,
+        "missing_fields": [],
+        "wrong_values": [],
+        "quoted_differently": [],
+        "missing_notices": [],
+        "task_missing_fields": [],
+        "extra_notices": [],
+        "hard_gate_failure": false,
+        "invalid_drafts": 0
+      }
+    },
+    {
+      "id": "b3-zh-pest-plant",
+      "recorded_passed": true,
+      "replayed_passed": true,
+      "replayed_score": {
+        "passed": true,
+        "outcome": "drafts",
+        "outcome_ok": true,
+        "expected_drafts": 1,
+        "actual_drafts": 1,
+        "missing_drafts": 0,
+        "extra_drafts": 0,
+        "missing_fields": [],
+        "wrong_values": [],
+        "quoted_differently": [],
+        "missing_notices": [],
+        "task_missing_fields": [],
+        "extra_notices": [],
+        "hard_gate_failure": false,
+        "invalid_drafts": 0
+      }
+    },
+    {
+      "id": "b3-en-prune-detail",
+      "recorded_passed": false,
+      "replayed_passed": true,
+      "replayed_score": {
+        "passed": true,
+        "outcome": "drafts",
+        "outcome_ok": true,
+        "expected_drafts": 1,
+        "actual_drafts": 1,
+        "missing_drafts": 0,
+        "extra_drafts": 0,
+        "missing_fields": [],
+        "wrong_values": [],
+        "quoted_differently": [],
+        "missing_notices": [],
+        "task_missing_fields": [],
+        "extra_notices": [],
+        "hard_gate_failure": false,
+        "invalid_drafts": 0
+      }
+    },
+    {
+      "id": "b3-mixed-fertilize-plant",
+      "recorded_passed": true,
+      "replayed_passed": true,
+      "replayed_score": {
+        "passed": true,
+        "outcome": "drafts",
+        "outcome_ok": true,
+        "expected_drafts": 1,
+        "actual_drafts": 1,
+        "missing_drafts": 0,
+        "extra_drafts": 0,
+        "missing_fields": [],
+        "wrong_values": [],
+        "quoted_differently": [],
+        "missing_notices": [],
+        "task_missing_fields": [],
+        "extra_notices": [],
+        "hard_gate_failure": false,
+        "invalid_drafts": 0
+      }
+    },
+    {
+      "id": "b3-zh-two-dates",
+      "recorded_passed": true,
+      "replayed_passed": true,
+      "replayed_score": {
+        "passed": true,
+        "outcome": "drafts",
+        "outcome_ok": true,
+        "expected_drafts": 2,
+        "actual_drafts": 2,
+        "missing_drafts": 0,
+        "extra_drafts": 0,
+        "missing_fields": [],
+        "wrong_values": [],
+        "quoted_differently": [],
+        "missing_notices": [],
+        "task_missing_fields": [],
+        "extra_notices": [],
+        "hard_gate_failure": false,
+        "invalid_drafts": 0
+      }
+    },
+    {
+      "id": "b3-zh-plant-not-on-plan",
+      "recorded_passed": true,
+      "replayed_passed": true,
+      "replayed_score": {
+        "passed": true,
+        "outcome": "drafts",
+        "outcome_ok": true,
+        "expected_drafts": 1,
+        "actual_drafts": 1,
+        "missing_drafts": 0,
+        "extra_drafts": 0,
+        "missing_fields": [],
+        "wrong_values": [],
+        "quoted_differently": [],
+        "missing_notices": [],
+        "task_missing_fields": [],
+        "extra_notices": [],
+        "hard_gate_failure": false,
+        "invalid_drafts": 0
+      }
+    },
+    {
+      "id": "b3-zh-shared-total",
+      "recorded_passed": true,
+      "replayed_passed": true,
+      "replayed_score": {
+        "passed": true,
+        "outcome": "drafts",
+        "outcome_ok": true,
+        "expected_drafts": 2,
+        "actual_drafts": 2,
+        "missing_drafts": 0,
+        "extra_drafts": 0,
+        "missing_fields": [],
+        "wrong_values": [],
+        "quoted_differently": [],
+        "missing_notices": [],
+        "task_missing_fields": [],
+        "extra_notices": [],
+        "hard_gate_failure": false,
+        "invalid_drafts": 0
+      }
+    },
+    {
+      "id": "b3-en-repeated-plant",
+      "recorded_passed": true,
+      "replayed_passed": true,
+      "replayed_score": {
+        "passed": true,
+        "outcome": "drafts",
+        "outcome_ok": true,
+        "expected_drafts": 1,
+        "actual_drafts": 1,
+        "missing_drafts": 0,
+        "extra_drafts": 0,
+        "missing_fields": [],
+        "wrong_values": [],
+        "quoted_differently": [],
+        "missing_notices": [],
+        "task_missing_fields": [],
+        "extra_notices": [],
+        "hard_gate_failure": false,
+        "invalid_drafts": 0
+      }
+    },
+    {
+      "id": "b3-en-unique-plant-no-garden",
+      "recorded_passed": false,
+      "replayed_passed": true,
+      "replayed_score": {
+        "passed": true,
+        "outcome": "drafts",
+        "outcome_ok": true,
+        "expected_drafts": 1,
+        "actual_drafts": 1,
+        "missing_drafts": 0,
+        "extra_drafts": 0,
+        "missing_fields": [],
+        "wrong_values": [],
+        "quoted_differently": [],
+        "missing_notices": [],
+        "task_missing_fields": [],
+        "extra_notices": [],
+        "hard_gate_failure": false,
+        "invalid_drafts": 0
+      }
+    },
+    {
+      "id": "b3-zh-unsupported-date",
+      "recorded_passed": true,
+      "replayed_passed": true,
+      "replayed_score": {
+        "passed": true,
+        "outcome": "drafts",
+        "outcome_ok": true,
+        "expected_drafts": 1,
+        "actual_drafts": 1,
+        "missing_drafts": 0,
+        "extra_drafts": 0,
+        "missing_fields": [],
+        "wrong_values": [],
+        "quoted_differently": [],
+        "missing_notices": [],
+        "task_missing_fields": [],
+        "extra_notices": [],
+        "hard_gate_failure": false,
+        "invalid_drafts": 0
+      }
+    },
+    {
+      "id": "b3-en-numbered-bed",
+      "recorded_passed": true,
+      "replayed_passed": true,
+      "replayed_score": {
+        "passed": true,
+        "outcome": "drafts",
+        "outcome_ok": true,
+        "expected_drafts": 1,
+        "actual_drafts": 1,
+        "missing_drafts": 0,
+        "extra_drafts": 0,
+        "missing_fields": [],
+        "wrong_values": [],
+        "quoted_differently": [],
+        "missing_notices": [],
+        "task_missing_fields": [],
+        "extra_notices": [],
+        "hard_gate_failure": false,
+        "invalid_drafts": 0
+      }
+    },
+    {
+      "id": "b3-zh-all-gardens",
+      "recorded_passed": true,
+      "replayed_passed": true,
+      "replayed_score": {
+        "passed": true,
+        "outcome": "drafts",
+        "outcome_ok": true,
+        "expected_drafts": 1,
+        "actual_drafts": 1,
+        "missing_drafts": 0,
+        "extra_drafts": 0,
+        "missing_fields": [],
+        "wrong_values": [],
+        "quoted_differently": [],
+        "missing_notices": [],
+        "task_missing_fields": [],
+        "extra_notices": [
+          "ambiguous"
+        ],
+        "hard_gate_failure": false,
+        "invalid_drafts": 0
+      }
+    },
+    {
+      "id": "b3-en-done-and-planned",
+      "recorded_passed": true,
+      "replayed_passed": true,
+      "replayed_score": {
+        "passed": true,
+        "outcome": "drafts",
+        "outcome_ok": true,
+        "expected_drafts": 1,
+        "actual_drafts": 1,
+        "missing_drafts": 0,
+        "extra_drafts": 0,
+        "missing_fields": [],
+        "wrong_values": [],
+        "quoted_differently": [],
+        "missing_notices": [],
+        "task_missing_fields": [],
+        "extra_notices": [],
+        "hard_gate_failure": false,
+        "invalid_drafts": 0
+      }
+    },
+    {
+      "id": "b3-zh-two-planned",
+      "recorded_passed": true,
+      "replayed_passed": true,
+      "replayed_score": {
+        "passed": true,
+        "outcome": "drafts",
+        "outcome_ok": true,
+        "expected_drafts": 0,
+        "actual_drafts": 0,
+        "missing_drafts": 0,
+        "extra_drafts": 0,
+        "missing_fields": [],
+        "wrong_values": [],
+        "quoted_differently": [],
+        "missing_notices": [],
+        "task_missing_fields": [],
+        "extra_notices": [],
+        "hard_gate_failure": false,
+        "invalid_drafts": 0
+      }
+    },
+    {
+      "id": "b3-zh-negated",
+      "recorded_passed": true,
+      "replayed_passed": true,
+      "replayed_score": {
+        "passed": true,
+        "outcome": "drafts",
+        "outcome_ok": true,
+        "expected_drafts": 0,
+        "actual_drafts": 0,
+        "missing_drafts": 0,
+        "extra_drafts": 0,
+        "missing_fields": [],
+        "wrong_values": [],
+        "quoted_differently": [],
+        "missing_notices": [],
+        "task_missing_fields": [],
+        "extra_notices": [
+          "negated"
+        ],
+        "hard_gate_failure": false,
+        "invalid_drafts": 0
+      }
+    },
+    {
+      "id": "b3-en-negated-and-done",
+      "recorded_passed": true,
+      "replayed_passed": true,
+      "replayed_score": {
+        "passed": true,
+        "outcome": "drafts",
+        "outcome_ok": true,
+        "expected_drafts": 1,
+        "actual_drafts": 1,
+        "missing_drafts": 0,
+        "extra_drafts": 0,
+        "missing_fields": [],
+        "wrong_values": [],
+        "quoted_differently": [],
+        "missing_notices": [],
+        "task_missing_fields": [],
+        "extra_notices": [],
+        "hard_gate_failure": false,
+        "invalid_drafts": 0
+      }
+    },
+    {
+      "id": "b3-zh-question",
+      "recorded_passed": true,
+      "replayed_passed": true,
+      "replayed_score": {
+        "passed": true,
+        "outcome": "drafts",
+        "outcome_ok": true,
+        "expected_drafts": 0,
+        "actual_drafts": 0,
+        "missing_drafts": 0,
+        "extra_drafts": 0,
+        "missing_fields": [],
+        "wrong_values": [],
+        "quoted_differently": [],
+        "missing_notices": [],
+        "task_missing_fields": [],
+        "extra_notices": [
+          "question"
+        ],
+        "hard_gate_failure": false,
+        "invalid_drafts": 0
+      }
+    },
+    {
+      "id": "b3-en-done-and-question",
+      "recorded_passed": true,
+      "replayed_passed": true,
+      "replayed_score": {
+        "passed": true,
+        "outcome": "drafts",
+        "outcome_ok": true,
+        "expected_drafts": 1,
+        "actual_drafts": 1,
+        "missing_drafts": 0,
+        "extra_drafts": 0,
+        "missing_fields": [],
+        "wrong_values": [],
+        "quoted_differently": [],
+        "missing_notices": [],
+        "task_missing_fields": [],
+        "extra_notices": [],
+        "hard_gate_failure": false,
+        "invalid_drafts": 0
+      }
+    },
+    {
+      "id": "b3-zh-harvest-unsupported",
+      "recorded_passed": true,
+      "replayed_passed": true,
+      "replayed_score": {
+        "passed": true,
+        "outcome": "drafts",
+        "outcome_ok": true,
+        "expected_drafts": 1,
+        "actual_drafts": 1,
+        "missing_drafts": 0,
+        "extra_drafts": 0,
+        "missing_fields": [],
+        "wrong_values": [],
+        "quoted_differently": [],
+        "missing_notices": [],
+        "task_missing_fields": [],
+        "extra_notices": [],
+        "hard_gate_failure": false,
+        "invalid_drafts": 0
+      }
+    },
+    {
+      "id": "b3-zh-unrelated",
+      "recorded_passed": true,
+      "replayed_passed": true,
+      "replayed_score": {
+        "passed": true,
+        "outcome": "drafts",
+        "outcome_ok": true,
+        "expected_drafts": 0,
+        "actual_drafts": 0,
+        "missing_drafts": 0,
+        "extra_drafts": 0,
+        "missing_fields": [],
+        "wrong_values": [],
+        "quoted_differently": [],
+        "missing_notices": [],
+        "task_missing_fields": [],
+        "extra_notices": [
+          "unrelated"
+        ],
+        "hard_gate_failure": false,
+        "invalid_drafts": 0
+      }
+    },
+    {
+      "id": "b3-mixed-prompt-injection",
+      "recorded_passed": true,
+      "replayed_passed": true,
+      "replayed_score": {
+        "passed": true,
+        "outcome": "drafts",
+        "outcome_ok": true,
+        "expected_drafts": 1,
+        "actual_drafts": 1,
+        "missing_drafts": 0,
+        "extra_drafts": 0,
+        "missing_fields": [],
+        "wrong_values": [],
+        "quoted_differently": [],
+        "missing_notices": [],
+        "task_missing_fields": [],
+        "extra_notices": [
+          "unrelated"
+        ],
+        "hard_gate_failure": false,
+        "invalid_drafts": 0
+      }
+    },
+    {
+      "id": "b3-en-twelve-jobs",
+      "recorded_passed": false,
+      "replayed_passed": false,
+      "replayed_score": {
+        "passed": false,
+        "outcome": "drafts",
+        "outcome_ok": true,
+        "expected_drafts": 12,
+        "actual_drafts": 11,
+        "missing_drafts": 1,
+        "extra_drafts": 0,
+        "missing_fields": [],
+        "wrong_values": [],
+        "quoted_differently": [],
+        "missing_notices": [],
+        "task_missing_fields": [],
+        "extra_notices": [],
+        "hard_gate_failure": false,
+        "invalid_drafts": 0
+      }
+    },
+    {
+      "id": "b3-zh-thirteen-jobs",
+      "recorded_passed": true,
+      "replayed_passed": true,
+      "replayed_score": {
+        "passed": true,
+        "outcome": "split",
+        "outcome_ok": true,
+        "expected_drafts": 0,
+        "actual_drafts": 0,
+        "missing_drafts": 0,
+        "extra_drafts": 0,
+        "missing_fields": [],
+        "wrong_values": [],
+        "quoted_differently": [],
+        "missing_notices": [],
+        "task_missing_fields": [],
+        "extra_notices": [],
+        "hard_gate_failure": false,
+        "invalid_drafts": 0
+      }
+    },
+    {
+      "id": "b5-en-two-containers",
+      "recorded_passed": true,
+      "replayed_passed": true,
+      "replayed_score": {
+        "passed": true,
+        "outcome": "drafts",
+        "outcome_ok": true,
+        "expected_drafts": 2,
+        "actual_drafts": 2,
+        "missing_drafts": 0,
+        "extra_drafts": 0,
+        "missing_fields": [],
+        "wrong_values": [],
+        "quoted_differently": [],
+        "missing_notices": [],
+        "task_missing_fields": [],
+        "extra_notices": [],
+        "hard_gate_failure": false,
+        "invalid_drafts": 0
+      }
+    },
+    {
+      "id": "b5-zh-prune-then-water",
+      "recorded_passed": false,
+      "replayed_passed": false,
+      "replayed_score": {
+        "passed": false,
+        "outcome": "drafts",
+        "outcome_ok": true,
+        "expected_drafts": 2,
+        "actual_drafts": 2,
+        "missing_drafts": 0,
+        "extra_drafts": 0,
+        "missing_fields": [
+          "gardenId",
+          "targetScope",
+          "plantingRecordId"
+        ],
+        "wrong_values": [],
+        "quoted_differently": [],
+        "missing_notices": [],
+        "task_missing_fields": [],
+        "extra_notices": [],
+        "hard_gate_failure": false,
+        "invalid_drafts": 0
+      }
+    },
+    {
+      "id": "b5-mixed-fertilize-spoons",
+      "recorded_passed": false,
+      "replayed_passed": false,
+      "replayed_score": {
+        "passed": false,
+        "outcome": "drafts",
+        "outcome_ok": true,
+        "expected_drafts": 1,
+        "actual_drafts": 1,
+        "missing_drafts": 0,
+        "extra_drafts": 0,
+        "missing_fields": [
+          "fertilizerAmount"
+        ],
+        "wrong_values": [],
+        "quoted_differently": [],
+        "missing_notices": [],
+        "task_missing_fields": [],
+        "extra_notices": [],
+        "hard_gate_failure": false,
+        "invalid_drafts": 0
+      }
+    },
+    {
+      "id": "b5-en-plant-garlic",
+      "recorded_passed": true,
+      "replayed_passed": true,
+      "replayed_score": {
+        "passed": true,
+        "outcome": "drafts",
+        "outcome_ok": true,
+        "expected_drafts": 1,
+        "actual_drafts": 1,
+        "missing_drafts": 0,
+        "extra_drafts": 0,
+        "missing_fields": [],
+        "wrong_values": [],
+        "quoted_differently": [],
+        "missing_notices": [],
+        "task_missing_fields": [],
+        "extra_notices": [],
+        "hard_gate_failure": false,
+        "invalid_drafts": 0
+      }
+    },
+    {
+      "id": "b5-zh-pest-bt",
+      "recorded_passed": false,
+      "replayed_passed": false,
+      "replayed_score": {
+        "passed": false,
+        "outcome": "drafts",
+        "outcome_ok": true,
+        "expected_drafts": 1,
+        "actual_drafts": 1,
+        "missing_drafts": 0,
+        "extra_drafts": 0,
+        "missing_fields": [],
+        "wrong_values": [],
+        "quoted_differently": [
+          "pestTreatment"
+        ],
+        "missing_notices": [],
+        "task_missing_fields": [],
+        "extra_notices": [],
+        "hard_gate_failure": false,
+        "invalid_drafts": 0
+      }
+    },
+    {
+      "id": "b5-en-repeated-bed",
+      "recorded_passed": true,
+      "replayed_passed": true,
+      "replayed_score": {
+        "passed": true,
+        "outcome": "drafts",
+        "outcome_ok": true,
+        "expected_drafts": 1,
+        "actual_drafts": 1,
+        "missing_drafts": 0,
+        "extra_drafts": 0,
+        "missing_fields": [],
+        "wrong_values": [],
+        "quoted_differently": [],
+        "missing_notices": [],
+        "task_missing_fields": [],
+        "extra_notices": [],
+        "hard_gate_failure": false,
+        "invalid_drafts": 0
+      }
+    },
+    {
+      "id": "b5-zh-one-amount-two-plants",
+      "recorded_passed": true,
+      "replayed_passed": true,
+      "replayed_score": {
+        "passed": true,
+        "outcome": "drafts",
+        "outcome_ok": true,
+        "expected_drafts": 2,
+        "actual_drafts": 2,
+        "missing_drafts": 0,
+        "extra_drafts": 0,
+        "missing_fields": [],
+        "wrong_values": [],
+        "quoted_differently": [],
+        "missing_notices": [],
+        "task_missing_fields": [],
+        "extra_notices": [],
+        "hard_gate_failure": false,
+        "invalid_drafts": 0
+      }
+    },
+    {
+      "id": "b5-en-planned-sowing",
+      "recorded_passed": true,
+      "replayed_passed": true,
+      "replayed_score": {
+        "passed": true,
+        "outcome": "drafts",
+        "outcome_ok": true,
+        "expected_drafts": 0,
+        "actual_drafts": 0,
+        "missing_drafts": 0,
+        "extra_drafts": 0,
+        "missing_fields": [],
+        "wrong_values": [],
+        "quoted_differently": [],
+        "missing_notices": [],
+        "task_missing_fields": [],
+        "extra_notices": [],
+        "hard_gate_failure": false,
+        "invalid_drafts": 0
+      }
+    },
+    {
+      "id": "b5-en-skipped",
+      "recorded_passed": true,
+      "replayed_passed": true,
+      "replayed_score": {
+        "passed": true,
+        "outcome": "drafts",
+        "outcome_ok": true,
+        "expected_drafts": 0,
+        "actual_drafts": 0,
+        "missing_drafts": 0,
+        "extra_drafts": 0,
+        "missing_fields": [],
+        "wrong_values": [],
+        "quoted_differently": [],
+        "missing_notices": [],
+        "task_missing_fields": [],
+        "extra_notices": [
+          "unrelated"
+        ],
+        "hard_gate_failure": false,
+        "invalid_drafts": 0
+      }
+    },
+    {
+      "id": "b5-zh-when-to-prune",
+      "recorded_passed": true,
+      "replayed_passed": true,
+      "replayed_score": {
+        "passed": true,
+        "outcome": "drafts",
+        "outcome_ok": true,
+        "expected_drafts": 0,
+        "actual_drafts": 0,
+        "missing_drafts": 0,
+        "extra_drafts": 0,
+        "missing_fields": [],
+        "wrong_values": [],
+        "quoted_differently": [],
+        "missing_notices": [],
+        "task_missing_fields": [],
+        "extra_notices": [],
+        "hard_gate_failure": false,
+        "invalid_drafts": 0
+      }
+    },
+    {
+      "id": "b5-mixed-system-injection",
+      "recorded_passed": true,
+      "replayed_passed": true,
+      "replayed_score": {
+        "passed": true,
+        "outcome": "drafts",
+        "outcome_ok": true,
+        "expected_drafts": 0,
+        "actual_drafts": 0,
+        "missing_drafts": 0,
+        "extra_drafts": 0,
+        "missing_fields": [],
+        "wrong_values": [],
+        "quoted_differently": [],
+        "missing_notices": [],
+        "task_missing_fields": [],
+        "extra_notices": [
+          "planned"
+        ],
+        "hard_gate_failure": false,
+        "invalid_drafts": 0
+      }
+    },
+    {
+      "id": "b5-zh-long-diary",
+      "recorded_passed": true,
+      "replayed_passed": true,
+      "replayed_score": {
+        "passed": true,
+        "outcome": "drafts",
+        "outcome_ok": true,
+        "expected_drafts": 3,
+        "actual_drafts": 3,
+        "missing_drafts": 0,
+        "extra_drafts": 0,
+        "missing_fields": [],
+        "wrong_values": [],
+        "quoted_differently": [],
+        "missing_notices": [],
+        "task_missing_fields": [],
+        "extra_notices": [
+          "planned"
+        ],
+        "hard_gate_failure": false,
+        "invalid_drafts": 0
+      }
+    },
+    {
+      "id": "b6-en-two-plants-one-product",
+      "recorded_passed": true,
+      "replayed_passed": true,
+      "replayed_score": {
+        "passed": true,
+        "outcome": "drafts",
+        "outcome_ok": true,
+        "expected_drafts": 2,
+        "actual_drafts": 2,
+        "missing_drafts": 0,
+        "extra_drafts": 0,
+        "missing_fields": [],
+        "wrong_values": [],
+        "quoted_differently": [],
+        "missing_notices": [],
+        "task_missing_fields": [],
+        "extra_notices": [],
+        "hard_gate_failure": false,
+        "invalid_drafts": 0
+      }
+    },
+    {
+      "id": "b6-zh-prune-old-leaves",
+      "recorded_passed": false,
+      "replayed_passed": false,
+      "replayed_score": {
+        "passed": false,
+        "outcome": "drafts",
+        "outcome_ok": true,
+        "expected_drafts": 1,
+        "actual_drafts": 1,
+        "missing_drafts": 0,
+        "extra_drafts": 0,
+        "missing_fields": [],
+        "wrong_values": [],
+        "quoted_differently": [
+          "pruneDetail"
+        ],
+        "missing_notices": [],
+        "task_missing_fields": [],
+        "extra_notices": [],
+        "hard_gate_failure": false,
+        "invalid_drafts": 0
+      }
+    },
+    {
+      "id": "b6-mixed-plant-greenhouse",
+      "recorded_passed": true,
+      "replayed_passed": true,
+      "replayed_score": {
+        "passed": true,
+        "outcome": "drafts",
+        "outcome_ok": true,
+        "expected_drafts": 1,
+        "actual_drafts": 1,
+        "missing_drafts": 0,
+        "extra_drafts": 0,
+        "missing_fields": [],
+        "wrong_values": [],
+        "quoted_differently": [],
+        "missing_notices": [],
+        "task_missing_fields": [],
+        "extra_notices": [],
+        "hard_gate_failure": false,
+        "invalid_drafts": 0
+      }
+    },
+    {
+      "id": "b6-en-pest-yesterday",
+      "recorded_passed": true,
+      "replayed_passed": true,
+      "replayed_score": {
+        "passed": true,
+        "outcome": "drafts",
+        "outcome_ok": true,
+        "expected_drafts": 1,
+        "actual_drafts": 1,
+        "missing_drafts": 0,
+        "extra_drafts": 0,
+        "missing_fields": [],
+        "wrong_values": [],
+        "quoted_differently": [],
+        "missing_notices": [],
+        "task_missing_fields": [],
+        "extra_notices": [],
+        "hard_gate_failure": false,
+        "invalid_drafts": 0
+      }
+    },
+    {
+      "id": "b6-zh-repeated-marigold",
+      "recorded_passed": true,
+      "replayed_passed": true,
+      "replayed_score": {
+        "passed": true,
+        "outcome": "drafts",
+        "outcome_ok": true,
+        "expected_drafts": 1,
+        "actual_drafts": 1,
+        "missing_drafts": 0,
+        "extra_drafts": 0,
+        "missing_fields": [],
+        "wrong_values": [],
+        "quoted_differently": [],
+        "missing_notices": [],
+        "task_missing_fields": [],
+        "extra_notices": [],
+        "hard_gate_failure": false,
+        "invalid_drafts": 0
+      }
+    },
+    {
+      "id": "b6-en-weekday",
+      "recorded_passed": true,
+      "replayed_passed": true,
+      "replayed_score": {
+        "passed": true,
+        "outcome": "drafts",
+        "outcome_ok": true,
+        "expected_drafts": 1,
+        "actual_drafts": 1,
+        "missing_drafts": 0,
+        "extra_drafts": 0,
+        "missing_fields": [],
+        "wrong_values": [],
+        "quoted_differently": [],
+        "missing_notices": [],
+        "task_missing_fields": [],
+        "extra_notices": [],
+        "hard_gate_failure": false,
+        "invalid_drafts": 0
+      }
+    },
+    {
+      "id": "b6-zh-done-and-intended",
+      "recorded_passed": true,
+      "replayed_passed": true,
+      "replayed_score": {
+        "passed": true,
+        "outcome": "drafts",
+        "outcome_ok": true,
+        "expected_drafts": 1,
+        "actual_drafts": 1,
+        "missing_drafts": 0,
+        "extra_drafts": 0,
+        "missing_fields": [],
+        "wrong_values": [],
+        "quoted_differently": [],
+        "missing_notices": [],
+        "task_missing_fields": [],
+        "extra_notices": [],
+        "hard_gate_failure": false,
+        "invalid_drafts": 0
+      }
+    },
+    {
+      "id": "b6-en-forgot",
+      "recorded_passed": true,
+      "replayed_passed": true,
+      "replayed_score": {
+        "passed": true,
+        "outcome": "drafts",
+        "outcome_ok": true,
+        "expected_drafts": 0,
+        "actual_drafts": 0,
+        "missing_drafts": 0,
+        "extra_drafts": 0,
+        "missing_fields": [],
+        "wrong_values": [],
+        "quoted_differently": [],
+        "missing_notices": [],
+        "task_missing_fields": [],
+        "extra_notices": [
+          "negated"
+        ],
+        "hard_gate_failure": false,
+        "invalid_drafts": 0
+      }
+    },
+    {
+      "id": "b6-zh-observation",
+      "recorded_passed": false,
+      "replayed_passed": false,
+      "replayed_score": {
+        "passed": false,
+        "outcome": "drafts",
+        "outcome_ok": true,
+        "expected_drafts": 0,
+        "actual_drafts": 0,
+        "missing_drafts": 0,
+        "extra_drafts": 0,
+        "missing_fields": [],
+        "wrong_values": [],
+        "quoted_differently": [],
+        "missing_notices": [
+          "unrelated"
+        ],
+        "task_missing_fields": [],
+        "extra_notices": [
+          "question"
+        ],
+        "hard_gate_failure": false,
+        "invalid_drafts": 0
+      }
+    },
+    {
+      "id": "b6-zh-list-with-emoji",
+      "recorded_passed": true,
+      "replayed_passed": true,
+      "replayed_score": {
+        "passed": true,
+        "outcome": "drafts",
+        "outcome_ok": true,
+        "expected_drafts": 2,
+        "actual_drafts": 2,
+        "missing_drafts": 0,
+        "extra_drafts": 0,
+        "missing_fields": [],
+        "wrong_values": [],
+        "quoted_differently": [],
+        "missing_notices": [],
+        "task_missing_fields": [],
+        "extra_notices": [],
+        "hard_gate_failure": false,
+        "invalid_drafts": 0
+      }
+    }
+  ]
+}

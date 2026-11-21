@@ -27,4 +27,4 @@ def test_runtime_config_reports_portfolio_demo_mode(client, monkeypatch):
     response = client.get("/runtime-config")
 
     assert response.status_code == 200
-    assert response.json() == {"portfolioDemo": True, "careNotePublicAvailable": False, "careNoteBatchAvailable": False}
+    assert response.json() == {"portfolioDemo": True, "careNotePublicAvailable": False, "careNoteBatchAvailable": False, "careNoteBatchPublicAvailable": False}

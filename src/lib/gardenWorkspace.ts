@@ -1,5 +1,6 @@
 import { areaLocalToPlan } from "@/lib/planGeometry";
 import { demoGardenData, demoWorkspaceCare } from "@/lib/demoGardenData";
+import { careEventTypes, type CareEventType } from "./careTypes";
 export const GARDEN_WORKSPACE_STORAGE_KEY =
   "sun-aware-garden-planner:garden-workspace:v1";
 
@@ -285,10 +286,31 @@ export type SeasonPlan = {
   seasonYear: number;
   plantings: PlannedPlanting[];
 };
-export const careEventTypes = ["watering", "fertilizing"] as const;
-export type CareEventType = (typeof careEventTypes)[number];
+export { careEventTypes, type CareEventType };
 export type CareEventTargetScope = "all-gardens" | "garden" | "planting-area" | "plant-group";
-export type CareEvent = {
+/** Optional details a record or task keeps for its own care type (ADR-0085). */
+export type CareDetails = {
+  fertilizerProduct?: string;
+  fertilizerAmount?: number;
+  fertilizerUnit?: string;
+  plantName?: string;
+  plantCount?: number;
+  pruneDetail?: string;
+  pestProblem?: string;
+  pestTreatment?: string;
+};
+export type CareDetailField = keyof CareDetails;
+/** Which details each care type may carry. A detail on any other type is invalid. */
+export const careDetailFields: Record<CareEventType, readonly CareDetailField[]> = {
+  watering: [],
+  fertilizing: ["fertilizerProduct", "fertilizerAmount", "fertilizerUnit"],
+  planting: ["plantName", "plantCount"],
+  pruning: ["pruneDetail"],
+  "pest-treatment": ["pestProblem", "pestTreatment"],
+};
+export const allCareDetailFields = Object.values(careDetailFields).flat();
+export const MAX_PLANT_COUNT = 999;
+export type CareEvent = CareDetails & {
   id: string;
   type: CareEventType;
   date: string;
@@ -300,11 +322,8 @@ export type CareEvent = {
   plantingRecordId?: string;
   plantingRecordName?: string;
   targetPlantingRecordDeleted?: boolean;
-  fertilizerProduct?: string;
-  fertilizerAmount?: number;
-  fertilizerUnit?: string;
 };
-export type CareTask = {
+export type CareTask = CareDetails & {
   id: string;
   type: CareEventType;
   dueDate: string;
@@ -1763,7 +1782,8 @@ function isCareTaskBase(value: unknown) {
     (task.repeatIntervalDays === undefined ||
       (Number.isInteger(task.repeatIntervalDays) && task.repeatIntervalDays > 0)) &&
     (task.targetAreaDeleted === undefined || typeof task.targetAreaDeleted === "boolean") &&
-    (task.targetPlantingRecordDeleted === undefined || typeof task.targetPlantingRecordDeleted === "boolean")
+    (task.targetPlantingRecordDeleted === undefined || typeof task.targetPlantingRecordDeleted === "boolean") &&
+    hasValidCareDetails(task)
   );
 }
 
@@ -1794,17 +1814,6 @@ function isVersion7CareTask(
 function isCareEventBase(value: unknown) {
   if (!value || typeof value !== "object") return false;
   const event = value as Partial<CareEvent>;
-  const hasValidOptionalFertilizerDetails =
-    (event.fertilizerProduct === undefined ||
-      (typeof event.fertilizerProduct === "string" &&
-        Boolean(event.fertilizerProduct.trim()))) &&
-    (event.fertilizerAmount === undefined ||
-      (typeof event.fertilizerAmount === "number" &&
-        Number.isFinite(event.fertilizerAmount) &&
-        event.fertilizerAmount > 0)) &&
-    (event.fertilizerUnit === undefined ||
-      (typeof event.fertilizerUnit === "string" &&
-        Boolean(event.fertilizerUnit.trim())));
   return (
     typeof event.id === "string" &&
     Boolean(event.id.trim()) &&
@@ -1812,12 +1821,29 @@ function isCareEventBase(value: unknown) {
     typeof event.date === "string" &&
     isCalendarDate(event.date) &&
     typeof event.note === "string" &&
-    (event.type === "fertilizing"
-      ? hasValidOptionalFertilizerDetails
-      : event.fertilizerProduct === undefined &&
-        event.fertilizerAmount === undefined &&
-        event.fertilizerUnit === undefined)
+    hasValidCareDetails(event)
   );
+}
+
+/** The details a record or task keeps for its type, without empty or foreign fields. */
+export function careDetailsOf(value: CareDetails & { type: CareEventType }): CareDetails {
+  return Object.fromEntries(careDetailFields[value.type].flatMap((field) => value[field] === undefined ? [] : [[field, value[field]]]));
+}
+
+/**
+ * Each detail is optional, but it may appear only on its own care type (ADR-0085):
+ * text is non-blank, amounts are positive, and a plant count is a whole number up to 999.
+ */
+export function hasValidCareDetails(value: Partial<CareDetails> & { type?: CareEventType }) {
+  const allowed = value.type ? careDetailFields[value.type] : [];
+  return allCareDetailFields.every((field) => {
+    const detail = value[field];
+    if (detail === undefined) return true;
+    if (!allowed.includes(field)) return false;
+    if (field === "fertilizerAmount") return typeof detail === "number" && Number.isFinite(detail) && detail > 0;
+    if (field === "plantCount") return Number.isInteger(detail) && (detail as number) > 0 && (detail as number) <= MAX_PLANT_COUNT;
+    return typeof detail === "string" && Boolean(detail.trim());
+  });
 }
 
 export function addDays(date: string, days: number) {

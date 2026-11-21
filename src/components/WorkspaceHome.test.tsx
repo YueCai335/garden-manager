@@ -147,14 +147,17 @@ describe("Gardens home (ADR-0081)", () => {
     expect(within(box).getByRole("link", { name: link })).toHaveAttribute("href", "/care?view=tasks");
   });
 
-  it("writes on the ruled paper and enables Generate draft only for a note within the limit", async () => {
+  it("writes on the ruled paper and enables Split into records only for a note within the limit", async () => {
     seed({ portfolioDemo: false, careNoteBatchAvailable: true });
     render(<GardenWorkspace />);
     const block = await screen.findByRole("region", { name: "AI Garden Notes" });
     const paper = within(block).getByRole("textbox", { name: "Quick garden note" });
-    const generate = await within(block).findByRole("button", { name: "Generate draft" });
+    const generate = await within(block).findByRole("button", { name: "Split into records" });
     expect(generate).toBeDisabled();
-    expect(within(block).getByRole("button", { name: "Open note editor" })).toHaveAttribute("aria-haspopup", "dialog");
+    expect(generate).toHaveAttribute("aria-haspopup", "dialog");
+    // ADR-0085: the header's "+ Note" is the one way to open an empty note.
+    expect(within(block).queryByRole("button", { name: "Open note editor" })).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText("All changes saved")).toBeInTheDocument());
     fireEvent.change(paper, { target: { value: "Watered the front beds" } });
     expect(generate).toBeEnabled();
     fireEvent.change(paper, { target: { value: "🌱".repeat(501) } });

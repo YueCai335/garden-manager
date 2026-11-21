@@ -105,3 +105,28 @@ test("a ?location= link scrolls to that garden's card and highlights it", async 
     return top >= 0 && top < innerHeight / 2;
   })).toBe(true);
 });
+
+test("Care adds a pruning task with its detail, ticks it, and History filters it (ADR-0085)", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await seed(page);
+  await page.goto("/care");
+  await expect(page.getByText("All changes saved", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Add task" }).click();
+  const dialog = page.getByRole("dialog", { name: "Add care task" });
+  await dialog.getByLabel("Task location").selectOption("back");
+  await dialog.getByRole("radio", { name: "Pruning" }).check();
+  await dialog.getByLabel("Due date").fill(todayDate());
+  await dialog.getByLabel("What to cut (optional)").fill("Side shoots");
+  await dialog.getByRole("button", { name: "Add care task" }).click();
+
+  const row = page.getByRole("list", { name: /^To do/ }).getByRole("listitem").filter({ hasText: "Side shoots" });
+  await expect(row.getByText("Prune Back garden", { exact: true })).toBeVisible();
+  await row.getByRole("checkbox").click();
+  await expect.poll(async () => (await remote(page)).gardens.find((garden) => garden.id === "back")?.careEvents
+    .find((event) => event.type === "pruning")?.pruneDetail).toBe("Side shoots");
+
+  await page.goto("/care?view=history");
+  await page.getByRole("group", { name: "Filter by care type" }).getByRole("button", { name: "Pruning" }).click();
+  await expect(page).toHaveURL(/type=pruning/);
+  await expect(page.getByText("Pruned Back garden", { exact: true })).toBeVisible();
+});
