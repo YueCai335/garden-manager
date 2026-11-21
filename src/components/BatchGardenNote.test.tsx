@@ -429,3 +429,30 @@ describe("note flow screens (ADR-0085 N5)", () => {
     expect(card.getByRole("textbox", { name: "Quick garden note" })).toHaveValue("");
   });
 });
+
+describe("public demo batch notes (ADR-0086)", () => {
+  it("shows the English hint and request ID, and leaves a target the visitor's garden no longer matches", async () => {
+    vi.stubEnv("NEXT_PUBLIC_CARE_NOTE_BATCH_LIVE_ENTRY", "true");
+    const server: ServerWorkspace = { ...careFixture(), workspaceId: "batch", revision: 0 };
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      if (url.endsWith("runtime-config")) return response({ portfolioDemo: true, careNoteBatchPublicAvailable: true });
+      if (url.endsWith("/care-note-drafts")) return new Response(JSON.stringify(extraction), { status: 200, headers: { "X-Care-Note-Request": "abc123def456" } });
+      return response(server);
+    }));
+    localStorage.setItem(SERVER_WORKSPACE_STORAGE_KEY, "batch");
+    resetTestRouter("/gardens");
+    const user = userEvent.setup();
+    render(<GardenWorkspace />);
+
+    await openEditor(user);
+    expect(await screen.findByText(/Notes work best in English/)).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Care note"), { target: { value: "Watered front today; Watered back today" } });
+    await user.click(screen.getByRole("button", { name: "Split into records" }));
+
+    const first = await screen.findByRole("article", { name: "Draft 1" });
+    expect(screen.getByText("Request ID: abc123def456")).toBeInTheDocument();
+    // careFixture's gardens are not the showcase, so the server's IDs no longer match and the visitor chooses.
+    expect(within(first).getByText("No target yet")).toBeInTheDocument();
+    vi.unstubAllEnvs();
+  });
+});

@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useWorkspace } from "@/components/workspace/WorkspaceProvider";
+import { useRuntimeConfig } from "@/components/PortfolioFeaturePreview";
 import { useConfirmation } from "@/components/ConfirmDialog";
 import { FeedbackForm, FormField, InlineNotice } from "@/components/forms/FormFeedback";
 import { batchFieldId, batchRowsErrors, rowTaskMatches, taskFromSuggestion, type CareDraftRow } from "@/lib/careNoteBatch";
@@ -82,6 +83,8 @@ export function BatchGardenNote({ onClose, header, status }: { onClose?: () => v
   const sync = useWorkspace();
   const { careNoteBatch: batch, workspace } = sync;
   const { confirmation, requestConfirmation } = useConfirmation();
+  // The public demo drafts against the showcase gardens on OpenAI (ADR-0086).
+  const isPublicDemo = useRuntimeConfig().config?.portfolioDemo === true;
   const [editing, setEditing] = useState(false);
   const [open, setOpen] = useState<Set<string>>(new Set());
   const [focus, setFocus] = useState<{ draftIds: string[]; group?: string }>();
@@ -148,7 +151,7 @@ export function BatchGardenNote({ onClose, header, status }: { onClose?: () => v
     {head}
     {top}
     {fan}
-    <div className={styles.body}>{status}{body}</div>
+    <div className={styles.body}>{status}{isPublicDemo && batch.requestId ? <p className={styles.requestId}>Request ID: {batch.requestId}</p> : null}{body}</div>
     <div className={styles.foot} data-note-foot="">{foot}</div>
   </div>;
   const headText = (title: string, sub?: ReactNode) => <div className={styles.headText}>
@@ -183,6 +186,7 @@ export function BatchGardenNote({ onClose, header, status }: { onClose?: () => v
               <span className={tooLong ? styles.lengthError : styles.length} id="batch-note-length">{noteLength} / {AI_CARE_NOTE_MAX_LENGTH}{tooLong && " · Shorten the note"}</span>
               <span className={styles.mic}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5 11a7 7 0 0 0 14 0M12 18v3" /></svg>Use your keyboard&apos;s mic to dictate</span>
             </div>
+            {isPublicDemo && <p className={styles.publicHint}>Notes work best in English. Splitting sends your note and the demo gardens to OpenAI, so keep it to everyday gardening.</p>}
             {!sync.isSynced && <p className={styles.syncHint}>Your workspace needs to sync before the note can be split. You can still add records manually.</p>}
           </FeedbackForm>
         </div>

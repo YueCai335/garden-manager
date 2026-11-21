@@ -4,6 +4,8 @@ import { todayDate } from "@/lib/gardenWorkspace";
 import { AI_CARE_NOTE_MAX_LENGTH, CARE_NOTE_BATCH_LIMIT, createAiCareNoteBatch, featureErrorMessage, type CareNoteBatchDraftResponse } from "@/lib/gardenWorkspaceApi";
 import { applyCareDraftBatch, batchRowsPresent, newCareDraft, type CareDraftRow, type TaskDraft } from "@/lib/careNoteBatch";
 import type { TaskRef } from "@/lib/noteTaskMatch";
+import { matchShowcaseDraft } from "@/lib/publicNoteBatch";
+import { AiCareNoteRequestError } from "@/lib/gardenWorkspaceApi";
 
 type Receipt = {
   status: "applied" | "saved" | "discarded"; rows: CareDraftRow[]; note: string; sourceNote: string;
@@ -14,6 +16,8 @@ export type ChosenTask = TaskDraft & { noticeIndex: number };
 type BatchState = {
   rows: CareDraftRow[]; notices: CareNoteBatchDraftResponse["notices"]; sourceNote: string; taskDrafts: ChosenTask[];
   loading: boolean; error: string; errors: Record<string, string>; receipt?: Receipt;
+  /** The public demo's request ID, so a check can be matched to its server log line (ADR-0086). */
+  requestId?: string;
 };
 const empty = (): BatchState => ({ rows: [], notices: [], sourceNote: "", taskDrafts: [], loading: false, error: "", errors: {} });
 
@@ -54,15 +58,18 @@ export function useCareNoteBatchSession(sync: ReturnType<typeof useWorkspaceSync
     requesting.current = true;
     const request = ++sequence.current;
     const sourceNote = note;
-    update((old) => ({ ...old, loading: true, error: "", errors: {} }));
+    update((old) => ({ ...old, loading: true, error: "", errors: {}, requestId: undefined }));
     try {
       const result = await createAiCareNoteBatch(sync.serverWorkspaceId, note.trim(), todayDate());
       if (request !== sequence.current || sourceNote !== latestNote.current) return;
       if (result.drafts.length > CARE_NOTE_BATCH_LIMIT) throw new Error("Oversized batch");
-      const rows = result.drafts.map(newCareDraft);
-      update((old) => ({ ...old, rows, notices: result.notices, taskDrafts: [], sourceNote, receipt: undefined }));
+      // Only the public demo answers with a request ID; its drafts name the server's showcase copy.
+      const workspace = sync.getLatestWorkspace() ?? sync.workspace;
+      const drafts = result.requestId ? result.drafts.map((draft) => matchShowcaseDraft(draft, workspace)) : result.drafts;
+      const rows = drafts.map(newCareDraft);
+      update((old) => ({ ...old, rows, notices: result.notices, taskDrafts: [], sourceNote, receipt: undefined, requestId: result.requestId }));
     } catch (error) {
-      if (request === sequence.current && sourceNote === latestNote.current) update((old) => ({ ...old, error: featureErrorMessage(error, "The note could not be drafted. Your input is kept. Check your connection and try again, or add records manually.") }));
+      if (request === sequence.current && sourceNote === latestNote.current) update((old) => ({ ...old, requestId: error instanceof AiCareNoteRequestError ? error.requestId : undefined, error: featureErrorMessage(error, "The note could not be drafted. Your input is kept. Check your connection and try again, or add records manually.") }));
     } finally {
       requesting.current = false;
       update((old) => ({ ...old, loading: false }));

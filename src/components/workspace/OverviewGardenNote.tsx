@@ -5,6 +5,7 @@ import type { ReactNode, RefObject } from "react";
 import { useConfirmation } from "@/components/ConfirmDialog";
 import { FeedbackForm } from "@/components/forms/FormFeedback";
 import { useRuntimeConfig } from "@/components/PortfolioFeaturePreview";
+import { batchNoteAvailable } from "@/lib/publicNoteBatch";
 import { batchRowsErrors, rowTaskMatches, type CareDraftRow } from "@/lib/careNoteBatch";
 import { careTypeName } from "@/lib/careLabels";
 import { AI_CARE_NOTE_MAX_LENGTH } from "@/lib/gardenWorkspaceApi";
@@ -32,7 +33,7 @@ export function OverviewGardenNote({ primaryButton, expanded, onOpen }: {
   const { careNoteBatch: batch, drafts, singleNoteReceipt, isSynced, workspace } = sync;
   const { config } = useRuntimeConfig();
   const { confirmation, requestConfirmation } = useConfirmation();
-  const batchAvailable = config?.careNoteBatchAvailable === true;
+  const batchAvailable = batchNoteAvailable(config);
   const count1 = batch.rows.length || (drafts["note:draft"] ? 1 : 0);
   const hasResult = Boolean(batch.receipt || singleNoteReceipt);
   const editingInDialog = Boolean(count1 || hasResult || batch.loading || batch.sourceNote || drafts["note:isLoading"]);

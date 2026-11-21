@@ -28,6 +28,8 @@ export type RuntimeConfig = {
   careNotePublicAvailable?: boolean;
   /** Missing means unsupported. Public demos must never advertise batches. */
   careNoteBatchAvailable?: boolean;
+  /** Whether the server allows AI note batches on the showcase gardens in the public demo (ADR-0086). */
+  careNoteBatchPublicAvailable?: boolean;
 };
 
 export type CareNoteBatchDraftResponse = {
@@ -61,20 +63,25 @@ export type CareNoteBatchTaskSuggestion = CareNoteBatchDetails & {
 };
 export const CARE_NOTE_BATCH_LIMIT = 12;
 
-export async function createAiCareNoteBatch(workspaceId: string, note: string, today: string): Promise<CareNoteBatchDraftResponse> {
+/** The public demo's server adds a request ID (ADR-0086); the local app's never does. */
+export async function createAiCareNoteBatch(workspaceId: string, note: string, today: string): Promise<CareNoteBatchDraftResponse & { requestId?: string }> {
   const response = await fetch(apiUrl(`/workspaces/${encodeURIComponent(workspaceId)}/ai/care-note-drafts`), {
     method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ note, today }),
   });
+  const requestId = response.headers?.get?.(CARE_NOTE_REQUEST_ID_HEADER) ?? undefined;
   if (!response.ok) {
     if (response.status === 422) {
       const body = await response.json().catch(() => ({}));
       const split = `This note has too many events. Split it into notes with at most ${CARE_NOTE_BATCH_LIMIT} completed care records.`;
-      throw new FeatureRequestError(body?.detail === split ? split : "Check your note and device date, then try again.");
+      throw new AiCareNoteRequestError(body?.detail === split ? split : "Check your note and device date, then try again.", requestId);
     }
-    if (response.status === 413) throw new FeatureRequestError("This workspace is too large for one AI note request. Enter the records manually.");
-    throw new FeatureRequestError(await featureResponseMessage(response, "AI Garden Note"));
+    if (response.status === 413) {
+      throw new AiCareNoteRequestError(requestId ? "This note is too long for the demo. Shorten it and try again." : "This workspace is too large for one AI note request. Enter the records manually.", requestId);
+    }
+    throw new AiCareNoteRequestError(await featureResponseMessage(response, "AI Garden Note"), requestId);
   }
-  return response.json() as Promise<CareNoteBatchDraftResponse>;
+  const result = await response.json() as CareNoteBatchDraftResponse;
+  return requestId ? { ...result, requestId } : result;
 }
 
 export type RotationHistoryPlanting = {

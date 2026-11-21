@@ -1,8 +1,9 @@
 # ADR-0086: Open the Public Note Demo on Its Safety Record
 
 - Status: Accepted on 2026-11-21. The owner approved this text and steps 1
-  and 2 of the opening plan; both are built (see "Implementation notes").
-  Steps 3 and 4 each wait for their own approval.
+  and 2 of the opening plan on 2026-11-21, then asked to continue; steps 1
+  to 3 are built (see "Implementation notes"). Step 4 spends money and waits
+  for its own approval.
 - Date: 2026-11-20
 - Changes:
   - [ADR-0085](0085-split-one-garden-note-into-reviewed-records-across-gardens.md),
@@ -296,6 +297,25 @@ These choices were made while building steps 1 and 2 (2026-11-21).
   (the local batch path, never true in the demo), so the current frontend
   ignores the public path until step 3 reads the new field behind its build
   flag.
+- **Frontend (step 3).** `src/lib/publicNoteBatch.ts` holds
+  `batchNoteAvailable`, which every note entry (home card, header, setup, and
+  the `/notes` page) now uses: the local app's own flag, or in the demo
+  `careNoteBatchPublicAvailable` together with the build flag
+  `NEXT_PUBLIC_CARE_NOTE_BATCH_LIVE_ENTRY=true`. `matchShowcaseDraft` checks
+  each public draft against the visitor's workspace by ID and by the
+  showcase's own name and bed; a draft that no longer matches keeps its type,
+  date, and details, and its target is left for the visitor with a review
+  note. The client reads the request ID from the response header on success
+  and on error, and the dialog shows it in the demo, under the hint "Notes work
+  best in English" and the privacy line.
+- **Tests (step 3).** `src/lib/publicNoteBatch.test.ts` covers the flag
+  combinations and the snapshot check; a `BatchGardenNote.test.tsx` case
+  covers the hint, the request ID, and a cleared target in demo mode. The
+  local note Playwright specs pass unchanged. A demo-mode Playwright run
+  against a fake model was not added: the browser-to-server path in demo mode
+  is exercised for real by step 4's preview check, and the recorded batch-8
+  injection answer is replayed by
+  `backend/tests/test_care_note_batch_public.py`.
 - **Closed by default.** `render.yaml` and `.env.example` set
   `CARE_NOTE_BATCH_PUBLIC_ENABLED=false` and
   `CARE_NOTE_BATCH_PUBLIC_RUN_LIMIT=0`. With these, a demo batch request

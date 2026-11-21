@@ -10,6 +10,7 @@ import { WorkspaceNoteEntry } from "@/components/workspace/WorkspaceNoteEntry";
 import { createSampleGardenWorkspace, type CareEventTargetScope, type CareEventType, type Garden } from "@/lib/gardenWorkspace";
 import { AI_CARE_NOTE_MAX_LENGTH, type AiCareNoteDraft } from "@/lib/gardenWorkspaceApi";
 import { PortfolioFeatureLoading, PortfolioFeaturePreview } from "@/components/PortfolioFeaturePreview";
+import { batchNoteAvailable } from "@/lib/publicNoteBatch";
 import { BatchGardenNote } from "@/components/notes/BatchGardenNote";
 import { useConfirmation } from "@/components/ConfirmDialog";
 import { Button } from "@/components/ui/Button";
@@ -79,7 +80,7 @@ export function AiGardenNote({
     );
   }
   if (!runtimeConfig) return <PortfolioFeatureLoading feature="care-note" />;
-  if (runtimeConfig.careNoteBatchAvailable && !isPortfolioDemo) return <BatchGardenNote onClose={onClose} />;
+  if (batchNoteAvailable(runtimeConfig)) return <BatchGardenNote onClose={onClose} />;
   if (isPortfolioDemo && !isPublicDemo) return <><WorkspaceNoteEntry /><PortfolioFeaturePreview feature="care-note" /></>;
 
   if (!isServerBacked || !workspaceId) {

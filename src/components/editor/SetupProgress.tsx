@@ -3,6 +3,7 @@
 import type { CSSProperties, ReactNode } from "react";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { useRuntimeConfig } from "@/components/PortfolioFeaturePreview";
+import { batchNoteAvailable } from "@/lib/publicNoteBatch";
 import { useOpenGardenNote } from "@/components/workspace/AppShell";
 import { setupStepLabels, setupSteps, setupTrack, stepIndex, type GuidedSetup, type SetupStep } from "@/lib/guidedSetup";
 import { planLevelHints, planLevelLabels, planLevelShortLabels, planLevels, type PlanLevel } from "@/lib/planLevels";
@@ -101,7 +102,7 @@ export function SetupReady({ gardenId, gardenName, summary, careHref, seasonHref
     <p>Care records and season plans attach to these areas and plant groups. Pick where to go next.</p>
     <ul className={styles.next} aria-label="Next steps">
       <li><ButtonLink href={careHref} onClick={onLeave}>Log the first watering</ButtonLink><span>Care for this garden</span></li>
-      {openNote && <li><Button aria-haspopup="dialog" onClick={(event) => openNote(event.currentTarget, { batchAvailable: config?.careNoteBatchAvailable === true, gardenId })}>Write a Garden Note</Button><span>Turn a quick note into care records</span></li>}
+      {openNote && <li><Button aria-haspopup="dialog" onClick={(event) => openNote(event.currentTarget, { batchAvailable: batchNoteAvailable(config), gardenId })}>Write a Garden Note</Button><span>Turn a quick note into care records</span></li>}
       <li><ButtonLink href={seasonHref} onClick={onLeave}>Plan next season</ButtonLink><span>Next Season for this garden</span></li>
     </ul>
   </SetupStepPanel>;
