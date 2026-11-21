@@ -251,3 +251,13 @@
   .tile:hover { transform: none; }
   .buttonWhite:active, .buttonPrimary:active, .buttonGhost:active { transform: none; }
 }
+
+/* The care type picker (ADR-0085): five radio buttons drawn as icon pills. */
+.typePicker { margin: 0 0 16px; padding: 0; border: 0; min-width: 0; }
+.typePicker legend { padding: 0; margin-bottom: 8px; font-weight: 600; }
+.typeOptions { display: flex; flex-wrap: wrap; gap: 8px; }
+.typeOption { position: relative; display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px 0 7px; border: 1px solid var(--color-line); border-radius: 999px; background: var(--color-surface); font-size: 15px; font-weight: 500; cursor: pointer; }
+.typeOption input { position: absolute; inset: 0; margin: 0; opacity: 0; cursor: pointer; }
+.typeOption:has(input:checked) { border-color: var(--color-brand); box-shadow: inset 0 0 0 1px var(--color-brand); font-weight: 600; }
+.typeOption:has(input:focus-visible) { outline: 2px solid var(--color-brand); outline-offset: 2px; }
+.typeOption:hover { border-color: var(--color-ink-subtle); }

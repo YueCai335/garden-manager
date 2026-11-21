@@ -86,9 +86,9 @@ test("mobile navigation preserves a note across routes without a model request",
   await openWorkspace(page);
   await page.getByRole("button", { name: "Load demo garden" }).click();
   await expect(page.getByText("All changes saved", { exact: true })).toBeVisible();
-  // Wait for batch drafting so the editor opens the same session the Overview quick note shows.
-  await expect(page.getByRole("button", { name: "Generate draft" })).toBeVisible();
-  await page.getByRole("button", { name: "Open note editor" }).click();
+  // Wait for batch drafting so "+ Note" opens the same session the Overview quick note shows (ADR-0085).
+  await expect(page.getByRole("button", { name: "Split into records" })).toBeVisible();
+  await page.getByRole("banner").getByRole("button", { name: "Note", exact: true }).click();
   await page.getByLabel("Care note").fill("Watered the front garden today");
   await page.keyboard.press("Escape");
   const menu = page.getByRole("button", { name: "Menu", exact: true });
@@ -107,7 +107,7 @@ test("mobile navigation preserves a note across routes without a model request",
   await page.getByRole("navigation", { name: "Workspace sections" }).getByRole("link", { name: "Gardens", exact: true }).click();
   await expect(page).toHaveURL(workspaceHome);
   await expect(page.getByRole("textbox", { name: "Quick garden note" })).toHaveValue("Watered the front garden today");
-  await page.getByRole("button", { name: "Open note editor" }).click();
+  await page.getByRole("banner").getByRole("button", { name: "Note", exact: true }).click();
   await expect(page.getByRole("dialog", { name: "Garden Note" }).getByLabel("Care note")).toHaveValue("Watered the front garden today");
   expect(modelRequests).toBe(0);
 });

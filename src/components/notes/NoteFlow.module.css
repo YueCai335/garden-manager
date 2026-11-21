@@ -1,0 +1,219 @@
+/*
+ * AI Garden Note (ADR-0085). Values follow design/ai-note-redesign/note-flow.html: a short green
+ * strip behind the heading and the note, light frosted cards, lime branches, white garden cards on
+ * the neutral page colour, and a green footer band. Colours come from tokens.css.
+ */
+.flow { position: relative; isolation: isolate; display: flex; flex-direction: column; min-height: 100%; background: var(--color-page); color: var(--color-text); }
+.flow :focus-visible { outline: 2px solid var(--color-brand); outline-offset: 2px; }
+/* A control reached by Tab scrolls clear of the sticky footer instead of hiding under it. */
+.flow :is(a, button, input, select, textarea, summary) { scroll-margin-bottom: calc(var(--foot-height, 80px) + 12px); }
+.foot :is(a, button) { scroll-margin-bottom: 0; }
+.visuallyHidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* The strip: the landing hero's photo on the band colour, ending where --strip-height says. */
+.strip { position: absolute; inset: 0 0 auto; z-index: -1; height: var(--strip-height, 220px); background: var(--color-band-base) url("/landing/hero-still.webp") center 35% / cover no-repeat; }
+.strip::before { content: ""; position: absolute; inset: 0; background: linear-gradient(100deg, rgb(9 24 15 / 80%), rgb(9 24 15 / 52%) 60%, rgb(9 24 15 / 64%)); }
+
+.pageHead { padding: 22px 28px 0; }
+.pageHead h2, .flow :global(#garden-note-title) { margin: 0; color: rgb(255 255 255 / 82%); font-size: 13px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; }
+.pageHead h2:focus { outline: none; }
+
+.headText { display: grid; gap: 8px; padding: 14px 28px 0; color: #fff; }
+.headline { margin: 0; color: #fff; font-family: var(--font-display); font-size: 34px; font-weight: 500; line-height: 1.05; letter-spacing: -0.03em; }
+.headline:focus { outline: none; }
+.sub { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 14.5px; color: rgb(255 255 255 / 84%); }
+.sub b { font-weight: 600; color: #fff; }
+.needs { font-weight: 600; color: #ffd59a; }
+
+/* ---------- The note card ---------- */
+.noteWrap { padding: 20px 28px 0; }
+.noteCard { position: relative; display: grid; gap: 8px; margin: 0; padding: 18px 20px 20px; border: 1px solid rgb(255 255 255 / 70%); border-radius: 18px; background: rgb(255 255 255 / 92%); -webkit-backdrop-filter: blur(16px) saturate(1.2); backdrop-filter: blur(16px) saturate(1.2); box-shadow: 0 18px 40px -22px rgb(0 0 0 / 55%); }
+.noteHead { display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: 13px; font-weight: 600; color: var(--color-muted); }
+.inlineButton { border: 0; background: none; padding: 4px 0; font: inherit; font-size: 13px; font-weight: 600; color: var(--color-brand); cursor: pointer; }
+.noteText { margin: 0; font-family: var(--font-display); font-size: 17px; line-height: 1.85; letter-spacing: -0.005em; white-space: pre-wrap; overflow-wrap: anywhere; }
+.muted { color: var(--color-muted); }
+
+.inputCard { gap: 12px; }
+.inputCard:focus-within { box-shadow: 0 0 0 3px rgb(214 255 92 / 55%), 0 18px 40px -22px rgb(0 0 0 / 55%); }
+.textarea { width: 100%; min-height: 168px; resize: vertical; border: 0; outline: 0; padding: 0; background: transparent; font-family: var(--font-display); font-size: 18px; line-height: 1.75; color: var(--color-text); }
+.textarea::placeholder { color: var(--color-muted); }
+.inputMeta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; padding-top: 10px; border-top: 1px solid var(--color-line); font-size: 13px; color: var(--color-muted); }
+.length { white-space: nowrap; }
+.lengthError { white-space: nowrap; font-weight: 600; color: var(--color-error); }
+.mic { display: inline-flex; align-items: center; gap: 6px; }
+.syncHint { margin: 0; font-size: 13.5px; color: var(--color-warning); }
+.publicHint { margin: 0; font-size: 13.5px; color: var(--color-muted); }
+.requestId { margin: 0 0 8px; font-size: 12.5px; color: var(--color-muted); }
+.due { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.dueLabel { font-weight: 600; }
+.dueChip { display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding: 0 12px; border-radius: 999px; background: var(--color-soft); color: var(--color-text); font-weight: 500; }
+.dueChip[data-late] { color: var(--color-warning); }
+.dueMore { font-weight: 600; }
+
+/* Each care type's colour, for dots, labels, and fragment underlines (ADR-0085). */
+.flow [data-type] { --c: var(--color-care-watering); --cd: var(--color-care-watering-on-dark); }
+.flow [data-type="fertilizing"] { --c: var(--color-care-fertilizing); --cd: var(--color-care-fertilizing-on-dark); }
+.flow [data-type="planting"] { --c: var(--color-care-planting); --cd: var(--color-care-planting-on-dark); }
+.flow [data-type="pruning"] { --c: var(--color-care-pruning); --cd: var(--color-care-pruning-on-dark); }
+.flow [data-type="pest-treatment"] { --c: var(--color-care-pest-treatment); --cd: var(--color-care-pest-treatment-on-dark); }
+.dueChip i, .dot i, .type i { width: 8px; height: 8px; border-radius: 50%; background: var(--c, var(--color-ink-subtle)); flex: none; }
+
+/* Fragments of the note: a record's sentence is underlined in its type's colour. */
+.frag { border-bottom: 2px solid var(--c, var(--color-brand)); border-radius: 2px; transition: background-color 0.15s, opacity 0.15s; }
+.frag[data-kind="notice"] { border-bottom: 2px dashed var(--color-ink-subtle); color: var(--color-muted); }
+.frag[data-on] { background: rgb(31 66 48 / 10%); }
+.noteCard[data-dim] .frag:not([data-on]) { opacity: 0.45; }
+
+/* Reading: a lime sweep under the note while the AI works. */
+.reading .noteText { position: relative; }
+@media (prefers-reduced-motion: no-preference) {
+  .reading .noteText::after { content: ""; position: absolute; left: 0; right: 0; bottom: -6px; height: 2px; border-radius: 2px; background: linear-gradient(90deg, transparent, var(--color-accent-lime), transparent) no-repeat; background-size: 40% 100%; animation: sweep 1.4s ease-in-out infinite; }
+}
+@keyframes sweep { from { background-position: -40% 0; } to { background-position: 140% 0; } }
+
+/* ---------- The split and the garden cards ---------- */
+.split { position: relative; height: 84px; margin: 0 28px; }
+.split svg { position: absolute; inset: 0; overflow: visible; }
+.split path { fill: none; stroke: var(--color-accent-lime); stroke-width: 1.5; stroke-linecap: round; stroke-dasharray: 260; transition: opacity 0.15s, stroke-width 0.15s; }
+.split circle { fill: var(--color-accent-lime); }
+.split path[data-state="on"] { stroke-width: 2.6; }
+.split path[data-state="off"] { opacity: 0.25; }
+@media (prefers-reduced-motion: no-preference) {
+  .split[data-mode="grow"] path { animation: grow 1.1s ease-out 0.15s backwards; }
+  .split[data-mode="grow"] .end { animation: pop 0.3s ease-out 1.05s backwards; }
+  .split[data-mode="flow"] path { stroke-dasharray: 5 9; animation: flow 0.9s linear infinite; }
+  .fanCard[data-reading] { animation: breathe 1.6s ease-in-out infinite; }
+  .fanItem:nth-child(2) .fanCard[data-reading] { animation-delay: 0.25s; }
+  .fanItem:nth-child(3) .fanCard[data-reading] { animation-delay: 0.5s; }
+}
+@keyframes grow { from { stroke-dashoffset: 260; } }
+@keyframes pop { from { opacity: 0; transform: scale(0.4); } }
+@keyframes flow { to { stroke-dashoffset: -28; } }
+@keyframes breathe { 50% { box-shadow: 0 0 0 4px rgb(214 255 92 / 30%), 0 14px 30px -20px rgb(0 0 0 / 55%); } }
+.split[data-mode="flow"] path { stroke-dasharray: 5 9; }
+
+.fanRow { display: grid; grid-template-columns: repeat(min(var(--fan-count), 4), minmax(0, 1fr)); gap: 12px; padding: 0 28px; }
+.fanItem { min-width: 0; }
+.fanCard { display: grid; align-content: start; gap: 8px; width: 100%; height: 100%; padding: 14px 16px; border: 1px solid rgb(255 255 255 / 70%); border-radius: 16px; background: rgb(255 255 255 / 92%); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); box-shadow: 0 14px 30px -20px rgb(0 0 0 / 55%); color: var(--color-text); font: inherit; text-align: left; transition: border-color 0.15s, transform 0.15s; }
+button.fanCard { cursor: pointer; }
+button.fanCard:hover, .fanCard[data-on] { border-color: var(--color-brand); background: #fff; transform: translateY(-1px); }
+.fanTop { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.fanName { font-size: 15px; font-weight: 600; color: var(--color-heading); overflow-wrap: anywhere; }
+.fanSub, .fanCount { font-size: 13px; color: var(--color-muted); }
+.fanDone { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; white-space: nowrap; color: var(--color-brand); }
+.fanDone::before { content: "✓"; display: grid; place-items: center; width: 16px; height: 16px; border-radius: 50%; background: var(--color-brand); color: #fff; font-size: 10px; }
+.fanFlag { font-size: 12.5px; font-weight: 600; color: var(--color-warning); }
+.dots { display: flex; flex-wrap: wrap; gap: 6px 12px; }
+.dot { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; color: var(--c, var(--color-muted)); }
+
+/* ---------- Body ---------- */
+.body { display: grid; gap: 16px; flex: 1 0 auto; align-content: start; padding: 24px 28px 28px; }
+.textLink { font-weight: 600; color: var(--color-brand); }
+.review { display: grid; gap: 16px; }
+.garden { overflow: hidden; border: 1px solid var(--color-line); border-radius: 16px; background: var(--color-surface); scroll-margin-top: 16px; transition: border-color 0.15s, box-shadow 0.15s; }
+.garden[data-on] { border-color: var(--color-brand); box-shadow: 0 10px 24px -18px rgb(9 24 15 / 40%); }
+.gardenHead { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 20px 6px; }
+.gardenName { display: flex; align-items: center; gap: 10px; font-size: 16px; font-weight: 600; color: var(--color-heading); }
+.gardenMark { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 8px; background: var(--color-brand); color: #fff; }
+.gardenCount { font-size: 13px; color: var(--color-muted); }
+
+.row { display: grid; grid-template-columns: 22px 136px minmax(0, 1fr); align-items: start; gap: 6px 14px; margin: 0 8px; padding: 12px; border-top: 1px solid var(--color-line); border-radius: 10px; transition: background-color 0.12s; }
+.gardenHead + .row { border-top: 0; }
+.row:last-child { margin-bottom: 8px; }
+.row:hover { background: var(--color-soft); }
+.row[data-excluded] { opacity: 0.55; }
+.include { width: 18px; height: 18px; margin: 3px 0 0; accent-color: var(--color-brand); }
+.type { display: inline-flex; align-items: center; gap: 8px; padding-top: 2px; font-size: 14px; font-weight: 600; white-space: nowrap; color: var(--c, var(--color-muted)); }
+.disclosure { grid-column: 3; min-width: 0; }
+.rowMain { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; min-width: 0; padding: 2px 0; list-style: none; cursor: pointer; }
+.rowMain::-webkit-details-marker { display: none; }
+.rowMain::after { content: ""; flex: none; width: 7px; height: 7px; margin-left: 4px; border-right: 1.5px solid var(--color-ink-subtle); border-bottom: 1.5px solid var(--color-ink-subtle); transform: translateY(-3px) rotate(45deg); transition: transform 0.15s; }
+.disclosure[open] > .rowMain::after { transform: translateY(1px) rotate(-135deg); }
+.rowTitle { min-width: 0; font-size: 15px; font-weight: 500; line-height: 1.4; overflow-wrap: anywhere; }
+.rowTitle small { font-size: 14px; font-weight: 400; color: var(--color-muted); }
+.placeholder { color: var(--color-muted); font-weight: 400; }
+.rowDate { flex: none; font-size: 14px; color: var(--color-muted); }
+.rowExtras { grid-column: 3; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; min-width: 0; }
+.rowExtras > .task, .rowExtras > .hint { flex-basis: 100%; width: fit-content; max-width: 100%; }
+.missing { display: inline-flex; align-items: center; min-height: 28px; padding: 0 12px; border: 1px dashed var(--color-warning); border-radius: 999px; background: var(--color-warning-surface); color: var(--color-warning); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.task { display: inline-flex; flex-basis: auto; align-items: center; gap: 4px; min-height: 28px; padding: 0 12px 0 8px; border-radius: 999px; background: rgb(31 66 48 / 8%); color: var(--color-brand); font-size: 13px; font-weight: 600; cursor: pointer; }
+.task input { margin: 0; accent-color: var(--color-brand); }
+.hint { margin: 0; font-size: 13px; color: var(--color-muted); }
+.hint a { font-weight: 600; color: var(--color-brand); text-decoration: none; }
+.editor { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 12px; min-width: 0; margin: 4px 0 0; padding: 0; border: 0; }
+.editor :is(input, select, textarea) { width: 100%; max-width: 100%; }
+.wide { grid-column: 1 / -1; }
+.label { font-size: 13px; font-weight: 600; color: var(--color-muted); }
+.reviewNotes { margin: 0; padding-left: 18px; font-size: 13px; color: var(--color-muted); }
+.remove { border: 0; background: none; padding: 6px 0; font: inherit; font-size: 14px; font-weight: 600; color: var(--color-error); cursor: pointer; }
+
+.skipped { display: grid; gap: 10px; padding: 16px 20px; border: 1px dashed #c9c9c6; border-radius: 16px; }
+.skipped h4, .result h4 { margin: 0; font-size: 12.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-muted); }
+.notices { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
+.notices li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
+.notices q { font-size: 15px; }
+.notices small { display: block; margin-top: 2px; font-size: 13px; color: var(--color-muted); }
+.pill { display: inline-flex; align-items: center; min-height: 38px; padding: 0 16px; border: 1px solid var(--color-brand); border-radius: 999px; background: var(--color-surface); color: var(--color-brand); font: inherit; font-size: 14px; font-weight: 600; text-decoration: none; cursor: pointer; }
+.pill:hover, .pill[aria-pressed="true"] { background: var(--color-brand); color: #fff; }
+.limit { margin: 0; font-size: 13.5px; color: var(--color-muted); }
+
+.problem { display: grid; grid-template-columns: 28px 1fr; gap: 4px 12px; padding-bottom: 16px; margin-bottom: 4px; border-bottom: 1px solid var(--color-line); }
+.mark { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--color-warning-surface); color: var(--color-warning); font-weight: 700; }
+.problem[data-tone="error"] .mark { background: var(--color-error-surface); color: var(--color-error); }
+.problem[data-tone="info"] .mark { background: var(--color-soft); color: var(--color-brand); }
+.problem b { align-self: center; font-size: 15.5px; font-weight: 600; }
+.problem p { grid-column: 2; margin: 0; font-size: 14.5px; line-height: 1.55; color: var(--color-muted); }
+
+.result { display: grid; gap: 12px; padding: 20px; border: 1px solid var(--color-line); border-radius: 16px; background: var(--color-surface); }
+.result ul { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.result li { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; font-size: 15px; }
+.result s { color: var(--color-done-ink); }
+.tick, .plus { display: grid; place-items: center; flex: none; width: 20px; height: 20px; border-radius: 50%; font-size: 11px; }
+.tick { background: var(--color-brand); color: #fff; }
+.plus { border: 1.5px solid var(--color-brand); color: var(--color-brand); font-size: 13px; font-weight: 700; }
+.when { font-size: 13.5px; color: var(--color-muted); }
+
+/* ---------- Footer: a green band with a white primary button ---------- */
+.foot { position: sticky; bottom: 0; z-index: 2; isolation: isolate; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 14px 28px; color: #fff; background: var(--color-band-base) url("/landing/hero-still.webp") center 70% / cover no-repeat; }
+.foot::before { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(100deg, rgb(9 24 15 / 82%), rgb(9 24 15 / 58%) 60%, rgb(9 24 15 / 68%)); }
+.foot :focus-visible { outline-color: #fff; }
+.spacer { flex: 1; }
+.footText { border: 0; background: none; padding: 8px 4px; font: inherit; font-size: 15px; font-weight: 500; color: rgb(255 255 255 / 82%); text-decoration: none; cursor: pointer; }
+.footText:hover:not(:disabled) { color: #fff; }
+.footText:disabled { opacity: 0.55; cursor: default; }
+.footHint { font-size: 14px; color: rgb(255 255 255 / 82%); }
+.white, .ghost { display: inline-flex; align-items: center; justify-content: center; min-height: 46px; padding: 0 22px; border-radius: 999px; font: inherit; font-size: 15px; font-weight: 600; white-space: nowrap; cursor: pointer; }
+.white { border: 0; background: #fff; color: var(--color-band-ink); }
+.white:hover:not(:disabled) { background: #ececea; }
+.white:disabled { background: rgb(255 255 255 / 55%); color: rgb(14 29 20 / 65%); cursor: default; }
+.white:active:not(:disabled) { transform: translateY(1px); }
+.ghost { border: 1px solid rgb(255 255 255 / 30%); background: rgb(255 255 255 / 8%); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); color: #fff; }
+.ghost:hover:not(:disabled) { background: rgb(255 255 255 / 16%); }
+.ghost:disabled { opacity: 0.55; cursor: default; }
+
+/* ---------- Phone: a smaller fan with three small cards in a row ---------- */
+@media (max-width: 720px) {
+  .pageHead, .headText, .noteWrap, .body { padding-left: 16px; padding-right: 16px; }
+  .headline { font-size: 28px; }
+  .textarea { min-height: 220px; font-size: 17px; }
+  .inputMeta { flex-direction: column; align-items: flex-start; }
+  .split { height: 56px; margin: 0 16px; }
+  .fanRow { grid-template-columns: repeat(min(var(--fan-count), 3), minmax(0, 1fr)); gap: 8px; padding: 0 16px; }
+  .fanCard { gap: 4px; padding: 10px; border-radius: 12px; }
+  .fanName { font-size: 13px; line-height: 1.25; }
+  .fanCount, .fanSub { font-size: 12px; }
+  .dots { gap: 4px; }
+  .dot { font-size: 0; gap: 0; }
+  .fanDone { font-size: 0; }
+  .fanDone::before { font-size: 10px; }
+  .fanFlag { font-size: 11.5px; }
+  .row { grid-template-columns: 22px minmax(0, 1fr); margin: 0 4px; padding: 12px 10px; }
+  .type, .disclosure, .rowExtras { grid-column: 2; }
+  .editor { grid-template-columns: 1fr; }
+  .foot { padding: 12px 16px max(12px, env(safe-area-inset-bottom)); gap: 8px; }
+  .white, .ghost { min-height: 44px; padding: 0 16px; font-size: 14.5px; }
+  .footText { font-size: 14px; }
+}
+
+/* The /notes page shows the same card in the page; clip keeps the footer sticky to the window. */
+.page { width: min(820px, 100%); margin: 0 auto 48px; border-radius: 22px; overflow: clip; box-shadow: 0 30px 60px -40px rgb(0 0 0 / 45%); }

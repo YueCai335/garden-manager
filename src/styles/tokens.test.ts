@@ -93,4 +93,11 @@ describe("ADR-0080 and ADR-0081 band tokens", () => {
     expect({ watering: token("--color-care-watering-on-dark"), fertilizing: token("--color-care-fertilizing-on-dark") }).toEqual({ watering: "#b4e1ee", fertilizing: "#edd08f" });
     for (const name of ["--color-care-watering-on-dark", "--color-care-fertilizing-on-dark"]) expect(contrast(token(name), token("--color-band-base"))).toBeGreaterThanOrEqual(3);
   });
+
+  it("keeps all five care type icons visible on light and dark surfaces (ADR-0085)", () => {
+    for (const type of ["watering", "fertilizing", "planting", "pruning", "pest-treatment"]) {
+      expect(contrast(token(`--color-care-${type}`), token("--color-soft"))).toBeGreaterThanOrEqual(3);
+      expect(contrast(token(`--color-care-${type}-on-dark`), token("--color-band-base"))).toBeGreaterThanOrEqual(3);
+    }
+  });
 });

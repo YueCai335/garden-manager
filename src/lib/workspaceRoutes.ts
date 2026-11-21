@@ -1,3 +1,5 @@
+import { careEventTypes, type CareEventType } from "./careTypes";
+
 export type WorkspaceModule = "home" | "new" | "plan" | "care" | "season" | "notes" | "guide" | "doctor";
 export type WorkspaceRoute = { module: WorkspaceModule; gardenId?: string };
 /** The app's home, the Gardens overview. `/` is the landing page, outside the app (ADR-0073). */
@@ -21,9 +23,9 @@ export const careView = (value: string | null): "tasks" | "history" => value ===
 export const careLocationPath = (location: string, view?: "tasks" | "history") =>
   `/care?${new URLSearchParams({ ...(view ? { view } : {}), location })}`;
 /** History's care-type filter from `?type=`; anything else means every type (ADR-0080). */
-export const careHistoryType = (value: string | null): "all" | "watering" | "fertilizing" => value === "watering" || value === "fertilizing" ? value : "all";
+export const careHistoryType = (value: string | null): "all" | CareEventType => careEventTypes.find((type) => type === value) ?? "all";
 /** History with its filters; "all" leaves a filter out of the address. */
-export const careHistoryPath = (location: string, type: "all" | "watering" | "fertilizing") =>
+export const careHistoryPath = (location: string, type: "all" | CareEventType) =>
   `/care?${new URLSearchParams({ view: "history", ...(location !== "all" ? { location } : {}), ...(type !== "all" ? { type } : {}) })}`;
 /** Next Season filtered to one garden. */
 export const seasonGardenPath = (gardenId: string) => `/season?${new URLSearchParams({ garden: gardenId })}`;

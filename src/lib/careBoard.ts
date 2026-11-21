@@ -1,4 +1,5 @@
-import { byDue, calendarLabel, careLateLabel, careRepeat, careTarget, careTargetParts, careTitle } from "./careLabels";
+import { byDue, calendarLabel, careLateLabel, careRepeat, careLocalTitle, careTarget, careTargetParts, careTitle } from "./careLabels";
+import { careDetailsText } from "./careRecords";
 import { careLocationKey, careRows, workspaceCareGarden, type CareOwner, type CareRow } from "./careViews";
 import { addDays, type CareEvent, type CareEventType, type CareTask, type Garden, type GardenWorkspace } from "./gardenWorkspace";
 
@@ -54,11 +55,10 @@ type CareSource = Pick<GardenWorkspace, "careEvents" | "careTasks" | "gardens">;
 function rowText(record: CareTask | CareEvent, garden: Garden, repeat?: string) {
   const target = careTarget(record, garden);
   const { area, plant } = careTargetParts(record, garden);
-  const verb = record.type === "watering" ? "Water" : "Fertilize";
-  const localTitle = record.targetScope === "all-gardens" ? careTitle(record, garden)
-    : `${verb} ${plant ?? area ?? "whole garden"}`;
+  const localTitle = record.targetScope === "all-gardens" ? careTitle(record, garden) : careLocalTitle(record, { area, plant });
+  const details = careDetailsText(record) || undefined;
   const join = (...parts: (string | undefined)[]) => parts.filter(Boolean).join(" · ") || undefined;
-  return { title: careTitle(record, garden), detail: join(target, repeat), target, localTitle, localDetail: join(plant ? area : undefined, repeat) };
+  return { title: careTitle(record, garden), detail: join(target, details, repeat), target, localTitle, localDetail: join(plant ? area : undefined, details, repeat) };
 }
 
 /**

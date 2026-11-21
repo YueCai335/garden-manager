@@ -1,15 +1,25 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { useWorkspaceSync } from "./useWorkspaceSync";
 import { todayDate } from "@/lib/gardenWorkspace";
-import { AI_CARE_NOTE_MAX_LENGTH, createAiCareNoteBatch, featureErrorMessage, type CareNoteBatchDraftResponse } from "@/lib/gardenWorkspaceApi";
-import { applyCareDraftBatch, batchRowsPresent, newCareDraft, type CareDraftRow } from "@/lib/careNoteBatch";
+import { AI_CARE_NOTE_MAX_LENGTH, CARE_NOTE_BATCH_LIMIT, createAiCareNoteBatch, featureErrorMessage, type CareNoteBatchDraftResponse } from "@/lib/gardenWorkspaceApi";
+import { applyCareDraftBatch, batchRowsPresent, newCareDraft, type CareDraftRow, type TaskDraft } from "@/lib/careNoteBatch";
+import type { TaskRef } from "@/lib/noteTaskMatch";
+import { matchShowcaseDraft } from "@/lib/publicNoteBatch";
+import { AiCareNoteRequestError } from "@/lib/gardenWorkspaceApi";
 
-type Receipt = { status: "applied" | "saved" | "discarded"; rows: CareDraftRow[]; note: string; sourceNote: string };
-type BatchState = {
-  rows: CareDraftRow[]; notices: CareNoteBatchDraftResponse["notices"]; sourceNote: string;
-  loading: boolean; error: string; errors: Record<string, string>; receipt?: Receipt;
+type Receipt = {
+  status: "applied" | "saved" | "discarded"; rows: CareDraftRow[]; note: string; sourceNote: string;
+  tasksCompleted: number; tasksAdded: number; completedTasks: TaskRef[]; addedTasks: TaskRef[];
 };
-const empty = (): BatchState => ({ rows: [], notices: [], sourceNote: "", loading: false, error: "", errors: {} });
+/** A planned job chosen with "Add as a task", tied to the notice it came from. */
+export type ChosenTask = TaskDraft & { noticeIndex: number };
+type BatchState = {
+  rows: CareDraftRow[]; notices: CareNoteBatchDraftResponse["notices"]; sourceNote: string; taskDrafts: ChosenTask[];
+  loading: boolean; error: string; errors: Record<string, string>; receipt?: Receipt;
+  /** The public demo's request ID, so a check can be matched to its server log line (ADR-0086). */
+  requestId?: string;
+};
+const empty = (): BatchState => ({ rows: [], notices: [], sourceNote: "", taskDrafts: [], loading: false, error: "", errors: {} });
 
 /** Owned by the workspace provider; navigation never resets a batch or its request guard. */
 export function useCareNoteBatchSession(sync: ReturnType<typeof useWorkspaceSync>, note: string, setNote: (text: string) => void) {
@@ -48,15 +58,18 @@ export function useCareNoteBatchSession(sync: ReturnType<typeof useWorkspaceSync
     requesting.current = true;
     const request = ++sequence.current;
     const sourceNote = note;
-    update((old) => ({ ...old, loading: true, error: "", errors: {} }));
+    update((old) => ({ ...old, loading: true, error: "", errors: {}, requestId: undefined }));
     try {
       const result = await createAiCareNoteBatch(sync.serverWorkspaceId, note.trim(), todayDate());
       if (request !== sequence.current || sourceNote !== latestNote.current) return;
-      if (result.drafts.length > 6) throw new Error("Oversized batch");
-      const rows = result.drafts.map(newCareDraft);
-      update((old) => ({ ...old, rows, notices: result.notices, sourceNote, receipt: undefined }));
+      if (result.drafts.length > CARE_NOTE_BATCH_LIMIT) throw new Error("Oversized batch");
+      // Only the public demo answers with a request ID; its drafts name the server's showcase copy.
+      const workspace = sync.getLatestWorkspace() ?? sync.workspace;
+      const drafts = result.requestId ? result.drafts.map((draft) => matchShowcaseDraft(draft, workspace)) : result.drafts;
+      const rows = drafts.map(newCareDraft);
+      update((old) => ({ ...old, rows, notices: result.notices, taskDrafts: [], sourceNote, receipt: undefined, requestId: result.requestId }));
     } catch (error) {
-      if (request === sequence.current && sourceNote === latestNote.current) update((old) => ({ ...old, error: featureErrorMessage(error, "The note could not be drafted. Your input is kept. Check your connection and try again, or add records manually.") }));
+      if (request === sequence.current && sourceNote === latestNote.current) update((old) => ({ ...old, requestId: error instanceof AiCareNoteRequestError ? error.requestId : undefined, error: featureErrorMessage(error, "The note could not be drafted. Your input is kept. Check your connection and try again, or add records manually.") }));
     } finally {
       requesting.current = false;
       update((old) => ({ ...old, loading: false }));
@@ -68,7 +81,7 @@ export function useCareNoteBatchSession(sync: ReturnType<typeof useWorkspaceSync
     update((old) => ({ ...old, errors: {}, rows: old.rows.map((row) => row.draftId === draftId ? { ...row, ...patch, draftId: row.draftId, eventId: row.eventId } : row) }));
   };
   const addRow = () => {
-    if (current.current.rows.length >= 6 || current.current.receipt?.status === "applied") return;
+    if (current.current.rows.length >= CARE_NOTE_BATCH_LIMIT || current.current.receipt?.status === "applied") return;
     const row = newCareDraft();
     sequence.current += 1;
     update((old) => ({ ...old, rows: [...old.rows, row], sourceNote: old.rows.length ? old.sourceNote : note, receipt: undefined, errors: {} }));
@@ -78,19 +91,34 @@ export function useCareNoteBatchSession(sync: ReturnType<typeof useWorkspaceSync
     sequence.current += 1;
     update((old) => ({ ...old, rows: old.rows.filter((row) => row.draftId !== id), errors: {} }));
   };
+  /** Stops waiting for the current request; a late answer is ignored because the sequence moved on. */
+  const cancel = () => {
+    if (!current.current.loading) return;
+    sequence.current += 1;
+    update((old) => ({ ...old, loading: false }));
+  };
+  /** Adds or removes a planned job's task; its ID is allocated on this click, never in an updater. */
+  const toggleTask = (noticeIndex: number) => {
+    if (current.current.receipt?.status === "applied") return;
+    const notice = current.current.notices[noticeIndex];
+    if (!notice?.task) return;
+    const chosen = current.current.taskDrafts.some((item) => item.noticeIndex === noticeIndex);
+    const draft: ChosenTask = { noticeIndex, taskId: `care-task-${crypto.randomUUID()}`, sourceText: notice.sourceText, suggestion: notice.task };
+    update((old) => ({ ...old, errors: {}, taskDrafts: chosen ? old.taskDrafts.filter((item) => item.noticeIndex !== noticeIndex) : [...old.taskDrafts, draft] }));
+  };
   const apply = () => {
     if (current.current.loading) return;
     if (["applied", "saved"].includes(current.current.receipt?.status ?? "")) return;
     const workspace = sync.getLatestWorkspace();
     if (!workspace) return;
-    const result = applyCareDraftBatch(workspace, current.current.rows);
+    const result = applyCareDraftBatch(workspace, current.current.rows, current.current.taskDrafts);
     if (Object.keys(result.errors).length) {
       update((old) => ({ ...old, errors: result.errors, error: "No records were added. Check the highlighted fields." }));
       document.getElementById(Object.keys(result.errors)[0])?.focus();
       return;
     }
     sequence.current += 1;
-    update((old) => ({ ...old, error: "", errors: {}, receipt: { status: "applied", rows: old.rows.filter((row) => row.included), note, sourceNote: old.sourceNote } }));
+    update((old) => ({ ...old, error: "", errors: {}, receipt: { status: "applied", rows: old.rows.filter((row) => row.included), note, sourceNote: old.sourceNote, tasksCompleted: result.tasksCompleted, tasksAdded: result.tasksAdded, completedTasks: result.completedTasks, addedTasks: result.addedTasks } }));
     sync.setWorkspace(result.workspace);
   };
   const recordMore = (keepRemaining = false) => {
@@ -99,7 +127,7 @@ export function useCareNoteBatchSession(sync: ReturnType<typeof useWorkspaceSync
     setNote(keepRemaining ? current.current.sourceNote : "");
     update((old) => keepRemaining ? { ...old, receipt: undefined, error: "", errors: {} } : empty());
   };
-  return { ...state, note, setText, generate, patchRow, addRow, removeRow, apply, recordMore,
+  return { ...state, note, setText, generate, cancel, patchRow, addRow, removeRow, toggleTask, apply, recordMore,
     stale: Boolean(state.rows.length && state.sourceNote !== note),
     hasDrafts: Boolean(state.rows.length && state.receipt?.status !== "applied"),
   };

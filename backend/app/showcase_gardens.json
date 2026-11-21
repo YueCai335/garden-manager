@@ -1,0 +1,189 @@
+{
+  "gardens": [
+    {
+      "id": "demo-backyard",
+      "name": "Backyard",
+      "areas": [
+        {
+          "id": "demo-backyard-raised-bed-1",
+          "name": "Raised bed 1"
+        },
+        {
+          "id": "demo-backyard-raised-bed-2",
+          "name": "Raised bed 2"
+        },
+        {
+          "id": "demo-backyard-raised-bed-3",
+          "name": "Raised bed 3"
+        },
+        {
+          "id": "demo-backyard-raised-bed-4",
+          "name": "Raised bed 4"
+        },
+        {
+          "id": "demo-backyard-raised-bed-5",
+          "name": "Raised bed 5"
+        },
+        {
+          "id": "demo-backyard-container-1",
+          "name": "Container 1"
+        },
+        {
+          "id": "demo-backyard-container-2",
+          "name": "container 2"
+        },
+        {
+          "id": "demo-backyard-greenhouse-1",
+          "name": "Greenhouse 1"
+        },
+        {
+          "id": "demo-backyard-container-3",
+          "name": "Container 3"
+        },
+        {
+          "id": "demo-backyard-greenhouse-2",
+          "name": "Greenhouse 2"
+        }
+      ],
+      "plants": [
+        {
+          "id": "demo-backyard-raised-bed-1-pepper",
+          "name": "Pepper",
+          "growingAreaId": "demo-backyard-raised-bed-1"
+        },
+        {
+          "id": "demo-backyard-raised-bed-1-meadow-sage",
+          "name": "Meadow sage",
+          "growingAreaId": "demo-backyard-raised-bed-1"
+        },
+        {
+          "id": "demo-backyard-raised-bed-2-lettuce",
+          "name": "Lettuce",
+          "growingAreaId": "demo-backyard-raised-bed-2"
+        },
+        {
+          "id": "demo-backyard-raised-bed-3-carrot",
+          "name": "Carrot",
+          "growingAreaId": "demo-backyard-raised-bed-3"
+        },
+        {
+          "id": "demo-backyard-container-1-eggplant",
+          "name": "Eggplant",
+          "growingAreaId": "demo-backyard-container-1"
+        },
+        {
+          "id": "demo-backyard-container-3-marigold",
+          "name": "Marigold",
+          "growingAreaId": "demo-backyard-container-3"
+        },
+        {
+          "id": "demo-backyard-greenhouse-2-sunflower",
+          "name": "Sunflower",
+          "growingAreaId": "demo-backyard-greenhouse-2"
+        },
+        {
+          "id": "demo-backyard-greenhouse-2-squash",
+          "name": "Squash",
+          "growingAreaId": "demo-backyard-greenhouse-2"
+        }
+      ]
+    },
+    {
+      "id": "demo-community-garden",
+      "name": "Community Garden",
+      "areas": [
+        {
+          "id": "demo-community-garden-bed-1",
+          "name": "1"
+        },
+        {
+          "id": "demo-community-garden-bed-2",
+          "name": "2"
+        },
+        {
+          "id": "demo-community-garden-raised-bed-1",
+          "name": "Raised bed 1"
+        },
+        {
+          "id": "demo-community-garden-raised-bed-2",
+          "name": "Raised bed 2"
+        },
+        {
+          "id": "demo-community-garden-container-1",
+          "name": "Container 1"
+        },
+        {
+          "id": "demo-community-garden-container-2",
+          "name": "Container 2"
+        }
+      ],
+      "plants": [
+        {
+          "id": "demo-community-garden-bed-1-eggplant",
+          "name": "Eggplant",
+          "growingAreaId": "demo-community-garden-bed-1"
+        },
+        {
+          "id": "demo-community-garden-bed-1-kale",
+          "name": "Kale",
+          "growingAreaId": "demo-community-garden-bed-1"
+        },
+        {
+          "id": "demo-community-garden-bed-2-cucumber",
+          "name": "Cucumber",
+          "growingAreaId": "demo-community-garden-bed-2"
+        },
+        {
+          "id": "demo-community-garden-raised-bed-2-bean",
+          "name": "Bean",
+          "growingAreaId": "demo-community-garden-raised-bed-2"
+        },
+        {
+          "id": "demo-community-garden-raised-bed-2-basil",
+          "name": "Basil",
+          "growingAreaId": "demo-community-garden-raised-bed-2"
+        },
+        {
+          "id": "demo-community-garden-container-1-tomato",
+          "name": "Tomato",
+          "growingAreaId": "demo-community-garden-container-1"
+        }
+      ]
+    },
+    {
+      "id": "demo-front-yard",
+      "name": "Front Yard",
+      "areas": [
+        {
+          "id": "demo-front-yard-in-ground-bed-1",
+          "name": "In-ground bed 1"
+        },
+        {
+          "id": "demo-front-yard-in-ground-bed-2",
+          "name": "In-ground bed 2"
+        },
+        {
+          "id": "demo-front-yard-in-ground-bed-3",
+          "name": "In-ground bed 3"
+        }
+      ],
+      "plants": [
+        {
+          "id": "demo-front-yard-in-ground-bed-1-panicle-hydrangea",
+          "name": "Panicle hydrangea",
+          "growingAreaId": "demo-front-yard-in-ground-bed-1"
+        },
+        {
+          "id": "demo-front-yard-in-ground-bed-2-sunflower",
+          "name": "Sunflower",
+          "growingAreaId": "demo-front-yard-in-ground-bed-2"
+        },
+        {
+          "id": "demo-front-yard-in-ground-bed-3-marigold",
+          "name": "Marigold",
+          "growingAreaId": "demo-front-yard-in-ground-bed-3"
+        }
+      ]
+    }
+  ]
+}

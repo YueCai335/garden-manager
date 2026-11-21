@@ -138,7 +138,7 @@ def test_any_missing_setting_closes_public_generation_before_any_reservation(cli
 
 
 def test_runtime_config_reports_availability_only_when_fully_configured(client, public_demo):
-    assert client.get("/runtime-config").json() == {"portfolioDemo": True, "careNotePublicAvailable": True, "careNoteBatchAvailable": False}
+    assert client.get("/runtime-config").json() == {"portfolioDemo": True, "careNotePublicAvailable": True, "careNoteBatchAvailable": False, "careNoteBatchPublicAvailable": False}
 
 
 def test_turning_the_switch_off_blocks_the_next_request(client, public_demo, fake_openai, monkeypatch):

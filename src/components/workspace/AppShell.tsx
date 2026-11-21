@@ -9,6 +9,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { GardenNoteDialog } from "@/components/notes/GardenNoteDialog";
 import { useRuntimeConfig } from "@/components/PortfolioFeaturePreview";
+import { batchNoteAvailable } from "@/lib/publicNoteBatch";
 import { OverviewGardenNote } from "./OverviewGardenNote";
 import { AppFooter } from "./AppFooter";
 import styles from "./AppShell.module.css";
@@ -99,7 +100,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   useEffect(() => { if (notePath.current !== pathname) { notePath.current = pathname; setNoteMode(null); } }, [pathname]);
   const closeMenu = () => { setMenuOpen(false); if (menuOpen) menuButton.current?.focus(); };
   const showNote = noteMode !== null;
-  const batchAvailable = config?.careNoteBatchAvailable === true;
+  const batchAvailable = batchNoteAvailable(config);
   const openNote: OpenGardenNote = (opener, { batchAvailable, gardenId }) => {
     noteOpener.current = opener;
     setMenuOpen(false);

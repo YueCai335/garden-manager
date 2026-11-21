@@ -1,4 +1,4 @@
-import { careFertilizerDetails } from "./careRecords";
+import { careDetailsText } from "./careRecords";
 import { calendarLabel, careDoneTitle, careTarget, daysBetween } from "./careLabels";
 import { careLocationKey, careRows, workspaceCareGarden, type CareRow } from "./careViews";
 import type { CareEvent, CareEventType, GardenWorkspace } from "./gardenWorkspace";
@@ -37,10 +37,10 @@ export function careHistory(workspace: CareSource, options: { today: string; loc
         label: ago === 0 ? "Today" : ago === 1 ? "Yesterday" : calendarLabel(date, { weekday: "long" }),
       });
     }
-    const fertilizer = record.type === "fertilizing" ? careFertilizerDetails(record) : "";
+    const details = careDetailsText(record);
     days.at(-1)!.rows.push({
       key: source.key, type: record.type, title: careDoneTitle(record, garden), source,
-      detail: [careTarget(record, garden), fertilizer].filter(Boolean).join(" · ") || "Applies to every garden",
+      detail: [careTarget(record, garden), details].filter(Boolean).join(" · ") || "Applies to every garden",
       ...(record.note ? { note: record.note } : {}),
     });
   }

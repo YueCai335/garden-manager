@@ -1519,7 +1519,7 @@ describe("GardenWorkspace", () => {
     await openCare(user);
     await user.click(screen.getByRole("button", { name: "Add task" }));
     const form = await careDialog(user, "Add care task");
-    await user.selectOptions(form.getByLabelText("Care type"), "fertilizing");
+    await user.click(form.getByRole("radio", { name: "Fertilizing" }));
     fireEvent.change(form.getByLabelText("Due date"), { target: { value: "2026-09-02" } });
     await user.selectOptions(form.getByLabelText("Target"), "planting-area:demo-raised-bed");
     await user.type(form.getByLabelText("Repeat every whole days (optional)"), "3");
@@ -1603,7 +1603,7 @@ describe("GardenWorkspace", () => {
     await user.click(wateringForm.getByRole("button", { name: "Add care event" }));
     await user.click(screen.getByRole("button", { name: "Add record" }));
     const fertilizerForm = await careDialog(user, "Add care event");
-    await user.selectOptions(fertilizerForm.getByLabelText("Care type"), "fertilizing");
+    await user.click(fertilizerForm.getByRole("radio", { name: "Fertilizing" }));
     fireEvent.change(fertilizerForm.getByLabelText("Date"), { target: { value: "2026-06-02" } });
     await user.selectOptions(fertilizerForm.getByLabelText("Target"), "planting-area:demo-raised-bed");
     await user.click(fertilizerForm.getByRole("button", { name: "Add care event" }));

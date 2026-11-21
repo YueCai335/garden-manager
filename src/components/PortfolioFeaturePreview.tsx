@@ -28,7 +28,7 @@ export function useRuntimeConfig() {
     setFailed(false);
     void loadRuntimeConfig()
       .then((loaded) => {
-        if (active) setConfig({ portfolioDemo: Boolean(loaded.portfolioDemo), careNotePublicAvailable: Boolean(loaded.careNotePublicAvailable), careNoteBatchAvailable: !loaded.portfolioDemo && loaded.careNoteBatchAvailable === true });
+        if (active) setConfig({ portfolioDemo: Boolean(loaded.portfolioDemo), careNotePublicAvailable: Boolean(loaded.careNotePublicAvailable), careNoteBatchAvailable: !loaded.portfolioDemo && loaded.careNoteBatchAvailable === true, careNoteBatchPublicAvailable: Boolean(loaded.portfolioDemo) && loaded.careNoteBatchPublicAvailable === true });
       })
       .catch(() => {
         if (active) setFailed(true);

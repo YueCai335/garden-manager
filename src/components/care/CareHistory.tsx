@@ -4,7 +4,8 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import type { careHistory, HistoryType } from "@/lib/careHistory";
 import type { CareRow } from "@/lib/careViews";
-import type { CareEvent, Garden } from "@/lib/gardenWorkspace";
+import { careTypeName } from "@/lib/careLabels";
+import { careEventTypes, type CareEvent, type Garden } from "@/lib/gardenWorkspace";
 import { CareIcon, PlusIcon } from "./CareMarks";
 import { RowMenu } from "./CareParts";
 import styles from "./Care.module.css";
@@ -59,7 +60,7 @@ export function CareHistory({ history, gardens, location, type, careHref, onBack
       <div className={styles.filters}>
         <Chips label="Garden" name="Filter by garden" value={location} onChange={onLocation}
           options={[["all", "All"], ...gardens.map((garden): [string, string] => [garden.id, garden.name]), ["all-gardens", "All gardens"]]} />
-        <Chips<HistoryType> label="Care" name="Filter by care type" value={type} onChange={onType} options={[["all", "All"], ["watering", "Watering"], ["fertilizing", "Fertilizing"]]} />
+        <Chips<HistoryType> label="Care" name="Filter by care type" value={type} onChange={onType} options={[["all", "All"], ...careEventTypes.map((type): [HistoryType, string] => [type, careTypeName[type]])]} />
         {/* Announced when a filter or Show earlier records changes it (ADR-0080, 7.6). */}
         <p className={styles.filterCount} aria-live="polite" aria-atomic="true">{shown < total ? `Showing ${shown} of ${total} records` : plural(total, "record")}</p>
       </div>

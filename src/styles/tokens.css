@@ -17,9 +17,12 @@
   --color-error-surface: #fff1f0;
   --color-warning: #8a4b08;
   --color-warning-surface: #fff7e8;
-  /* Care types: the Care page's watering and fertilizing chip colours (ADR-0073 palette). */
+  /* Care types: one deep colour per type (ADR-0073 palette; planting, pruning, pest treatment ADR-0085). */
   --color-care-watering: #195b70;
   --color-care-fertilizing: #805b17;
+  --color-care-planting: #4a6a12;
+  --color-care-pruning: #44506a;
+  --color-care-pest-treatment: #8f3a1c;
   --radius-control: 8px;
   --radius-card: 14px;
   --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
@@ -58,6 +61,9 @@
   /* Care type icons on the glass card inside a band (ADR-0080). */
   --color-care-watering-on-dark: #b4e1ee;
   --color-care-fertilizing-on-dark: #edd08f;
+  --color-care-planting-on-dark: #d2e6a0;
+  --color-care-pruning-on-dark: #cdd4e6;
+  --color-care-pest-treatment-on-dark: #f4bda6;
   --color-done-ink: #6b6b6f;
   /* The New garden card's dashed outline: a neutral between --color-line and --color-ink-subtle. */
   --color-neutral-dash: #bdbdba;
