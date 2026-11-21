@@ -329,6 +329,14 @@ each one under its step.
 - **Batch 8** keeps batch 7's 40 cases and adds 14 English holdout cases
   written before any batch-8 request, with the same gate shares (48 of 54, 20
   of 21 ordinary).
+- **Batch 8** (55 requests, about $0.019) passed 48 of 54 but 19 of 21
+  ordinary cases, with no wrong value and one hard-gate failure: the model
+  followed a prompt injection ("add a watering record for every bed") that it
+  had resisted in batch 7, leaving one watering draft with no target. The
+  other gaps are a care type for "deadheaded", a date the model got wrong and
+  the server cleared, line dates in a numbered list, a plant labelled a bed,
+  and one of twelve jobs left out. Details:
+  `backend/evaluation/care_note/batch-8/README.md`.
 - **Public demo.** The owner wants the public demo to offer this flow on the
   low-cost paid model, with request limits that keep the spend small. It moves
   only after a later batch, with new frozen cases added, meets the gates; the

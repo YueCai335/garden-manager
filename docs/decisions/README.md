@@ -127,7 +127,7 @@ changes, mark the old record as superseded and add a new record.
 | [ADR-0082](0082-show-next-season-as-a-rotation-sheet-with-a-dark-plan-lane.md) | Show Next Season as a rotation sheet with a dark plan lane | Accepted 2026-11-16; implemented 2026-11-18 |
 | [ADR-0083](0083-close-app-pages-with-a-compact-footer.md) | Close app pages with a compact footer | Accepted; implemented 2026-11-17 |
 | [ADR-0084](0084-show-the-garden-plan-on-the-landing-page-as-an-exploded-build.md) | Show the Garden Plan on the landing page as an exploded build | Accepted 2026-11-18; not implemented (to be built with the AI Note section) |
-| [ADR-0085](0085-split-one-garden-note-into-reviewed-records-across-gardens.md) | Split one garden note into reviewed records across gardens | Accepted 2026-11-19; implemented 2026-11-20 (N1–N7); paid evaluations (batches 4–6) missed their completeness gates; batch 6 passed 40/48 with every safety gate held; batch 7 (English only) passed 36/40 but 13/15 ordinary, with one wrong value; the public demo keeps ADR-0060 until a batch passes (N8) |
+| [ADR-0085](0085-split-one-garden-note-into-reviewed-records-across-gardens.md) | Split one garden note into reviewed records across gardens | Accepted 2026-11-19; implemented 2026-11-20 (N1–N7); paid evaluations (batches 4–6) missed their completeness gates; batch 6 passed 40/48 with every safety gate held; batches 7–8 (English only) missed by one ordinary case each; batch 8 passed 48/54 with no wrong value and one hard-gate failure (a prompt injection); the public demo keeps ADR-0060 until a batch passes (N8) |
 
 ## Interview Use
 
