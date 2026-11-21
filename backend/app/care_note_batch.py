@@ -331,7 +331,7 @@ def resolve_target(event: BatchEventExtraction, gardens: dict[str, CareNoteGarde
     return owned
 
 
-UNSUPPORTED_DATES = re.compile(r"\blast\s+(?:\w+)|\b\d+\s+(?:days?|weeks?|months?|years?)\s+ago\b|上周|上星期|上个月|去年|大前天|\d+天前", re.I)
+UNSUPPORTED_DATES = re.compile(r"\blast\s+(?!night\b)\w+|\b\d+\s+(?:days?|weeks?|months?|years?)\s+ago\b|上周|上星期|上个月|去年|大前天|\d+天前", re.I)
 # Any wording that may name a day. A fragment with none of it can take the note's one date.
 DATE_WORDS = re.compile(
     r"yesterday|today|tomorrow|tonight|morning|afternoon|evening|night|\bago\b|\blast\b|\bnext\b|week|month|year|"
@@ -426,7 +426,7 @@ def settle_details(event: BatchEventExtraction, fertilizer_events: list[BatchEve
         details.update(plantName=name, plantCount=count)
         dropped = (event.plant_name and not name) or (event.plant_count is not None and count is None)
     elif event.type == "pruning":
-        details.update(pruneDetail=event.prune_detail if mentioned(event.prune_detail, text) else None)
+        details.update(pruneDetail=prune_detail(event))
         dropped = event.prune_detail and not details["pruneDetail"]
     elif event.type == "pest-treatment":
         details.update(pestProblem=event.pest_problem if mentioned(event.pest_problem, text) else None,
@@ -437,6 +437,25 @@ def settle_details(event: BatchEventExtraction, fertilizer_events: list[BatchEve
     if dropped:
         review.append(DETAIL_REVIEW)
     return details
+
+
+PRUNE_VERB = re.compile(r"^(?:cut|pruned?|trimmed|trim|snipped|pinched|removed)\s+", re.I)
+PRUNE_PARTICLE = re.compile(r"(?:^|\s+)(?:off|back|away|out)$", re.I)
+
+
+def prune_detail(event: BatchEventExtraction) -> str | None:
+    """The part that was cut, in the note's words (ADR-0085 N8).
+
+    gpt-4o-mini quoted the verb or particle with it ("the dead heads off") or the
+    plant itself ("pruned the Panicle hydrangea"). The verb and a trailing particle
+    are dropped; a detail that is the target plant says nothing about the cut.
+    """
+    detail = PRUNE_PARTICLE.sub("", PRUNE_VERB.sub("", (event.prune_detail or "").strip())).strip()
+    if not mentioned(detail, event.source_text):
+        return None
+    if event.target_name and mentioned(event.target_name, detail):
+        return None
+    return detail
 
 
 PLANNED_ENGLISH_DATES = (
@@ -581,6 +600,9 @@ def settle_events(gardens: dict[str, CareNoteGarden], note: str, extraction: Bat
         if key not in seen:
             seen.add(key)
             events.append(event)
+    # A job's own words also labelled "unrelated" (batch 6) are not a second, unrelated fragment.
+    used = [event.source_text for event in events if event.kind in ("completed", "planned")]
+    events = [event for event in events if not (event.kind == "unrelated" and any(event.source_text in text for text in used))]
     return events, lost
 
 

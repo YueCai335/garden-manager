@@ -92,11 +92,12 @@ def complete_known_care_note_fields(
 
 # The date expressions the first version recognizes (ADR-0058), as days before
 # the request's today. English phrases match whole words, longest first, so
-# "the day before yesterday" is not also read as "yesterday".
+# "the day before yesterday" is not also read as "yesterday". "This morning",
+# "tonight" and "last night" were added for English visitors (ADR-0085 N8).
 ENGLISH_DATE_PHRASES = (
     (re.compile(r"\b(?:the\s+)?day\s+before\s+yesterday\b"), 2),
-    (re.compile(r"\byesterday\b"), 1),
-    (re.compile(r"\btoday\b"), 0),
+    (re.compile(r"\b(?:yesterday|last\s+night)\b"), 1),
+    (re.compile(r"\b(?:today|tonight|this\s+(?:morning|afternoon|evening))\b"), 0),
 )
 CHINESE_DATE_WORDS = (("前天", 2), ("昨天", 1), ("昨日", 1), ("今天", 0), ("今日", 0))
 # Words that contain a recognized word but mean another date. They are not

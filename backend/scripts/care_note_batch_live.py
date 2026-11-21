@@ -1,9 +1,9 @@
 """Run the batch Garden Note's paid evaluation against the real OpenAI API (ADR-0085 N8).
 
-The batch lives in backend/evaluation/care_note/batch-6/: frozen cases, the
-ledger, and one run record per request. It allows 49 requests: one
-compatibility request at the largest size the API accepts, then each of the 48
-cases once (batch 5's 38 and 10 new holdout cases).
+The batch lives in backend/evaluation/care_note/batch-7/: frozen cases, the
+ledger, and one run record per request. It allows 41 requests: one
+compatibility request at the largest size the API accepts, then each of the 40
+English cases once (batch 6's 19 English cases and 21 new holdout cases).
 
 Paid commands need --confirm-spend, hold the ledger lock for their whole run,
 and refuse to run while anything except the batch's ledger and run records is

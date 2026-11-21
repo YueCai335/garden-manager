@@ -86,3 +86,10 @@ Four of the eight are free-text details quoted wider than expected. Counting
 those as passing when the quote contains the expected words, a reading
 decided only after this run and therefore not a gate, gives 43 of 48 cases
 but 17 of 19 ordinary cases, still below the ordinary gate.
+
+## Replay under batch 7's server rules
+
+`replays/replay-d67bc2f896d04782.json` scores the saved answers again under
+the third server fixes (see `../batch-7/README.md`): 42 of 48 cases and 15 of
+19 ordinary cases pass, with no hard-gate failure and no wrong value. The
+English cases pass 18 of 19.

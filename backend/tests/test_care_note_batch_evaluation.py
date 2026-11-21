@@ -59,7 +59,7 @@ def ideal_result(item):
 
 
 def unrelated(note):
-    return {"overflow": False, "sharedDateText": None, "events": [{**case("b3-zh-unrelated")["ideal"]["events"][0], "sourceText": note}]}
+    return {"overflow": False, "sharedDateText": None, "events": [{**case("b7-en-marigold-blooming")["ideal"]["events"][0], "sourceText": note}]}
 
 
 def ledger_at(tmp_path):
@@ -107,8 +107,8 @@ def test_malformed_cases_are_refused_before_any_spending(break_cases):
 
 def test_the_cost_bound_covers_every_request_at_its_caps():
     bound = live.cost_bound(CASES)
-    assert bound["requests"] == live.UNIT_LIMIT == 49
-    assert bound["max_output_tokens"] == 49 * 8192
+    assert bound["requests"] == live.UNIT_LIMIT == 41
+    assert bound["max_output_tokens"] == 41 * 8192
     assert bound["max_cost_usd"] < 0.3
 
 
@@ -121,9 +121,9 @@ def test_changing_cases_or_prompt_changes_the_batch(monkeypatch):
 
 
 @pytest.mark.parametrize("line, blocks", [
-    (" M backend/evaluation/care_note/batch-6/ledger.json", False),
-    ("?? backend/evaluation/care_note/batch-6/runs/02-evaluation-b3-zh-negated.json", False),
-    (" M backend/evaluation/care_note/batch-6/cases.json", True),
+    (" M backend/evaluation/care_note/batch-7/ledger.json", False),
+    ("?? backend/evaluation/care_note/batch-7/runs/02-evaluation-b6-en-forgot.json", False),
+    (" M backend/evaluation/care_note/batch-7/cases.json", True),
     (" M backend/app/care_note_batch.py", True),
 ])
 def test_only_the_ledger_and_run_records_may_be_uncommitted_during_a_paid_run(line, blocks):
@@ -134,7 +134,7 @@ def test_only_the_ledger_and_run_records_may_be_uncommitted_during_a_paid_run(li
 
 
 def test_a_missing_value_is_left_for_review_but_a_contradicting_value_is_wrong():
-    item = case("b3-zh-two-dates")
+    item = case("b7-en-greenhouses-yesterday")
     result = ideal_result(item)
     result["drafts"][0]["date"] = None
     score = live.score_case(item, result, GARDENS)
@@ -144,17 +144,17 @@ def test_a_missing_value_is_left_for_review_but_a_contradicting_value_is_wrong()
 
 
 def test_a_different_quote_of_the_note_is_not_a_fabrication():
-    item = case("b3-zh-pest-plant")
+    item = case("b6-en-pest-yesterday")
     result = ideal_result(item)
-    result["drafts"][0]["pestTreatment"] = "肥皂水喷了一遍"
+    result["drafts"][0]["pestTreatment"] = "insecticidal soap on the Bean"
     score = live.score_case(item, result, GARDENS)
     assert not score["passed"] and score["quoted_differently"] == ["pestTreatment"] and score["wrong_values"] == []
 
 
 def test_a_record_drafted_from_planned_or_negated_text_is_a_hard_gate_failure():
-    item = case("b3-zh-two-planned")
+    item = case("b5-en-planned-sowing")
     result = ideal_result(item)
-    result["drafts"].append({**ideal_result(case("b3-zh-water-two-gardens"))["drafts"][0], "sourceText": "后天给 Backyard 浇水"})
+    result["drafts"].append({**ideal_result(case("b5-en-two-containers"))["drafts"][0], "sourceText": item["note"]})
     score = live.score_case(item, result, GARDENS)
     assert score["extra_drafts"] == 1 and score["hard_gate_failure"]
 
@@ -169,14 +169,14 @@ def test_a_planned_task_is_scored_on_its_values():
 
 
 def test_thirteen_jobs_pass_only_when_the_note_is_refused_whole():
-    item = case("b3-zh-thirteen-jobs")
+    item = case("b7-en-thirteen-jobs")
     assert ideal_result(item) == {"outcome": "split"}
     assert live.score_case(item, ideal_result(item), GARDENS)["passed"]
     assert not live.score_case(item, {"outcome": "drafts", "drafts": [], "notices": []}, GARDENS)["passed"]
     assert len(case("b3-en-twelve-jobs")["expect"]["drafts"]) == MAX_DRAFTS
 
 
-def records(passed=48, ordinary=19, **score_changes):
+def records(passed=40, ordinary=15, **score_changes):
     built = []
     for index, item in enumerate(CASES["cases"]):
         score = live.score_case(item, ideal_result(item), GARDENS)
@@ -191,12 +191,12 @@ def records(passed=48, ordinary=19, **score_changes):
 
 def test_the_gates_need_every_condition():
     assert live.summarize(records())["gates_met"]
-    assert live.summarize(records(passed=43))["gates_met"]
-    assert not live.summarize(records(passed=42))["gates_met"]
-    assert not live.summarize(records(ordinary=17))["gates_met"]
-    assert not live.summarize(records(**{"b3-zh-negated": {"hard_gate_failure": True}}))["gates_met"]
-    assert not live.summarize(records(**{"b3-zh-two-dates": {"wrong_values": ["date"]}}))["gates_met"]
-    assert not live.summarize(records(**{"b3-zh-two-dates": {"invalid_drafts": 1}}))["gates_met"]
+    assert live.summarize(records(passed=36))["gates_met"]
+    assert not live.summarize(records(passed=35))["gates_met"]
+    assert not live.summarize(records(ordinary=13))["gates_met"]
+    assert not live.summarize(records(**{"b6-en-forgot": {"hard_gate_failure": True}}))["gates_met"]
+    assert not live.summarize(records(**{"b7-en-greenhouses-yesterday": {"wrong_values": ["date"]}}))["gates_met"]
+    assert not live.summarize(records(**{"b7-en-greenhouses-yesterday": {"invalid_drafts": 1}}))["gates_met"]
     unknown = records()
     unknown[0]["input_tokens"] = None
     assert not live.summarize(unknown)["gates_met"]
@@ -213,7 +213,7 @@ def test_the_evaluation_waits_for_the_compatibility_request(tmp_path):
 
 
 def test_a_record_keeps_the_exact_request_its_usage_its_cost_and_the_score(tmp_path):
-    item = case("b3-zh-water-two-gardens")
+    item = case("b3-en-three-gardens-three-types")
     with ledger_at(tmp_path) as ledger:
         compatibility_passes(ledger, tmp_path)
         extractor, responses = extractor_with(response_for(item["ideal"]))
@@ -225,8 +225,8 @@ def test_a_record_keeps_the_exact_request_its_usage_its_cost_and_the_score(tmp_p
     assert record["bytes"] == care_note_request_bytes(record["params"])
     assert record["cost_usd"] == round(3000 * 0.15e-6 + 400 * 0.6e-6, 6)
     assert "ideal" not in record["case"]
-    assert [draft["gardenId"] for draft in record["result"]["drafts"]] == ["demo-backyard", "demo-front-yard"]
-    saved = json.loads((tmp_path / "runs" / "02-evaluation-b3-zh-water-two-gardens.json").read_text())
+    assert [draft["gardenId"] for draft in record["result"]["drafts"]] == ["demo-backyard", "demo-community-garden", "demo-front-yard"]
+    saved = json.loads((tmp_path / "runs" / "02-evaluation-b3-en-three-gardens-three-types.json").read_text())
     assert saved["score"]["passed"]
 
 
@@ -270,7 +270,7 @@ def test_a_provider_status_error_records_its_status_and_code_but_never_its_messa
 
 
 def test_an_unusable_answer_still_counts_and_is_not_retried(tmp_path):
-    item = case("b3-zh-negated")
+    item = case("b6-en-forgot")
     with ledger_at(tmp_path) as ledger:
         compatibility_passes(ledger, tmp_path)
         extractor, responses = extractor_with(response_for("{not json"))
@@ -282,19 +282,19 @@ def test_an_unusable_answer_still_counts_and_is_not_retried(tmp_path):
     assert len(responses.requests) == 1
 
 
-def test_the_whole_batch_is_49_requests_and_a_rerun_never_repeats_a_case(tmp_path):
+def test_the_whole_batch_is_41_requests_and_a_rerun_never_repeats_a_case(tmp_path):
     with ledger_at(tmp_path) as ledger:
         compatibility_passes(ledger, tmp_path)
         extractor, responses = extractor_with(*[response_for(item["ideal"]) for item in CASES["cases"]])
         outcomes = live.run_evaluation(ledger, extractor, CASES, runs_dir=tmp_path / "runs", code_version="test")
-        assert len(outcomes) == 48 and all(outcome.passed for outcome in outcomes)
+        assert len(outcomes) == 40 and all(outcome.passed for outcome in outcomes)
         assert live.run_evaluation(ledger, extractor, CASES, runs_dir=tmp_path / "runs", code_version="test") == []
         with pytest.raises(LedgerRefused):
             ledger.reserve("evaluation", "extra")
-    assert ledger.used == 49 and len(responses.requests) == 48
+    assert ledger.used == 41 and len(responses.requests) == 40
     summary = live.summarize(live.evaluation_records(tmp_path / "runs"))
-    assert summary["gates_met"] and summary["passed"] == 48 and summary["holdout_passed"] == 10
-    assert live.spend(ledger.data)["requests"] == 49
+    assert summary["gates_met"] and summary["passed"] == 40 and summary["holdout_passed"] == 21
+    assert live.spend(ledger.data)["requests"] == 41
 
 
 def test_a_different_model_or_batch_is_refused(tmp_path):
@@ -311,9 +311,10 @@ def test_a_different_model_or_batch_is_refused(tmp_path):
 
 
 def test_the_batch_openai_extractor_sends_the_harness_parameters():
-    extractor, responses = extractor_with(response_for(case("b3-zh-negated")["ideal"]))
-    extractor.extract("今天没给 Backyard 浇水，因为下雨了", live.model_context(CASES), TODAY)
-    assert responses.requests[0] == extractor.request_params("今天没给 Backyard 浇水，因为下雨了", live.model_context(CASES), TODAY)
+    note = "Didn't water the Backyard today because of the rain."
+    extractor, responses = extractor_with(response_for(case("b6-en-forgot")["ideal"]))
+    extractor.extract(note, live.model_context(CASES), TODAY)
+    assert responses.requests[0] == extractor.request_params(note, live.model_context(CASES), TODAY)
     assert extractor.sender.timeout == 90
 
 
@@ -332,8 +333,10 @@ def test_the_replay_scores_saved_answers_again_without_changing_them():
     assert {path.name: path.read_text() for path in runs.glob("*.json")} == before
 
 
-def test_batch_6_keeps_batch_5s_cases_and_adds_ten_holdout_notes():
-    old = json.loads((live.EVALUATION_DIR / "batch-5" / "cases.json").read_text())
+def test_batch_7_keeps_batch_6s_english_cases_and_adds_21_english_holdout_notes():
+    old = json.loads((live.EVALUATION_DIR / "batch-6" / "cases.json").read_text())
     kept = [{key: value for key, value in item.items() if key != "holdout"} for item in CASES["cases"] if not item["holdout"]]
-    assert kept == [{key: value for key, value in item.items() if key != "holdout"} for item in old["cases"]] and CASES["gardens"] == old["gardens"] and CASES["today"] == old["today"]
-    assert sum(item["holdout"] for item in CASES["cases"]) == 10
+    english = [{key: value for key, value in item.items() if key != "holdout"} for item in old["cases"] if item["language"] == "en"]
+    assert kept == english and CASES["gardens"] == old["gardens"] and CASES["today"] == old["today"]
+    assert sum(item["holdout"] for item in CASES["cases"]) == 21
+    assert {item["language"] for item in CASES["cases"]} == {"en"}

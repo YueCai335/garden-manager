@@ -258,3 +258,33 @@ def test_a_unit_with_stray_punctuation_is_read_without_it():
     row = drafts(note, event(note, type="fertilizing", gardenName="后院", targetScope="plant-group", targetName="Kale",
                              fertilizerProduct="鱼肥", fertilizerAmount=20, fertilizerUnit="ml},{"))["drafts"][0]
     assert (row["fertilizerAmount"], row["fertilizerUnit"]) == (20, "ml")
+
+
+@pytest.mark.parametrize("detail, expected", [
+    ("the dead heads off", "the dead heads"),
+    ("cut the suckers", "the suckers"),
+    ("back", None),
+    ("pruned the Kale", None),
+    ("yellow leaves", "yellow leaves"),
+])
+def test_a_prune_detail_keeps_the_part_cut_not_the_verb_particle_or_plant(detail, expected):
+    note = "Today I cut the dead heads off and cut the suckers back on the Kale in 后院, and pruned the Kale's yellow leaves"
+    row = only_draft(note, type="pruning", gardenName="后院", targetScope="plant-group", targetName="Kale", pruneDetail=detail)
+    assert row["pruneDetail"] == expected
+
+
+def test_a_jobs_own_words_also_called_unrelated_add_no_notice():
+    note = "Today I watered the Kale in 后院."
+    result = drafts(note, event(note, gardenName="后院", targetScope="plant-group", targetName="Kale"), event(note, kind="unrelated", type=None))
+    assert len(result["drafts"]) == 1 and result["notices"] == []
+
+
+@pytest.mark.parametrize("note, expected", [
+    ("Watered 后院 this morning", "2026-11-11"),
+    ("Watered 后院 tonight", "2026-11-11"),
+    ("Watered 后院 last night", "2026-11-10"),
+    ("Watered 后院 last Tuesday", None),
+])
+def test_common_english_times_of_day_name_their_date(note, expected):
+    row = only_draft(note, gardenName="后院", targetScope="garden", date=expected)
+    assert row["date"] == expected

@@ -305,6 +305,19 @@ each one under its step.
   amount, a garden named only in an earlier clause, one of twelve jobs left
   out, and an observation read as a question. Details:
   `backend/evaluation/care_note/batch-6/README.md`.
+- **English first.** The demo's visitors write in English, with some French
+  and almost no Chinese (owner, 2026-11-20). Batch 6 had 29 Chinese or mixed
+  cases of 48 and no French ones, and its English cases passed 16 of 19. The
+  server's word rules (planting, harvest, negation, future and date words)
+  read English and Chinese only, so a French planting note drafts nothing.
+  The owner set French aside for now. Batch 7 scores English notes only:
+  batch 6's 19 English cases and 21 new English holdout cases, with the same
+  gate shares (36 of 40, 14 of 15 ordinary). Before it, a third round of
+  server rules trims a pruning detail to the part cut, drops an unrelated
+  notice that repeats a job's own words, and reads "this morning",
+  "tonight" and "last night". Replaying batch 6 under these rules passes 18
+  of its 19 English cases. Details:
+  `backend/evaluation/care_note/batch-7/README.md`.
 - **Public demo.** The owner wants the public demo to offer this flow on the
   low-cost paid model, with request limits that keep the spend small. It moves
   only after a later batch, with new frozen cases added, meets the gates; the
