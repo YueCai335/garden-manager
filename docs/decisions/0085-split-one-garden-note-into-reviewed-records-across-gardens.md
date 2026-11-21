@@ -316,8 +316,15 @@ each one under its step.
   server rules trims a pruning detail to the part cut, drops an unrelated
   notice that repeats a job's own words, and reads "this morning",
   "tonight" and "last night". Replaying batch 6 under these rules passes 18
-  of its 19 English cases. Details:
-  `backend/evaluation/care_note/batch-7/README.md`.
+  of its 19 English cases.
+- **Batch 7** (41 requests, about $0.016) passed 36 of 40 cases but 13 of 15
+  ordinary cases, and had the first wrong value of batches 4 to 7: a planting
+  that named its bed ("Planted 3 Basil in Community Garden Raised bed 1") was
+  attached to the existing Basil in another bed. No hard-gate failure and no
+  extra draft. Three of the four failures are server rules: a planting must
+  target the bed it names, the quote widening must ignore the quote's end
+  punctuation, and a detail of date words only ("next week") is not a detail.
+  Details: `backend/evaluation/care_note/batch-7/README.md`.
 - **Public demo.** The owner wants the public demo to offer this flow on the
   low-cost paid model, with request limits that keep the spend small. It moves
   only after a later batch, with new frozen cases added, meets the gates; the

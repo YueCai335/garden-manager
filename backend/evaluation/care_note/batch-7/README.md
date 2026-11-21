@@ -12,7 +12,8 @@ scope for now, and the server's word rules do not read it.
 - Model: `gpt-4o-mini-2024-07-18`, the request the app sends, with
   `temperature: 0`.
 - Allowance: 41 requests: one compatibility request, then each case once.
-- Cost bound: $0.239 at every cap; expected about $0.015. Status: **not run**.
+- Cost bound: $0.239 at every cap; expected about $0.015. Status: **ran on
+  2026-11-20; the gates were not met** (see Results).
 
 ## Server fixes since batch 6
 
@@ -80,3 +81,32 @@ cd backend && .venv/bin/python scripts/care_note_batch_live.py evaluate --confir
 ```bash
 cd backend && .venv/bin/python scripts/care_note_batch_live.py report
 ```
+
+## Results (2026-11-20, commit `d8f2e8b`)
+
+All 41 requests ran once with known usage: 45,336 input and 14,845 output
+tokens, about **$0.016**.
+
+| Gate | Result |
+| --- | --- |
+| Cases passed (at least 36 of 40) | 36 |
+| Ordinary cases passed (at least 14 of 15) | **13** |
+| Holdout cases passed | 18 of 21 |
+| Hard-gate failures (none allowed) | 0 |
+| Wrong values (none allowed) | **1** (`b7-en-plant-basil`) |
+| Drafts the app would reject (none allowed) | 0 |
+| Usage unknown (none allowed) | 0 |
+
+Expected drafts found: 50 of 51, with no extra draft and no unusable answer.
+The four failures:
+
+| Case | What the answer did |
+| --- | --- |
+| `b7-en-plant-basil` | **Wrong value.** "Planted 3 Basil in Community Garden Raised bed 1" was labelled a plant group named Basil, so the server attached it to the existing Basil in Raised bed 2 instead of Raised bed 1. |
+| `b7-en-aphids-neem` | The quote "sprayed them with neem oil today." kept its full stop. The server's widening compares against sentences without their stop, so it did not widen to the sentence that names the Cucumber and Community Garden: the garden, the plant and the problem were left for the gardener. |
+| `b7-en-done-and-next-week` | The planned task's pruning detail was "next week", a date, not the part cut. |
+| `b3-en-twelve-jobs` | One of the twelve jobs left out, as in batch 6. |
+
+The first three are server rules, not model limits: a planting that names its
+bed must target that bed, the widening must ignore the quote's own end
+punctuation, and a detail made only of date words says nothing about the job.
