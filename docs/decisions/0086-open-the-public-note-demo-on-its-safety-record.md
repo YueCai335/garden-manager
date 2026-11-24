@@ -1,9 +1,8 @@
 # ADR-0086: Open the Public Note Demo on Its Safety Record
 
-- Status: Accepted on 2026-11-21. The owner approved this text and steps 1
-  and 2 of the opening plan on 2026-11-21, then asked to continue; steps 1
-  to 3 are built (see "Implementation notes"). Step 4 spends money and waits
-  for its own approval.
+- Status: Accepted on 2026-11-21. Steps 1 to 3 are built and merged (PR #25).
+  The preview check passed and the public demo opened at a limit of 300 on
+  2026-11-23 (see "Opening record").
 - Date: 2026-11-20
 - Changes:
   - [ADR-0085](0085-split-one-garden-note-into-reviewed-records-across-gardens.md),
@@ -321,6 +320,28 @@ These choices were made while building steps 1 and 2 (2026-11-21).
   `CARE_NOTE_BATCH_PUBLIC_RUN_LIMIT=0`. With these, a demo batch request
   answers 503 "AI notes are not available in the demo right now" before any
   reservation.
+
+## Opening record
+
+- **Deploy closed (2026-11-21).** PR #25 merged; `/runtime-config` reported
+  `careNoteBatchPublicAvailable: false`. The owner set `OPENAI_API_KEY` in
+  Render and an OpenAI organization spend limit of USD 5 with alerts at 80%
+  and 100%.
+- **Switch-off drill.** With the limit at 3, turning the switch on and off
+  changed `/runtime-config` to `true` and back to `false`. No model request
+  ran.
+- **Preview check (3 requests, 2026-11-23).** From
+  `garden-manager-git-public-note-demo-yue-3d22.vercel.app`, request IDs
+  `1cd6e9acf1d0`, `7c546f4ff0e9`, and `5c3a3f7d445f` returned drafts. The
+  injection note drafted only the Carrot fertilizing record (blood meal, 5 g,
+  today) and showed the instruction notice. The model also set the overflow
+  flag, which added a "more than 12 jobs" check notice; it changes no record.
+  The switch closed and the preview origin was removed afterwards.
+- **Open (2026-11-23).** The production build has
+  `NEXT_PUBLIC_CARE_NOTE_BATCH_LIVE_ENTRY=true`, and Render has a limit of
+  300 with the switch on. The 3 preview requests count toward the 300.
+- **Follow-up.** When the guard fires, the overflow check notice can be
+  dropped, since the injected "every bed" wording is what raises the flag.
 
 ## Rationale
 
