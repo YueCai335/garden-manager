@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Landing AI Note section mockup v3</title>
+<!-- The mockup loads fonts from Google; the app self-hosts them with next/font. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..600&family=Instrument+Sans:wght@400..700&display=swap">
+<style>
+:root {
+  --page: #f4f4f3; --ink: #18181a; --muted: #5f5f63; --line: #e3e3e1; --brand: #1f4230; --brand-hover: #285239; --brand-head: #173322;
+  /* The same frame and slab texture as the Garden Plan section (ADR-0084). */
+  --texture: linear-gradient(100deg, rgb(9 24 15 / 58%), rgb(9 24 15 / 28%) 55%, rgb(9 24 15 / 42%)), url("../../public/landing/hero-still.webp") center / cover no-repeat #1d3a28;
+  /* The note card is a small piece of the same leaf, cropped differently, so the white stage carries green too. */
+  --texture-note: linear-gradient(140deg, rgb(9 24 15 / 46%), rgb(9 24 15 / 22%) 60%, rgb(9 24 15 / 40%)), url("../../public/landing/hero-still.webp") 30% 40% / 240% no-repeat #24452f;
+  /* Care type colours from tokens.css: deep on white cards, light on the dark note card. */
+  --watering: #195b70; --fertilizing: #805b17; --pruning: #44506a; --pest: #8f3a1c;
+  --watering-d: #b4e1ee; --fertilizing-d: #edd08f; --pruning-d: #cdd4e6; --pest-d: #f4bda6;
+  --ease: cubic-bezier(0.65, 0, 0.2, 1);
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--ink); font-family: "Instrument Sans", system-ui, sans-serif; }
+.tools { width: min(1180px, calc(100% - 32px)); margin: 20px auto 12px; display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; font-size: 13px; color: var(--muted); }
+.tools .grp { display: flex; gap: 6px; align-items: center; }
+.tools button { font: inherit; padding: 6px 12px; border-radius: 999px; border: 1px solid #d6d6d3; background: #fff; cursor: pointer; color: var(--ink); }
+.tools button[aria-pressed="true"] { background: var(--brand); color: #fff; border-color: var(--brand); }
+.ref { width: min(1180px, calc(100% - 32px)); margin: 0 auto 10px; font-size: 13px; color: var(--muted); }
+
+/* ---------- Section band ---------- */
+.band { position: relative; isolation: isolate; overflow: hidden; display: grid; gap: 8px; width: min(1180px, calc(100% - 32px)); height: 720px; margin: 0 auto 64px; padding: 16px; border-radius: 28px; background: var(--texture);
+  grid-template-columns: 380px minmax(0, 1fr); }
+.slab { position: relative; z-index: 3; padding: 40px 24px 40px 36px; border-radius: 22px; background: var(--texture); color: #fff; }
+.kicker { margin: 0 0 18px; font-size: 12.5px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; }
+.kicker span { margin-right: 10px; }
+.slab h2 { margin: 0 0 30px; font-family: "Bricolage Grotesque", sans-serif; font-size: 46px; font-weight: 500; line-height: 1; letter-spacing: -0.03em; }
+.steps { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.step { display: grid; grid-template-columns: 30px 1fr; gap: 12px; padding: 12px 12px 12px 10px; border: 1px solid rgb(255 255 255 / 16%); border-radius: 14px; background: rgb(255 255 255 / 7%); box-shadow: inset 0 1px 0 rgb(255 255 255 / 10%); opacity: 0.62; -webkit-backdrop-filter: blur(12px) saturate(1.2); backdrop-filter: blur(12px) saturate(1.2); transition: background-color .35s, opacity .35s, border-color .35s; }
+.step.done { opacity: 1; }
+.step.on { opacity: 1; border-color: rgb(255 255 255 / 48%); background: rgb(255 255 255 / 16%); }
+.num { display: grid; place-items: center; width: 28px; height: 28px; border: 1.5px solid rgb(255 255 255 / 75%); border-radius: 50%; font-size: 12.5px; font-weight: 600; transition: background-color .3s, color .3s; }
+.step.on .num { background: #fff; color: var(--brand-head); }
+.step b { display: block; margin: 3px 0; font-size: 16.5px; font-weight: 500; }
+.step p { margin: 0; color: rgb(255 255 255 / 80%); font-size: 14px; line-height: 1.5; }
+.summary { margin: 22px 0 0; font-size: 15px; font-weight: 500; line-height: 1.5; opacity: 0; transform: translateY(6px); transition: opacity .6s, transform .6s; }
+.summary.on { opacity: 1; transform: none; }
+.ctas { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
+.solid, .ghost { display: inline-flex; align-items: center; gap: 8px; height: 46px; padding: 0 22px; border-radius: 999px; font: inherit; font-size: 15px; font-weight: 500; text-decoration: none; cursor: pointer; transition: background-color .15s, color .15s; }
+.solid { border: 0; background: #fff; color: var(--brand-head); }
+.solid:hover { background: #e9efe9; }
+.ghost { border: 1px solid rgb(255 255 255 / 35%); background: rgb(255 255 255 / 8%); color: #fff; }
+.ghost:hover { background: rgb(255 255 255 / 16%); }
+
+/* Layout: mirrored — the stage on the left, the slab on the right. */
+.lay-mirror { grid-template-columns: minmax(0, 1fr) 380px; }
+.lay-mirror .slab { order: 2; }
+
+/* Layout: stacked — a short textured strip on top with the steps in a row, the stage below. */
+.lay-stack { height: 680px; grid-template-columns: minmax(0, 1fr); grid-template-rows: 172px minmax(0, 1fr); }
+.lay-stack .slab { display: grid; grid-template-columns: 330px minmax(0, 1fr); gap: 28px; align-items: center; padding: 26px 26px 26px 34px; }
+.lay-stack .slab h2 { margin: 0; font-size: 40px; }
+.lay-stack .kicker { margin-bottom: 14px; }
+.lay-stack .steps { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.lay-stack .step { align-content: start; min-height: 108px; }
+.lay-stack .summary, .lay-stack .slab .ctas { display: none; }
+
+/* ---------- White stage ---------- */
+.stage { position: relative; overflow: hidden; border-radius: 18px; background: #fff; --top: 100px; --bottom: 96px; }
+.stage::before { content: ""; position: absolute; inset: 0; background-image: radial-gradient(#dcdcda 1px, transparent 1.3px); background-size: 18px 18px; -webkit-mask-image: radial-gradient(70% 70% at 52% 52%, #000 40%, transparent 100%); mask-image: radial-gradient(70% 70% at 52% 52%, #000 40%, transparent 100%); }
+.lay-stack .stage { --top: 70px; --bottom: 82px; --gx: max(32px, calc((100% - 940px) / 2)); }
+
+.samples { position: absolute; left: 32px; top: 30px; right: 32px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; z-index: 4; }
+.lay-stack .samples { top: 22px; left: var(--gx); right: var(--gx); }
+.samples .lbl { margin-right: 4px; font-size: 11.5px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: var(--brand); }
+.samples .lbl small { font-size: inherit; font-weight: 500; letter-spacing: 0.04em; text-transform: none; color: var(--muted); margin-left: 6px; }
+.pill { height: 32px; padding: 0 14px; border-radius: 999px; border: 1px solid #d6d6d3; background: #fff; font: inherit; font-size: 13px; color: var(--ink); cursor: pointer; transition: background-color .2s, border-color .2s, color .2s; }
+.pill:hover { border-color: var(--brand); }
+.pill[aria-pressed="true"] { border-color: var(--brand); background: var(--brand); color: #fff; }
+
+/* The note: a dark leaf-textured glass card on the white stage. */
+.note { position: absolute; left: 32px; top: 112px; width: 340px; min-height: 300px; padding: 20px 22px 18px; border-radius: 22px; z-index: 2; display: flex; flex-direction: column; color: #fff; background: var(--texture-note); box-shadow: inset 0 1px 0 rgb(255 255 255 / 16%), 0 34px 60px -34px rgb(14 29 20 / 70%); }
+.lay-stack .note { left: var(--gx); width: 450px; }
+.lay-stack .text { font-size: 26px; }
+.lay-stack .card { right: var(--gx); width: 340px; }
+.note header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; font-size: 12px; color: rgb(255 255 255 / 72%); }
+.note header b { font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; }
+.text { flex: 1; margin: 0; font-family: "Bricolage Grotesque", sans-serif; font-size: 23px; line-height: 1.42; letter-spacing: -0.01em; }
+.ph { border-radius: 5px; padding: 0 1px; transition: background-color .45s, box-shadow .45s; }
+.ph.hl { background: color-mix(in srgb, var(--c) 20%, transparent); box-shadow: inset 0 -2px 0 var(--c); }
+.caret { display: inline-block; width: 2px; height: 1.05em; margin-left: 2px; vertical-align: -0.15em; background: #fff; animation: blink 1s steps(1) infinite; }
+.caret.off { display: none; }
+@keyframes blink { 50% { opacity: 0; } }
+.read { align-self: flex-start; display: inline-flex; align-items: center; gap: 8px; height: 38px; margin-top: 18px; padding: 0 16px; border-radius: 999px; font: inherit; font-size: 14px; font-weight: 500; color: #fff; border: 1px solid rgb(255 255 255 / 28%); background: rgb(255 255 255 / 12%); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); transition: transform .15s; }
+.read.press { transform: scale(0.95); }
+.read svg { width: 16px; height: 16px; }
+.read.busy span { background: linear-gradient(90deg, #fff 35%, rgb(255 255 255 / 30%) 50%, #fff 65%) 0 0 / 300% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: shimmer 1.1s linear infinite; }
+@keyframes shimmer { to { background-position: -150% 0; } }
+
+/* Record cards: white, with the care type colour on the icon. */
+.card { position: absolute; right: 32px; width: 290px; padding: 13px 14px 12px; border-radius: 16px; z-index: 2; border: 1px solid #dededb; background: #fff; box-shadow: 0 18px 40px -28px rgb(0 0 0 / 35%); opacity: 0; transform: translateX(14px) scale(0.98); transition: opacity .45s, transform .55s var(--ease), border-color .4s, box-shadow .4s; }
+.card.in { opacity: 1; transform: none; }
+.card .hd { display: flex; align-items: center; gap: 9px; }
+.card .ic { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: color-mix(in srgb, var(--c) 14%, transparent); }
+.card .ic i { width: 8px; height: 8px; border-radius: 50%; background: var(--c); }
+.card .hd b { flex: 1; font-size: 15.5px; font-weight: 500; }
+.status { height: 24px; padding: 0 10px; display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; font-size: 12px; font-weight: 500; border: 1px solid #dededb; color: var(--muted); transition: background-color .35s, color .35s, border-color .35s; }
+.status.ok { border-color: var(--brand); background: var(--brand); color: #fff; }
+.status svg { width: 12px; height: 12px; }
+.card dl { display: grid; grid-template-columns: 64px 1fr; gap: 3px 10px; margin: 10px 0 0 33px; font-size: 13px; }
+.card dt { color: var(--muted); }
+.card dd { margin: 0; }
+.card.saved { border-color: rgb(31 66 48 / 45%); box-shadow: 0 18px 40px -28px rgb(31 66 48 / 55%); }
+
+.save { position: absolute; right: 32px; bottom: 30px; display: flex; align-items: center; gap: 14px; z-index: 3; opacity: 0; transform: translateY(8px); transition: opacity .45s, transform .45s; }
+.lay-stack .save { bottom: 22px; right: var(--gx); }
+.save.in { opacity: 1; transform: none; }
+.save small { font-size: 13px; color: var(--muted); }
+.save button { height: 42px; padding: 0 20px; border: 0; border-radius: 999px; font: inherit; font-size: 14.5px; font-weight: 500; background: var(--brand); color: #fff; cursor: pointer; transition: transform .15s, background-color .3s; }
+.save button:hover { background: var(--brand-hover); }
+.save button.press { transform: scale(0.95); }
+.caption { position: absolute; left: 32px; bottom: 34px; margin: 0; font-size: 12.5px; color: var(--muted); z-index: 3; }
+.lay-stack .caption { display: none; }
+/* In the stacked layout the section's buttons sit on the stage, in brand green. */
+.stageCtas { position: absolute; left: var(--gx, 32px); bottom: 22px; z-index: 3; display: none; gap: 10px; }
+.lay-stack .stageCtas { display: flex; }
+.stageCtas .solid { height: 42px; background: var(--brand); color: #fff; }
+.stageCtas .solid:hover { background: var(--brand-hover); }
+.stageCtas .ghost { height: 42px; border-color: var(--brand); background: #fff; color: var(--brand); }
+.stageCtas .ghost:hover { background: var(--brand); color: #fff; }
+
+svg.wires { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 3; overflow: visible; }
+.wires path { fill: none; stroke: var(--brand); stroke-width: 1.5; stroke-linecap: round; }
+.wires circle { fill: var(--brand); stroke: #fff; stroke-width: 2; }
+
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="tools">
+  <div class="grp">布局 <button data-l="stack" aria-pressed="true">上下（新轮廓）</button><button data-l="mirror" aria-pressed="false">左右镜像</button><button data-l="same" aria-pressed="false">原样（同 Garden 节）</button></div>
+</div>
+
+<section class="band lay-stack" id="band" aria-labelledby="ai-note-title">
+  <div class="slab">
+    <div>
+      <p class="kicker"><span>02</span>AI Note</p>
+      <h2 id="ai-note-title">Write one note. Get reviewed records.</h2>
+    </div>
+    <div>
+      <ol class="steps">
+        <li class="step" data-step="0"><span class="num">01</span><div><b>Write it your way</b><p>One sentence about what you did today.</p></div></li>
+        <li class="step" data-step="1"><span class="num">02</span><div><b>AI splits it into records</b><p>Each action is matched to a plant and an area in your garden.</p></div></li>
+        <li class="step" data-step="2"><span class="num">03</span><div><b>You review, then save</b><p>Nothing saves until you check it.</p></div></li>
+      </ol>
+      <p class="summary" id="summary">Saved records land in Care, with the tasks still due.</p>
+      <div class="ctas" id="ctas">
+        <a class="solid" href="#">Try it</a>
+        <button class="ghost replay" type="button">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8.1 8.1 0 0 0-15.5-2m-.5-4v4h4"/><path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4"/></svg>Replay</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="stage" id="stage">
+    <div class="samples" id="samples"><span class="lbl">Sample notes<small>pre-recorded</small></span></div>
+    <article class="note">
+      <header><b>AI Note</b><span>Backyard · Today</span></header>
+      <p class="text" id="text"></p>
+      <button class="read" id="read" type="button" tabindex="-1">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/></svg>
+        <span id="readLabel">Read note</span></button>
+    </article>
+    <div id="cards"></div>
+    <svg class="wires" id="wires" aria-hidden="true"></svg>
+    <div class="stageCtas">
+      <a class="solid" href="#">Try it</a>
+      <button class="ghost replay" type="button">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8.1 8.1 0 0 0-15.5-2m-.5-4v4h4"/><path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4"/></svg>Replay</button>
+    </div>
+    <div class="save" id="save"><small id="saveNote">Nothing saves until you do</small><button type="button" id="saveBtn" tabindex="-1">Save 3 records</button></div>
+    <p class="caption">Try it for your own garden</p>
+  </div>
+</section>
+
+<script>
+const check = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+// Each sample: text segments ([text] or [text, recordIndex]) and the records the note becomes.
+const samples = [
+  { label: "Watered the tomatoes…",
+    segs: [["Watered the tomatoes", 0], [", "], ["fed raised bed A with fish emulsion", 1], [", and "], ["spotted aphids on the kale", 2], ["."]],
+    recs: [
+      { type: "Watering", c: "watering", f: [["Plant", "Tomato ×3"], ["Area", "Raised bed A"]] },
+      { type: "Fertilizing", c: "fertilizing", f: [["Product", "Fish emulsion"], ["Area", "Raised bed A"]] },
+      { type: "Pest", c: "pest", f: [["Problem", "Aphids"], ["Plant", "Kale · Raised bed B"]] } ] },
+  { label: "Pruned the basil…",
+    segs: [["Pruned the basil", 0], [" and "], ["watered both pots", 1], [" before work."]],
+    recs: [
+      { type: "Pruning", c: "pruning", f: [["Plant", "Basil"], ["Area", "Pot 1"]] },
+      { type: "Watering", c: "watering", f: [["Area", "Pot 1, Pot 2"], ["When", "Today, morning"]] } ] },
+  { label: "Gave the peppers…",
+    segs: [["Gave the peppers 2 L of tomato feed", 0], [" after "], ["pinching off the side shoots", 1], ["."]],
+    recs: [
+      { type: "Fertilizing", c: "fertilizing", f: [["Product", "Tomato feed"], ["Amount", "2 L"], ["Plant", "Pepper ×2"]] },
+      { type: "Pruning", c: "pruning", f: [["Detail", "Side shoots"], ["Plant", "Pepper ×2"]] } ] },
+];
+
+const band = document.getElementById("band"), stage = document.getElementById("stage");
+const textEl = document.getElementById("text"), cardsEl = document.getElementById("cards"), wires = document.getElementById("wires");
+const read = document.getElementById("read"), readLabel = document.getElementById("readLabel");
+const save = document.getElementById("save"), saveBtn = document.getElementById("saveBtn"), saveNote = document.getElementById("saveNote"), summary = document.getElementById("summary");
+const steps = [...document.querySelectorAll(".step")];
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const NS = "http://www.w3.org/2000/svg";
+let timers = [], current = 0, phrases = [], cards = [], finished = false;
+const at = (ms, fn) => timers.push(setTimeout(fn, ms));
+
+const pills = samples.map((s, i) => {
+  const b = document.createElement("button");
+  b.className = "pill"; b.type = "button"; b.textContent = s.label;
+  b.onclick = () => { current = i; play(); };
+  document.getElementById("samples").appendChild(b);
+  return b;
+});
+
+function setStep(n) { steps.forEach((s, i) => { s.classList.toggle("on", i === n); s.classList.toggle("done", i < n); }); }
+function rel(el) { const a = stage.getBoundingClientRect(), b = el.getBoundingClientRect(); return { x: b.left - a.left, y: b.top - a.top, w: b.width, h: b.height }; }
+
+// A wire leaves the note card's right edge level with its phrase and ends at the record card.
+function wirePath(i) {
+  const rects = phrases[i].getClientRects(), last = rects[rects.length - 1], s = stage.getBoundingClientRect();
+  const note = rel(document.querySelector(".note")), card = rel(cards[i]);
+  const x1 = note.x + note.w, y1 = last.top - s.top + last.height / 2, x2 = card.x, y2 = card.y + 25;
+  const k = (x2 - x1) * 0.55;
+  return { d: `M${x1} ${y1} C${x1 + k} ${y1}, ${x2 - k} ${y2}, ${x2} ${y2}`, x1, y1, x2, y2 };
+}
+
+function drawWire(i, animate) {
+  const g = document.createElementNS(NS, "g"), w = wirePath(i);
+  g.innerHTML = `<path d="${w.d}"/><circle cx="${w.x1}" cy="${w.y1}" r="4"/><circle cx="${w.x2}" cy="${w.y2}" r="4"/>`;
+  wires.appendChild(g);
+  if (!animate) return;
+  const p = g.querySelector("path"), L = p.getTotalLength(), end = g.querySelectorAll("circle")[1];
+  p.style.strokeDasharray = L; p.style.strokeDashoffset = L; end.style.opacity = 0;
+  p.getBoundingClientRect();
+  p.style.transition = "stroke-dashoffset .75s cubic-bezier(.65,0,.2,1)"; p.style.strokeDashoffset = 0;
+  const spark = document.createElementNS(NS, "circle"); spark.setAttribute("r", "3");
+  spark.innerHTML = `<animateMotion dur="0.75s" fill="freeze" path="${w.d}" keySplines=".65 0 .2 1" keyTimes="0;1" calcMode="spline"/>`;
+  g.appendChild(spark);
+  at(780, () => { spark.remove(); end.style.transition = "opacity .25s"; end.style.opacity = 1; });
+}
+function redrawWires() { wires.innerHTML = ""; cards.forEach((c, i) => { if (c.classList.contains("in")) drawWire(i, false); }); }
+
+function placeCards() {
+  const cs = getComputedStyle(stage), top = parseFloat(cs.getPropertyValue("--top")), bottom = parseFloat(cs.getPropertyValue("--bottom")), gap = 14;
+  const total = cards.reduce((a, c) => a + c.offsetHeight, 0) + gap * (cards.length - 1);
+  let y = top + Math.max(0, (stage.clientHeight - top - bottom - total) / 2);
+  const note = document.querySelector(".note");
+  if (band.classList.contains("lay-stack")) { note.style.top = y + "px"; note.style.minHeight = Math.max(total, 260) + "px"; }
+  else { note.style.top = ""; note.style.minHeight = ""; }
+  cards.forEach(c => { c.style.top = y + "px"; y += c.offsetHeight + gap; });
+}
+
+function build(sample) {
+  textEl.innerHTML = ""; cardsEl.innerHTML = ""; wires.innerHTML = ""; phrases = []; cards = [];
+  const spans = sample.segs.map(seg => {
+    const sp = document.createElement("span");
+    if (seg[1] !== undefined) { sp.className = "ph"; sp.style.setProperty("--c", `var(--${sample.recs[seg[1]].c}-d)`); phrases[seg[1]] = sp; }
+    sp.dataset.full = seg[0]; textEl.appendChild(sp); return sp;
+  });
+  const caret = document.createElement("i"); caret.className = "caret"; textEl.appendChild(caret);
+  sample.recs.forEach(r => {
+    const c = document.createElement("div");
+    c.className = "card"; c.style.setProperty("--c", `var(--${r.c})`);
+    c.innerHTML = `<div class="hd"><span class="ic"><i></i></span><b>${r.type}</b><span class="status">Review</span></div><dl>${r.f.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("")}</dl>`;
+    cardsEl.appendChild(c); cards.push(c);
+  });
+  placeCards();
+  saveBtn.textContent = `Save ${sample.recs.length} records`; saveNote.textContent = "Nothing saves until you do";
+  return { spans, caret };
+}
+
+function markSaved(c) { c.classList.add("saved"); const s = c.querySelector(".status"); s.classList.add("ok"); s.innerHTML = check + "Saved"; }
+function done() { saveBtn.textContent = "Saved to Care"; saveNote.textContent = "Tasks still due stay in Care"; summary.classList.add("on"); setStep(3); finished = true; }
+
+function finalState(sample) {
+  const { spans, caret } = build(sample);
+  spans.forEach(s => s.textContent = s.dataset.full); caret.classList.add("off");
+  phrases.forEach(p => p.classList.add("hl")); cards.forEach(c => { c.classList.add("in"); markSaved(c); });
+  redrawWires(); readLabel.textContent = `${sample.recs.length} records found`; read.classList.remove("busy");
+  save.classList.add("in"); done();
+}
+
+function play() {
+  timers.forEach(clearTimeout); timers = []; finished = false;
+  pills.forEach((p, i) => p.setAttribute("aria-pressed", String(i === current)));
+  const sample = samples[current];
+  if (reduce) return finalState(sample);
+  const { spans, caret } = build(sample);
+  read.classList.remove("busy", "press"); readLabel.textContent = "Read note";
+  save.classList.remove("in"); summary.classList.remove("on"); setStep(0);
+
+  let t = 350;
+  spans.forEach(sp => { [...sp.dataset.full].forEach(ch => { at(t, () => sp.textContent += ch); t += 26; }); });
+  t += 450;
+  at(t, () => { read.classList.add("press"); caret.classList.add("off"); });
+  at(t + 150, () => { read.classList.remove("press"); read.classList.add("busy"); readLabel.textContent = "Reading…"; setStep(1); });
+  t += 1100;
+  sample.recs.forEach((r, i) => {
+    at(t, () => phrases[i].classList.add("hl"));
+    at(t + 200, () => cards[i].classList.add("in"));
+    at(t + 260, () => drawWire(i, true));
+    t += 720;
+  });
+  at(t, () => { read.classList.remove("busy"); readLabel.textContent = `${sample.recs.length} records found`; });
+  at(t + 300, () => { setStep(2); save.classList.add("in"); });
+  t += 1700;
+  at(t, () => saveBtn.classList.add("press"));
+  at(t + 150, () => saveBtn.classList.remove("press"));
+  cards.forEach((c, i) => at(t + 200 + i * 140, () => markSaved(c)));
+  at(t + 300 + cards.length * 140, done);
+}
+
+document.querySelectorAll(".replay").forEach(b => b.onclick = play);
+addEventListener("resize", () => { placeCards(); if (finished) redrawWires(); });
+document.querySelectorAll("[data-l]").forEach(b => b.onclick = () => {
+  band.classList.remove("lay-stack", "lay-mirror");
+  if (b.dataset.l !== "same") band.classList.add("lay-" + b.dataset.l);
+  document.querySelectorAll("[data-l]").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+  play();
+});
+new IntersectionObserver((entries, obs) => { if (entries[0].isIntersecting) { obs.disconnect(); document.fonts.ready.then(play); } }, { threshold: 0.4 }).observe(stage);
+</script>
+</body>
+</html>

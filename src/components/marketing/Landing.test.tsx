@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import { expect, it, vi } from "vitest";
 import LandingPage from "@/app/(marketing)/page";
 import { LandingFooter } from "./LandingFooter";
@@ -67,7 +67,38 @@ it("starts the Garden Plan showcase on the finished plan with reduced motion, an
   renderLanding();
   const stage = screen.getByRole("img", { name: /sample backyard/ });
   expect(stage).toHaveAttribute("data-state", "finished");
-  screen.getByRole("button", { name: "Replay" }).click();
+  within(screen.getByRole("article", { name: "Draw your garden to scale" })).getByRole("button", { name: "Replay" }).click();
   expect(stage).toHaveAttribute("data-state", "finished");
+  vi.unstubAllGlobals();
+});
+
+it("shows the AI Note showcase with its saved records when the browser cannot play it", () => {
+  // jsdom has no IntersectionObserver, like reduced motion: the section shows the end state.
+  const fetch = vi.fn();
+  vi.stubGlobal("fetch", fetch);
+  renderLanding();
+  const section = screen.getByRole("article", { name: "Write one note, get reviewed records" });
+  expect(within(section).getAllByRole("listitem").map((item) => item.querySelector("b")?.textContent)).toEqual(["Write it your way", "AI splits it into records", "You review, then save"]);
+  const stage = within(section).getByRole("img", { name: /^Sample note: “Watered the tomatoes/ });
+  expect(stage).toHaveAttribute("data-state", "saved");
+  expect(stage).toHaveAccessibleName(/3 reviewed records: Watering in Backyard, Fertilizing in Backyard, Pest treatment in Allotment/);
+  expect(within(section).getByRole("button", { name: "Watered the tomatoes…" })).toHaveAttribute("aria-pressed", "true");
+  expect(within(section).getByRole("link", { name: "Try it" })).toHaveAttribute("href", "/notes");
+  // The samples are pre-recorded: the showcase never calls the note API.
+  expect(fetch).not.toHaveBeenCalled();
+  vi.unstubAllGlobals();
+});
+
+it("plays another AI Note sample from its button, and Replay keeps it, with reduced motion", () => {
+  vi.stubGlobal("IntersectionObserver", class { observe() {} disconnect() {} });
+  vi.stubGlobal("matchMedia", (query: string) => ({ matches: query.includes("reduce"), media: query, addEventListener() {}, removeEventListener() {} }));
+  renderLanding();
+  const section = screen.getByRole("article", { name: "Write one note, get reviewed records" });
+  act(() => within(section).getByRole("button", { name: "Planted 6 lettuce…" }).click());
+  expect(within(section).getByRole("button", { name: "Planted 6 lettuce…" })).toHaveAttribute("aria-pressed", "true");
+  const stage = within(section).getByRole("img", { name: /^Sample note: “Planted 6 lettuce/ });
+  expect(stage).toHaveAttribute("data-state", "saved");
+  act(() => within(section).getByRole("button", { name: "Replay" }).click());
+  expect(within(section).getByRole("img", { name: /^Sample note: “Planted 6 lettuce/ })).toHaveAttribute("data-state", "saved");
   vi.unstubAllGlobals();
 });

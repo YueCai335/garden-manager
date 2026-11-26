@@ -150,7 +150,7 @@
 .records span { color: rgb(255 255 255 / 78%); }
 
 /* Feature sections on the neutral page: one full-width section each, stacked in the header's
-   order. Garden Plan plays its showcase (ADR-0084); the others are text and "Try it" until theirs are designed. */
+   order. Garden Plan (ADR-0084) and AI Note (ADR-0088) play showcases; the others are text and "Try it" until theirs are designed. */
 .features { padding: 24px 0 64px; }
 .feature {
   display: grid;
