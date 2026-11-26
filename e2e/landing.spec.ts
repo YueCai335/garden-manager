@@ -156,6 +156,54 @@ test("with reduced motion the Garden Plan showcase shows the finished plan at on
   await expect(page.getByRole("img", { name: /sample backyard/ })).toHaveAttribute("data-state", "finished");
 });
 
+test("the AI Note showcase splits a sample note once in view, and a sample button plays another", async ({ page }) => {
+  const noteRequests: string[] = [];
+  page.on("request", (request) => { if (request.url().startsWith("http://127.0.0.1:8100") && !request.url().endsWith("/health")) noteRequests.push(request.url()); });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/");
+  const section = page.getByRole("article", { name: "Write one note, get reviewed records" });
+  const stage = section.getByRole("img", { name: /^Sample note: “Watered the tomatoes/ });
+  // It waits off screen, then plays once the stage scrolls into view.
+  await expect(stage).toHaveAttribute("data-state", "typing");
+  await stage.scrollIntoViewIfNeeded();
+  await expect(stage).toHaveAttribute("data-state", "splitting", { timeout: 15_000 });
+  await expect(stage).toHaveAttribute("data-state", "saved", { timeout: 15_000 });
+  await expect(stage.getByText("Saved", { exact: true })).toHaveCount(3);
+  await expect(stage.getByText("Completes “Water Backyard” · due today")).toBeVisible();
+  // One wire per record, ending on its card inside the white stage.
+  const wires = stage.locator("[data-part=wires] path");
+  await expect(wires).toHaveCount(3);
+  const box = (await stage.boundingBox())!;
+  for (const wire of await wires.all()) {
+    const bounds = (await wire.boundingBox())!;
+    expect(bounds.x).toBeGreaterThanOrEqual(box.x);
+    expect(bounds.x + bounds.width).toBeLessThanOrEqual(box.x + box.width);
+  }
+
+  await section.getByRole("button", { name: "Pruned the basil…" }).click();
+  const basil = section.getByRole("img", { name: /^Sample note: “Pruned the basil/ });
+  await expect(basil).toHaveAttribute("data-state", "typing");
+  await expect(basil).toHaveAttribute("data-state", "saved", { timeout: 15_000 });
+  await expect(basil.locator("[data-part=wires] path")).toHaveCount(2);
+  // The samples are pre-recorded and never reach the API.
+  expect(noteRequests).toEqual([]);
+});
+
+test("on a phone the AI Note showcase stacks its records under the note without wires", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  const section = page.getByRole("article", { name: "Write one note, get reviewed records" });
+  const stage = section.getByRole("img", { name: /^Sample note/ });
+  await stage.scrollIntoViewIfNeeded();
+  await expect(stage).toHaveAttribute("data-state", "saved");
+  await expect(stage.locator("[data-part=wires]")).toBeHidden();
+  const note = (await stage.getByText("AI Note", { exact: true }).boundingBox())!;
+  const firstRecord = (await stage.getByText("Watering", { exact: true }).boundingBox())!;
+  expect(firstRecord.y).toBeGreaterThan(note.y);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
+
 test("the landing page has a social preview and in-page section links", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/");

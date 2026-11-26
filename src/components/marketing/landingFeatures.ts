@@ -11,7 +11,7 @@ export type LandingFeature = {
 } & (
   | { text: string; points: string[] }
   /** A section with a guided showcase: numbered steps beside an animation, then one summary line. */
-  | { steps: { title: string; text: string }[]; summary: string }
+  | { showcase: "garden-plan" | "ai-note"; steps: { title: string; text: string }[]; summary: string }
 );
 
 /**
@@ -23,6 +23,7 @@ export const landingFeatures: LandingFeature[] = [
     id: "garden-plan",
     label: "Garden Plan",
     title: "Draw your garden to scale",
+    showcase: "garden-plan",
     // The three steps match the showcase's three layers and the plan's three levels (ADR-0084, ADR-0075).
     steps: [
       { title: "Draw your garden", text: "Trace your real plot. This one is a 10 × 6 m backyard." },
@@ -36,12 +37,14 @@ export const landingFeatures: LandingFeature[] = [
     id: "ai-note",
     label: "AI Note",
     title: "Write one note, get reviewed records",
-    text: "Describe what you did in the garden in your own words. The AI Note splits it into care records you review before saving.",
-    points: [
-      "One sentence becomes watering, feeding, and pruning records",
-      "Nothing saves until you review it",
-      "Care keeps every record and the tasks still due",
+    showcase: "ai-note",
+    // The three steps match the showcase's sequence: type, split, review and save (ADR-0088, ADR-0085).
+    steps: [
+      { title: "Write it your way", text: "One note about what you did, across all your gardens." },
+      { title: "AI splits it into records", text: "Each job is matched to a garden, an area, and a plant." },
+      { title: "You review, then save", text: "Nothing saves until you check it." },
     ],
+    summary: "Records land in Care and tick off due tasks.",
     links: [{ label: "Try it", href: "/notes" }],
   },
   {
