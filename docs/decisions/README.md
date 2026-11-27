@@ -130,7 +130,7 @@ changes, mark the old record as superseded and add a new record.
 | [ADR-0085](0085-split-one-garden-note-into-reviewed-records-across-gardens.md) | Split one garden note into reviewed records across gardens | Accepted 2026-11-19; implemented 2026-11-20 (N1–N7); paid evaluations (batches 4–6) missed their completeness gates; batch 6 passed 40/48 with every safety gate held; batches 7–8 (English only) missed by one ordinary case each; batch 8 passed 48/54 with no wrong value and one hard-gate failure (a prompt injection); the public demo keeps ADR-0060 until a batch passes (N8) |
 | [ADR-0086](0086-open-the-public-note-demo-on-its-safety-record.md) | Open the public note demo on its safety record | Accepted 2026-11-21; preview check passed and the public demo opened at a limit of 300 on 2026-11-23 |
 | [ADR-0087](0087-focus-the-portfolio-release-on-garden-operations-and-ai-notes.md) | Focus the portfolio release on garden operations and AI Garden Note | Accepted 2026-11-25. Product changes are pending. |
-| [ADR-0088](0088-show-the-ai-note-on-the-landing-page-as-a-live-split.md) | Show the AI Note on the landing page as a live split | Accepted 2026-11-25 |
+| [ADR-0088](0088-show-the-ai-note-on-the-landing-page-as-a-live-split.md) | Show the AI Note on the landing page as a live split | Accepted 2026-11-25, amended 2026-11-26 |
 
 ## Interview Use
 

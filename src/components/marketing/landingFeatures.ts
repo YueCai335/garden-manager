@@ -38,7 +38,7 @@ export const landingFeatures: LandingFeature[] = [
     label: "AI Note",
     title: "Write one note, get reviewed records",
     showcase: "ai-note",
-    // The three steps match the showcase's sequence: type, split, review and save (ADR-0088, ADR-0085).
+    // The three steps match the showcase's sequence: the written note, the split, review and save (ADR-0088, ADR-0085).
     steps: [
       { title: "Write it your way", text: "One note about what you did, across all your gardens." },
       { title: "AI splits it into records", text: "Each job is matched to a garden, an area, and a plant." },

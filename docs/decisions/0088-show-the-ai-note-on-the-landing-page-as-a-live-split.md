@@ -1,6 +1,7 @@
 # ADR-0088: Show the AI Note on the Landing Page as a Live Split
 
-- Status: Accepted on 2026-11-25.
+- Status: Accepted on 2026-11-25. Amended on 2026-11-26 (instant split in
+  numbered color blocks; see the amendment below).
 - Date: 2026-11-25
 - Amends: [ADR-0073](0073-separate-the-landing-page-and-use-a-textured-deep-green-look.md)
   (phase S6b): the form of the AI Note showcase was left open. This ADR
@@ -67,6 +68,36 @@ Garden Plan section.
    icons keep the link. Nothing scrolls sideways at 390 px.
 8. **Color.** Deep green, the care type colors from `tokens.css`, and
    neutrals. The section does not use the lime accent.
+
+## Amendment: Instant Split in Numbered Color Blocks (2026-11-26)
+
+The owner found the typed note too slow: a visitor who scrolls to the section
+should see at once how the note splits. Items 3, 4, 7, and 8 change as
+follows, and everything else stands.
+
+- **No typing.** The note shows in full when the stage comes into view. The
+  first phrase splits off at 0.3 s and the next ones every 0.4 s, so a
+  three-record note is fully split in about 1 second. Review and save follow
+  as before, and the sequence ends after about 3 seconds instead of about 11.
+- **Numbered blocks.** Each phrase waits as a faint outlined block with its
+  number. When it splits off, it fills solid in its block color with dark
+  text. Its record card shows the same number in the same color, with a
+  colored bar on its left edge.
+- **Block colors by position.** Block 1 is sky (`#7fd3f5`, deep `#1b9fd6`),
+  block 2 is sun (`#ffd166`, deep `#e3a008`), and block 3 is coral
+  (`#ff9478`, deep `#ec5f3b`). The bright tone fills the block on the dark
+  note card; the deep tone draws the wire, its end dots, the card's number,
+  and the card's left bar. The owner chose these over the care type colors,
+  which read as dull and dark on this section. Colors follow the block's
+  position, not its care type, so each sample has at most three records.
+  The app's care type colors in `tokens.css` do not change.
+- **Wires.** Each wire takes its block's deep color instead of brand green.
+  Buttons, the selected sample, and the "Saved" status stay brand green.
+- **Mobile.** Without wires, the matching numbers and colors link each block
+  to its card.
+
+The owner compared three color options in an inline mockup on 2026-11-26 and
+chose solid blocks (option C) over outlined tints.
 
 ## Rationale
 

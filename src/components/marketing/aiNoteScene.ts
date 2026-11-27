@@ -2,8 +2,8 @@ import type { CareEventType } from "@/lib/careTypes";
 
 /**
  * The landing page's AI Note showcase (ADR-0088): three fixed sample notes, the reviewed
- * records each one becomes, and the timed sequence that types a note, splits it, and saves
- * the records. The samples are pre-recorded and never call the note API, so the landing page
+ * records each one becomes, and the timed sequence that splits a note into numbered blocks and
+ * saves the records. The samples are pre-recorded and never call the note API, so the landing page
  * costs nothing per visit and always plays the same way.
  */
 
@@ -76,8 +76,6 @@ export const noteSamples: NoteSample[] = [
 export const noteText = (sample: NoteSample) => sample.segments.map((segment) => segment.text).join("");
 
 export type NoteShowcaseState = {
-  /** How many characters of the note have been typed. */
-  typed: number;
   /** The "Read note" chip is working. */
   reading: boolean;
   /** How many records have split off the note so far. */
@@ -94,21 +92,18 @@ export type NoteShowcaseState = {
 };
 
 export type NoteShowcaseAction =
-  | { type: "type"; chars: number }
-  | { type: "read" }
   | { type: "find"; record: number }
   | { type: "review" }
   | { type: "press" }
   | { type: "save"; record: number }
   | { type: "finish" };
 
-export const initialNoteState: NoteShowcaseState = { typed: 0, reading: false, found: 0, review: false, pressed: false, saved: 0, active: 0, finished: false };
+/** The note is already written when the stage comes into view, so the split starts at once. */
+export const initialNoteState: NoteShowcaseState = { reading: false, found: 0, review: false, pressed: false, saved: 0, active: 0, finished: false };
 
 export function applyNoteAction(state: NoteShowcaseState, action: NoteShowcaseAction): NoteShowcaseState {
   switch (action.type) {
-    case "type": return { ...state, typed: action.chars, active: 0 };
-    case "read": return { ...state, reading: true, active: 1 };
-    case "find": return { ...state, found: Math.max(state.found, action.record + 1) };
+    case "find": return { ...state, reading: true, active: 1, found: Math.max(state.found, action.record + 1) };
     case "review": return { ...state, reading: false, review: true, active: 2 };
     case "press": return { ...state, pressed: true };
     case "save": return { ...state, pressed: false, saved: Math.max(state.saved, action.record + 1) };
@@ -118,25 +113,18 @@ export function applyNoteAction(state: NoteShowcaseState, action: NoteShowcaseAc
 
 export type TimedNoteAction = { at: number; action: NoteShowcaseAction };
 
-/** Milliseconds per typed character, and characters added per typing step. */
-const CHAR_MS = 26;
-const CHARS_PER_STEP = 2;
+/** When the first record splits off, and the gap before each next one. */
+const FIRST_SPLIT_MS = 300;
+const SPLIT_GAP_MS = 400;
 
-/** The full sequence for one sample: type, read, split record by record, review, then save. */
+/** The full sequence for one sample: split record by record, review, then save. */
 export function noteTimeline(sample: NoteSample): TimedNoteAction[] {
   const events: TimedNoteAction[] = [];
-  const length = noteText(sample).length;
-  let at = 350;
-  for (let chars = CHARS_PER_STEP; chars < length + CHARS_PER_STEP; chars += CHARS_PER_STEP) {
-    events.push({ at, action: { type: "type", chars: Math.min(chars, length) } });
-    at += CHAR_MS * CHARS_PER_STEP;
-  }
-  at += 450;
-  events.push({ at, action: { type: "read" } });
-  at += 1100;
-  sample.records.forEach((_, record) => { events.push({ at, action: { type: "find", record } }); at += 720; });
-  events.push({ at: at + 300, action: { type: "review" } });
-  at += 2000;
+  let at = FIRST_SPLIT_MS;
+  sample.records.forEach((_, record) => { events.push({ at, action: { type: "find", record } }); at += SPLIT_GAP_MS; });
+  at += 200;
+  events.push({ at, action: { type: "review" } });
+  at += 1200;
   events.push({ at, action: { type: "press" } });
   sample.records.forEach((_, record) => events.push({ at: at + 200 + record * 140, action: { type: "save", record } }));
   events.push({ at: at + 300 + sample.records.length * 140, action: { type: "finish" } });
@@ -146,7 +134,7 @@ export function noteTimeline(sample: NoteSample): TimedNoteAction[] {
 /** Where every sequence ends: the whole note, every record split and saved. */
 export function finalNoteState(sample: NoteSample): NoteShowcaseState {
   const count = sample.records.length;
-  return { typed: noteText(sample).length, reading: false, found: count, review: true, pressed: false, saved: count, active: null, finished: true };
+  return { reading: false, found: count, review: true, pressed: false, saved: count, active: null, finished: true };
 }
 
 /** The care type names the note page uses (careTypeName in careLabels), kept here so the landing bundle stays small. */
