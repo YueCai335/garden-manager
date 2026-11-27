@@ -77,8 +77,8 @@ changes, mark the old record as superseded and add a new record.
 | [ADR-0032](0032-use-local-first-ai-providers-for-care-notes.md) | Use local-first AI providers for care notes | Accepted; provider configuration amended by ADR-0058 |
 | [ADR-0033](0033-use-deterministic-fallbacks-for-clear-ai-care-notes.md) | Use deterministic fallbacks for clear AI care notes | Accepted; fallback scope amended by ADR-0058 |
 | [ADR-0034](0034-use-workspace-and-garden-care-targets.md) | Use workspace and garden care targets | Accepted |
-| [ADR-0035](0035-use-reviewable-plant-health-records.md) | Use reviewable plant health records | Accepted |
-| [ADR-0036](0036-use-curated-local-rag-for-plant-knowledge.md) | Use curated local RAG for plant knowledge | Accepted |
+| [ADR-0035](0035-use-reviewable-plant-health-records.md) | Use reviewable plant health records | Historical implementation. ADR-0087 retires Plant Doctor from the portfolio release. |
+| [ADR-0036](0036-use-curated-local-rag-for-plant-knowledge.md) | Use curated local RAG for plant knowledge | Accepted for the Plant Guide experiment. ADR-0087 archives it outside the portfolio release. |
 | [ADR-0037](0037-use-area-summary-and-pairing-notes-for-season-planning.md) | Use area summaries and pairing notes for season planning | Superseded by ADR-0039 |
 | [ADR-0038](0038-link-current-plantings-to-layout-positions.md) | Link current plantings to layout positions | Accepted |
 | [ADR-0039](0039-use-separate-season-plans-for-future-planting.md) | Use separate season plans for future planting | Accepted |
@@ -129,6 +129,7 @@ changes, mark the old record as superseded and add a new record.
 | [ADR-0084](0084-show-the-garden-plan-on-the-landing-page-as-an-exploded-build.md) | Show the Garden Plan on the landing page as an exploded build | Accepted 2026-11-18; not implemented (to be built with the AI Note section) |
 | [ADR-0085](0085-split-one-garden-note-into-reviewed-records-across-gardens.md) | Split one garden note into reviewed records across gardens | Accepted 2026-11-19; implemented 2026-11-20 (N1–N7); paid evaluations (batches 4–6) missed their completeness gates; batch 6 passed 40/48 with every safety gate held; batches 7–8 (English only) missed by one ordinary case each; batch 8 passed 48/54 with no wrong value and one hard-gate failure (a prompt injection); the public demo keeps ADR-0060 until a batch passes (N8) |
 | [ADR-0086](0086-open-the-public-note-demo-on-its-safety-record.md) | Open the public note demo on its safety record | Accepted 2026-11-21; preview check passed and the public demo opened at a limit of 300 on 2026-11-23 |
+| [ADR-0087](0087-focus-the-portfolio-release-on-garden-operations-and-ai-notes.md) | Focus the portfolio release on garden operations and AI Garden Note | Accepted 2026-11-25. Product changes are pending. |
 | [ADR-0088](0088-show-the-ai-note-on-the-landing-page-as-a-live-split.md) | Show the AI Note on the landing page as a live split | Accepted 2026-11-25 |
 
 ## Interview Use
