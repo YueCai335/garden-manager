@@ -16,7 +16,7 @@ export type LandingFeature = {
 
 /**
  * The landing sections in the order of a growing season: plan the garden, log the work,
- * ask about a problem, then plan the next season (ADR-0073). The header links follow this order.
+ * then plan the next season (ADR-0073, ADR-0087). The header links follow this order.
  */
 export const landingFeatures: LandingFeature[] = [
   {
@@ -46,17 +46,6 @@ export const landingFeatures: LandingFeature[] = [
     ],
     summary: "Records land in Care and tick off due tasks.",
     links: [{ label: "Try it", href: "/notes" }],
-  },
-  {
-    id: "plant-ai",
-    label: "Plant AI",
-    title: "Ask about a sick plant or a growing question",
-    text: "Two assistants that show their work: one assesses what you see on a plant, the other answers from reviewed sources.",
-    points: [
-      "Plant Doctor turns your observations into an assessment you review before it joins the plant's health history",
-      "Plant Guide answers gardening questions and cites the sources behind each answer",
-    ],
-    links: [{ label: "Try Plant Doctor", href: "/doctor" }, { label: "Try Plant Guide", href: "/guide" }],
   },
   {
     id: "season-planner",

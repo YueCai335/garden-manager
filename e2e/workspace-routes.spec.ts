@@ -14,12 +14,12 @@ test("deep links, browser history, and missing entities keep explicit garden con
   await expect(page).toHaveURL(/\?level=areas&area=demo-raised-bed$/);
   // A blank name cannot apply, so it stays as a draft across history navigation.
   await page.getByLabel("Planting-area name").fill("");
-  await page.getByRole("link", { name: "Plant Guide", exact: true }).click();
-  await expect(page).toHaveURL(/\/guide$/);
+  await page.getByRole("link", { name: "Next Season", exact: true }).click();
+  await expect(page).toHaveURL(/\/season$/);
   await page.goBack();
   await expect(page.getByLabel("Planting-area name")).toHaveValue("");
   await page.goForward();
-  await expect(page).toHaveURL(/\/guide$/);
+  await expect(page).toHaveURL(/\/season$/);
   await page.goBack();
   await page.getByRole("button", { name: "Done", exact: true }).click();
   await page.getByRole("button", { name: "Discard changes" }).click();
@@ -94,8 +94,8 @@ test("mobile navigation preserves a note across routes without a model request",
   const menu = page.getByRole("button", { name: "Menu", exact: true });
   await menu.click();
   await expect(menu).toHaveAttribute("aria-expanded", "true");
-  await page.getByRole("link", { name: "Plant Guide", exact: true }).click();
-  await expect(page).toHaveURL("/guide");
+  await page.getByRole("link", { name: "Next Season", exact: true }).click();
+  await expect(page).toHaveURL("/season");
   // "+ Note" stays outside Menu on a phone and opens the same note session from any page (ADR-0073).
   const headerNote = page.getByRole("banner").getByRole("button", { name: "Note", exact: true });
   await headerNote.click();
@@ -135,10 +135,10 @@ test("garden pages show one set of modules, a breadcrumb, and All gardens; the h
   await breadcrumb.getByRole("link", { name: "Demo Garden", exact: true }).click();
   await expect(page).toHaveURL(/\/gardens\/demo-garden\/plan$/);
 
-  // Keyboard: the brand, the five modules in order, then "+ Note", whose dialog returns focus on Escape.
+  // Keyboard: the brand, the three modules in order, then "+ Note", whose dialog returns focus on Escape.
   await page.getByRole("banner").getByRole("link", { name: "Garden Manager" }).focus();
   const modules = page.getByRole("navigation", { name: "Workspace sections" });
-  for (const name of ["Gardens", "Care", "Next Season", "Plant Doctor", "Plant Guide"]) {
+  for (const name of ["Gardens", "Care", "Next Season"]) {
     await page.keyboard.press("Tab");
     await expect(modules.getByRole("link", { name, exact: true })).toBeFocused();
   }
@@ -167,7 +167,7 @@ test("the full header row fits without overlap from just above the Menu breakpoi
   for (const width of [1024, 1100, 1279, 1440]) {
     await page.setViewportSize({ width, height: 800 });
     await expect(page.getByRole("button", { name: "Menu", exact: true })).toBeHidden();
-    // The header's items in order: brand, each module, the divider, "+ Note", and the saving status.
+    // The header's items in order: brand, each module, "+ Note", and the saving status.
     const boxes = await page.getByRole("banner").evaluate((header) => {
       const items = [...header.querySelectorAll("a, nav span, button, summary, [role=status]")]
         // A status inside the summary is measured through its summary, which also holds the chevron.
@@ -177,7 +177,7 @@ test("the full header row fits without overlap from just above the Menu breakpoi
         return { label: item.textContent?.trim() || item.tagName, left, right, top, bottom };
       });
     });
-    expect(boxes.map((box) => box.label)).toEqual(["Garden Manager", "Gardens", "Care", "Next Season", "SPAN", "Plant Doctor", "Plant Guide", "+ Note", "All changes saved"]);
+    expect(boxes.map((box) => box.label)).toEqual(["Garden Manager", "Gardens", "Care", "Next Season", "+ Note", "All changes saved"]);
     for (let index = 1; index < boxes.length; index += 1) {
       expect(boxes[index].left, `${boxes[index - 1].label} overlaps ${boxes[index].label} at ${width}px`).toBeGreaterThanOrEqual(boxes[index - 1].right);
       expect(boxes[index].top, `${boxes[index].label} wraps to a second row at ${width}px`).toBeLessThan(boxes[0].bottom);

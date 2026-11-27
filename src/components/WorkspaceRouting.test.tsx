@@ -93,7 +93,7 @@ describe("workspace routes and persistent provider", () => {
     const user = userEvent.setup();
     render(<GardenWorkspace />);
     const modules = within(await screen.findByRole("navigation", { name: "Workspace sections" }));
-    expect(modules.getAllByRole("link").map((link) => link.textContent)).toEqual(["Gardens", "Care", "Next Season", "Plant Doctor", "Plant Guide"]);
+    expect(modules.getAllByRole("link").map((link) => link.textContent)).toEqual(["Gardens", "Care", "Next Season"]);
     expect(modules.getByRole("link", { name: "Gardens" })).toHaveAttribute("aria-current", "page");
     // L1 pages have no breadcrumb or "All gardens".
     expect(screen.queryByRole("navigation", { name: "Breadcrumb" })).not.toBeInTheDocument();
@@ -180,12 +180,12 @@ describe("workspace routes and persistent provider", () => {
     await user.click(screen.getByRole("link", { name: "History" }));
     await user.click(screen.getByRole("button", { name: "Add record" }));
     fireEvent.change(screen.getByLabelText("Note (optional)"), { target: { value: "Keep this care draft" } });
-    await user.click(screen.getByRole("link", { name: "Plant Guide" }));
+    await user.click(screen.getByRole("link", { name: "Next Season" }));
     act(() => testRouter.back());
     await waitFor(() => expect(location.pathname).toBe("/care"));
     expect(screen.getByLabelText("Note (optional)")).toHaveValue("Keep this care draft");
     act(() => testRouter.forward());
-    await waitFor(() => expect(location.pathname).toBe("/guide"));
+    await waitFor(() => expect(location.pathname).toBe("/season"));
   });
 
   it("keeps note text across navigation, avoids implicit generation, and rejects a late response after an edit", async () => {

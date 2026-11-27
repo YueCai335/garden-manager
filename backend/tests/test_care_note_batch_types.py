@@ -73,7 +73,8 @@ def test_a_plant_question_is_its_own_notice_without_a_task():
     note = "番茄叶子发黄是怎么回事？"
     notice = drafts(note, event(note, kind="question", type=None))["notices"][0]
     assert notice["reason"] == "question"
-    assert "Plant Doctor" in notice["message"]
+    # ADR-0087 retires Plant Doctor, so the notice explains the skip without pointing anywhere.
+    assert "Plant Doctor" not in notice["message"]
     assert notice["task"] is None
 
 

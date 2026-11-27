@@ -274,7 +274,7 @@ NOTICE_MESSAGES = {
     "planned": "This action is planned, so no completed care record was drafted.",
     "negated": "This action did not happen, so no completed care record was drafted.",
     "unrelated": "This text does not describe a completed care action.",
-    "question": "This sounds like a question about a plant. Ask Plant Doctor instead.",
+    "question": "This sounds like a question, not a completed care action, so no record was drafted.",
     "ambiguous": "This action needs clarification. Review the original text or enter a record manually.",
     "unsupported": "Only watering, fertilizing, planting, pruning, and pest treatment can be recorded here.",
 }

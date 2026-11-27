@@ -58,7 +58,6 @@
 }
 .navigation a:hover { background: rgb(255 255 255 / 12%); opacity: 1; }
 .navigation a[aria-current] { background: var(--color-app-bar-text); color: var(--color-app-bar-active-text); font-weight: 600; text-shadow: none; opacity: 1; }
-.divider { flex: none; width: 1px; height: 18px; margin: 0 8px; background: rgb(255 255 255 / 25%); }
 /* On wide screens the modules sit in one capsule tray, apart from the brand, so the bar reads as
    "the site" (brand, links to /) and "the app" (the tray, with Gardens as its home). */
 @media (min-width: 1024px) {
@@ -131,7 +130,6 @@
   .brand { gap: 8px; margin-right: 4px; font-size: 17px; }
   .navigation { gap: 2px; }
   .navigation a { padding: 8px 11px; font-size: 15px; }
-  .divider { margin: 0 4px; }
   .note { padding: 8px 13px; }
 }
 @media (max-width: 1023px) {
@@ -156,7 +154,6 @@
 }
 @media (max-width: 767px) {
   .navigation.open { flex-direction: column; align-items: stretch; }
-  .navigation.open .divider { width: auto; height: 1px; margin: 4px 16px; }
   .context { padding-top: 16px; }
   .switcher { margin-left: 0; }
 }

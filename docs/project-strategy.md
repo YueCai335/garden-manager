@@ -13,8 +13,8 @@ demonstrate full-stack engineering, and remain explainable in interviews.
 
 Canonical employment positioning:
 
-> Production-grade full-stack and applied AI platform, with TypeScript/React,
-> Python/FastAPI, PostgreSQL, and AWS as the core stack.
+> Full-stack and applied AI portfolio project built with TypeScript/React,
+> Python/FastAPI, and PostgreSQL.
 
 The project provides credible evidence for junior full-stack, backend, cloud
 application, and applied-AI roles. Technology coverage comes from working
@@ -32,9 +32,17 @@ The project story is:
 
 > I built an AI-assisted garden operations platform with a Next.js interface,
 > FastAPI services, PostgreSQL persistence, deterministic crop-rotation rules,
-> and reviewable AI workflows for structured garden records and planning.
+> and an LLM workflow that turns one note into reviewable care records across
+> multiple gardens.
 
 ## Product Direction
+
+The portfolio release centers on three product areas: **Gardens**, **Care**,
+and **Next Season**. **AI Garden Note** is the featured AI workflow and stays
+available from Gardens home and the global `+ Note` entry. The release scope
+and the disposition of the earlier plant assistants and allocation experiment
+are recorded in
+[ADR-0087](decisions/0087-focus-the-portfolio-release-on-garden-operations-and-ai-notes.md).
 
 ### 1. Garden Operations Memory
 
@@ -45,9 +53,8 @@ Core capabilities:
 - Create, switch, rename, and manage separate gardens, such as a home garden
   and a community plot. Each garden contains named planting areas, such as an
   in-ground zone, raised bed, container group, or greenhouse shelf.
-- Record seed starting, planting, transplanting, watering, fertilizing,
-  pruning, harvests, pests, and diseases.
-- Store fertilizer type, amount, application area, and photos where useful.
+- Record watering, fertilizing, planting (including sowing), pruning, and
+  pest treatment, with details appropriate to each care type.
 - Track current plants and year-by-year crop history by growing area, with
   separate next-season plans for upcoming choices.
 - Maintain planned care tasks and completed care history.
@@ -63,12 +70,9 @@ Core capabilities:
 
 - Apply deterministic crop-family and rotation constraints to historic plant
   records.
-- Generate task suggestions from known dates, user preferences, and garden
-  state.
-- Convert free-text notes into a structured draft for user review.
-- Answer plant and care questions with retrieved sources, citations, and clear
-  uncertainty handling.
-- Explain recommendations using stored garden facts and explicit constraints.
+- Split one free-text note into reviewable care records across gardens and
+  suggest tasks for planned work stated in the note.
+- Match eligible care tasks to reviewed records using deterministic rules.
 
 ### 3. Local Garden Community
 
@@ -97,7 +101,10 @@ understanding, and heatmap rendering belong to this future module.
 
 ## Target Technology Stack and Project Use
 
-Status as of commit review 2026-09-11: **In use** is present in the repository and exercised by the app, tests, or CI; **Partial** has some of the listed pieces in use and the rest planned; **Planned** is a target that no code depends on yet; **Retired** was prototyped and removed from active source (kept in Git history).
+**In use** means the app, tests, or CI exercise the technology. **Partial**
+means some listed pieces are implemented and the rest are planned. **Planned**
+marks a future target. **Experiment** marks an implementation outside the
+portfolio release scope. **Retired** marks a prototype kept in Git history.
 
 | Layer | Selected technology | Status | Actual project use |
 | --- | --- | --- | --- |
@@ -109,10 +116,10 @@ Status as of commit review 2026-09-11: **In use** is present in the repository a
 | Primary database | PostgreSQL, SQLAlchemy, Alembic | In use | Workspaces (with an optimistic-locking revision), gardens, growing areas, plants, events, tasks, crop history, and schema migrations |
 | Geospatial data | PostGIS | Planned | Garden locations and future regional community search; deferred map and yard geometry support |
 | Maps and place search | Mapbox GL JS, Mapbox Search JS | Retired | Address-map prototype removed 2026-09-11 (ADR-0013 deprioritized it); reintroduce only with a map-backed layout requirement |
-| Vector search | pgvector | In use | Retrieval over plant, climate, and horticultural knowledge for grounded AI responses |
+| Vector search | pgvector | Experiment | Plant Guide implements retrieval over curated plant sources. ADR-0087 preserves the experiment outside the release scope. |
 | Cache and background work | Redis, added when a measured workflow requires it | Planned | Cached retrieval, scheduled task generation, and long-running AI job status |
-| AI application layer | Ollama, OpenAI API, RAG, structured outputs, tool calling | In use | Ollama as the default provider and OpenAI as a configurable alternative (`AI_PROVIDER`; AI Garden Note uses its own `CARE_NOTE_AI_PROVIDER`, ADR-0058), pgvector retrieval for grounded plant questions, JSON-schema structured outputs for care-note and plant-health drafts, and a hand-written tool-calling agent for next-season allocation ([docs/agent.md](agent.md)). The agent runs live in the local app; the public demo shows a recorded example ([ADR-0057](decisions/0057-keep-live-allocation-runs-closed-after-evaluation.md)) |
-| AI quality | Evaluation datasets, citations, fallbacks, guardrails | Partial | In use: source citations, deterministic fallbacks for clear care notes, schema validation of model output, a 3-case retrieval evaluation fixture (`backend/tests/fixtures/plant_knowledge_evaluations.json`), and a 10-case paid agent evaluation with pre-written checks, an enumerating baseline, a measured cost bound, and a manual explanation review (`backend/evaluation/`). Planned: a larger model-output dataset and an automated check of explanation accuracy |
+| AI application layer | Ollama, OpenAI API, structured outputs | In use | Local and public-demo model providers generate structured AI Garden Note drafts. Plant Guide RAG and the tool-calling Allocation Assistant are separate experiments. |
+| AI quality | Evaluation datasets, review, guardrails | In use | AI Garden Note has recorded model evaluations, schema and evidence validation, review before save, and public usage limits. See ADR-0085 and ADR-0086 for results and limitations. |
 | Image storage | Amazon S3 | Planned | Garden photos and future authorized map or calibration assets |
 | Cloud backend | AWS ECS Fargate, RDS, CloudWatch | Planned | Container hosting, managed PostgreSQL, logs, metrics, and production operations |
 | Web deployment | Vercel | In use | Next.js preview deployments and the public web application |
@@ -132,7 +139,8 @@ Status as of commit review 2026-09-11: **In use** is present in the repository a
   implemented.
 - Introduce PostgreSQL with the first persisted garden workflow.
 - Introduce PostGIS with location-aware persistence or regional search.
-- pgvector powers the curated Plant Knowledge retrieval path; extend the fixed evaluation dataset as the source corpus grows.
+- Retain the pgvector retrieval implementation and evaluation evidence with
+  the Plant Guide experiment.
 - Keep Redis conditional until caching, scheduled processing, or background
   task measurements justify it.
 - Introduce Terraform with AWS deployment so the infrastructure it manages is
@@ -153,16 +161,15 @@ Use a modular monolith first. Internal modules will include:
 - `garden-operations`
 - `garden-planning`
 - `crop-rotation`
-- `plant-knowledge`
+- `plant-knowledge` as an experiment outside the portfolio release scope
 - `ai-assistant`
 - `local-community`
 - `sun-analysis` as a deferred module
 
 ## AI Principle
 
-AI augments user workflows that benefit from language understanding,
-retrieval, and explanation. Users review AI-created structured records before
-persistence.
+AI Garden Note uses language understanding to extract structured care drafts.
+Users review AI-created structured records before persistence.
 
 Use deterministic code for:
 
@@ -174,10 +181,7 @@ Use deterministic code for:
 Use AI for:
 
 - Extracting structured fields from a garden note.
-- Explaining source-grounded recommendations.
-- Suggesting care tasks from known garden state.
-- Answering horticultural questions with retrieved evidence.
-- Summarizing history for seasonal planning.
+- Identifying planned care mentioned in the note for the gardener to review.
 
 ## Execution and Acceptance Standard
 
@@ -253,16 +257,17 @@ Required:
 - Planting-plan draft with explicit constraints and user edits.
 - Tests for rotation rules and date-based planning logic.
 
-### Phase 4: Applied AI Assistant
+### Phase 4: AI Garden Note
 
-Goal: add AI workflows with reviewable and measurable quality.
+Goal: reduce daily garden data entry with a reviewable LLM workflow.
 
 Required:
 
-- Structured extraction from a free-text garden note into a reviewable draft.
-- RAG-grounded plant and care answers with source citations.
-- Evaluation dataset with fixed extraction and recommendation cases.
-- Fallback behavior, user review, structured logs, and error states.
+- Structured extraction from one free-text note into individually reviewable
+  care drafts across gardens.
+- Deterministic validation, user confirmation, and task matching.
+- Fixed extraction evaluation cases, documented limitations, manual entry,
+  and public demo usage limits.
 
 ### Phase 5: Local Garden Community
 
@@ -313,19 +318,9 @@ Until then, resume bullets should describe only completed functionality.
 
 ## Current Priority
 
-Complete the first end-to-end next-season planning workflow, then prepare a
-portfolio-ready release:
-
-1. Show planting-area rotation summaries and support adopted next-season plant
-   records with evidence-labeled pairing notes.
-2. Expand Plant Knowledge only through reviewed source cards and evaluation
-   cases.
-3. Add a focused end-to-end test for the core planning workflow.
-4. Prepare a demo dataset, architecture explanation, screenshots, and a
-   deployment decision for job applications.
-
-The current priority is recorded in
-[ADR-0013](decisions/0013-prioritize-garden-operations-and-ai-planning.md),
-[ADR-0025](decisions/0025-use-three-season-crop-rotation-warnings.md),
-[ADR-0026](decisions/0026-use-a-next-season-planning-workspace.md), and
-[ADR-0037](decisions/0037-use-area-summary-and-pairing-notes-for-season-planning.md).
+Finish the portfolio release defined in
+[ADR-0087](decisions/0087-focus-the-portfolio-release-on-garden-operations-and-ai-notes.md).
+Align the landing page, navigation, and demo presentation with the three core
+product areas. Verify the Gardens, AI Garden Note and Care, and Next Season
+workflows. Document the deployed demo and label the existing RAG and
+tool-calling experiments in the portfolio materials.
