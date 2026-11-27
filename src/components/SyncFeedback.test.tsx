@@ -156,7 +156,7 @@ describe("shared save feedback", () => {
     const user = userEvent.setup();
     render(<GardenWorkspace />);
     await screen.findByText("Changes could not be saved on this device");
-    await user.click(within(screen.getByRole("navigation", { name: "Workspace sections" })).getByRole("link", { name: "Plant Guide" }));
+    await user.click(within(screen.getByRole("navigation", { name: "Workspace sections" })).getByRole("link", { name: "Next Season" }));
     expect(screen.getByText("Changes could not be saved on this device")).toBeInTheDocument();
     expect(screen.queryByText("Saved on this device")).not.toBeInTheDocument();
     const leaving = new Event("beforeunload", { cancelable: true });

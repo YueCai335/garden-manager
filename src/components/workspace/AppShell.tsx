@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { createContext, Fragment, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { useWorkspace } from "./WorkspaceProvider";
 import { SyncStatus } from "./SyncStatus";
 import { gardenPath, routeFromPath, workspaceHomePath } from "@/lib/workspaceRoutes";
@@ -14,11 +14,8 @@ import { OverviewGardenNote } from "./OverviewGardenNote";
 import { AppFooter } from "./AppFooter";
 import styles from "./AppShell.module.css";
 
-// The L1 modules (ADR-0073): the garden modules, a divider, then the AI helpers.
-const moduleGroups = [
-  [[workspaceHomePath, "Gardens"], ["/care", "Care"], ["/season", "Next Season"]],
-  [["/doctor", "Plant Doctor"], ["/guide", "Plant Guide"]],
-] as const;
+// The L1 modules (ADR-0073). ADR-0087 keeps the release to the three garden modules.
+const modules = [[workspaceHomePath, "Gardens"], ["/care", "Care"], ["/season", "Next Season"]] as const;
 const OverviewNoteEntryContext = createContext<ReactNode>(null);
 type OpenGardenNote = (opener: HTMLButtonElement | null, options: { batchAvailable: boolean; gardenId?: string }) => void;
 const OpenGardenNoteContext = createContext<OpenGardenNote | null>(null);
@@ -121,10 +118,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           // The menu claims this Escape, so the plan's zoom does not also leave its area.
           if (menuOpen && event.key === "Escape") { event.preventDefault(); closeMenu(); }
         }}>
-          {moduleGroups.map((group, index) => <Fragment key={group[0][0]}>
-            {index > 0 && <span className={styles.divider} aria-hidden="true" />}
-            {group.map(([href, label]) => <Link key={href} href={href} aria-current={currentFor(href, pathname)} onClick={closeMenu}>{label}</Link>)}
-          </Fragment>)}
+          {modules.map(([href, label]) => <Link key={href} href={href} aria-current={currentFor(href, pathname)} onClick={closeMenu}>{label}</Link>)}
         </nav>
         <Button className={styles.toggle} ref={menuButton} aria-expanded={menuOpen} aria-controls="workspace-navigation" onClick={() => { if (menuOpen) closeMenu(); else setMenuOpen(true); }}>Menu</Button>
         <button ref={headerNoteButton} type="button" className={styles.note} aria-haspopup="dialog" aria-expanded={showNote}

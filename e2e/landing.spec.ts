@@ -29,12 +29,12 @@ test("the landing page waits on no API request and every entry point opens the a
   await page.getByRole("link", { name: "Open the app" }).click();
   await expect(page).toHaveURL(workspaceHome);
 
-  // Each feature section opens its own app page; Plant AI opens both assistants.
+  // Each feature section opens its own app page.
   await page.goto("/");
   const features = page.getByRole("region", { name: "Features" });
   const tries = features.getByRole("link", { name: /^Try / });
   expect(await tries.evaluateAll((links) => links.map((link) => `${link.textContent} ${link.getAttribute("href")}`))).toEqual([
-    "Try it /gardens", "Try it /notes", "Try Plant Doctor /doctor", "Try Plant Guide /guide", "Try it /season",
+    "Try it /gardens", "Try it /notes", "Try it /season",
   ]);
   await features.getByRole("link", { name: "Try it" }).first().click();
   await expect(page).toHaveURL(workspaceHome);
@@ -212,9 +212,9 @@ test("the landing page has a social preview and in-page section links", async ({
   const og = await page.request.get("/landing/og.jpg");
   expect(og.ok()).toBe(true);
 
-  // The header links follow the season: plan, log, ask, then plan the next season.
+  // The header links follow the season: plan, log, then plan the next season (ADR-0087).
   const site = page.getByRole("navigation", { name: "Site" });
-  await expect(site.getByRole("link")).toHaveText(["Garden Plan", "AI Note", "Plant AI", "Season Planner"]);
+  await expect(site.getByRole("link")).toHaveText(["Garden Plan", "AI Note", "Season Planner"]);
   // The links on the textured bands are white at medium weight, so they stay readable.
   await expect(site.getByRole("link", { name: "Garden Plan" })).toHaveCSS("font-weight", "500");
   await expect(page.getByRole("contentinfo").getByRole("link", { name: "Architecture" })).toHaveCSS("color", "rgb(255, 255, 255)");
@@ -226,19 +226,19 @@ test("the landing page has a social preview and in-page section links", async ({
   await expect(page.getByRole("heading", { name: "Write one note, get reviewed records" })).toBeInViewport();
 
   // The header stays in the window, turns into the glass bar, never covers the section heading, and marks the section.
-  await site.getByRole("link", { name: "Plant AI" }).click();
-  await expect(page).toHaveURL(/#plant-ai$/);
+  await site.getByRole("link", { name: "Season Planner" }).click();
+  await expect(page).toHaveURL(/#season-planner$/);
   const header = (await page.getByRole("banner").boundingBox())!;
-  const heading = (await page.getByRole("heading", { name: "Ask about a sick plant or a growing question" }).boundingBox())!;
+  const heading = (await page.getByRole("heading", { name: "Plan next season around crop rotation" }).boundingBox())!;
   expect(header.y).toBeGreaterThanOrEqual(0);
   expect(heading.y).toBeGreaterThanOrEqual(header.y + header.height);
   await expect(page.getByRole("banner")).not.toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
   // The bar is graded by the hero's own shader, not a separate flat color.
   await expect(page.getByRole("banner").locator("[data-render]")).toHaveAttribute("data-render", "webgl");
-  await expect(site.getByRole("link", { name: "Plant AI" })).toHaveAttribute("aria-current", "location");
+  await expect(site.getByRole("link", { name: "Season Planner" })).toHaveAttribute("aria-current", "location");
   await expect(site.locator("[aria-current]")).toHaveCount(1);
   // The section in view is a solid white pill; hovering another link gives it a translucent pill.
-  await expect(site.getByRole("link", { name: "Plant AI" })).toHaveCSS("background-color", "rgb(255, 255, 255)");
+  await expect(site.getByRole("link", { name: "Season Planner" })).toHaveCSS("background-color", "rgb(255, 255, 255)");
   await site.getByRole("link", { name: "Garden Plan" }).hover();
   await expect(site.getByRole("link", { name: "Garden Plan" })).not.toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
   const openApp = page.getByRole("banner").getByRole("link", { name: "Open app" });

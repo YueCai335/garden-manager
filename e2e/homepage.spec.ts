@@ -180,8 +180,8 @@ test("note dialog generates only on request and reopens the same draft", async (
   await expect(page.getByRole("heading", { name: "AI extracted draft" })).toBeVisible();
   await dialog.getByRole("button", { name: "Close", exact: true }).click();
   // The draft survives a trip to another page.
-  await page.getByRole("link", { name: "Plant Guide", exact: true }).click();
-  await expect(page).toHaveURL("/guide");
+  await page.getByRole("link", { name: "Next Season", exact: true }).click();
+  await expect(page).toHaveURL("/season");
   await page.getByRole("navigation", { name: "Workspace sections" }).getByRole("link", { name: "Gardens", exact: true }).click();
   await expect(page).toHaveURL(workspaceHome);
   await page.getByRole("button", { name: "Continue note · 1 draft" }).click();

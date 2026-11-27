@@ -365,10 +365,10 @@ describe("note flow screens (ADR-0085 N5)", () => {
     expect(screen.getByRole("region", { name: "Back garden" })).toHaveAttribute("data-on", "true");
   });
 
-  it("says when a planted plant is not on the plan and links a plant question to Plant Doctor", async () => {
+  it("says when a planted plant is not on the plan and shows a plant question as a notice without a link", async () => {
     withNotes({
       drafts: [{ ...extraction.drafts[0], type: "planting", sourceText: "Planted 2 basil", plantName: "Basil", plantCount: 2 }],
-      notices: [{ sourceText: "Why are the tomato leaves yellow?", reason: "question", message: "This sounds like a question about a plant. Ask Plant Doctor instead.", task: null }],
+      notices: [{ sourceText: "Why are the tomato leaves yellow?", reason: "question", message: "This sounds like a question, not a completed care action, so no record was drafted.", task: null }],
     });
     const user = userEvent.setup();
     render(<GardenWorkspace />);
@@ -378,7 +378,8 @@ describe("note flow screens (ADR-0085 N5)", () => {
     expect(row.getByText(/Basil · 2 plants/)).toBeVisible();
     expect(row.getByText(/isn't on the Front garden plan yet/)).toBeVisible();
     expect(row.getByRole("link", { name: "Add on plan →" })).toHaveAttribute("href", "/gardens/front/plan");
-    expect(screen.getByRole("link", { name: "Ask Plant Doctor →" })).toHaveAttribute("href", "/doctor");
+    expect(screen.getByText("This sounds like a question, not a completed care action, so no record was drafted.")).toBeVisible();
+    expect(screen.queryByRole("link", { name: /Plant Doctor/ })).not.toBeInTheDocument();
   });
 
   it("explains a failed request and a note with too many jobs, keeping the note", async () => {

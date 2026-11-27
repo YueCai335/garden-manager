@@ -19,8 +19,8 @@ it("presents the product and links every entry point into the app without callin
   const tryLinks = within(features).getAllByRole("link", { name: "Try it" });
   expect(tryLinks.map((link) => link.getAttribute("href"))).toEqual(["/gardens", "/notes", "/season"]);
   expect(tryLinks[1]).toHaveAccessibleDescription("Write one note, get reviewed records");
-  expect(within(features).getByRole("link", { name: "Try Plant Doctor" })).toHaveAttribute("href", "/doctor");
-  expect(within(features).getByRole("link", { name: "Try Plant Guide" })).toHaveAttribute("href", "/guide");
+  // ADR-0087 retires Plant Doctor and Plant Guide from the release.
+  expect(within(features).queryByRole("link", { name: /Plant Doctor|Plant Guide/ })).not.toBeInTheDocument();
   expect(within(screen.getByRole("banner")).getByRole("link", { name: "GitHub" })).toHaveAttribute("href", "https://github.com/YueCai335/garden-manager");
   expect(fetch).not.toHaveBeenCalled();
 });

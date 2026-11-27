@@ -20,8 +20,6 @@ export function LandingFooter() {
           <li><Link href={workspaceHomePath}>Garden Plan</Link></li>
           <li><Link href="/notes">AI Note</Link></li>
           <li><Link href="/care">Care</Link></li>
-          <li><Link href="/doctor">Plant Doctor</Link></li>
-          <li><Link href="/guide">Plant Guide</Link></li>
           <li><Link href="/season">Next Season</Link></li>
         </ul>
       </nav>

@@ -154,9 +154,7 @@ describe("GardenWorkspace", () => {
     expect(screen.getByRole("heading", { name: "Gardens", level: 1 })).toBeInTheDocument();
     expect(within(screen.getByRole("banner")).queryByText("Record Garden Note")).not.toBeInTheDocument();
     const gardenTools = screen.getByRole("navigation", { name: "Workspace sections" });
-    for (const name of ["Plant Doctor", "Plant Guide", "Next Season"]) {
-      expect(within(gardenTools).getByRole("link", { name })).toBeInTheDocument();
-    }
+    expect(within(gardenTools).getAllByRole("link").map((link) => link.textContent)).toEqual(["Gardens", "Care", "Next Season"]);
   });
 
   it("shows local AI feature previews in the public portfolio demo", async () => {
@@ -175,11 +173,11 @@ describe("GardenWorkspace", () => {
     expect(screen.getByText(/This is a read-only example/)).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Close" }));
-    await user.click(within(screen.getByRole("navigation", { name: "Workspace sections" })).getByRole("link", { name: "Plant Doctor" }));
+    // The header no longer links the archived assistants (ADR-0087); their pages stay reachable by address.
+    act(() => testRouter.push("/doctor"));
     expect(await screen.findByRole("heading", { name: "Plant Doctor runs in the local app" })).toBeInTheDocument();
 
-    await user.click(within(screen.getByRole("navigation", { name: "Workspace sections" })).getByRole("link", { name: "Gardens" }));
-    await user.click(within(screen.getByRole("navigation", { name: "Workspace sections" })).getByRole("link", { name: "Plant Guide" }));
+    act(() => testRouter.push("/guide"));
     expect(await screen.findByRole("heading", { name: "Plant Guide runs in the local app" })).toBeInTheDocument();
     expect(screen.queryByText("Import gardens to PostgreSQL first")).not.toBeInTheDocument();
   });
@@ -838,8 +836,8 @@ describe("GardenWorkspace", () => {
     vi.stubGlobal("fetch", fetch);
     window.localStorage.setItem(SERVER_WORKSPACE_STORAGE_KEY, "server-workspace");
 
+    resetTestRouter("/doctor");
     render(<GardenWorkspace />);
-    await user.click(await screen.findByRole("link", { name: "Plant Doctor" }));
     await user.selectOptions(await screen.findByLabelText("Choose a garden for this record"), workspace.gardens[0].id);
     await user.type(screen.getByLabelText("What do you observe?"), "White coating on the lower leaves.");
     await user.click(screen.getByRole("button", { name: "Create AI assessment" }));
@@ -886,9 +884,9 @@ describe("GardenWorkspace", () => {
     vi.stubGlobal("fetch", fetch);
     window.localStorage.setItem(SERVER_WORKSPACE_STORAGE_KEY, "server-workspace");
 
+    resetTestRouter("/guide");
     render(<GardenWorkspace />);
-    await user.click(await screen.findByRole("link", { name: "Plant Guide" }));
-    await user.type(screen.getByLabelText("Question"), "My tomato has a white coating.");
+    await user.type(await screen.findByLabelText("Question"), "My tomato has a white coating.");
     await user.click(screen.getByRole("button", { name: "Ask Plant Guide" }));
 
     expect(await screen.findByRole("heading", { name: "Answer" })).toBeInTheDocument();

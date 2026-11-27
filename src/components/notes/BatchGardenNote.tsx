@@ -400,7 +400,6 @@ function Notices({ batch, workspace }: { batch: Batch; workspace: GardenWorkspac
       <div><q>{notice.sourceText}</q><small>{notice.message}</small></div>
       {suggested && <button type="button" className={styles.pill} aria-pressed={chosen} onClick={() => batch.toggleTask(index)}>
         {chosen ? "Task will be added · Undo" : `Add as a task for ${shortDate(suggested.task.dueDate)}`}</button>}
-      {notice.reason === "question" && <Link className={styles.pill} href="/doctor">Ask Plant Doctor →</Link>}
       {notice.task && !suggested && <small>Add it in Care to set a reminder; the note did not say enough for a task.</small>}
     </li>;
   })}</ul>;
