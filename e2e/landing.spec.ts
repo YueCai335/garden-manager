@@ -164,9 +164,11 @@ test("the AI Note showcase splits a sample note once in view, and a sample butto
   const section = page.getByRole("article", { name: "Write one note, get reviewed records" });
   const stage = section.getByRole("img", { name: /^Sample note: “Watered the tomatoes/ });
   // It waits off screen, then plays once the stage scrolls into view.
-  await expect(stage).toHaveAttribute("data-state", "typing");
+  await expect(stage).toHaveAttribute("data-state", "ready");
   await stage.scrollIntoViewIfNeeded();
   await expect(stage).toHaveAttribute("data-state", "splitting", { timeout: 15_000 });
+  // The note shows in full at once; nothing types out.
+  await expect(stage.getByText("sprayed soap on the aphids at the allotment")).toBeVisible();
   await expect(stage).toHaveAttribute("data-state", "saved", { timeout: 15_000 });
   await expect(stage.getByText("Saved", { exact: true })).toHaveCount(3);
   await expect(stage.getByText("Completes “Water Backyard” · due today")).toBeVisible();
@@ -182,7 +184,7 @@ test("the AI Note showcase splits a sample note once in view, and a sample butto
 
   await section.getByRole("button", { name: "Pruned the basil…" }).click();
   const basil = section.getByRole("img", { name: /^Sample note: “Pruned the basil/ });
-  await expect(basil).toHaveAttribute("data-state", "typing");
+  await expect(basil).toHaveAttribute("data-state", "ready");
   await expect(basil).toHaveAttribute("data-state", "saved", { timeout: 15_000 });
   await expect(basil.locator("[data-part=wires] path")).toHaveCount(2);
   // The samples are pre-recorded and never reach the API.

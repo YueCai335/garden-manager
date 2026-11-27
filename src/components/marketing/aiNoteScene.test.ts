@@ -6,7 +6,6 @@ import {
   finalNoteState,
   initialNoteState,
   noteSamples,
-  noteText,
   noteTimeline,
   recordTypeName,
   sampleDescription,
@@ -22,13 +21,14 @@ it.each(noteSamples.map((sample) => [sample.id, sample] as const))("plays %s fro
   const states = run(sample);
   expect(states.at(-1)).toEqual(finalNoteState(sample));
   const timeline = noteTimeline(sample);
-  // Times only move forward, and the note is fully typed before it is read.
+  // Times only move forward.
   expect(timeline.every((event, index) => index === 0 || event.at >= timeline[index - 1].at)).toBe(true);
-  const read = states.findIndex((state) => state.reading);
-  expect(states[read - 1].typed).toBe(noteText(sample).length);
+  // Nothing types out: the first block splits off at once and every block within about a second.
+  const finds = timeline.filter(({ action }) => action.type === "find");
+  expect(finds[0].at).toBeLessThanOrEqual(400);
+  expect(finds.at(-1)!.at).toBeLessThanOrEqual(1200);
   // Records split off in order and are saved only after the save bar appears.
-  const finds = timeline.flatMap(({ action }) => action.type === "find" ? [action.record] : []);
-  expect(finds).toEqual(sample.records.map((_, record) => record));
+  expect(finds.map(({ action }) => action.type === "find" && action.record)).toEqual(sample.records.map((_, record) => record));
   const firstSave = states.findIndex((state) => state.saved > 0);
   expect(states[firstSave - 1].review).toBe(true);
   // The step cards light 01, 02, 03 in turn, then all show as done.
@@ -36,8 +36,9 @@ it.each(noteSamples.map((sample) => [sample.id, sample] as const))("plays %s fro
   expect(actives).toEqual([0, 1, 2, null]);
 });
 
-it("gives every record exactly one phrase of its note", () => {
+it("gives every record exactly one phrase of its note, and at most three blocks for the three block colours", () => {
   for (const sample of noteSamples) {
+    expect(sample.records.length, sample.id).toBeLessThanOrEqual(3);
     const phrases = sample.segments.flatMap((segment) => segment.record === undefined ? [] : [segment.record]);
     expect([...phrases].sort(), sample.id).toEqual(sample.records.map((_, record) => record));
   }

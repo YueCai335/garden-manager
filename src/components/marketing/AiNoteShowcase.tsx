@@ -1,7 +1,6 @@
 "use client";
 import Link from "next/link";
 import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
-import type { CareEventType } from "@/lib/careTypes";
 import {
   applyNoteAction,
   finalNoteState,
@@ -23,14 +22,14 @@ type Props = {
 type Wire = { d: string; x1: number; y1: number; x2: number; y2: number };
 
 const cx = (...names: Array<string | false | undefined>) => names.filter(Boolean).join(" ");
-/** The care type colour: deep on the white record card, light on the dark note card (tokens.css). */
-const typeStyle = (type: CareEventType) => ({ "--c": `var(--color-care-${type})`, "--c-dark": `var(--color-care-${type}-on-dark)` }) as CSSProperties;
+/** Block n's colour: bright on the dark note card, deeper on the white stage (AiNoteShowcase.module.css). */
+const blockStyle = (record: number) => ({ "--k": `var(--block-${record + 1})`, "--k-deep": `var(--block-${record + 1}-deep)` }) as CSSProperties;
 const reducedMotion = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
 
 /**
  * The AI Note section of the landing page (ADR-0088): a textured strip with three step cards
- * above a white stage, where a pre-recorded sample note types out, splits into care records
- * along measured wires, and is saved after review. It plays once when the stage scrolls into
+ * above a white stage, where a pre-recorded sample note shows in full, splits into numbered
+ * colour blocks that wire to their care records, and is saved after review. It plays once when the stage scrolls into
  * view; Replay and the sample buttons play it again. With reduced motion, or without
  * IntersectionObserver, it shows the saved records. It never calls the note API.
  */
@@ -95,12 +94,13 @@ export function AiNoteShowcase({ className, feature, index }: Props) {
       const next: Wire[] = [];
       for (let record = 0; record < state.found; record += 1) {
         const rects = phraseRefs.current[record]?.getClientRects();
-        const card = cardRefs.current[record]?.getBoundingClientRect();
+        // The card's resting position: offsets ignore the slide-in transform it may still be in.
+        const card = cardRefs.current[record];
         const last = rects?.[rects.length - 1];
         if (!last || !card) continue;
         const y1 = last.top + last.height / 2 - box.top;
-        const x2 = card.left - box.left;
-        const y2 = card.top - box.top + 24;
+        const x2 = card.offsetLeft;
+        const y2 = card.offsetTop + 24;
         const bend = (x2 - edge) * 0.55;
         next.push({ d: `M${edge} ${y1} C${edge + bend} ${y1}, ${x2 - bend} ${y2}, ${x2} ${y2}`, x1: edge, y1, x2, y2 });
       }
@@ -115,7 +115,6 @@ export function AiNoteShowcase({ className, feature, index }: Props) {
 
   const records = sample.records.length;
   const [tryLink] = feature.links;
-  let remaining = state.typed;
 
   return <article id={feature.id} className={cx(styles.band, className)} aria-labelledby={`feature-${feature.id}`}>
     <div className={styles.strip}>
@@ -143,20 +142,19 @@ export function AiNoteShowcase({ className, feature, index }: Props) {
         role="img"
         aria-label={sampleDescription(sample)}
         data-sample={sample.id}
-        data-state={state.finished ? "saved" : state.found > 0 ? "splitting" : "typing"}
+        data-state={state.finished ? "saved" : state.found > 0 ? "splitting" : "ready"}
       >
         <div ref={noteRef} className={styles.note}>
           <div className={styles.noteHead}><b>AI Note</b><span>Today</span></div>
           <p className={styles.text}>
             {sample.segments.map((segment, segmentIndex) => {
-              const shown = segment.text.slice(0, Math.max(0, remaining));
-              remaining -= segment.text.length;
               const record = segment.record;
-              if (record === undefined) return <span key={segmentIndex}>{shown}</span>;
+              if (record === undefined) return <span key={segmentIndex}>{segment.text}</span>;
               return <span key={segmentIndex} ref={(element) => { phraseRefs.current[record] = element; }}
-                className={cx(styles.phrase, record < state.found && styles.lit)} style={typeStyle(sample.records[record].type)}>{shown}</span>;
+                className={cx(styles.phrase, record < state.found && styles.lit)} style={blockStyle(record)}>
+                <span className={styles.badge}>{record + 1}</span>{segment.text}
+              </span>;
             })}
-            {!state.reading && !state.review && <i className={styles.caret} />}
           </p>
           <span className={cx(styles.read, state.reading && styles.busy)}>
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z" /><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z" /></svg>
@@ -168,9 +166,9 @@ export function AiNoteShowcase({ className, feature, index }: Props) {
           {sample.records.map((record, recordIndex) => {
             const saved = recordIndex < state.saved;
             return <div key={`${sample.id}-${recordIndex}`} ref={(element) => { cardRefs.current[recordIndex] = element; }}
-              className={cx(styles.card, recordIndex < state.found && styles.in, saved && styles.saved)} style={typeStyle(record.type)}>
+              className={cx(styles.card, recordIndex < state.found && styles.in, saved && styles.saved)} style={blockStyle(recordIndex)}>
               <div className={styles.cardHead}>
-                <span className={styles.icon}><i /></span>
+                <span className={styles.badge}>{recordIndex + 1}</span>
                 <b>{recordTypeName[record.type]}</b>
                 <span className={styles.garden}>{record.garden}</span>
                 <span className={cx(styles.status, saved && styles.ok)}>
@@ -187,14 +185,14 @@ export function AiNoteShowcase({ className, feature, index }: Props) {
         </div>
 
         <svg className={cx(styles.wires, instant && styles.instant)} data-part="wires" aria-hidden="true">
-          {wires.map((wire, wireIndex) => <g key={`${sample.id}-${wireIndex}`}>
+          {wires.map((wire, wireIndex) => <g key={`${sample.id}-${wireIndex}`} style={blockStyle(wireIndex)}>
             <path d={wire.d} pathLength={1} />
             <circle cx={wire.x1} cy={wire.y1} r={4} />
             <circle className={styles.end} cx={wire.x2} cy={wire.y2} r={4} />
           </g>)}
         </svg>
         {/* A small dot runs along each new wire once. */}
-        {!instant && wires.map((wire, wireIndex) => <span key={`${sample.id}-${wireIndex}`} className={styles.spark} style={{ offsetPath: `path("${wire.d}")` }} aria-hidden="true" />)}
+        {!instant && wires.map((wire, wireIndex) => <span key={`${sample.id}-${wireIndex}`} className={styles.spark} style={{ ...blockStyle(wireIndex), offsetPath: `path("${wire.d}")` }} aria-hidden="true" />)}
       </div>
 
       <div className={styles.footer}>
